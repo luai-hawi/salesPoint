@@ -60,7 +60,7 @@
                             </td>
                             <td class="py-3 px-6 border-b text-left">
                                 <a href="{{ route('products.edit', $product->id) }}" class="text-yellow-500 hover:text-yellow-700">Edit</a>
-                                <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline">
+                                <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline delete-form">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700">Delete</button>
@@ -109,8 +109,6 @@
                 // Reset input
                 input.value = 1;
 
-                
-                
                 fetch(`/products/${row.dataset.id}/add-quantity`, {
                     method: 'POST',
                     headers: {
@@ -119,6 +117,15 @@
                     },
                     body: JSON.stringify({ amount: addQty })
                 });
+            });
+        });
+
+        // Confirm before deleting a product
+        document.querySelectorAll('.delete-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!confirm('Are you sure you want to delete this product?')) {
+                    e.preventDefault();
+                }
             });
         });
     </script>

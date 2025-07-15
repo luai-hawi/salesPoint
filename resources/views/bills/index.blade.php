@@ -102,5 +102,13 @@
 
         // Calculate on page load
         document.addEventListener('DOMContentLoaded', updateTotals);
+         // Confirm before deleting a bill
+    document.querySelectorAll('form[action*="/bills/"][method="POST"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to delete this bill?')) {
+                e.preventDefault();
+            }
+        });
+    });
     </script>
 </x-app-layout>

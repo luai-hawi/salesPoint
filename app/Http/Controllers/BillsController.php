@@ -84,32 +84,45 @@ public function update(Request $request, Bill $bill)
 {
     $bill->note = $request->input('note', '');
 
-    // 1. Update existing quantities
+    // Get discounts array from request (may be empty)
+    $discounts = $request->input('discounts', []);
+
+    // 1. Update existing quantities and discounts
     $quantities = $request->input('quantities', []);
     foreach ($quantities as $productId => $newQty) {
         $newQty = (int)$newQty;
+        $newDiscount = isset($discounts[$productId]) ? (float)$discounts[$productId] : 0;
 
-        // Get old quantity from pivot
+        // Get old pivot to adjust stock
         $pivot = $bill->products()->where('product_id', $productId)->first()->pivot;
         $oldQty = $pivot->quantity;
 
-        // Adjust stock
+        // Adjust stock (return old quantity, subtract new quantity)
         $product = \App\Models\Product::findOrFail($productId);
-        $product->quantity += ($oldQty - $newQty); // return old qty, subtract new
+        $product->quantity += ($oldQty - $newQty);
         $product->save();
 
-        // Update pivot table
-        $bill->products()->updateExistingPivot($productId, ['quantity' => $newQty]);
+        // Clamp discount to max allowed (qty * selling_price)
+        $maxDiscount = $newQty * $product->selling_price;
+        if ($newDiscount > $maxDiscount) {
+            $newDiscount = $maxDiscount;
+        }
+
+        // Update pivot with quantity and discount
+        $bill->products()->updateExistingPivot($productId, [
+            'quantity' => $newQty,
+            'discount' => $newDiscount,
+        ]);
     }
 
-    // 2. Remove products
+    // 2. Remove products if requested
     $toRemove = $request->input('remove_products', []);
     if (!empty($toRemove)) {
         foreach ($toRemove as $productId) {
             $product = \App\Models\Product::findOrFail($productId);
             $pivot = $bill->products()->where('product_id', $productId)->first()->pivot;
 
-            // Restore the quantity
+            // Restore stock quantity
             $product->quantity += $pivot->quantity;
             $product->save();
         }
@@ -124,22 +137,31 @@ public function update(Request $request, Bill $bill)
     if ($newProductId && $newQty > 0) {
         $product = \App\Models\Product::findOrFail($newProductId);
 
-        if ($product->quantity < $newQty) {
-            return back()->withErrors(['msg' => "Not enough stock for {$product->name}."]);
-        }
-
+        // Decrease stock
         $product->quantity -= $newQty;
         $product->save();
 
         $bill->products()->syncWithoutDetaching([
-            $newProductId => ['quantity' => $newQty]
+            $newProductId => [
+                'quantity' => $newQty,
+                'discount' => 0, // default discount amount
+                'cost_price' => $product->cost_price,
+                'selling_price' => $product->selling_price
+            ]
         ]);
     }
 
-    // 4. Recalculate total price
+    // 4. Recalculate total price with discounts
     $total = 0;
+    $bill->load('products'); // reload to get fresh pivot data
+
     foreach ($bill->products as $product) {
-        $total += $product->pivot->quantity * $product->selling_price;
+        $qty = $product->pivot->quantity;
+        $unitPrice = $product->selling_price;
+        $discount = $product->pivot->discount ?? 0;
+
+        $subtotal = max(0, $qty * $unitPrice - $discount);
+        $total += $subtotal;
     }
 
     $bill->total_price = $total;
@@ -147,6 +169,7 @@ public function update(Request $request, Bill $bill)
 
     return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully.');
 }
+
 
 
     public function show(Bill $bill)
