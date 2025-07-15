@@ -10,8 +10,10 @@ class CreateProductsTable extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
+            $table->string('barcode')->unique()->nullable();
             $table->string('name');
             $table->string('pictures')->nullable();
+            $table->integer('quantity');
             $table->decimal('cost_price', 10, 2);
             $table->decimal('selling_price', 10, 2);
             $table->timestamps();

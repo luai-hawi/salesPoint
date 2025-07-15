@@ -10,7 +10,21 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $products = \App\Models\Product::all();
+            // Prepare products data for JavaScript
+        $productsForJS = $products->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'pictures' => $p->pictures ? json_decode($p->pictures, true) : [],
+                'price' => $p->selling_price,
+                'cost_price' => $p->cost_price,
+                'barcode' => $p->barcode,
+            ];
+        })->toArray();
+        
+
+        return view('dashboard', compact('productsForJS', 'products'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -19,6 +33,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::resource('products', ProductsController::class);
     Route::resource('bills', BillsController::class);
+    Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+
 });
 
 require __DIR__.'/auth.php';

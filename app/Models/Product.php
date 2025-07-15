@@ -11,13 +11,16 @@ class Product extends Model
 
     protected $fillable = [
         'name',
+        'barcode',
+        'quantity',
         'pictures',
         'cost_price',
         'selling_price',
     ];
 
     public function bills()
-    {
-        return $this->hasMany(Bill::class);
-    }
+{
+    return $this->belongsToMany(Bill::class, 'bill_product')
+        ->withPivot('quantity','discount', 'cost_price', 'selling_price');
+}
 }

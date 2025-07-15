@@ -10,13 +10,13 @@ class Bill extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id',
-        'quantity',
         'total_price',
+        'note',
     ];
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
+    public function products()
+{
+    return $this->belongsToMany(Product::class, 'bill_product')
+        ->withPivot('quantity', 'discount', 'cost_price', 'selling_price');
+}
 }

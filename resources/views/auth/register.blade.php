@@ -1,4 +1,9 @@
-<x-guest-layout>
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Register') }}
+        </h2>
+    </x-slot>
     <div  class="min-h-screen flex flex-col sm:justify-center items-center">
     <form method="POST" action="{{ route('register') }}">
         @csrf
@@ -51,4 +56,4 @@
         </div>
     </form>
     </div>
-</x-guest-layout>
+</x-app-layout>

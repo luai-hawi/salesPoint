@@ -19,8 +19,19 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="barcode" class="block text-sm font-medium text-gray-700">Product Code</label>
+                            <input type="text" name="barcode" id="barcode" value="{{ old('barcode', $product->barcode) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        </div>
+
+
+                        <div class="mb-4">
                             <label for="pictures" class="block text-sm font-medium text-gray-700">Product Pictures</label>
                             <input type="file" name="pictures[]" id="pictures" multiple class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity</label>
+                            <input type="number" name="quantity" step="1" id="quantity" value="{{ old('quantity', $product->quantity) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" step="0.01" required>
                         </div>
 
                         <div class="mb-4">

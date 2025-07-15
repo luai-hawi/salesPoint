@@ -15,8 +15,19 @@
                 </div>
 
                 <div class="mb-4">
+                    <label for="barcode" class="block text-sm font-semibold">Product Code</label>
+                    <input type="text" name="barcode" id="barcode" class="border rounded px-3 py-2 w-full">
+                </div>
+
+
+                <div class="mb-4">
                     <label for="pictures" class="block text-sm font-semibold">Product Pictures</label>
                     <input type="file" name="pictures[]" id="pictures" class="border rounded px-3 py-2 w-full" multiple required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="quantity" class="block text-sm font-semibold">Quantity</label>
+                    <input type="number" step="1" name="quantity" id="quantity" class="border rounded px-3 py-2 w-full" step="0.01" required>
                 </div>
 
                 <div class="mb-4">
