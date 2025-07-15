@@ -27,7 +27,7 @@ class UserFactory extends Factory
             'name' => "luai",
             'email' => "luaihawi@gmail.com",
             'email_verified_at' => now(),
-            'password' => Hash::make('erfkjlgheiwrjbn'),
+            'password' => Hash::make('rtjoeihgdui'),
             'remember_token' => Str::random(10),
         ];
     }

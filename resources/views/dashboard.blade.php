@@ -71,18 +71,7 @@
 
                                 <button type="button" id="add-product-row" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">+ Add Product Manually</button>
 
-                                {{-- Totals --}}
-                                <div class="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label for="total_discount" class="block">Total Discount</label>
-                                        <input type="number" id="total_discount" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
-                                    </div>
-                                    <div>
-                                        <label for="total_price" class="block">Total Price</label>
-                                        <input type="number" name="total_price" id="total_price" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
-                                    </div>
-                                </div>
-
+                                
                                 <div class="flex gap-4">
                                     <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Create Bill</button>
                                     <button type="button" id="clear-all" class="bg-red-500 text-white px-4 py-2 rounded">Clear All</button>
@@ -94,8 +83,37 @@
                 </div>
             </div>
 
-            {{-- JavaScript --}}
+            
+        </x-block>
+        {{-- Total Sales Today --}}
+        <x-block>
+            {{-- Totals --}}
+                                <div class="grid grid-cols-1 gap-4 mb-4">
+                                    <div>
+                                        <label for="total_discount" class="block">Total Discount</label>
+                                        <input type="number" id="total_discount" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
+                                    </div>
+                                    <div>
+                                        <label for="total_price" class="block">Total Price</label>
+                                        <input type="number" name="total_price" id="total_price" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
+                                    </div>
+                                    <div class="mb-6">
+                                        <label for="total_sales_today" class="block">Total Sales Today:</label>
+                                        <input type="number" name="total_sales_today" id="total_sales_today" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
+    
+</div>
+                                </div>
+
+        
+            </x-block>
+
+    </div>
+
+
+    {{-- JavaScript --}}
             <script>
+                const totalSalesToday = {{ $totalToday ?? 0 }};
+                document.getElementById('total_sales_today').value = totalSalesToday.toFixed(2);
                 const products = @json($productsForJS);
                 const productsList = document.getElementById('products-list');
                 const barcodeInput = document.getElementById('barcode_input');
@@ -200,6 +218,9 @@
                     });
                     document.getElementById('total_price').value = total.toFixed(2);
                     document.getElementById('total_discount').value = totalDiscount.toFixed(2);
+                    const totalSalesToday2 = {{ $totalToday ?? 0 }};
+                    document.getElementById('total_sales_today').value = totalSalesToday2.toFixed(2);
+                    
                 }
 
                 document.addEventListener('keydown', function (e) {
@@ -219,6 +240,4 @@
                     });
                 });
             </script>
-        </x-block>
-    </div>
 </x-app-layout>
