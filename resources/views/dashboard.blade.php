@@ -11,7 +11,6 @@
             <div class="mb-4">
                 <input type="text" id="product-search" placeholder="Search products..." class="w-full px-3 py-2 border rounded" />
             </div>
-
             <div class="grid grid-cols-3 gap-4">
                 @foreach(array_reverse($productsForJS) as $product)
                     @if(empty($product['barcode']))
@@ -19,7 +18,6 @@
                             $images = is_string($product['pictures']) ? json_decode($product['pictures'], true) : $product['pictures'];
                             $firstImage = $images[0] ?? null;
                         @endphp
-
                         <div class="bg-white p-2 border rounded shadow text-center cursor-pointer product-card"
                              data-product-id="{{ $product['id'] }}"
                              data-name="{{ strtolower($product['name']) }}">
@@ -37,23 +35,20 @@
 
         {{-- Bill Form --}}
         <x-block class="w-full">
-            <div class="p-6 bg-white border-b border-gray-200">
+            <div id="printable" class="p-6 bg-white border-b border-gray-200">
                 <form id="create-bill" method="POST" action="{{ route('bills.store') }}">
                     @csrf
 
-                    {{-- Note --}}
                     <div class="mb-4">
                         <label for="note" class="block font-medium text-sm text-gray-700">Note</label>
                         <textarea name="note" id="note" rows="3" class="form-textarea mt-1 block w-full border rounded px-3 py-2"></textarea>
                     </div>
 
-                    {{-- Barcode --}}
                     <div class="mb-6">
                         <label for="barcode_input" class="block font-medium text-sm text-gray-700">Scan Barcode</label>
                         <input type="text" id="barcode_input" placeholder="Enter barcode..." class="w-1/3 px-3 py-2 border rounded">
                     </div>
 
-                    {{-- Products --}}
                     <div id="products-list"></div>
 
                     <button type="button" id="add-product-row" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">+ Add Product Manually</button>
@@ -114,14 +109,67 @@
         </table>
     </div>
 
-    {{-- Styles --}}
+    {{-- Print Styles --}}
     <style>
-        .print-hidden { display: none; }
-        @media print {
-            body * { visibility: hidden !important; }
-            #print-area, #print-area * { visibility: visible !important; }
-            #print-area { position: absolute; top: 0; left: 0; width: 100%; background: white; padding: 20px; }
+         @media print {
+        body {
+            margin: 0;
+            padding: 0;
         }
+
+        /* Hide everything */
+        body * {
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Only show the print area */
+        #print-area, #print-area * {
+            visibility: visible !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        #print-area {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            padding: 0.5cm !important;
+            background: white;
+        }
+
+        html, body {
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        /* Avoid page breaks inside rows */
+        #print-area table {
+            page-break-inside: auto;
+        }
+
+        #print-area tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        /* Prevent empty pages from layout spacing */
+        .product-row, .x-block, .py-12, .flex, form {
+            display: none !important;
+        }
+    }
+    /* Hide the print area during normal screen view */
+    #print-area {
+        display: none;
+    }
+
+    @media print {
+        #print-area {
+            display: block !important;
+        }
+    }
     </style>
 
     {{-- Scripts --}}
@@ -129,7 +177,6 @@
         const products = @json($productsForJS);
         const totalSalesToday = {{ $totalToday ?? 0 }};
         document.getElementById('total_sales_today').value = totalSalesToday.toFixed(2);
-
         const productsList = document.getElementById('products-list');
 
         document.getElementById('barcode_input').addEventListener('keypress', e => {
@@ -275,36 +322,38 @@
         }
 
         document.getElementById('print-button').addEventListener('click', () => {
-            const list = document.getElementById('print-products-list');
-            list.innerHTML = '';
-            let total = 0, discount = 0;
+    const printList = document.getElementById('print-products-list');
+    printList.innerHTML = ''; // Clear previous rows
 
-            document.querySelectorAll('.product-row').forEach(row => {
-                const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-                const disc = parseFloat(row.querySelector('.discount')?.value || 0);
-                const select = row.querySelector('.product-select');
-                const name = select?.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
-                const price = parseFloat(select?.selectedOptions[0]?.textContent.match(/\(([^)]+)\)/)?.[1] || 0);
-                const sub = (price * qty) - disc;
-                total += sub;
-                discount += disc;
+    let total = 0, discount = 0;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="border px-2 py-1">${name}</td>
-                    <td class="border px-2 py-1 text-right">${qty}</td>
-                    <td class="border px-2 py-1 text-right">${price.toFixed(2)}₪</td>
-                    <td class="border px-2 py-1 text-right">${disc.toFixed(2)}₪</td>
-                    <td class="border px-2 py-1 text-right">${sub.toFixed(2)}₪</td>
-                `;
-                list.appendChild(tr);
-            });
+    document.querySelectorAll('.product-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+        const disc = parseFloat(row.querySelector('.discount')?.value || 0);
+        const select = row.querySelector('.product-select');
+        const name = select?.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
+        const price = parseFloat(select?.selectedOptions[0]?.textContent.match(/\(([^)]+)\)/)?.[1] || 0);
+        const sub = (price * qty) - disc;
+        total += sub;
+        discount += disc;
 
-            document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
-            document.getElementById('print-total-discount').textContent = discount.toFixed(2) + '₪';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="border px-2 py-1">${name}</td>
+            <td class="border px-2 py-1 text-right">${qty}</td>
+            <td class="border px-2 py-1 text-right">${price.toFixed(2)}₪</td>
+            <td class="border px-2 py-1 text-right">${disc.toFixed(2)}₪</td>
+            <td class="border px-2 py-1 text-right">${sub.toFixed(2)}₪</td>
+        `;
+        printList.appendChild(tr);
+    });
 
-            window.print();
-        });
+    document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
+    document.getElementById('print-total-discount').textContent = discount.toFixed(2) + '₪';
+
+    // Finally call print
+    window.print();
+});
 
         document.getElementById('product-search').addEventListener('input', function () {
             const term = this.value.toLowerCase().trim();
@@ -315,7 +364,10 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('barcode_input')?.focus();
+            const barcodeInput = document.getElementById('barcode_input');
+            if (barcodeInput) {
+                barcodeInput.focus();
+            }
         });
 
         document.addEventListener('keydown', e => {
