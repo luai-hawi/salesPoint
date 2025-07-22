@@ -13,7 +13,7 @@
             </div>
 
             <div class="grid grid-cols-3 gap-4">
-                @foreach($productsForJS as $product)
+                @foreach(array_reverse($productsForJS) as $product)
                     @if(empty($product['barcode']))
                         @php
                             $images = $product['pictures'];
@@ -148,6 +148,42 @@
                 calculateTotal();
             }
         });
+        document.addEventListener('change', function(e) {
+    if (e.target.matches('.product-select') && !e.target.disabled) {
+        const selectedId = e.target.value;
+        const currentRow = e.target.closest('.product-row');
+        if (!selectedId || !currentRow) return;
+
+        const existingRow = Array.from(document.querySelectorAll('.product-row')).find(row => {
+            const hiddenId = row.querySelector('input[name="product_ids[]"]');
+            return hiddenId?.value == selectedId && row !== currentRow;
+        });
+
+        if (existingRow) {
+            // ✅ Product already exists — increment and remove duplicate row
+            const qtyInput = existingRow.querySelector('.quantity');
+            qtyInput.value = parseInt(qtyInput.value || 0) + 1;
+            currentRow.remove();
+        } else {
+            // ❌ Not a duplicate — finalize this row
+            const product = products.find(p => p.id == selectedId);
+            if (!product) return;
+
+            if (!currentRow.querySelector('input[name="product_ids[]"]')) {
+                currentRow.insertAdjacentHTML('afterbegin', `
+                    <input type="hidden" name="product_ids[]" value="${product.id}">
+                    <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
+                    <input type="hidden" name="selling_prices[]" value="${product.price}">
+                `);
+            }
+
+            e.target.disabled = true;
+        }
+
+        calculateTotal();
+    }
+});
+
 
         document.getElementById('clear-all').addEventListener('click', () => {
             document.querySelectorAll('.product-row').forEach(row => row.remove());
@@ -155,43 +191,69 @@
         });
 
         function addProductRow(product = null) {
-            const row = document.createElement('div');
-            row.className = 'product-row flex flex-wrap gap-2 mb-4 items-end';
+    if (product) {
+        const existingRow = Array.from(document.querySelectorAll('.product-row')).find(row => {
+            const hiddenId = row.querySelector('input[name="product_ids[]"]');
+            return hiddenId?.value == product.id;
+        });
 
-            const productId = product?.id ?? '';
-            const costPrice = product?.cost_price ?? '';
-            const sellingPrice = product?.price ?? '';
-
-            row.innerHTML = `
-                <input type="hidden" name="product_ids[]" value="${productId}">
-                <input type="hidden" name="cost_prices[]" value="${costPrice}">
-                <input type="hidden" name="selling_prices[]" value="${sellingPrice}">
-
-                <div class="flex-1">
-                    <label class="text-sm">Product</label>
-                    <select name="product_ids[]" class="form-select w-full px-3 py-2 border rounded product-select" ${product ? 'disabled' : ''} required>
-                        <option value="">Select Product</option>
-                        ${products.map(p => `
-                            <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>
-                                ${p.name} (${p.price})
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="w-24">
-                    <label class="text-sm">Qty</label>
-                    <input type="number" name="quantities[]" class="form-input w-full px-2 py-1 border rounded quantity" min="1" value="1" required>
-                </div>
-                <div class="w-32">
-                    <label class="text-sm">Discount</label>
-                    <input type="number" name="discounts[]" class="form-input w-full px-2 py-1 border rounded discount" min="0" value="0" required>
-                </div>
-                <button type="button" class="remove-row bg-red-500 text-white px-2 py-1 rounded h-9">Remove</button>
-            `;
-
-            productsList.appendChild(row);
+        if (existingRow) {
+            const qtyInput = existingRow.querySelector('.quantity');
+            qtyInput.value = parseInt(qtyInput.value) + 1;
             calculateTotal();
+
+            // If this call came from a manual selection (dropdown), remove that row
+            const manualRow = Array.from(document.querySelectorAll('.product-row')).find(row => {
+                const select = row.querySelector('select.product-select');
+                return select && !select.disabled && select.value == product.id;
+            });
+
+            if (manualRow) {
+                manualRow.remove();
+            }
+
+            return;
         }
+    }
+
+    const row = document.createElement('div');
+    row.className = 'product-row flex flex-wrap gap-2 mb-4 items-end';
+
+    const productId = product?.id ?? '';
+    const costPrice = product?.cost_price ?? '';
+    const sellingPrice = product?.price ?? '';
+
+    row.innerHTML = `
+        <input type="hidden" name="product_ids[]" value="${productId}">
+        <input type="hidden" name="cost_prices[]" value="${costPrice}">
+        <input type="hidden" name="selling_prices[]" value="${sellingPrice}">
+
+        <div class="flex-1">
+            <label class="text-sm">Product</label>
+            <select name="product_ids[]" class="form-select w-full px-3 py-2 border rounded product-select" ${product ? 'disabled' : ''} required>
+                <option value="">Select Product</option>
+                ${products.map(p => `
+                    <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>
+                        ${p.name} (${p.price})
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+        <div class="w-24">
+            <label class="text-sm">Qty</label>
+            <input type="number" name="quantities[]" class="form-input w-full px-2 py-1 border rounded quantity" min="1" value="1" required>
+        </div>
+        <div class="w-32">
+            <label class="text-sm">Discount</label>
+            <input type="number" name="discounts[]" class="form-input w-full px-2 py-1 border rounded discount" min="0" value="0" required>
+        </div>
+        <button type="button" class="remove-row bg-red-500 text-white px-2 py-1 rounded h-9">Remove</button>
+    `;
+
+    productsList.appendChild(row);
+    calculateTotal();
+}
+
 
         function calculateTotal() {
             let total = 0;

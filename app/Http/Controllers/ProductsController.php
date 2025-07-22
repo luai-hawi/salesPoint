@@ -122,4 +122,26 @@ class ProductsController extends Controller
         $product->delete();
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
     }
+
+    public function searchWithoutBarcode(Request $request)
+    {
+        $query = Product::whereNull('barcode');
+
+        if ($search = $request->query('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $products = $query->take(20)->get()->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'pictures' => $p->pictures ? json_decode($p->pictures, true) : [],
+                'price' => $p->selling_price,
+                'cost_price' => $p->cost_price,
+                'barcode' => $p->barcode,
+            ];
+        });
+
+        return response()->json($products);
+    }
 }
