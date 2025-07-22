@@ -7,11 +7,27 @@ use Illuminate\Http\Request;
 
 class ProductsController extends Controller
 {
-    public function index()
-    {
-        $products = Product::all();
-        return view('products.index', compact('products'));
+    public function index(Request $request)
+{
+    $query = Product::query();
+
+    if ($search = $request->query('search')) {
+        $search = strtolower($search);
+        $query->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+              ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"])
+              ->orWhere('cost_price', 'like', "%{$search}%")
+              ->orWhere('selling_price', 'like', "%{$search}%");
     }
+
+    $products = $query->paginate(20)->appends($request->query());
+
+    if ($request->ajax()) {
+        return view('products.index', compact('products'))->render();
+    }
+
+    return view('products.index', compact('products'));
+}
+
 
     public function create()
     {

@@ -9,7 +9,8 @@ class BillsController extends Controller
 {
     public function index()
     {
-        $bills = Bill::all();
+        $bills = Bill::orderBy('created_at', 'desc')->paginate(20);
+
         return view('bills.index', compact('bills'));
     }
 

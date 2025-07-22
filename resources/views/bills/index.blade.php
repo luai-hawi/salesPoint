@@ -63,6 +63,11 @@
                     @endforeach
                 </tbody>
             </table>
+
+            <div class="mt-6 flex justify-center">
+    {{ $bills->links('vendor.pagination.custom-light') }}
+</div>
+
         </div>
     </div>
 
