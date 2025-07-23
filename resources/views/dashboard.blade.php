@@ -11,25 +11,10 @@
             <div class="mb-4">
                 <input type="text" id="product-search" placeholder="Search products..." class="w-full px-3 py-2 border rounded" />
             </div>
-            <div class="grid grid-cols-3 gap-4">
-                @foreach(array_reverse($productsForJS) as $product)
-                    @if(empty($product['barcode']))
-                        @php
-                            $images = is_string($product['pictures']) ? json_decode($product['pictures'], true) : $product['pictures'];
-                            $firstImage = $images[0] ?? null;
-                        @endphp
-                        <div class="bg-white p-2 border rounded shadow text-center cursor-pointer product-card"
-                             data-product-id="{{ $product['id'] }}"
-                             data-name="{{ strtolower($product['name']) }}">
-                            @if ($firstImage)
-                                <img src="{{ asset('storage/' . $firstImage) }}" class="w-full h-32 object-contain mb-2">
-                            @else
-                                <span class="block h-32 flex items-center justify-center text-gray-400">No image</span>
-                            @endif
-                            <div class="text-sm font-medium">{{ $product['name'] }}</div>
-                        </div>
-                    @endif
-                @endforeach
+            <div id="product-cards-container">
+            <div id="product-results" class="grid grid-cols-3 gap-4">
+               
+            </div>
             </div>
         </x-block>
 
@@ -179,19 +164,35 @@
         document.getElementById('total_sales_today').value = totalSalesToday.toFixed(2);
         const productsList = document.getElementById('products-list');
 
-        document.getElementById('barcode_input').addEventListener('keypress', e => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const code = e.target.value.trim();
-                const product = products.find(p => p.barcode === code);
-                if (product) {
-                    addProductRow(product);
-                    e.target.value = '';
-                } else {
-                    alert('Product not found for barcode: ' + code);
-                }
+        document.getElementById('barcode_input').addEventListener('keypress', async e => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const code = e.target.value.trim();
+        if (!code) return;
+
+        try {
+            const response = await fetch(`/products/search?barcode=${encodeURIComponent(code)}`);
+            if (!response.ok) {
+                alert('Error fetching product from server.');
+                return;
             }
-        });
+            const product = await response.json();
+
+            if (product && product.id) {
+                product.price=product.selling_price;
+                addProductRow(product);
+                e.target.value = '';
+            } else {
+                alert('Product not found for barcode: ' + code);
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+            alert('Failed to fetch product data.');
+        }
+    }
+});
+
+
 
         document.getElementById('add-product-row').addEventListener('click', () => {
             addProductRow();
@@ -216,9 +217,14 @@
 
             const card = e.target.closest('.product-card');
             if (card) {
-                const productId = parseInt(card.dataset.productId);
-                const product = products.find(p => p.id === productId);
-                if (product) addProductRow(product);
+
+                const product = {};
+                product.id= parseInt(card.dataset.productId);
+                product.name = card.dataset.name;
+                product.cost_price = parseFloat(card.dataset.cost);
+                product.selling_price = parseFloat(card.dataset.price);
+
+                addProductRow(product);
             }
         });
 
@@ -254,6 +260,7 @@
             }
         });
 
+
         function addProductRow(product = null) {
             if (product) {
                 const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => input.value == product.id);
@@ -275,7 +282,7 @@
 
             const id = product?.id ?? '';
             const cost = product?.cost_price ?? '';
-            const price = product?.price ?? '';
+            const price = product?.selling_price ?? '';
 
             row.innerHTML = `
                 ${product ? `
@@ -284,6 +291,7 @@
                     <input type="hidden" name="selling_prices[]" value="${price}">
                 ` : ''}
                 <div class="flex-1">
+                    <div class="flex-1 relative">
                     <label class="text-sm">Product</label>
                     <select class="form-select w-full px-3 py-2 border rounded product-select" ${product ? 'disabled' : ''}>
                         <option value="">Select Product</option>
@@ -291,6 +299,8 @@
                             <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>${p.name} (${p.price})</option>
                         `).join('')}
                     </select>
+                    </div>
+
                 </div>
                 <div class="w-24">
                     <label class="text-sm">Qty</label>
@@ -355,13 +365,116 @@
     window.print();
 });
 
-        document.getElementById('product-search').addEventListener('input', function () {
-            const term = this.value.toLowerCase().trim();
-            document.querySelectorAll('.product-card').forEach(card => {
-                const name = card.dataset.name;
-                card.style.display = name.includes(term) ? '' : 'none';
-            });
+ let debounceTimeout = null;
+let currentPage = 1;
+let hasMore = true;
+let isLoading = false;
+let searchTerm = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+    searchTerm = '';
+    currentPage = 1;
+    hasMore = true;
+    fetchProducts(true);
+})
+
+
+const container = document.getElementById('product-results');
+const searchInput = document.getElementById('product-search');
+
+function renderProductCard(product) {
+    
+    const card = document.createElement('div');
+    card.className = 'bg-white p-2 border rounded shadow text-center cursor-pointer product-card';
+    card.dataset.productId = product.id;
+    card.dataset.name = product.name.toLowerCase();
+    card.dataset.cost = product.cost_price;
+    card.dataset.price = product.selling_price;
+    
+
+    let firstImage = null;
+    try {
+        const pictures = typeof product.pictures === 'string' ? JSON.parse(product.pictures) : product.pictures;
+        firstImage = Array.isArray(pictures) ? pictures[0] : null;
+    } catch (e) {
+        console.warn('Invalid pictures JSON for product', product, e);
+    }
+
+    card.innerHTML = `
+        ${firstImage
+            ? `<img src="/storage/${firstImage}" class="w-full h-32 object-contain mb-2">`
+            : `<span class="block h-32 flex items-center justify-center text-gray-400">No image</span>`
+        }
+        <div class="text-sm font-medium">${product.name}</div>
+    `;
+
+    container.appendChild(card);
+}
+
+function fetchProducts(reset = false) {
+    if (isLoading || !hasMore) return;
+    isLoading = true;
+
+    if (reset) {
+        container.innerHTML = '';
+        currentPage = 1;
+        hasMore = true;
+    }
+
+    fetch(`/products/searchWithoutBarcode?search=${encodeURIComponent(searchTerm)}&page=${currentPage}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Search failed');
+            return response.json();
+        })
+        .then(data => {
+            const products = data.data || [];
+            if (products.length === 0 && currentPage === 1) {
+                container.innerHTML = '<p class="text-gray-500">No products found</p>';
+                hasMore = false;
+                return;
+            }
+
+            products.forEach(renderProductCard);
+
+            hasMore = data.current_page < data.last_page;
+            currentPage++;
+        })
+        .catch(error => {
+            if (currentPage === 1) {
+                container.innerHTML = '<p class="text-red-500">Error loading products</p>';
+            }
+            console.error(error);
+        })
+        .finally(() => {
+            isLoading = false;
         });
+}
+
+// Debounced search input handler
+searchInput.addEventListener('input', function () {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        searchTerm = searchInput.value.trim(); // Can be empty string
+
+        // Always reset state on new search
+        currentPage = 1;
+        hasMore = true;
+
+        fetchProducts(true); // Load all products if search is empty
+    }, 300);
+});
+
+
+// Lazy loading on scroll
+window.addEventListener('scroll', () => {
+    const scrollPos = window.scrollY + window.innerHeight;
+    const nearBottom = document.documentElement.scrollHeight - 200;
+    if (scrollPos >= nearBottom) {
+        fetchProducts();
+    }
+});
+
+
 
         window.addEventListener('DOMContentLoaded', () => {
             const barcodeInput = document.getElementById('barcode_input');

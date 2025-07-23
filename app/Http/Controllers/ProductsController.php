@@ -74,7 +74,6 @@ class ProductsController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        // dump($request->all());
         $request->validate([
     'name' => 'required|string|max:255',
     'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
@@ -124,24 +123,47 @@ class ProductsController extends Controller
     }
 
     public function searchWithoutBarcode(Request $request)
-    {
-        $query = Product::whereNull('barcode');
+{
+    $search = $request->query('search');
 
-        if ($search = $request->query('search')) {
-            $query->where('name', 'like', "%{$search}%");
-        }
+    $products = Product::select('id', 'name', 'pictures', 'selling_price', 'cost_price')
+        ->whereNull('barcode')
+        ->where('name', 'like', "%{$search}%")
+        ->paginate(20); // Laravel auto handles offset & total
 
-        $products = $query->take(20)->get()->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'name' => $p->name,
-                'pictures' => $p->pictures ? json_decode($p->pictures, true) : [],
-                'price' => $p->selling_price,
-                'cost_price' => $p->cost_price,
-                'barcode' => $p->barcode,
-            ];
-        });
+    return response()->json($products);
+}
 
-        return response()->json($products);
+
+    public function search(Request $request)
+{
+    $barcode = $request->input('barcode');
+    $productId = $request->input('productid');
+
+    if ($barcode) {
+        $product = Product::where('barcode', $barcode)->first();
+
+    if ($product) {
+        return response()->json($product);
+    } else {
+        return response()->json(null);
     }
+    } elseif ($productId) {
+        $product = Product::find($productId);
+
+        if ($product) {
+            return response()->json($product);
+        } else {
+            return response()->json(null);
+        }
+    }
+        
+        else {
+            return response()->json(null);
+        
+    }
+
+    
+}
+
 }

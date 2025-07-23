@@ -37,9 +37,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::resource('products', ProductsController::class);
+    Route::resource('products', ProductsController::class)->except(['show']);
     Route::resource('bills', BillsController::class);
     Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+    Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
+    Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
+
+
 
 });
 
