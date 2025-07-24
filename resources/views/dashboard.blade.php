@@ -159,7 +159,7 @@
 
     {{-- Scripts --}}
     <script>
-        const products = @json($productsForJS);
+        const products = @json($products);
         const totalSalesToday = {{ $totalToday ?? 0 }};
         document.getElementById('total_sales_today').value = totalSalesToday.toFixed(2);
         const productsList = document.getElementById('products-list');
@@ -179,7 +179,6 @@
             const product = await response.json();
 
             if (product && product.id) {
-                product.price=product.selling_price;
                 addProductRow(product);
                 e.target.value = '';
             } else {
@@ -221,8 +220,8 @@
                 const product = {};
                 product.id= parseInt(card.dataset.productId);
                 product.name = card.dataset.name;
-                product.cost_price = parseFloat(card.dataset.cost);
-                product.selling_price = parseFloat(card.dataset.price);
+                product.cost_price = parseFloat(card.dataset.cost_price);
+                product.selling_price = parseFloat(card.dataset.selling_price);
 
                 addProductRow(product);
             }
@@ -250,7 +249,7 @@
                     const hiddenInputs = `
                         <input type="hidden" name="product_ids[]" value="${product.id}">
                         <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
-                        <input type="hidden" name="selling_prices[]" value="${product.price}">
+                        <input type="hidden" name="selling_prices[]" value="${product.selling_price}">
                     `;
                     currentRow.insertAdjacentHTML('afterbegin', hiddenInputs);
                     e.target.disabled = true;
@@ -296,7 +295,7 @@
                     <select class="form-select w-full px-3 py-2 border rounded product-select" ${product ? 'disabled' : ''}>
                         <option value="">Select Product</option>
                         ${products.map(p => `
-                            <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>${p.name} (${p.price})</option>
+                            <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>${p.name} (${p.selling_price})</option>
                         `).join('')}
                     </select>
                     </div>
@@ -388,8 +387,8 @@ function renderProductCard(product) {
     card.className = 'bg-white p-2 border rounded shadow text-center cursor-pointer product-card';
     card.dataset.productId = product.id;
     card.dataset.name = product.name.toLowerCase();
-    card.dataset.cost = product.cost_price;
-    card.dataset.price = product.selling_price;
+    card.dataset.cost_price = product.cost_price;
+    card.dataset.selling_price = product.selling_price;
     
 
     let firstImage = null;

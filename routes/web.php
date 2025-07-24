@@ -12,25 +12,12 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    $products = \App\Models\Product::all();
-
-    // Prepare products data for JavaScript
-    $productsForJS = $products->map(function ($p) {
-        return [
-            'id' => $p->id,
-            'name' => $p->name,
-            'pictures' => $p->pictures ? json_decode($p->pictures, true) : [],
-            'price' => $p->selling_price,
-            'cost_price' => $p->cost_price,
-            'barcode' => $p->barcode,
-        ];
-    })->toArray();
-
+    $products = \App\Models\Product::select('id', 'name', 'selling_price', 'cost_price', 'barcode')->get();
     // Calculate total of today's bills
     $totalToday = \App\Models\Bill::whereDate('created_at', Carbon::today())
                     ->sum('total_price');
 
-    return view('dashboard', compact('productsForJS', 'products', 'totalToday'));
+    return view('dashboard', compact('products', 'totalToday'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
