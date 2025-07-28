@@ -96,6 +96,7 @@
             if(newPagination) paginationLinks.innerHTML = newPagination.innerHTML;
 
             attachPaginationLinks();
+            attachAddButtons();
         })
         .catch(console.error);
     }

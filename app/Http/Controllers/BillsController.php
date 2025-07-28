@@ -175,18 +175,8 @@ public function update(Request $request, Bill $bill)
 
     public function show(Bill $bill)
     {
-    $allProducts = \App\Models\Product::all();
-
-    $productsForJS = $allProducts->map(function ($p) {
-        return [
-            'id' => $p->id,
-            'name' => $p->name,
-            'barcode' => $p->barcode,
-            'price' => $p->selling_price,
-        ];
-    })->toArray();
-
-    return view('bills.show', compact('bill', 'allProducts', 'productsForJS'));
+    $products = \App\Models\Product::select('id', 'name', 'selling_price', 'cost_price', 'barcode')->get();
+    return view('bills.show', compact('bill', 'products'));
     }
 
     public function edit(Bill $bill)

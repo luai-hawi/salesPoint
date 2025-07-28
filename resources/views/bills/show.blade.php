@@ -69,7 +69,7 @@
                 <div class="flex items-center space-x-4 mb-4">
                     <select id="product_select" name="new_product_id" class="border rounded px-2 py-1 w-1/3">
                         <option value="">Select Product</option>
-                        @foreach($allProducts as $prod)
+                        @foreach($products as $prod)
                             <option value="{{ $prod->id }}">{{ $prod->name }} (${{ number_format($prod->selling_price, 2) }})</option>
                         @endforeach
                     </select>
@@ -149,7 +149,7 @@
 
     {{-- Scripts --}}
     <script>
-        const products = @json($productsForJS);
+        const products = @json($products);
         const barcodeInput = document.getElementById('barcode_input');
         const addBarcodeBtn = document.getElementById('add_barcode_product');
         const productSelect = document.getElementById('product_select');
