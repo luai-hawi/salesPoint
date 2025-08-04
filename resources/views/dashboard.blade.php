@@ -48,7 +48,7 @@
         </x-block>
 
         {{-- Totals --}}
-        <x-block>
+        <x-block class="w-1/3">
             <div class="grid grid-cols-1 gap-4 mb-4">
                 <div>
                     <label for="total_discount" class="block">Total Discount</label>
@@ -282,7 +282,26 @@
             const id = product?.id ?? '';
             const cost = product?.cost_price ?? '';
             const price = product?.selling_price ?? '';
-
+            if (product) {
+                row.innerHTML = `
+                    <input type="hidden" name="product_ids[]" value="${id}">
+                    <input type="hidden" name="cost_prices[]" value="${cost}">
+                    <input type="hidden" name="selling_prices[]" value="${price}">
+                    <div class="flex-1">
+                        <label class="text-sm">Product</label>
+                        <span class="block p-2 border rounded bg-gray-100">${product.name} (${price})</span>
+                    </div>
+                    <div class="w-24">
+                    <label class="text-sm">Qty</label>
+                    <input type="number" name="quantities[]" class="form-input w-full px-2 py-1 border rounded quantity" min="1" value="1" required>
+                </div>
+                <div class="w-32">
+                    <label class="text-sm">Discount</label>
+                    <input type="number" name="discounts[]" class="form-input w-full px-2 py-1 border rounded discount" min="0" value="0" required>
+                </div>
+                <button type="button" class="remove-row bg-red-500 text-white px-2 py-1 rounded h-9">Remove</button>
+            `;
+            } else {
             row.innerHTML = `
                 ${product ? `
                     <input type="hidden" name="product_ids[]" value="${id}">
@@ -311,24 +330,32 @@
                 </div>
                 <button type="button" class="remove-row bg-red-500 text-white px-2 py-1 rounded h-9">Remove</button>
             `;
+            }
             productsList.appendChild(row);
             calculateTotal();
         }
 
         function calculateTotal() {
-            let total = 0, discount = 0;
-            document.querySelectorAll('.product-row').forEach(row => {
-                const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-                const disc = parseFloat(row.querySelector('.discount')?.value || 0);
-                const select = row.querySelector('.product-select');
-                const priceMatch = select?.selectedOptions[0]?.textContent.match(/\(([^)]+)\)/);
-                const price = parseFloat(priceMatch?.[1] || 0);
-                total += (price * qty) - disc;
-                discount += disc;
-            });
-            document.getElementById('total_price').value = total.toFixed(2);
-            document.getElementById('total_discount').value = discount.toFixed(2);
-        }
+    let total = 0;
+    let discount = 0;
+
+    // Query all rows once
+    const rows = document.querySelectorAll('.product-row');
+
+    for (const row of rows) {
+        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+        const disc = parseFloat(row.querySelector('.discount')?.value || 0);
+
+        let price = parseFloat(row.querySelector('input[name="selling_prices[]"]')?.value || 0);
+
+        total += (price * qty) - disc;
+        discount += disc;
+    }
+
+    document.getElementById('total_price').value = total.toFixed(2);
+    document.getElementById('total_discount').value = discount.toFixed(2);
+}
+
 
         document.getElementById('print-button').addEventListener('click', () => {
     const printList = document.getElementById('print-products-list');
