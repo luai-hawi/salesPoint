@@ -43,11 +43,14 @@ class BillsController extends Controller
         'cost_prices' => 'required|array',
         'selling_prices' => 'required|array',
         'note' => 'nullable|string',
+        'customer_id' => 'nullable|exists:customers,id', // validate customer_id if present
     ]);
 
+    // Create bill, include customer_id if provided
     $bill = Bill::create([
         'note' => $request->input('note'),
         'total_price' => 0,
+        'customer_id' => $request->input('customer_id'), // add customer if selected
     ]);
 
     $total = 0;
@@ -60,12 +63,13 @@ class BillsController extends Controller
 
         $product = \App\Models\Product::findOrFail($productId);
 
-
+        // Reduce product quantity by sold qty
         $product->quantity -= $qty;
         $product->save();
 
-        $lineTotal = ($product->selling_price * $qty) - $discount;
+        $lineTotal = ($sellingPrice * $qty) - $discount;
 
+        // Attach product with pivot data
         $bill->products()->attach($productId, [
             'quantity' => $qty,
             'discount' => $discount,
@@ -76,10 +80,22 @@ class BillsController extends Controller
         $total += $lineTotal;
     }
 
+    // Update total price
     $bill->update(['total_price' => $total]);
+
+    // If customer attached, create a debt payment
+    if ($bill->customer_id) {
+        $bill->customer->payments()->create([
+            'amount' => -1 * $total,  // Negative amount means debt
+            'type' => 'payment',      // or 'debt' if you added it to enum
+            'note' => "Bill #{$bill->id} created as debt",
+        ]);
+        $bill->customer->update(['balance' => $bill->customer->balance + (-1*$total)]);
+    }
 
     return redirect()->route('dashboard')->with('success', 'Bill created successfully.');
 }
+
 
 public function update(Request $request, Bill $bill)
 {
@@ -185,21 +201,38 @@ public function update(Request $request, Bill $bill)
     }
 
 
-    public function destroy(Bill $bill)
+   public function destroy(Bill $bill)
 {
-    // Restore product quantities before deleting the bill
+    // 1. Restore product quantities before deleting the bill
     foreach ($bill->products as $product) {
         $product->quantity += $product->pivot->quantity;
         $product->save();
     }
 
-    // Detach all product relations (optional, but clean)
+    // 2. Detach all product relations
     $bill->products()->detach();
 
-    // Delete the bill
+    // 3. If bill is linked to a customer, revert their balance
+    if ($bill->customer_id) {
+        $customer = $bill->customer;
+
+        
+        if( // Delete the associated negative payment for this bill
+        \App\Models\CustomerPayment::where('customer_id', $customer->id)
+            ->where('note', "Bill #{$bill->id} created as debt")
+            ->delete()){
+        // Increase balance (reduce debt) by bill total
+        $customer->balance += $bill->total_price;
+        $customer->save();
+
+            }
+       
+    }
+
+    // 4. Delete the bill
     $bill->delete();
 
-    return redirect()->route('bills.index')->with('success', 'Bill deleted successfully and product quantities restored.');
+    return redirect()->route('bills.index')->with('success', 'Bill deleted successfully, product quantities restored, and customer balance updated.');
 }
 
 }

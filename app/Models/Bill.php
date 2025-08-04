@@ -12,6 +12,7 @@ class Bill extends Model
     protected $fillable = [
         'total_price',
         'note',
+        'customer_id',
     ];
 
     public function products()
@@ -19,4 +20,9 @@ class Bill extends Model
     return $this->belongsToMany(Product::class, 'bill_product')
         ->withPivot('quantity', 'discount', 'cost_price', 'selling_price');
 }
+
+public function customer() {
+    return $this->belongsTo(Customer::class);
+}
+
 }

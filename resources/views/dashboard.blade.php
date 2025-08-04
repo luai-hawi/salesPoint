@@ -33,6 +33,14 @@
                         <label for="barcode_input" class="block font-medium text-sm text-gray-700">Scan Barcode</label>
                         <input type="text" id="barcode_input" placeholder="Enter barcode..." class="w-1/3 px-3 py-2 border rounded">
                     </div>
+                    <select name="customer_id" class="border rounded px-2 py-1 w-full mb-4">
+    <option value="">-- Select Customer (optional) --</option>
+    @foreach($customers as $customer)
+        <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+            {{ $customer->name }} - {{ $customer->phone }}
+        </option>
+    @endforeach
+</select>
 
                     <div id="products-list"></div>
 
@@ -63,6 +71,8 @@
                     <input type="number" name="total_sales_today" id="total_sales_today" class="form-input px-3 py-2 border rounded w-full bg-gray-100" readonly>
                 </div>
             </div>
+        
+
         </x-block>
     </div>
 
