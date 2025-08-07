@@ -11,9 +11,7 @@ use App\Models\CustomerPayment;
 use App\Http\Controllers\BatchController;
 
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/dashboard', 301);
 
 Route::get('/dashboard', function () {
     $customers = \App\Models\Customer::orderBy('name')->get();

@@ -4,7 +4,10 @@
             {{ __('Register') }}
         </h2>
     </x-slot>
-    <div  class="min-h-screen flex flex-col sm:justify-center items-center">
+    <x-block class="max-w-md mx-auto mt-8 p-6 bg-white shadow-md rounded-lg">
+        <x-slot name="title">
+            {{ __('Create a new account') }}
+        </x-slot>
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
@@ -55,5 +58,5 @@
             </x-primary-button>
         </div>
     </form>
-    </div>
+    </x-block>
 </x-app-layout>

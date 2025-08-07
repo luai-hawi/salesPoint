@@ -36,7 +36,7 @@
                     <select name="customer_id" class="border rounded px-2 py-1 w-full mb-4">
                         <option value="">-- Select Customer (optional) --</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                            <option data-name="{{ $customer->name }}" data-phone="{{ $customer->phone }}" value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
                                 {{ $customer->name }} - {{ $customer->phone }}
                             </option>
                         @endforeach
@@ -83,6 +83,10 @@
             <p>{{ now()->format('Y-m-d H:i') }}</p>
             <hr class="my-2">
         </div>
+        <div id="print-customer" class="font-semibold text-left"></div>
+        <div id="print-customer-phone" class="font-semibold text-left"></div>
+         
+
         <table class="w-full border border-gray-400 text-sm">
             <thead>
                 <tr>
@@ -367,18 +371,26 @@
 }
 
 
-        document.getElementById('print-button').addEventListener('click', () => {
+       document.getElementById('print-button').addEventListener('click', () => {
     const printList = document.getElementById('print-products-list');
-    printList.innerHTML = ''; // Clear previous rows
+    printList.innerHTML = '';
 
     let total = 0, discount = 0;
 
     document.querySelectorAll('.product-row').forEach(row => {
         const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
         const disc = parseFloat(row.querySelector('.discount')?.value || 0);
+        const price = parseFloat(row.querySelector('input[name="selling_prices[]"]')?.value || 0);
+
+        let name = 'Unknown';
         const select = row.querySelector('.product-select');
-        const name = select?.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
-        const price = parseFloat(select?.selectedOptions[0]?.textContent.match(/\(([^)]+)\)/)?.[1] || 0);
+        if (select) {
+            name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
+        } else {
+            const nameSpan = row.querySelector('span');
+            if (nameSpan) name = nameSpan.textContent?.split('(')[0]?.trim() || 'Unknown';
+        }
+
         const sub = (price * qty) - disc;
         total += sub;
         discount += disc;
@@ -394,12 +406,27 @@
         printList.appendChild(tr);
     });
 
+    // Show totals
     document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
     document.getElementById('print-total-discount').textContent = discount.toFixed(2) + '₪';
 
-    // Finally call print
+    // Set customer name
+    const customerSelect = document.querySelector('select[name="customer_id"]');
+    const selectedOption = customerSelect?.selectedOptions[0];
+    const customerName = selectedOption?.dataset.name || '';
+    const customerPhone = selectedOption?.dataset.phone || '';
+
+
+    const customerDiv = document.getElementById('print-customer');
+    const customerPhoneDiv = document.getElementById('print-customer-phone');
+    customerDiv.textContent = customerName ? `Customer: ${customerName}` : '';
+    customerPhoneDiv.textContent = customerPhone ? `Phone: ${customerPhone}` : '';
+
+
+    // Print
     window.print();
 });
+
 
  let debounceTimeout = null;
 let currentPage = 1;
