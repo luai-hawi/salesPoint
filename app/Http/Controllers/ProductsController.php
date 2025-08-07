@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Models\Batch;
 
 class ProductsController extends Controller
 {
@@ -52,6 +53,10 @@ class ProductsController extends Controller
         $product->quantity = $request->quantity;
         $product->cost_price = $request->cost_price;
         $product->selling_price = $request->selling_price;
+        $batch = new Batch();
+        
+        $batch->quantity = $request->quantity;
+        $batch->cost_price = $request->cost_price;
 
         if ($request->hasFile('pictures')) {
             $pictures = [];
@@ -62,7 +67,10 @@ class ProductsController extends Controller
             $product->pictures = json_encode($pictures);
         }
 
+        $product->cost_price = round($product->cost_price, 2);
         $product->save();
+        $batch->product_id = $product->id;
+        $batch->save();
 
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
@@ -79,7 +87,6 @@ class ProductsController extends Controller
     'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
     'pictures' => 'nullable|array',
     'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
-    'quantity' => 'required|integer|min:0',
     'cost_price' => 'required|numeric',
     'selling_price' => 'required|numeric',
 ]);
@@ -87,7 +94,6 @@ class ProductsController extends Controller
         $product->name = $request->name;
         
         $product->barcode = $request->barcode;
-        $product->quantity = $request->quantity;
         $product->cost_price = $request->cost_price;
         $product->selling_price = $request->selling_price;
         
@@ -99,6 +105,7 @@ class ProductsController extends Controller
             }
             $product->pictures = json_encode($pictures);
         }
+        $product->cost_price = round($product->cost_price, 2);
 
         $product->save();
 

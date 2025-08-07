@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\CustomerController;
 use App\Models\CustomerPayment;
+use App\Http\Controllers\BatchController;
 
 
 Route::get('/', function () {
@@ -47,6 +48,9 @@ Route::middleware('auth')->group(function () {
 });
 Route::resource('customers', CustomerController::class)->middleware(['auth', 'verified']);
 Route::middleware('auth')->group(function () {
+    Route::post('/batches', [BatchController::class, 'store']);
+    Route::put('/batches/{batch}', [BatchController::class, 'update']);
+    Route::delete('/batches/{batch}', [BatchController::class, 'destroy']);
 
     Route::delete('payments/{payment}', function (Request $request, CustomerPayment $payment) {
         $customer = $payment->customer;

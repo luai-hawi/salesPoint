@@ -23,4 +23,10 @@ class Product extends Model
     return $this->belongsToMany(Bill::class, 'bill_product')
         ->withPivot('quantity','discount', 'cost_price', 'selling_price');
 }
+
+public function batches()
+{
+    return $this->hasMany(Batch::class);
+}
+
 }

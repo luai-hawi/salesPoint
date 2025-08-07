@@ -45,14 +45,16 @@
             @endif
         </td>
         <td class="py-3 px-6 border-b text-left quantity-cell">{{ $product->quantity }}</td>
-        <td class="py-3 px-6 border-b text-left">{{ $product->cost_price }}</td>
+        <td class="py-3 px-6 border-b text-left cost-price-cell">{{ $product->cost_price }}</td>
         <td class="py-3 px-6 border-b text-left">{{ $product->selling_price }}</td>
         <td class="py-3 px-6 border-b text-left">
             <div class="flex gap-2 items-center">
-                <input type="number" min="1" value="1" class="w-16 px-2 py-1 border rounded quantity-input">
+                <input type="number" min="1" value="1" class="w-16 px-2 py-1 border rounded quantity-input" placeholder="Qty">
+                <input type="number" min="0" step="0.01" class="w-20 px-2 py-1 border rounded cost-price-input" placeholder="Cost">
                 <button type="button" class="bg-green-500 text-white px-2 py-1 rounded add-btn">Add</button>
             </div>
         </td>
+
         <td class="py-3 px-6 border-b text-left">
             <a href="{{ route('products.edit', $product->id) }}" class="text-yellow-500 hover:text-yellow-700">Edit</a>
             <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline delete-form">
@@ -133,34 +135,73 @@
 
 
     function attachAddButtons() {
-        document.querySelectorAll('.add-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const row = this.closest('.product-row');
-                const input = row.querySelector('.quantity-input');
-                const qtyCell = row.querySelector('.quantity-cell');
-                const addQty = parseInt(input.value, 10);
+    document.querySelectorAll('.add-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const row = this.closest('.product-row');
+            const inputQty = row.querySelector('.quantity-input');
+            const inputCost = row.querySelector('.cost-price-input');
+            const qtyCell = row.querySelector('.quantity-cell');
+            const costCell = row.querySelector('.cost-price-cell');
+            const currentCostPrice = parseFloat(costCell.textContent) || 0;
+            const currentQty = parseInt(qtyCell.textContent) || 0;
 
-                if (isNaN(addQty) || addQty < 1) return;
+            const addQty = parseInt(inputQty.value, 10);
+            const costPrice = parseFloat(inputCost.value);
 
-                const currentQty = parseInt(qtyCell.textContent, 10);
-                const newQty = currentQty + addQty;
-                qtyCell.textContent = newQty;
+            if (isNaN(addQty) || addQty < 1) {
+                alert('Please enter a valid quantity.');
+                return;
+            }
 
-                qtyCell.classList.add('bg-green-100');
-                setTimeout(() => qtyCell.classList.remove('bg-green-100'), 800);
-                input.value = 1;
+            if (isNaN(costPrice) || costPrice <= 0) {
+                alert('Please enter a valid cost price.');
+                return;
+            }
 
-                fetch(`/products/${row.dataset.id}/add-quantity`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ amount: addQty })
-                });
+            fetch(`/batches`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    product_id: row.dataset.id,
+                    quantity: addQty,
+                    cost_price: costPrice
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Failed to add batch");
+                return response.json();
+            })
+            .then(data => {
+                if (data.updated_quantity !== undefined) {
+                    qtyCell.textContent = data.updated_quantity;
+
+                    qtyCell.classList.add('bg-green-100');
+                    setTimeout(() => qtyCell.classList.remove('bg-green-100'), 800);
+
+                    if(currentCostPrice <= 0) {
+                        costCell.textContent = costPrice.toFixed(2);
+                    } else {
+                        const newCostPrice = (currentCostPrice * currentQty + costPrice * addQty) / (currentQty + addQty);
+                        costCell.textContent = newCostPrice.toFixed(2);
+                    }
+                    costCell.classList.add('bg-green-100');
+                    setTimeout(() => costCell.classList.remove('bg-green-100'), 800);
+                }
+
+                inputQty.value = 1;
+                inputCost.value = '';
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Failed to add batch. Please try again.');
             });
         });
-    }
+    });
+}
+
 
     
     function attachPaginationLinks() {
