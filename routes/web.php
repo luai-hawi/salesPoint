@@ -13,6 +13,7 @@ use App\Http\Controllers\BatchController;
 
 Route::redirect('/', '/dashboard', 301);
 
+
 Route::get('/dashboard', function () {
     $customers = \App\Models\Customer::orderBy('name')->get();
     $products = \App\Models\Product::select('id', 'name', 'selling_price', 'cost_price', 'barcode')->get();

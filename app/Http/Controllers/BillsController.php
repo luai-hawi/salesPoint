@@ -9,29 +9,63 @@ use App\Models\Batch;
 
 class BillsController extends Controller
 {
-    public function index()
-    {
-        $bills = Bill::orderBy('created_at', 'desc')->paginate(20);
+   public function index(Request $request)
+{
+    // Get date from request (nullable)
+    $date = $request->input('date');
 
-        return view('bills.index', compact('bills'));
+    // Base query for bills
+    $baseQuery = Bill::with('products')->orderBy('created_at', 'desc');
+
+    if (!empty($date)) {
+        // Filter only by date part
+        $baseQuery->whereDate('created_at', $date);
     }
+
+    // Clone query for totals (before pagination)
+    $totalsQuery = clone $baseQuery;
+
+    // Get all matching bills for totals
+    $allMatchedBills = $totalsQuery->get();
+
+    // Calculate totals on all matched rows
+    $totalSales = $allMatchedBills->sum('total_price');
+
+    $totalProfit = $allMatchedBills->sum(function ($bill) {
+        return $bill->products->sum(function ($product) {
+            return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
+        });
+    });
+
+    // Now paginate for actual display
+    $bills = $baseQuery->paginate(20);
+
+    return view('bills.index', [
+        'bills'        => $bills,
+        'totalSales'   => $totalSales,
+        'totalProfit'  => $totalProfit,
+        'selectedDate' => $date
+    ]);
+}
+
 
     public function create()
     {
-        $products = \App\Models\Product::all();
-            // Prepare products data for JavaScript
-        $productsForJS = $products->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'name' => $p->name,
-                'price' => $p->selling_price,
-                'cost_price' => $p->cost_price,
-                'barcode' => $p->barcode,
-            ];
-        })->toArray();
+        // $products = \App\Models\Product::all();
+        //     // Prepare products data for JavaScript
+        // $productsForJS = $products->map(function ($p) {
+        //     return [
+        //         'id' => $p->id,
+        //         'name' => $p->name,
+        //         'price' => $p->selling_price,
+        //         'cost_price' => $p->cost_price,
+        //         'barcode' => $p->barcode,
+        //     ];
+        // })->toArray();
         
 
-        return view('bills.create', compact('productsForJS', 'products'));
+        // return view('bills.create', compact('productsForJS', 'products'));
+        return redirect()->route('bills.index');
 
                 
     }

@@ -7,25 +7,29 @@
 
     <div class="py-12 mx-6">
 
-        {{-- 🔍 Search and Add New Bill --}}
-        <div class="flex justify-between mb-4">
-            <a href="{{ route('bills.create') }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add New Bill</a>
-        </div>
-
-        {{-- 🔍 Date search --}}
-        <div class="mb-6 flex gap-4 items-center">
-            <input type="date" id="bill-date-filter" class="border px-4 py-2 rounded" />
-            <button onclick="resetFilter()" class="text-sm text-gray-500 underline">Reset</button>
-        </div>
+       {{-- 📅 Date Filter Form --}}
+        <form method="GET" action="{{ route('bills.index') }}" class="mb-6 flex gap-4 items-center" id="dateFilterForm">
+            <input 
+                type="date" 
+                name="date" 
+                value="{{ $selectedDate }}" 
+                class="border px-4 py-2 rounded" 
+                id="dateFilterInput"
+            />
+            @if($selectedDate)
+                <a href="{{ route('bills.index') }}" class="text-sm text-gray-500 underline">Reset</a>
+            @endif
+        </form>
 
         {{-- 📊 Totals --}}
         <div class="mb-6 flex gap-10 text-lg font-semibold">
-            <div>Total Sales: <span id="total-sales">0</span></div>
-            <div>Total Profit: <span id="total-profit">0</span></div>
+            <div>Total Sales: {{ number_format($totalSales, 2) }}</div>
+            <div>Total Profit: {{ number_format($totalProfit, 2) }}</div>
         </div>
 
+        {{-- 📄 Bills Table --}}
         <div>
-            <table class="min-w-full bg-white border border-gray-300" id="bills-table">
+            <table class="min-w-full bg-white border border-gray-300">
                 <thead>
                     <tr class="bg-gray-200 px-6">
                         <th class="py-3 px-6 border-b text-left">ID</th>
@@ -36,84 +40,44 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($bills as $bill)
+                    @forelse($bills as $bill)
                         @php
                             $costTotal = 0;
                             foreach ($bill->products as $product) {
                                 $costTotal += $product->pivot->quantity * $product->pivot->cost_price;
                             }
                         @endphp
-                        <tr class="bg-gray-200 px-6 bill-row"
-                            data-date="{{ $bill->created_at->format('Y-m-d') }}"
-                            data-total="{{ $bill->total_price }}"
-                            data-cost="{{ $costTotal }}">
+                        <tr class="bg-gray-200 px-6">
                             <td class="py-3 px-6 border-b text-left">{{ $bill->id }}</td>
                             <td class="py-3 px-6 border-b text-left">{{ $bill->total_price }}</td>
                             <td class="py-3 px-6 border-b text-left">{{ $bill->note }}</td>
                             <td class="py-3 px-6 border-b text-left">{{ $bill->created_at->format('Y-m-d') }}</td>
                             <td class="py-3 px-6 border-b text-left">
                                 <a href="{{ route('bills.show', $bill->id) }}" class="text-blue-500 hover:underline">Edit</a>
-                                <form action="{{ route('bills.destroy', $bill->id) }}" method="POST" class="inline">
+                                <form action="{{ route('bills.destroy', $bill->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this bill?')">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:underline">Delete</button>
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-3 px-6 text-center text-gray-500">No bills found for this date.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
 
+            {{-- Pagination --}}
             <div class="mt-6 flex justify-center">
-    {{ $bills->links('vendor.pagination.custom-light') }}
-</div>
-
+                {{ $bills->appends(['date' => $selectedDate])->links('vendor.pagination.custom-light') }}
+            </div>
         </div>
     </div>
-
     <script>
-        const dateInput = document.getElementById('bill-date-filter');
-        const salesOutput = document.getElementById('total-sales');
-        const profitOutput = document.getElementById('total-profit');
-
-        function updateTotals() {
-            let total = 0;
-            let cost = 0;
-            document.querySelectorAll('.bill-row').forEach(row => {
-                if (row.style.display !== 'none') {
-                    total += parseFloat(row.dataset.total || 0);
-                    cost += parseFloat(row.dataset.cost || 0);
-                }
-            });
-            salesOutput.textContent = total.toFixed(2);
-            profitOutput.textContent = (total - cost).toFixed(2);
-        }
-
-        // Filter bills by selected date
-        dateInput.addEventListener('change', function () {
-            const selectedDate = this.value;
-            document.querySelectorAll('.bill-row').forEach(row => {
-                const rowDate = row.getAttribute('data-date');
-                row.style.display = (selectedDate === "" || rowDate === selectedDate) ? '' : 'none';
-            });
-            updateTotals();
-        });
-
-        function resetFilter() {
-            dateInput.value = '';
-            document.querySelectorAll('.bill-row').forEach(row => row.style.display = '');
-            updateTotals();
-        }
-
-        // Calculate on page load
-        document.addEventListener('DOMContentLoaded', updateTotals);
-         // Confirm before deleting a bill
-    document.querySelectorAll('form[action*="/bills/"][method="POST"]').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            if (!confirm('Are you sure you want to delete this bill?')) {
-                e.preventDefault();
-            }
-        });
+    document.getElementById('dateFilterInput').addEventListener('change', function () {
+        document.getElementById('dateFilterForm').submit();
     });
-    </script>
+</script>
 </x-app-layout>
