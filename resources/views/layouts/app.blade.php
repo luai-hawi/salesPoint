@@ -8,7 +8,7 @@
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" href="{{ asset('images/logo3.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('images/logo4.png') }}" type="image/png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -36,5 +36,8 @@
                 {{ $slot }}
             </main>
         </div>
+
+        <!-- Add this line to include pushed scripts -->
+        @stack('scripts')
     </body>
 </html>

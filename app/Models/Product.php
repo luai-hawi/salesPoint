@@ -16,6 +16,7 @@ class Product extends Model
         'pictures',
         'cost_price',
         'selling_price',
+        'user_id', // the user who owns this product
     ];
 
     public function bills()

@@ -15,6 +15,7 @@ class CustomerPayment extends Model
         'amount',
         'type',
         'note',
+        'user_id', // the user who owns this payment
     ];
 
     public function customer()

@@ -17,6 +17,7 @@ class Customer extends Model
         'name',
         'phone',
         'balance', // positive = owes us, negative = we owe them (optional)
+        'user_id', // the user who owns this customer
     ];
 
 

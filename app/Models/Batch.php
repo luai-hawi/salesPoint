@@ -13,6 +13,7 @@ class Batch extends Model
         'product_id',
         'quantity',
         'cost_price',
+        'user_id',
     ];
 
     public function product()
