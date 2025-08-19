@@ -21,21 +21,30 @@ return new class extends Migration
         foreach ($this->tenantTables as $tableName) {
             Schema::table($tableName, function (Blueprint $table) use ($tableName) {
                 // Make sure there are no nulls before altering
-                DB::table($tableName)->whereNull('user_id')->update(['user_id' => 2]); // fallback to admin or another user
+                DB::table($tableName)->whereNull('user_id')->update(['user_id' => 1]); // fallback to first user
 
                 // Change to NOT NULL
                 $table->unsignedBigInteger('user_id')->nullable(false)->change();
             });
 
-            // Add FK constraint if missing (skip SQLite because of alter table limits)
+            // Only add FK constraint if it doesn't exist and we're not using SQLite
             if (DB::getDriverName() !== 'sqlite') {
-                Schema::table($tableName, function (Blueprint $table) {
-                    try {
+                $foreignKeyName = $tableName . '_user_id_foreign';
+                
+                // Check if foreign key already exists
+                $foreignKeyExists = DB::select("
+                    SELECT CONSTRAINT_NAME 
+                    FROM information_schema.KEY_COLUMN_USAGE 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = ? 
+                    AND CONSTRAINT_NAME = ?
+                ", [$tableName, $foreignKeyName]);
+
+                if (empty($foreignKeyExists)) {
+                    Schema::table($tableName, function (Blueprint $table) {
                         $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-                    } catch (\Throwable $e) {
-                        // ignore if already exists
-                    }
-                });
+                    });
+                }
             }
         }
     }

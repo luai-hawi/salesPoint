@@ -6,6 +6,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Models\Batch;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 
 class ProductsController extends Controller
@@ -109,7 +110,12 @@ class ProductsController extends Controller
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
 
+        // Handle image updates
         if ($request->hasFile('pictures')) {
+            // Delete old images if they exist
+            $this->deleteProductImages($product);
+            
+            // Upload new images
             $pictures = [];
             foreach ($request->file('pictures') as $picture) {
                 $pictures[] = $picture->store('products', 'public');
@@ -135,6 +141,10 @@ class ProductsController extends Controller
     public function destroy(Product $product)
     {
         $this->authorizeProduct($product);
+        
+        // Delete associated images before deleting the product
+        $this->deleteProductImages($product);
+        
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
@@ -283,6 +293,25 @@ class ProductsController extends Controller
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         if ($product->user_id !== $ownerId) {
             abort(403, 'Unauthorized');
+        }
+    }
+
+    /**
+     * Delete all images associated with a product
+     */
+    private function deleteProductImages(Product $product)
+    {
+        if ($product->pictures) {
+            $pictures = json_decode($product->pictures, true);
+            
+            if (is_array($pictures)) {
+                foreach ($pictures as $picture) {
+                    // Delete from public disk
+                    if (Storage::disk('public')->exists($picture)) {
+                        Storage::disk('public')->delete($picture);
+                    }
+                }
+            }
         }
     }
 

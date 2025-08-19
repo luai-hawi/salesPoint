@@ -343,11 +343,75 @@
                     }
                 });
             });
-                                
+                          
+            
+
+            // --- Image compression helper ---
+            async function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.7) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        img.src = e.target.result;
+                    };
+
+                    img.onload = function () {
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Scale down while keeping aspect ratio
+                        if (width > maxWidth || height > maxHeight) {
+                            if (width > height) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            } else {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+
+                        const canvas = document.createElement("canvas");
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(
+                            (blob) => {
+                                const compressedFile = new File([blob], file.name, {
+                                    type: file.type,
+                                    lastModified: Date.now(),
+                                });
+                                resolve(compressedFile);
+                            },
+                            file.type,
+                            quality // compression quality (0.7 = 70%)
+                        );
+                    };
+
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            async function handleCompressedImages(input) {
+                const dt = new DataTransfer();
+                for (let file of input.files) {
+                    if (file.type.startsWith("image/")) {
+                        const compressed = await compressImage(file, 800, 800, 0.7);
+                        dt.items.add(compressed);
+                    } else {
+                        dt.items.add(file);
+                    }
+                }
+                input.files = dt.files;
+                handleImagePreview(input.files); // reuse your preview function
+            }
+
             // Image preview             
-            document.getElementById('pictures').addEventListener('change', function(e) {                 
-                handleImagePreview(e.target.files);             
-            });                          
+            document.getElementById("pictures").addEventListener("change", async function (e) {
+                await handleCompressedImages(e.target);
+            });                    
             
             // Initial calculation             
             calculateProfitMargin();         
@@ -387,5 +451,72 @@
                 }
             }
         });
+
+
+        async function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.7) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                img.src = e.target.result;
+            };
+
+            img.onload = function () {
+                let width = img.width;
+                let height = img.height;
+
+                // Scale down while keeping aspect ratio
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    } else {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        const compressedFile = new File([blob], file.name, {
+                            type: file.type,
+                            lastModified: Date.now(),
+                        });
+                        resolve(compressedFile);
+                    },
+                    file.type,
+                    quality // 0.7 = 70% quality
+                );
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handleCompressedImages(input) {
+        const dt = new DataTransfer();
+        for (let file of input.files) {
+            if (file.type.startsWith("image/")) {
+                const compressed = await compressImage(file, 800, 800, 0.7);
+                dt.items.add(compressed);
+            } else {
+                dt.items.add(file);
+            }
+        }
+        input.files = dt.files;
+        handleImagePreview(input.files); // use your existing preview function
+    }
+
+    // Replace your event listener for file input
+    document.getElementById("pictures").addEventListener("change", async function (e) {
+        await handleCompressedImages(e.target);
+    });
     </script>
 </x-app-layout>

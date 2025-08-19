@@ -536,6 +536,77 @@
             }
         });
 
+        // Image compression function
+        async function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.7) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                };
+
+                img.onload = function () {
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Keep aspect ratio while resizing
+                    if (width > maxWidth || height > maxHeight) {
+                        if (width > height) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        } else {
+                            width *= maxHeight / height;
+                            height = maxHeight;
+                        }
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            const compressedFile = new File([blob], file.name, {
+                                type: file.type,
+                                lastModified: Date.now(),
+                            });
+                            resolve(compressedFile);
+                        },
+                        file.type,
+                        quality
+                    );
+                };
+
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleCompressedUpload(input) {
+            const dt = new DataTransfer();
+
+            for (let file of input.files) {
+                if (file.type.startsWith("image/")) {
+                    const compressed = await compressImage(file, 800, 800, 0.7);
+                    dt.items.add(compressed);
+                } else {
+                    dt.items.add(file);
+                }
+            }
+
+            input.files = dt.files; // Replace with compressed versions
+        }
+
+// Attach handler to your input
+document.getElementById("pictures").addEventListener("change", async function (e) {
+    await handleCompressedUpload(e.target);
+});
+
+
+
+
         // Auto-save on Enter key
         document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && (e.target.classList.contains('batch-qty') || e.target.classList.contains('batch-cost'))) {

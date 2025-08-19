@@ -17,6 +17,10 @@ use App\Http\Controllers\ShopOwner\DashboardController;
 use App\Http\Controllers\FinancialDashboardController;
 use Illuminate\Http\Request;
 
+
+
+use App\Models\Product;
+
 Route::redirect('/', '/dashboard', 301);
 
 // ------------------- DASHBOARD WITH ROLE-BASED REDIRECT -------------------
@@ -142,10 +146,6 @@ Route::prefix('shopowner')
         Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     });
 
-Route::prefix('shopowner')->name('shopowner.')->middleware('auth')->group(function () {
-    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-});
-
 // ------------------- FINANCIAL DASHBOARD -------------------
 Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
@@ -161,5 +161,283 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
     });
 });
 
+
+
+
+
+
+// Batch Image Compression Route with Progress Tracking
+Route::get('/compress-and-cleanup-images', function () {
+    set_time_limit(300); // Set 5 minutes timeout
+    
+    $batchSize = request('batch', 10); // Process 10 images at a time
+    $step = request('step', 'start'); // start, compress, cleanup, complete
+    $offset = request('offset', 0);
+    
+    if ($step === 'start') {
+        // Return the main page with JavaScript for batch processing
+        return view('admin.image-compression');
+    }
+    
+    $results = [
+        'compressed' => 0,
+        'deleted' => 0,
+        'errors' => [],
+        'deleted_files' => [],
+        'hasMore' => false,
+        'nextOffset' => $offset
+    ];
+    
+    // Helper function to compress image using GD
+    $compressImage = function($source, $destination, $quality = 75, $maxWidth = 800) {
+        $info = getimagesize($source);
+        if ($info === false) {
+            return false;
+        }
+        
+        $mime = $info['mime'];
+        
+        switch ($mime) {
+            case 'image/jpeg':
+                $image = imagecreatefromjpeg($source);
+                break;
+            case 'image/png':
+                $image = imagecreatefrompng($source);
+                break;
+            case 'image/gif':
+                $image = imagecreatefromgif($source);
+                break;
+            default:
+                return false;
+        }
+        
+        if (!$image) {
+            return false;
+        }
+        
+        // Get original dimensions
+        $originalWidth = imagesx($image);
+        $originalHeight = imagesy($image);
+        
+        // Calculate new dimensions
+        if ($originalWidth > $maxWidth) {
+            $newWidth = $maxWidth;
+            $newHeight = ($originalHeight * $maxWidth) / $originalWidth;
+        } else {
+            $newWidth = $originalWidth;
+            $newHeight = $originalHeight;
+        }
+        
+        // Create new image
+        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Preserve transparency for PNG and GIF
+        if ($mime == 'image/png' || $mime == 'image/gif') {
+            imagecolortransparent($newImage, imagecolorallocatealpha($newImage, 0, 0, 0, 127));
+            imagealphablending($newImage, false);
+            imagesavealpha($newImage, true);
+        }
+        
+        // Resize image
+        imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
+        
+        // Save compressed image
+        $result = false;
+        switch ($mime) {
+            case 'image/jpeg':
+                $result = imagejpeg($newImage, $destination, $quality);
+                break;
+            case 'image/png':
+                $pngQuality = 9 - round(($quality / 100) * 9);
+                $result = imagepng($newImage, $destination, $pngQuality);
+                break;
+            case 'image/gif':
+                $result = imagegif($newImage, $destination);
+                break;
+        }
+        
+        imagedestroy($image);
+        imagedestroy($newImage);
+        
+        return $result;
+    };
+    
+    try {
+        if ($step === 'compress') {
+            // Get products with images in batches
+            $products = \App\Models\Product::whereNotNull('pictures')
+                ->where('pictures', '!=', '')
+                ->skip($offset)
+                ->take($batchSize)
+                ->get();
+            
+            $processedCount = 0;
+            
+            foreach ($products as $product) {
+                $pictures = json_decode($product->pictures, true);
+                
+                if (is_array($pictures)) {
+                    foreach ($pictures as $picture) {
+                        $fullPath = storage_path('app/public/' . $picture);
+                        
+                        if (file_exists($fullPath)) {
+                            try {
+                                $imageInfo = getimagesize($fullPath);
+                                if ($imageInfo !== false) {
+                                    if ($compressImage($fullPath, $fullPath, 75, 800)) {
+                                        $results['compressed']++;
+                                    } else {
+                                        $results['errors'][] = "Failed to compress: {$picture}";
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                $results['errors'][] = "Error compressing {$picture}: " . $e->getMessage();
+                            }
+                        }
+                    }
+                }
+                $processedCount++;
+            }
+            
+            // Check if there are more products to process
+            $totalProducts = \App\Models\Product::whereNotNull('pictures')
+                ->where('pictures', '!=', '')
+                ->count();
+            
+            $results['hasMore'] = ($offset + $batchSize) < $totalProducts;
+            $results['nextOffset'] = $offset + $batchSize;
+            $results['progress'] = min(100, round((($offset + $processedCount) / $totalProducts) * 100));
+            
+        } elseif ($step === 'cleanup') {
+            // Collect all used images
+            $usedImages = [];
+            $products = \App\Models\Product::whereNotNull('pictures')
+                ->where('pictures', '!=', '')
+                ->get();
+            
+            foreach ($products as $product) {
+                $pictures = json_decode($product->pictures, true);
+                if (is_array($pictures)) {
+                    $usedImages = array_merge($usedImages, $pictures);
+                }
+            }
+            
+            // Find and delete unused images
+            $productsDirectory = storage_path('app/public/products');
+            
+            if (is_dir($productsDirectory)) {
+                $allFiles = [];
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($productsDirectory, \RecursiveDirectoryIterator::SKIP_DOTS)
+                );
+                
+                foreach ($iterator as $file) {
+                    if ($file->isFile() && in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'gif'])) {
+                        $relativePath = 'products/' . $iterator->getSubPathName();
+                        $allFiles[] = $relativePath;
+                    }
+                }
+                
+                $unusedImages = array_diff($allFiles, $usedImages);
+                
+                foreach ($unusedImages as $unusedImage) {
+                    $fullPath = storage_path('app/public/' . $unusedImage);
+                    
+                    if (file_exists($fullPath)) {
+                        try {
+                            unlink($fullPath);
+                            $results['deleted']++;
+                            $results['deleted_files'][] = $unusedImage;
+                        } catch (\Exception $e) {
+                            $results['errors'][] = "Error deleting {$unusedImage}: " . $e->getMessage();
+                        }
+                    }
+                }
+                
+                // Clean up empty directories
+                $removeEmptyDirs = function($dir) use (&$removeEmptyDirs) {
+                    if (!is_dir($dir)) return false;
+                    
+                    $files = array_diff(scandir($dir), ['.', '..']);
+                    foreach ($files as $file) {
+                        $fullPath = $dir . DIRECTORY_SEPARATOR . $file;
+                        if (is_dir($fullPath)) {
+                            $removeEmptyDirs($fullPath);
+                        }
+                    }
+                    
+                    $files = array_diff(scandir($dir), ['.', '..']);
+                    if (empty($files) && $dir !== storage_path('app/public/products')) {
+                        rmdir($dir);
+                    }
+                    
+                    return true;
+                };
+                
+                $removeEmptyDirs($productsDirectory);
+            }
+        }
+        
+    } catch (\Exception $e) {
+        $results['errors'][] = "General error: " . $e->getMessage();
+    }
+    
+    return response()->json($results);
+    
+})->name('compress.cleanup.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
+
+// Simple route for quick compression (smaller batches)
+Route::get('/quick-compress-images', function () {
+    set_time_limit(60); // 1 minute timeout
+    
+    $results = ['compressed' => 0, 'errors' => []];
+    
+    // Process only first 5 products to avoid timeout
+    $products = \App\Models\Product::whereNotNull('pictures')
+        ->where('pictures', '!=', '')
+        ->take(5)
+        ->get();
+    
+    foreach ($products as $product) {
+        $pictures = json_decode($product->pictures, true);
+        
+        if (is_array($pictures)) {
+            foreach ($pictures as $picture) {
+                $fullPath = storage_path('app/public/' . $picture);
+                
+                if (file_exists($fullPath)) {
+                    try {
+                        $imageInfo = getimagesize($fullPath);
+                        if ($imageInfo !== false) {
+                            // Simple compression using imagejpeg quality
+                            $image = null;
+                            switch ($imageInfo['mime']) {
+                                case 'image/jpeg':
+                                    $image = imagecreatefromjpeg($fullPath);
+                                    if ($image) {
+                                        imagejpeg($image, $fullPath, 75);
+                                        $results['compressed']++;
+                                    }
+                                    break;
+                                case 'image/png':
+                                    $image = imagecreatefrompng($fullPath);
+                                    if ($image) {
+                                        imagepng($image, $fullPath, 6);
+                                        $results['compressed']++;
+                                    }
+                                    break;
+                            }
+                            if ($image) imagedestroy($image);
+                        }
+                    } catch (\Exception $e) {
+                        $results['errors'][] = "Error: {$picture} - " . $e->getMessage();
+                    }
+                }
+            }
+        }
+    }
+    
+    return response()->json($results);
+})->name('quick.compress.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
 // ------------------- AUTH ROUTES -------------------
 require __DIR__.'/auth.php';
