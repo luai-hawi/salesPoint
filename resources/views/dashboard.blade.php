@@ -1,3 +1,20 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    
+    // Get shop name based on user role
+    $shopName = 'Shop'; // Default fallback
+    if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
+        $shopName = auth()->user()-> shopOwner->name ?? 'Shop';
+    } elseif (auth()->user()->role !== 'employee') {
+        $shopName = auth()->user()->name ?? 'Shop';
+    }
+    
+    $isRestaurant = auth()->user()->role === 'restaurant';
+@endphp
 <x-app-layout>
     <x-slot name="header">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -5,11 +22,11 @@
             <svg class="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            {{ __('Point of Sale Dashboard') }}
+            {{ $isRestaurant ? __('dashboard.Restaurant Dashboard') : __('dashboard.Point of Sale Dashboard') }}
         </h2>
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
-                Today's Sales: <span class="font-bold text-green-600">${{ number_format($totalToday ?? 0, 2) }}</span>
+                {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">${{ number_format($totalToday ?? 0, 2) }}</span>
             </div>
         </div>
     </div>
@@ -20,89 +37,167 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-none">
                 
-                <!-- Left Panel - Product Search & Selection -->
-                <div class="lg:col-span-5 space-y-4">
-                    <!-- Search Controls -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            <h3 class="text-lg font-semibold text-gray-800">Product Search</h3>
-                        </div>
-                        
-                        <!-- Search Input -->
-                        <div class="relative mb-4">
-                            <input 
-                                type="text" 
-                                id="product-search" 
-                                placeholder="Search products by name or barcode..." 
-                                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                            />
-                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                        </div>
-
-                        <!-- Filter Options -->
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
-                                All Products
-                            </button>
-                            <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
-                                In Stock Only
-                            </button>
-                            <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
-                                Out of Stock
-                            </button>
-                        </div>
+                <!-- Left Panel - Product Search & Selection / Restaurant Quick Payments -->
+            <div class="lg:col-span-5 space-y-4">
+                <!-- Product Search Controls - Shown for all users -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Product Search') }}</h3>
+                    </div>
+                    
+                    <!-- Search Input -->
+                    <div class="relative mb-4">
+                        <input
+                            type="text"
+                            id="product-search"
+                            placeholder="{{ __('dashboard.Search products by name...') }}"
+                            class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
+                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
                     </div>
 
-                    <!-- Product Results -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="p-4 border-b border-gray-100">
-                            <h4 class="font-medium text-gray-800 flex items-center">
-                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                </svg>
-                                Available Products
-                            </h4>
+                    <!-- Filter Options -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
+                            {{ __('dashboard.All Products') }}
+                        </button>
+                        <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                            {{ __('dashboard.In Stock Only') }}
+                        </button>
+                        <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                            {{ __('dashboard.Out of Stock') }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Results - Shown for all users -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="p-4 border-b border-gray-100">
+                        <h4 class="font-medium text-gray-800 flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            </svg>
+                            {{ __('dashboard.Available Products') }}
+                        </h4>
+                    </div>
+                    <div id="product-cards-container" class="max-h-96 overflow-y-auto scroll-container">
+                        <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4 products-grid">
+                            <!-- Products will be loaded here -->
                         </div>
-                        <div id="product-cards-container" class="max-h-96 overflow-y-auto scroll-container">
-                            <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4 products-grid">
-                                <!-- Products will be loaded here -->
-                            </div>
-                            <div id="loading-indicator" class="hidden p-4 text-center">
-                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                                <p class="text-sm text-gray-500 mt-2">Loading products...</p>
-                            </div>
+                        <div id="loading-indicator" class="hidden p-4 text-center">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                            <p class="text-sm text-gray-500 mt-2">{{ __('dashboard.Loading products...') }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Content - Bill Creation -->
-                <div class="lg:col-span-4 space-y-4">
-                    <!-- Barcode Scanner -->
+                @if($isRestaurant)
+                    <!-- Restaurant Quick Customer Payments Panel -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center mb-4">
-                            <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                            <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                             </svg>
-                            <h3 class="text-lg font-semibold text-gray-800">Quick Scanner</h3>
+                            <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
                         </div>
-                        <div class="relative">
-                            <input 
-                                type="text" 
-                                id="barcode_input" 
-                                placeholder="Scan or enter barcode..." 
-                                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
-                                autocomplete="off"
-                            />
-                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
-                            </svg>
+
+                        <!-- Quick Payment Form -->
+                        <form id="quick-payment-form" class="space-y-4">
+                            @csrf
+                            <input type="hidden" id="payment_customer_id" name="customer_id">
+                            
+                            <!-- Customer Dropdown for Restaurant -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                                    <option value="">{{ __('dashboard.Select Customer') }}</option>
+                                    @foreach($customers as $customer)
+                                        <option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-phone="{{ $customer->phone }}" data-balance="{{ $customer->balance }}">
+                                            {{ $customer->name }} - {{ $customer->phone }} (Balance: {{ $customer->balance ?? '0.00' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
+                                    <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
+                                    <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                        <option value="cash">{{ __('dashboard.Cash') }}</option>
+                                        <option value="card">{{ __('dashboard.Card') }}</option>
+                                        <option value="transfer">{{ __('dashboard.Transfer') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                <textarea id="payment_note" name="note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                {{ __('dashboard.Add Payment') }}
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Recent Payments -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 border-b border-gray-100">
+                            <h4 class="font-medium text-gray-800 flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                                {{ __('dashboard.Recent Payments') }}
+                            </h4>
+                        </div>
+                        <div id="recent-payments" class="max-h-96 overflow-y-auto">
+                            <div class="p-4 text-center text-gray-500">
+                                {{ __('dashboard.No recent payments') }}
+                            </div>
                         </div>
                     </div>
+                @endif
+            </div>
+                                
+
+                <!-- Main Content - Bill Creation -->
+                <div class="lg:col-span-4 space-y-4">
+                    @if(!$isRestaurant)
+                        <!-- Barcode Scanner (Hidden for Restaurant) -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center mb-4">
+                                <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Scanner') }}</h3>
+                            </div>
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    id="barcode_input"
+                                    placeholder="{{ __('dashboard.Scan or enter barcode...') }}"
+                                    class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
+                                    autocomplete="off"
+                                />
+                                <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Bill Form -->
                     <div id="printable" class="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -111,40 +206,64 @@
                                 <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
-                                Create New Bill
+                                {{ __('dashboard.Create New Bill') }}
                             </h3>
                         </div>
                         
                         <form id="create-bill" method="POST" action="{{ route('bills.store') }}" class="p-6">
                             @csrf
 
-                            <!-- Customer Selection -->
+                           <!-- Customer Selection -->
                             <div class="mb-6">
-                                <label for="customer_id" class="block text-sm font-medium text-gray-700 mb-2">Customer (Optional)</label>
-                                <select name="customer_id" id="customer_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                                    <option value="">-- Walk-in Customer --</option>
-                                    @foreach($customers as $customer)
-                                        <option data-name="{{ $customer->name }}" data-phone="{{ $customer->phone }}" value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
-                                            {{ $customer->name }} @if($customer->phone) - {{ $customer->phone }}@endif
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                @if($isRestaurant)
+                                    <!-- Restaurant: Dropdown selector -->
+                                    <select name="customer_id" id="customer_id" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        <option value="">{{ __('dashboard.Select Customer') }}</option>
+                                        @foreach($customers as $customer)
+                                            <option value="{{ $customer->id }}">
+                                                {{ $customer->name }} - {{ $customer->phone }} (Balance: {{ $customer->balance ?? '0.00' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <!-- Regular: Search input -->
+                                    <div class="relative">
+                                        <input 
+                                            type="text" 
+                                            id="customer_search" 
+                                            name="customer_search"
+                                            placeholder="{{ __('dashboard.Search customer by name or enter new customer...') }}"
+                                            class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                            autocomplete="off"
+                                        />
+                                        <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                        <input type="hidden" name="customer_id" id="customer_id" value="">
+                                        
+                                        <!-- Customer suggestions dropdown -->
+                                        <div id="customer_suggestions" class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                                            <!-- Suggestions will be populated here -->
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Note -->
                             <div class="mb-6">
-                                <label for="note" class="block text-sm font-medium text-gray-700 mb-2">Note</label>
-                                <textarea name="note" id="note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Add any notes for this bill..."></textarea>
+                                <label for="note" class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                <textarea name="note" id="note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="{{ __('dashboard.Add any notes for this bill...') }}"></textarea>
                             </div>
 
                             <!-- Damaged Checkbox -->
                             <div class="mb-6 flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <input type="checkbox" name="is_damaged" id="is_damaged" class="h-4 w-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500">
-                                <label for="is_damaged" class="ml-2 text-sm text-amber-800 font-medium">Mark as Damaged Bill (100% discount)</label>
+                                <input type="checkbox" name="is_damaged" id="is_damaged" class="mr-2 h-4 w-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500">
+                                <label for="is_damaged" class="ml-2 text-sm text-amber-800 font-medium">{{ __('dashboard.Mark as Damaged Bill (100% discount)') }}</label>
                             </div>
 
                             <!-- Products List -->
-                            <div id="products-list" class="space-y-3 mb-6">
+                            <div id="products-list" class="space-y-2 mb-6 max-h-96 overflow-y-auto">
                                 <!-- Products will be added here dynamically -->
                             </div>
 
@@ -153,7 +272,7 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
-                                Add Product Manually
+                                {{ __('dashboard.Add Product Manually') }}
                             </button>
 
                             <!-- Action Buttons -->
@@ -162,7 +281,7 @@
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                     </svg>
-                                    Create Bill (F2)
+                                    {{ __('dashboard.Create Bill (F2)') }}
                                 </button>
                                 <button type="button" id="clear-all" class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,6 +291,11 @@
                                 <button type="button" id="print-button" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" id="print-receipt-button" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>
                                 </button>
                             </div>
@@ -187,13 +311,13 @@
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
-                            Bill Summary
+                            {{ __('dashboard.Bill Summary') }}
                         </h3>
                         
                         <div class="space-y-3">
                             <div class="bg-white bg-opacity-20 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-green-100">Total Discount:</span>
+                                    <span class="text-green-100">{{ __('dashboard.Total Discount:') }}</span>
                                     <span class="font-bold text-lg">$<span id="total_discount_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_discount" value="0">
@@ -201,7 +325,7 @@
                             
                             <div class="bg-white bg-opacity-30 rounded-lg p-4">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-green-100">Total Amount:</span>
+                                    <span class="text-green-100">{{ __('dashboard.Total Amount:') }}</span>
                                     <span class="font-bold text-2xl">$<span id="total_price_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_price" value="0">
@@ -215,17 +339,17 @@
                             <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                             </svg>
-                            Today's Performance
+                            {{ __('dashboard.Today\'s Performance') }}
                         </h3>
                         
                         <div class="space-y-3">
                             <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                                <span class="text-sm text-blue-700">Total Sales:</span>
+                                <span class="text-sm text-blue-700">{{ __('dashboard.Total Sales:') }}</span>
                                 <span class="font-bold text-blue-800">${{ number_format($totalToday ?? 0, 2) }}</span>
                             </div>
                             
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm text-gray-700">Bills Created:</span>
+                                <span class="text-sm text-gray-700">{{ __('dashboard.Bills Created:') }}</span>
                                 <span class="font-bold text-gray-800" id="bills_count">-</span>
                             </div>
                         </div>
@@ -237,7 +361,7 @@
                             <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                             </svg>
-                            Quick Actions
+                            {{ __('dashboard.Quick Actions') }}
                         </h3>
                         
                         <div class="space-y-2">
@@ -245,21 +369,23 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
-                                View All Bills
+                                {{ __('dashboard.View All Bills') }}
                             </a>
                             
+                            @if(!$isRestaurant)
                             <a href="{{ route('products.index') }}" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                 </svg>
-                                Manage Products
+                                {{ __('dashboard.Manage Products') }}
                             </a>
+                            @endif
                             
                             <a href="{{ route('customers.index') }}" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                                 </svg>
-                                Manage Customers
+                                {{ __('dashboard.Manage Customers') }}
                             </a>
                         </div>
                     </div>
@@ -268,39 +394,112 @@
         </div>
     </div>
 
-    {{-- Printable Invoice --}}
-    <div id="print-area" class="print-hidden p-6 text-sm">
-        <div class="text-center mb-4">
-            <h1 class="text-2xl font-bold">Bee Phone</h1>
-            <p>{{ now()->format('Y-m-d H:i') }}</p>
-            <hr class="my-2">
-        </div>
-        <div id="print-customer" class="font-semibold text-left"></div>
-        <div id="print-customer-phone" class="font-semibold text-left"></div>
-
-        <table class="w-full border border-gray-400 text-sm">
-            <thead>
-                <tr>
-                    <th class="border px-2 py-1">Product</th>
-                    <th class="border px-2 py-1 text-right">Qty</th>
-                    <th class="border px-2 py-1 text-right">Unit Price</th>
-                    <th class="border px-2 py-1 text-right">Discount</th>
-                    <th class="border px-2 py-1 text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody id="print-products-list"></tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="border px-2 py-1 text-right font-bold">Totals</td>
-                    <td id="print-total-discount" class="border px-2 py-1 text-right">0.00₪</td>
-                    <td id="print-total-price" class="border px-2 py-1 text-right">0.00₪</td>
-                </tr>
-            </tfoot>
-        </table>
+    {{-- Standard Printable Invoice --}}
+<div id="print-area" class="print-hidden p-6 text-sm">
+    <div class="text-center mb-4">
+        <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
+        <p>{{ now()->format('Y-m-d H:i') }}</p>
+        <p id="print-bill-id" class="text-sm font-medium">{{ __('messages.Bill ID') }}: #<span id="current-bill-id">-</span></p>
+        <hr class="my-2">
     </div>
+    <div id="print-customer" class="font-semibold text-left"></div>
+    <div id="print-customer-phone" class="font-semibold text-left"></div>
+    <table class="w-full border border-gray-400 text-sm">
+        <thead>
+            <tr>
+                <th class="border px-2 py-1">{{ __('messages.Product') }}</th>
+                <th class="border px-2 py-1 text-right">{{ __('messages.Qty') }}</th>
+                <th class="border px-2 py-1 text-right">{{ __('messages.Unit Price') }}</th>
+                <th class="border px-2 py-1 text-right">{{ __('messages.Discount') }}</th>
+                <th class="border px-2 py-1 text-right">{{ __('messages.Total') }}</th>
+            </tr>
+        </thead>
+        <tbody id="print-products-list"></tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="border px-2 py-1 text-right font-bold">{{ __('messages.Totals') }}</td>
+                <td id="print-total-discount" class="border px-2 py-1 text-right">0.00₪</td>
+                <td id="print-total-price" class="border px-2 py-1 text-right">0.00₪</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{{-- Roll Paper Receipt --}}
+<div id="receipt-area" class="print-hidden">
+    <div class="receipt-content">
+        <div class="text-center mb-2">
+            <div class="text-lg font-bold">{{ $shopName }}</div>
+            <div class="text-xs">{{ now()->format('Y-m-d H:i:s') }}</div>
+            <div id="receipt-bill-id" class="text-xs font-medium">{{ __('messages.Bill') }}: #<span id="receipt-current-bill-id">-</span></div>
+            <div class="border-t border-dashed my-2"></div>
+        </div>
+       
+        <div id="receipt-customer" class="text-xs mb-2"></div>
+       
+        <div id="receipt-products-list" class="text-xs">
+            <!-- Products will be added here -->
+        </div>
+       
+        <div class="border-t border-dashed my-2"></div>
+       
+        <div id="receipt-totals-container">
+            <!-- Totals will be added dynamically -->
+        </div>
+       
+        <div class="text-center text-xs mt-3">
+            <div>{{ __('messages.Thank you for your business!') }}</div>
+            <div class="border-t border-dashed mt-2"></div>
+        </div>
+    </div>
+</div>
 
     {{-- Enhanced Performance Styles --}}
     <style>
+        /* Customer suggestions dropdown */
+        .customer-suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .customer-suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .customer-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Discount type toggle */
+        .discount-toggle {
+            display: flex;
+            background-color: #f3f4f6;
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .discount-toggle button {
+            flex: 1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .discount-toggle button.active {
+            background-color: white;
+            color: #1f2937;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Compact product row styles */
+        .product-row.compact {
+            padding: 8px 12px;
+            background-color: #f9fafb;
+        }
+
         /* Filter button styles */
         .filter-btn.active {
             background-color: rgb(59 130 246);
@@ -313,51 +512,39 @@
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
             overflow-y: auto;
-            /* Enable hardware acceleration for scrolling */
             transform: translate3d(0, 0, 0);
             will-change: scroll-position;
-            /* Add momentum scrolling for iOS */
             -webkit-transform: translate3d(0, 0, 0);
-            /* Optimize for scrolling performance */
             contain: layout style paint;
         }
 
         /* Optimized grid container */
         .products-grid {
-            /* Use CSS Grid with GPU acceleration */
             transform: translate3d(0, 0, 0);
             will-change: contents;
-            /* Enable CSS containment for better performance */
             contain: layout style;
-            /* Optimize paint and layout operations */
             backface-visibility: hidden;
             perspective: 1000px;
         }
 
         /* High-performance product cards */
         .product-card {
-            /* Minimal transitions for better performance */
             transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
-            /* Enable hardware acceleration */
             transform: translate3d(0, 0, 0);
             will-change: transform;
-            /* Optimize for paint and layout */
             contain: layout style paint;
             backface-visibility: hidden;
-            /* Reduce browser reflow/repaint */
             overflow: hidden;
             position: relative;
         }
 
         .product-card:hover {
-            /* Lightweight hover effect */
             transform: translate3d(0, -1px, 0);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .product-card.out-of-stock {
             opacity: 0.7;
-            /* Disable hover effects for out-of-stock items */
             pointer-events: none;
         }
 
@@ -368,10 +555,8 @@
 
         /* Optimized image rendering */
         .product-card img {
-            /* Fast image transitions */
             transition: transform 0.15s ease-out;
             transform: translate3d(0, 0, 0);
-            /* Improve image rendering performance */
             image-rendering: auto;
             backface-visibility: hidden;
         }
@@ -382,24 +567,19 @@
 
         /* Optimize text rendering */
         .product-card .text-sm {
-            /* Prevent text selection for better performance */
             user-select: none;
             -webkit-user-select: none;
-            /* Optimize text rendering */
             text-rendering: optimizeSpeed;
         }
 
         /* Virtual scrolling optimization */
         .product-card {
-            /* Fixed height for better virtualization */
             min-height: 120px;
-            /* Optimize for CSS Grid auto-sizing */
             height: auto;
         }
 
         /* Reduce paint complexity */
         .product-card * {
-            /* Optimize all child elements */
             transform: translate3d(0, 0, 0);
         }
 
@@ -425,21 +605,45 @@
             backdrop-filter: blur(4px);
         }
 
+        /* Receipt styles for roll paper */
+        #receipt-area {
+            display: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .receipt-content {
+            width: 58mm;
+            padding: 2mm;
+            font-size: 8pt;
+            line-height: 1.2;
+        }
+
+        .receipt-product-row {
+            margin-bottom: 1mm;
+        }
+
+        .receipt-product-name {
+            font-weight: bold;
+        }
+
+        .receipt-product-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7pt;
+        }
+
         /* Optimize for mobile scrolling */
         @media (max-width: 768px) {
             .scroll-container {
-                /* Enhanced mobile scrolling */
                 -webkit-overflow-scrolling: touch;
                 overflow-scrolling: touch;
             }
             
             .products-grid {
-                /* Reduce grid complexity on mobile */
                 grid-template-columns: repeat(2, 1fr);
             }
             
             .product-card {
-                /* Disable hover effects on mobile */
                 transition: none;
             }
             
@@ -449,7 +653,7 @@
             }
         }
 
-        /* Print optimizations remain the same */
+        /* Standard print styles */
         @media print {
             body {
                 margin: 0;
@@ -496,6 +700,30 @@
             }
         }
 
+        /* Receipt print styles */
+        @media print {
+            .print-receipt #print-area {
+                display: none !important;
+            }
+
+            .print-receipt #receipt-area, .print-receipt #receipt-area * {
+                visibility: visible !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            .print-receipt #receipt-area {
+                display: block !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 58mm !important;
+                padding: 0 !important;
+                background: white;
+                font-size: 8pt !important;
+            }
+        }
+
         #print-area {
             display: none;
         }
@@ -522,7 +750,7 @@
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Multiple Products Found
+                                {{ __('dashboard.Multiple Products Found') }}
                             </h3>
                             <div class="mt-2">
                                 <p class="text-sm text-gray-500">
@@ -547,8 +775,14 @@
     {{-- Enhanced High-Performance JavaScript --}}
     <script>
         const products = @json($products);
+        const customers = @json($customers);
+        let customerDebounceTimeout = null;
+        let paymentCustomerDebounceTimeout = null;
         const totalSalesToday = {{ $totalToday ?? 0 }};
         const productsList = document.getElementById('products-list');
+        const isRestaurant = {{ $isRestaurant ? 'true' : 'false' }};
+        const shopName = '{{ $shopName }}';
+        let currentBillId = null;
 
         // State management
         let currentFilter = 'all';
@@ -565,11 +799,140 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('barcode_input').focus();
+            // Always initialize product search and fetch for both restaurant and regular users
             fetchProducts(true);
-            updateTotalSalesToday();
             setupIntersectionObserver();
+            
+            if (!isRestaurant) {
+                // Only focus barcode input for non-restaurant users
+                document.getElementById('barcode_input').focus();
+            } else {
+                // Setup restaurant-specific functionality
+                loadRecentPayments();
+            }
+            updateTotalSalesToday();
+            if (!isRestaurant) {
+                setupCustomerSearch();
+            } else {
+                setupRestaurantCustomerSelectors();
+            }
         });
+
+        // Restaurant customer selector functionality
+            function setupRestaurantCustomerSelectors() {
+            // Handle payment customer select
+            const paymentCustomerSelect = document.getElementById('payment_customer_select');
+            if (paymentCustomerSelect) {
+                paymentCustomerSelect.addEventListener('change', function() {
+                    const selectedOption = this.selectedOptions[0];
+                    if (selectedOption && selectedOption.value) {
+                        document.getElementById('payment_customer_id').value = selectedOption.value;
+                        loadRecentPayments(); // Load recent payments when customer is selected
+                    } else {
+                        document.getElementById('payment_customer_id').value = '';
+                        loadRecentPayments(); // Clear recent payments when no customer is selected
+                    }
+                });
+            }
+        }
+
+        
+       // Handle quick payment form submission
+        document.getElementById('quick-payment-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const customerId = document.getElementById('payment_customer_id').value;
+            if (!customerId) {
+                showNotification('Please select a customer', 'error');
+                return;
+            }
+
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch(`/customers/${customerId}/payments`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showNotification('Payment added successfully!', 'success');
+                    this.reset();
+                    document.getElementById('payment_customer_id').value = '';
+                    document.getElementById('payment_customer_select').value = '';
+                    loadRecentPayments();
+                } else {
+                    const errorData = await response.json();
+                    showNotification(errorData.message || 'Failed to add payment', 'error');
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                showNotification('Failed to add payment', 'error');
+            }
+        });
+
+        // Load recent payments for restaurant
+        // Load recent payments for restaurant
+        async function loadRecentPayments() {
+            const customerId = document.getElementById('payment_customer_id').value;
+            
+            if (!customerId) {
+                document.getElementById('recent-payments').innerHTML = `
+                    <div class="p-4 text-center text-gray-500">
+                        Select a customer to view recent payments
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/customers/${customerId}/recent-payments`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch payments');
+                }
+                
+                const payments = await response.json();
+                
+                if (payments.length === 0) {
+                    document.getElementById('recent-payments').innerHTML = `
+                        <div class="p-4 text-center text-gray-500">
+                            No recent payments for this customer
+                        </div>
+                    `;
+                    return;
+                }
+
+                const paymentsHtml = payments.map(payment => `
+                    <div class="p-3 border-b border-gray-100 last:border-b-0">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">$${parseFloat(payment.amount).toFixed(2)}</div>
+                                <div class="text-xs text-gray-500 capitalize">${payment.type}</div>
+                                ${payment.note ? `<div class="text-xs text-gray-600 mt-1">${payment.note}</div>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">${payment.created_at}</div>
+                                <div class="text-xs text-gray-400">${payment.created_at_human}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('recent-payments').innerHTML = paymentsHtml;
+                
+            } catch (error) {
+                console.error('Failed to load recent payments:', error);
+                document.getElementById('recent-payments').innerHTML = `
+                    <div class="p-4 text-center text-red-500">
+                        Failed to load recent payments
+                    </div>
+                `;
+            }
+        }
 
         // Intersection Observer for better scroll performance
         let intersectionObserver;
@@ -594,41 +957,103 @@
             }, options);
         }
 
+        // Customer search functionality
+        function setupCustomerSearch() {
+            const searchInput = document.getElementById('customer_search');
+            const suggestionsDiv = document.getElementById('customer_suggestions');
+            const customerIdInput = document.getElementById('customer_id');
 
-
-        
-        // Enhanced barcode input handler with duplicate detection
-        document.getElementById('barcode_input').addEventListener('keydown', async e => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                console.log("Barcode input detected:", e.target.value);
-                const code = e.target.value.trim();
-                if (!code) return;
-
-                try {
-                    const response = await fetch(`/products/search?barcode=${encodeURIComponent(code)}`);
-                    if (!response.ok) {
-                        showNotification('Error fetching product from server.', 'error');
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                
+                clearTimeout(customerDebounceTimeout);
+                customerDebounceTimeout = setTimeout(() => {
+                    if (query.length === 0) {
+                        suggestionsDiv.classList.add('hidden');
+                        customerIdInput.value = '';
                         return;
                     }
-                    const result = await response.json();
 
-                    if (result && result.multiple_products) {
-                        showBarcodeModal(result.products, result.barcode);
-                        e.target.value = '';
-                    } else if (result && result.id) {
-                        addProductRow(result);
-                        e.target.value = '';
-                        showNotification(`Added ${result.name} to bill`, 'success');
+                    const filteredCustomers = customers.filter(customer =>
+                        customer.name.toLowerCase().includes(query.toLowerCase()) ||
+                        (customer.phone && customer.phone.includes(query))
+                    );
+
+                    if (filteredCustomers.length > 0) {
+                        showCustomerSuggestions(filteredCustomers);
                     } else {
-                        showNotification('Product not found for barcode: ' + code, 'warning');
+                        suggestionsDiv.classList.add('hidden');
+                        customerIdInput.value = '';
                     }
-                } catch (err) {
-                    console.error('Fetch error:', err);
-                    showNotification('Failed to fetch product data.', 'error');
+                }, 300);
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                    suggestionsDiv.classList.add('hidden');
                 }
-            }
-        });
+            });
+        }
+
+        function showCustomerSuggestions(filteredCustomers) {
+            const suggestionsDiv = document.getElementById('customer_suggestions');
+            suggestionsDiv.innerHTML = '';
+
+            filteredCustomers.forEach(customer => {
+                const div = document.createElement('div');
+                div.className = 'customer-suggestion-item';
+                div.innerHTML = `
+                    <div class="font-medium text-gray-900">${customer.name}</div>
+                    <div class="text-sm text-gray-500">${customer.phone || ''}</div>
+                `;
+                div.addEventListener('click', () => selectCustomer(customer));
+                suggestionsDiv.appendChild(div);
+            });
+
+            suggestionsDiv.classList.remove('hidden');
+        }
+
+        function selectCustomer(customer) {
+            document.getElementById('customer_search').value = customer.name;
+            document.getElementById('customer_id').value = customer.id;
+            document.getElementById('customer_suggestions').classList.add('hidden');
+        }
+
+        // Enhanced barcode input handler (only for non-restaurant)
+        if (!isRestaurant) {
+            document.getElementById('barcode_input').addEventListener('keydown', async e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    console.log("Barcode input detected:", e.target.value);
+                    const code = e.target.value.trim();
+                    if (!code) return;
+
+                    try {
+                        const response = await fetch(`/products/search?barcode=${encodeURIComponent(code)}`);
+                        if (!response.ok) {
+                            showNotification('{{ __('messages.Error fetching product from server.') }}', 'error');
+                            return;
+                        }
+                        const result = await response.json();
+
+                        if (result && result.multiple_products) {
+                            showBarcodeModal(result.products, result.barcode);
+                            e.target.value = '';
+                        } else if (result && result.id) {
+                            addProductRow(result);
+                            e.target.value = '';
+                            showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', result.name), 'success');
+                        } else {
+                            showNotification('{{ __('messages.Product not found for barcode: {code}') }}'.replace('{code}', code), 'warning');
+                        }
+                    } catch (err) {
+                        console.error('Fetch error:', err);
+                        showNotification('{{ __('messages.Failed to fetch product data.') }}', 'error');
+                    }
+                }
+            });
+        }
 
         // Show modal for duplicate barcodes
         function showBarcodeModal(products, barcode) {
@@ -663,7 +1088,7 @@
                 const product = JSON.parse(e.target.dataset.product);
                 addProductRow(product);
                 closeBarcodeModal();
-                showNotification(`Added ${product.name} to bill`, 'success');
+                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
             }
         });
 
@@ -672,10 +1097,10 @@
             document.getElementById('barcode-modal').classList.add('hidden');
         }
 
-        document.getElementById('close-modal').addEventListener('click', closeBarcodeModal);
-        document.querySelector('.modal-overlay').addEventListener('click', closeBarcodeModal);
+        document.getElementById('close-modal')?.addEventListener('click', closeBarcodeModal);
+        document.querySelector('.modal-overlay')?.addEventListener('click', closeBarcodeModal);
 
-        // Filter buttons
+        // Filter buttons (now for both restaurant and regular users)
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -687,7 +1112,7 @@
             });
         });
 
-        // Enhanced product search with debouncing
+        // Enhanced product search with debouncing (now for both restaurant and regular users)
         document.getElementById('product-search').addEventListener('input', function () {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
@@ -698,14 +1123,13 @@
             }, 300);
         });
 
-        // Optimized product fetching with batching
+        // Optimized product fetching with batching (now for both restaurant and regular users)
         function fetchProducts(reset = false) {
             if (isLoading || !hasMore) return;
             isLoading = true;
 
             if (reset) {
                 const container = document.getElementById('product-results');
-                // Use replaceChildren for better performance
                 container.replaceChildren();
                 currentPage = 1;
                 hasMore = true;
@@ -716,12 +1140,12 @@
                 search: searchTerm,
                 page: currentPage,
                 filter: currentFilter,
-                per_page: 12 // Reduced for better performance
+                per_page: 12
             });
 
             fetch(`/products/searchAll?${params}`)
                 .then(response => {
-                    if (!response.ok) throw new Error('Search failed');
+                    if (!response.ok) throw new Error('{{ __('messages.Search failed') }}');
                     return response.json();
                 })
                 .then(data => {
@@ -729,12 +1153,11 @@
                     
                     if (products.length === 0 && currentPage === 1) {
                         document.getElementById('product-results').innerHTML = 
-                            '<p class="text-gray-500 text-center py-4 col-span-full">No products found</p>';
+                            '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
                         hasMore = false;
                         return;
                     }
 
-                    // Batch render products for better performance
                     const filteredProducts = filterProducts(products);
                     batchRenderProducts(filteredProducts);
 
@@ -744,10 +1167,10 @@
                 .catch(error => {
                     if (currentPage === 1) {
                         document.getElementById('product-results').innerHTML = 
-                            '<p class="text-red-500 text-center py-4 col-span-full">Error loading products</p>';
+                            '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
                     }
                     console.error(error);
-                    showNotification('Error loading products', 'error');
+                    showNotification('{{ __('messages.Error loading products') }}', 'error');
                 })
                 .finally(() => {
                     isLoading = false;
@@ -772,7 +1195,7 @@
 
             isRenderingQueue = true;
             const fragment = document.createDocumentFragment();
-            const batchSize = 6; // Render in smaller batches
+            const batchSize = 6;
             
             for (let i = 0; i < Math.min(batchSize, renderQueue.length); i++) {
                 const product = renderQueue.shift();
@@ -782,7 +1205,6 @@
 
             document.getElementById('product-results').appendChild(fragment);
 
-            // Continue processing in next frame
             if (renderQueue.length > 0) {
                 requestAnimationFrame(processRenderQueue);
             } else {
@@ -820,7 +1242,6 @@
                 // Silent fail for better performance
             }
 
-            // Use template string for better performance
             const imageHtml = firstImage
                 ? `<img data-src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
                 : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -839,7 +1260,7 @@
                         <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
                         <div class="mt-1">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                ${isOutOfStock ? 'Out of Stock' : `${product.quantity} in stock`}
+                                ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
                             </span>
                         </div>
                     </div>
@@ -847,7 +1268,7 @@
             `;
 
             // Setup lazy loading for images
-            if (firstImage) {
+            if (firstImage && intersectionObserver) {
                 intersectionObserver.observe(card);
             }
 
@@ -857,15 +1278,16 @@
         // Loading indicator
         function showLoadingIndicator(show) {
             const indicator = document.getElementById('loading-indicator');
-            indicator.classList.toggle('hidden', !show);
+            if (indicator) {
+                indicator.classList.toggle('hidden', !show);
+            }
         }
 
         // Enhanced product row addition
         function addProductRow(product = null) {
             if (product) {
                 if (product.quantity === 0) {
-                    showNotification(`${product.name} is out of stock!`, 'warning');
-                    return;
+                    showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name), 'warning');
                 }
 
                 const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => input.value == product.id);
@@ -875,8 +1297,7 @@
                     const currentQty = parseInt(qty.value);
                     
                     if (currentQty >= product.quantity) {
-                        showNotification(`Cannot add more ${product.name}. Only ${product.quantity} in stock.`, 'warning');
-                        return;
+                        showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
                     }
                     
                     qty.value = currentQty + 1;
@@ -898,15 +1319,15 @@
             const maxStock = product?.quantity ?? 999;
 
             if (product) {
+                row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
                 row.innerHTML = `
                     <input type="hidden" name="product_ids[]" value="${id}">
                     <input type="hidden" name="cost_prices[]" value="${cost}">
-                    <input type="hidden" name="selling_prices[]" value="${price}">
                     
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <div class="font-medium text-gray-900">${product.name}</div>
-                            <div class="text-sm text-gray-500">${price} each • ${maxStock} in stock</div>
+                    <div class="flex items-center justify-between p-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                            <div class="text-xs text-gray-500">${maxStock} in stock</div>
                         </div>
                         <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -915,16 +1336,31 @@
                         </button>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="1" max="${maxStock}" value="1" required>
+                <div class="px-2 pb-2">
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div class="grid grid-cols-2 gap-1 col-span-2">
+                            <div>
+                                <label class="block text-gray-600 mb-1">Qty</label>
+                                <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-600 mb-1">Price</label>
+                                <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${price}" required>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Discount</label>
-                            <input type="number" name="discounts[]" class="discount w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="0" step="0.01" value="0" required>
+                            <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
+                            <div class="flex gap-1 h-7">
+                                <div class="discount-toggle text-xs h-full">
+                                    <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
+                                    <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
+                                </div>
+                                <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
+                                <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                            </div>
                         </div>
                     </div>
+                </div>
                 `;
             } else {
                 row.innerHTML = `
@@ -972,10 +1408,10 @@
         });
 
         document.getElementById('clear-all').addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear all products?')) {
+            if (confirm('{{ __('messages.Are you sure you want to clear all products?') }}')) {
                 productsList.innerHTML = '';
                 calculateTotal();
-                showNotification('All products cleared', 'info');
+                showNotification('{{ __('messages.All products cleared') }}', 'info');
             }
         });
 
@@ -990,7 +1426,7 @@
                 const stock = parseInt(option.dataset.stock);
                 
                 if (stock === 0) {
-                    showNotification('Selected product is out of stock!', 'warning');
+                    showNotification('{{ __('messages.Selected product is out of stock!') }}', 'warning');
                     e.target.value = '';
                     return;
                 }
@@ -1005,7 +1441,7 @@
                     const currentQty = parseInt(qtyInput.value || 0);
                     
                     if (currentQty >= stock) {
-                        showNotification(`Cannot add more. Only ${stock} in stock.`, 'warning');
+                        showNotification(`{{ __('messages.Cannot add more. Only {stock} in stock.') }}`.replace('{stock}', stock), 'warning');
                         e.target.value = '';
                         return;
                     }
@@ -1043,26 +1479,35 @@
         // Enhanced calculation with validation
         function calculateTotal() {
             let total = 0;
-            let discount = 0;
+            let totalDiscount = 0;
 
             const rows = document.querySelectorAll('.product-row');
 
             for (const row of rows) {
                 const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-                const disc = parseFloat(row.querySelector('.discount')?.value || 0);
-                const price = parseFloat(row.querySelector('input[name="selling_prices[]"]')?.value || 0);
+                const discount = parseFloat(row.querySelector('.discount')?.value || 0);
+                const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
+                const discountType = row.querySelector('.discount-type')?.value || 'total';
 
-                const subtotal = (price * qty);
-                const finalSubtotal = Math.max(0, subtotal - disc);
+                let subtotal = price * qty;
+                let appliedDiscount = 0;
+
+                if (discountType === 'per-unit') {
+                    appliedDiscount = discount * qty;
+                } else {
+                    appliedDiscount = discount;
+                }
+
+                const finalSubtotal = Math.max(0, subtotal - appliedDiscount);
                 
                 total += finalSubtotal;
-                discount += disc;
+                totalDiscount += appliedDiscount;
             }
 
             document.getElementById('total_price').value = total.toFixed(2);
-            document.getElementById('total_discount').value = discount.toFixed(2);
+            document.getElementById('total_discount').value = totalDiscount.toFixed(2);
             document.getElementById('total_price_display').textContent = total.toFixed(2);
-            document.getElementById('total_discount_display').textContent = discount.toFixed(2);
+            document.getElementById('total_discount_display').textContent = totalDiscount.toFixed(2);
         }
 
         // Optimized event delegation
@@ -1070,13 +1515,27 @@
             if (e.target.closest('.remove-row')) {
                 e.target.closest('.product-row').remove();
                 calculateTotal();
-                showNotification('Product removed', 'info');
+                showNotification('{{ __('messages.Product removed') }}', 'info');
                 return;
             }
 
+            // Handle discount type toggle
+            if (e.target.classList.contains('discount-type-btn')) {
+                const row = e.target.closest('.product-row');
+                const buttons = row.querySelectorAll('.discount-type-btn');
+                const hiddenInput = row.querySelector('.discount-type');
+                
+                buttons.forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                hiddenInput.value = e.target.dataset.type;
+                
+                calculateTotal();
+                return;
+            }
+
+            // Product card click (now for both restaurant and regular users)
             const card = e.target.closest('.product-card');
             if (card && !card.classList.contains('out-of-stock')) {
-                // Get product name from the card more efficiently
                 const nameElement = card.querySelector('.text-sm.font-medium');
                 if (!nameElement) return;
 
@@ -1089,76 +1548,134 @@
                 };
 
                 addProductRow(product);
-                showNotification(`Added ${product.name} to bill`, 'success');
+                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
             }
         });
 
         document.addEventListener('input', e => {
-            if (['quantity', 'discount'].some(cls => e.target.classList.contains(cls))) {
-                if (e.target.classList.contains('quantity')) {
-                    const max = parseInt(e.target.max) || 999;
-                    const value = parseInt(e.target.value) || 0;
-                    
-                    if (value > max) {
-                        e.target.value = max;
-                        showNotification(`Maximum quantity is ${max}`, 'warning');
-                    }
-                }
-                
+            if (['quantity', 'discount', 'selling-price'].some(cls => e.target.classList.contains(cls))) {
                 calculateTotal();
             }
         });
 
         // Enhanced print functionality
         document.getElementById('print-button').addEventListener('click', () => {
-            const printList = document.getElementById('print-products-list');
-            printList.innerHTML = '';
-
-            let total = 0, discount = 0;
-
-            document.querySelectorAll('.product-row').forEach(row => {
-                const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-                const disc = parseFloat(row.querySelector('.discount')?.value || 0);
-                const price = parseFloat(row.querySelector('input[name="selling_prices[]"]')?.value || 0);
-
-                let name = 'Unknown';
-                const select = row.querySelector('.product-select');
-                if (select && !select.disabled) {
-                    name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
-                } else {
-                    const nameDiv = row.querySelector('.font-medium.text-gray-900');
-                    if (nameDiv) name = nameDiv.textContent?.trim() || 'Unknown';
-                }
-
-                const sub = Math.max(0, (price * qty) - disc);
-                total += sub;
-                discount += disc;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="border px-2 py-1">${name}</td>
-                    <td class="border px-2 py-1 text-right">${qty}</td>
-                    <td class="border px-2 py-1 text-right">${price.toFixed(2)}₪</td>
-                    <td class="border px-2 py-1 text-right">${disc.toFixed(2)}₪</td>
-                    <td class="border px-2 py-1 text-right">${sub.toFixed(2)}₪</td>
-                `;
-                printList.appendChild(tr);
-            });
-
-            document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
-            document.getElementById('print-total-discount').textContent = discount.toFixed(2) + '₪';
-
-            const customerSelect = document.querySelector('select[name="customer_id"]');
-            const selectedOption = customerSelect?.selectedOptions[0];
-            const customerName = selectedOption?.dataset.name || '';
-            const customerPhone = selectedOption?.dataset.phone || '';
-
-            document.getElementById('print-customer').textContent = customerName ? `Customer: ${customerName}` : '';
-            document.getElementById('print-customer-phone').textContent = customerPhone ? `Phone: ${customerPhone}` : '';
-
+            updatePrintAreas();
+            document.body.classList.remove('print-receipt');
             window.print();
         });
 
+        // Receipt print functionality
+        document.getElementById('print-receipt-button').addEventListener('click', () => {
+            updatePrintAreas();
+            document.body.classList.add('print-receipt');
+            window.print();
+            document.body.classList.remove('print-receipt');
+        });
+
+        function updatePrintAreas() {
+    const printList = document.getElementById('print-products-list');
+    const receiptList = document.getElementById('receipt-products-list');
+    
+    printList.innerHTML = '';
+    receiptList.innerHTML = '';
+
+    let total = 0, totalDiscount = 0;
+
+    document.querySelectorAll('.product-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+        const discountValue = parseFloat(row.querySelector('.discount')?.value || 0);
+        const price = parseFloat(row.querySelector('.selling-price')?.value || 
+                    row.querySelector('input[name="selling_prices[]"]')?.value || 0);
+        const discountType = row.querySelector('.discount-type')?.value || 'total';
+        
+        // Calculate actual discount amount based on type
+        let actualDiscount = 0;
+        if (discountType === 'per-unit') {
+            actualDiscount = discountValue * qty;
+        } else {
+            actualDiscount = discountValue;
+        }
+
+        let name = '{{ __('messages.Unknown') }}';
+        const select = row.querySelector('.product-select');
+        if (select && !select.disabled) {
+            name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || '{{ __('messages.Unknown') }}';
+        } else {
+            const nameDiv = row.querySelector('.font-medium.text-gray-900');
+            if (nameDiv) name = nameDiv.textContent?.trim() || '{{ __('messages.Unknown') }}';
+        }
+
+        const sub = Math.max(0, (price * qty) - actualDiscount);
+        total += sub;
+        totalDiscount += actualDiscount;
+
+        // Standard print table row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="border px-2 py-1">${name}</td>
+            <td class="border px-2 py-1 text-right">${qty}</td>
+            <td class="border px-2 py-1 text-right">${price.toFixed(2)}₪</td>
+            <td class="border px-2 py-1 text-right">${actualDiscount.toFixed(2)}₪</td>
+            <td class="border px-2 py-1 text-right">${sub.toFixed(2)}₪</td>
+        `;
+        printList.appendChild(tr);
+
+        // Receipt format
+        const receiptDiv = document.createElement('div');
+        receiptDiv.className = 'receipt-product-row';
+        receiptDiv.innerHTML = `
+            <div class="receipt-product-name">${name}</div>
+            <div class="receipt-product-details">
+                <span>${qty} x ${price.toFixed(2)}₪</span>
+                <span>${sub.toFixed(2)}₪</span>
+            </div>
+            ${actualDiscount > 0 ? `<div class="text-center text-xs">{{ __('messages.Discount') }}: -${actualDiscount.toFixed(2)}₪</div>` : ''}
+        `;
+        receiptList.appendChild(receiptDiv);
+    });
+    
+    const receiptDiv = document.createElement('div');
+    receiptDiv.className = 'receipt-product-row';
+    receiptDiv.innerHTML = `
+        <div class="border-t border-dashed my-2"></div>
+        <div class="border-t border-dashed my-2"></div>
+        <div class="text-center text-xs">{{ __('messages.Total') }}: ${total.toFixed(2)}₪</div>
+        ${totalDiscount > 0 ? `<div class="text-center text-xs">{{ __('messages.Discount') }}: -${totalDiscount.toFixed(2)}₪</div>` : ''}
+    `;
+    
+    receiptList.appendChild(receiptDiv);
+
+    // Update totals
+    document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
+    document.getElementById('print-total-discount').textContent = totalDiscount.toFixed(2) + '₪';
+
+    // Update customer info
+    let customerName = '';
+    if (isRestaurant) {
+        // For restaurant users, get the selected customer name from the dropdown
+        const customerSelect = document.getElementById('customer_id');
+        if (customerSelect && customerSelect.value) {
+            const selectedOption = customerSelect.selectedOptions[0];
+            customerName = selectedOption ? selectedOption.textContent.split(' - ')[0] : '';
+        }
+    } else {
+        // For non-restaurant users, get from the search input
+        const customerSearch = document.getElementById('customer_search');
+        customerName = customerSearch ? customerSearch.value : '';
+    }
+
+    const customerInfo = customerName ? `{{ __('messages.Customer') }}: ${customerName}` : '';
+
+    document.getElementById('print-customer').textContent = customerInfo;
+    document.getElementById('receipt-customer').textContent = customerInfo;
+
+    // Update bill ID if available
+    if (currentBillId) {
+        document.getElementById('current-bill-id').textContent = currentBillId;
+        document.getElementById('receipt-current-bill-id').textContent = currentBillId;
+    }
+}
         // Keyboard shortcuts
         document.addEventListener('keydown', e => {
             if (e.key === 'F2') {
@@ -1172,19 +1689,18 @@
                 }
             }
             
-            if (e.key === 'F1') {
+            if (e.key === 'F1' && !isRestaurant) {
                 e.preventDefault();
                 document.getElementById('barcode_input').focus();
             }
         });
 
-        // High-performance scroll handler with throttling
+        // High-performance scroll handler with throttling (now for both restaurant and regular users)
         document.getElementById('product-cards-container').addEventListener('scroll', (e) => {
             if (scrollTimeout) return;
             
             scrollTimeout = setTimeout(() => {
                 const container = e.target;
-                // Use more efficient scroll detection
                 const scrollTop = container.scrollTop;
                 const scrollHeight = container.scrollHeight;
                 const clientHeight = container.clientHeight;
@@ -1193,12 +1709,11 @@
                     fetchProducts();
                 }
                 scrollTimeout = null;
-            }, 150); // Slightly increased debounce for better performance
+            }, 150);
         });
 
         // Enhanced notification system with better performance
         function showNotification(message, type = 'info') {
-            // Reuse existing notifications if possible
             let notification = document.querySelector('.notification-toast');
             
             if (!notification) {
@@ -1214,21 +1729,17 @@
                 info: 'bg-blue-500'
             };
             
-            // Reset classes and apply new ones
             notification.className = `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
             notification.textContent = message;
             
-            // Clear any existing timeout
             if (notification.hideTimeout) {
                 clearTimeout(notification.hideTimeout);
             }
             
-            // Animate in
             requestAnimationFrame(() => {
                 notification.classList.remove('translate-x-full');
             });
             
-            // Auto remove
             notification.hideTimeout = setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => {
@@ -1249,11 +1760,10 @@
             const rows = document.querySelectorAll('.product-row');
             if (rows.length === 0) {
                 e.preventDefault();
-                showNotification('Please add at least one product to the bill', 'warning');
+                showNotification('{{ __('messages.Please add at least one product to the bill') }}', 'warning');
                 return;
             }
 
-            // Validate quantities
             let hasError = false;
             rows.forEach(row => {
                 const qty = parseInt(row.querySelector('.quantity')?.value || 0);
@@ -1261,7 +1771,7 @@
                 
                 if (qty > max) {
                     hasError = true;
-                    showNotification('Some products exceed available stock', 'error');
+                    showNotification('{{ __('messages.Some products exceed available stock') }}', 'error');
                 }
             });
 
@@ -1270,44 +1780,23 @@
                 return;
             }
 
-            showNotification('Creating bill...', 'info');
+            showNotification('{{ __('messages.Creating bill...') }}', 'info');
         });
 
         // Auto-focus management
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('barcode_input').focus();
-        });
-
-        // Prevent form submission on Enter in barcode input
-        document.getElementById('barcode_input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
+            if (!isRestaurant) {
+                document.getElementById('barcode_input').focus();
             }
         });
 
-        // Performance monitoring (optional - remove in production)
-        if (typeof performance !== 'undefined') {
-            let frameCount = 0;
-            let lastTime = performance.now();
-            
-            function measureFPS() {
-                frameCount++;
-                const currentTime = performance.now();
-                
-                if (currentTime >= lastTime + 1000) {
-                    const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-                    if (fps < 30) {
-                        console.warn('Low FPS detected:', fps);
-                    }
-                    frameCount = 0;
-                    lastTime = currentTime;
+        // Prevent form submission on Enter in barcode input (only for non-restaurant)
+        if (!isRestaurant) {
+            document.getElementById('barcode_input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
                 }
-                
-                requestAnimationFrame(measureFPS);
-            }
-            
-            // Start FPS monitoring (comment out in production)
-            // requestAnimationFrame(measureFPS);
+            });
         }
 
         // Cleanup function for better memory management
@@ -1316,13 +1805,18 @@
                 intersectionObserver.disconnect();
             }
             
-            // Clear any pending timeouts
             clearTimeout(debounceTimeout);
             clearTimeout(scrollTimeout);
+            clearTimeout(customerDebounceTimeout);
+            clearTimeout(paymentCustomerDebounceTimeout);
             
-            // Clear render queue
             renderQueue = [];
             isRenderingQueue = false;
         });
+
+        // Set current bill ID when bill is created (you'll need to handle this in your Laravel response)
+        window.setBillId = function(billId) {
+            currentBillId = billId;
+        };
     </script>
 </x-app-layout>

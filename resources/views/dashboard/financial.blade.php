@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -5,14 +12,14 @@
                 <svg class="w-6 h-6 lg:w-8 lg:h-8 mr-2 lg:mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
-                {{ __('Financial Dashboard') }}
+                {{ __('messages.Financial Dashboard') }}
             </h2>
             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                 <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
-                    Period: <span class="font-bold text-blue-600">{{ \Carbon\Carbon::parse($startDate)->format('M d') }} - {{ \Carbon\Carbon::parse($endDate)->format('M d, Y') }}</span>
+                    {{ __('messages.Period:') }} <span class="font-bold text-blue-600">{{ \Carbon\Carbon::parse($startDate)->format('M d') }} - {{ \Carbon\Carbon::parse($endDate)->format('M d, Y') }}</span>
                 </div>
                 <div class="text-xs sm:text-sm text-gray-600 bg-blue-100 px-3 py-2 rounded-full">
-                    Net Income: <span class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($summaryData['netIncome'], 0) }}</span>
+                    {{ __('messages.Net Income:') }} <span class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($summaryData['netIncome'], 0) }}</span>
                 </div>
             </div>
         </div>
@@ -26,17 +33,17 @@
             <div class="bg-white p-4 shadow-md rounded-lg mb-4 lg:mb-6 border border-gray-200 w-full">
                 <form method="GET" action="{{ route('dashboard.financial') }}" class="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
                     <div class="w-full sm:w-auto">
-                        <label class="block text-sm font-medium mb-1 text-gray-700">📅 Start Date</label>
-                        <input type="date" name="start_date" value="{{ $startDate }}" 
+                        <label class="block text-sm font-medium mb-1 text-gray-700">📅 {{ __('messages.Start Date') }}</label>
+                        <input type="date" name="start_date" value="{{ $startDate }}"
                                class="w-full sm:w-auto border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                     </div>
                     <div class="w-full sm:w-auto">
-                        <label class="block text-sm font-medium mb-1 text-gray-700">📅 End Date</label>
-                        <input type="date" name="end_date" value="{{ $endDate }}" 
+                        <label class="block text-sm font-medium mb-1 text-gray-700">📅 {{ __('messages.End Date') }}</label>
+                        <input type="date" name="end_date" value="{{ $endDate }}"
                                class="w-full sm:w-auto border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                     </div>
                     <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 text-sm font-medium">
-                        📊 Apply Filter
+                        📊 {{ __('messages.Apply Filter') }}
                     </button>
                 </form>
             </div>
@@ -47,7 +54,7 @@
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💰 Revenue</p>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💰 {{ __('messages.Revenue') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalRevenue'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-green-500">💰</div>
@@ -57,7 +64,7 @@
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈 Profit</p>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈 {{ __('messages.Profit') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalProfit'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-blue-500">📈</div>
@@ -67,7 +74,7 @@
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💸 Expenses</p>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💸 {{ __('messages.Expenses') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalExpenses'] + $summaryData['totalEmployeePayments'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-red-500">💸</div>
@@ -77,7 +84,7 @@
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💎 Net Income</p>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💎 {{ __('messages.Net Income') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold {{ $summaryData['netIncome'] < 0 ? 'text-red-600' : 'text-gray-900' }}">
                                     ${{ number_format($summaryData['netIncome'], 0) }}
                                 </p>
@@ -96,9 +103,9 @@
                     <!-- Revenue Chart - Full Width on Mobile -->
                     <div class="xl:col-span-2 bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-base lg:text-lg font-semibold text-gray-800">📈 Daily Revenue Trend</h3>
+                            <h3 class="text-base lg:text-lg font-semibold text-gray-800">📈 {{ __('messages.Daily Revenue Trend') }}</h3>
                             <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                ${{ number_format($revenueData['total'], 0) }} Total
+                                ${{ number_format($revenueData['total'], 0) }} {{ __('messages.Total') }}
                             </span>
                         </div>
                         <div class="h-64 lg:h-80">
@@ -110,34 +117,34 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3 lg:gap-4">
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">💰 Revenue Growth</h4>
+                                <h4 class="text-sm font-semibold text-gray-800">💰 {{ __('messages.Revenue Growth') }}</h4>
                                 <span class="text-lg">{{ $growthData['revenue']['growth'] >= 0 ? '📈' : '📉' }}</span>
                             </div>
                             <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['revenue']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['revenue']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['revenue']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['revenue']['growth'], 1) }}% vs previous
+                                {{ $growthData['revenue']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['revenue']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
                         </div>
 
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">💎 Profit Growth</h4>
+                                <h4 class="text-sm font-semibold text-gray-800">💎 {{ __('messages.Profit Growth') }}</h4>
                                 <span class="text-lg">{{ $growthData['profit']['growth'] >= 0 ? '💰' : '💸' }}</span>
                             </div>
                             <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['profit']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['profit']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['profit']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['profit']['growth'], 1) }}% vs previous
+                                {{ $growthData['profit']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['profit']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
                         </div>
 
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">🎯 Expense Control</h4>
+                                <h4 class="text-sm font-semibold text-gray-800">🎯 {{ __('messages.Expense Control') }}</h4>
                                 <span class="text-lg">{{ $growthData['expenses']['growth'] <= 0 ? '👍' : '⚠️' }}</span>
                             </div>
                             <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['expenses']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['expenses']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['expenses']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['expenses']['growth'], 1) }}% vs previous
+                                {{ $growthData['expenses']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['expenses']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
                         </div>
                     </div>
@@ -149,7 +156,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💎 Daily Profit</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💎 {{ __('messages.Daily Profit') }}</h3>
                             <span class="text-sm text-gray-600">${{ number_format($profitData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
@@ -159,7 +166,7 @@
 
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💸 Expenses</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💸 {{ __('messages.Expenses') }}</h3>
                             <span class="text-sm text-gray-600">${{ number_format($expenseData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
@@ -169,9 +176,9 @@
 
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-start justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🤝 Customer Payments</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🤝 {{ __('messages.Customer Payments') }}</h3>
                             <div class="text-xs text-gray-600 mt-1 sm:mt-0 lg:mt-1">
-                                ↗️ ${{ number_format($customerPaymentData['totalReceived'], 0) }} | 
+                                ↗️ ${{ number_format($customerPaymentData['totalReceived'], 0) }} |
                                 ↘️ ${{ number_format($customerPaymentData['totalPaid'], 0) }}
                             </div>
                         </div>
@@ -187,24 +194,24 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
                     <!-- Quick Stats -->
                     <div class="lg:col-span-1 xl:col-span-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 lg:p-5 rounded-lg shadow-md text-white">
-                        <h3 class="text-sm lg:text-md font-semibold mb-4">📊 Quick Stats</h3>
+                        <h3 class="text-sm lg:text-md font-semibold mb-4">📊 {{ __('messages.Quick Stats') }}</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💹 Profit Margin</span>
+                                <span class="text-sm text-gray-300">💹 {{ __('messages.Profit Margin') }}</span>
                                 <span class="font-bold text-white">
                                     {{ $summaryData['totalRevenue'] > 0 ? number_format(($summaryData['totalProfit'] / $summaryData['totalRevenue']) * 100, 1) : 0 }}%
                                 </span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💚 Customer Credit</span>
+                                <span class="text-sm text-gray-300">💚 {{ __('messages.Customer Credit') }}</span>
                                 <span class="font-bold text-green-400">${{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💔 Our Debt</span>
+                                <span class="text-sm text-gray-300">💔 {{ __('messages.Our Debt') }}</span>
                                 <span class="font-bold text-red-400">${{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">⚠️ Damage Loss</span>
+                                <span class="text-sm text-gray-300">⚠️ {{ __('messages.Damage Loss') }}</span>
                                 <span class="font-bold text-orange-400">${{ number_format($damagedData['total'], 0) }}</span>
                             </div>
                         </div>
@@ -213,7 +220,7 @@
                     <!-- Employee Payments -->
                     <div class="lg:col-span-1 xl:col-span-2 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥 Employee Payments</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥 {{ __('messages.Employee Payments') }}</h3>
                             <span class="text-sm text-gray-600">${{ number_format($employeePaymentData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
@@ -224,16 +231,16 @@
                     <!-- Damaged Products -->
                     <div class="lg:col-span-2 xl:col-span-1 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">⚠️ Damaged Items</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">⚠️ {{ __('messages.Damaged Items') }}</h3>
                             <span class="text-lg">📦</span>
                         </div>
                         <div class="mb-4 grid grid-cols-2 gap-4">
                             <div class="text-center">
-                                <span class="block text-sm text-gray-600">Items:</span>
+                                <span class="block text-sm text-gray-600">{{ __('messages.Items:') }}</span>
                                 <span class="block font-semibold text-gray-900 text-lg">{{ $damagedData['count'] }}</span>
                             </div>
                             <div class="text-center">
-                                <span class="block text-sm text-gray-600">Value:</span>
+                                <span class="block text-sm text-gray-600">{{ __('messages.Value:') }}</span>
                                 <span class="block font-semibold text-red-600 text-lg">${{ number_format($damagedData['total'], 0) }}</span>
                             </div>
                         </div>
@@ -249,7 +256,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💚 Customers Owing Us</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💚 {{ __('messages.Customers Owing Us') }}</h3>
                             <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
                                 ${{ number_format($customerBalanceData['totalOwing'], 0) }}
                             </span>
@@ -261,7 +268,7 @@
 
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💔 Customers We Owe</h3>
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💔 {{ __('messages.Customers We Owe') }}</h3>
                             <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
                                 ${{ number_format($customerBalanceData['totalOwed'], 0) }}
                             </span>
@@ -277,19 +284,19 @@
             <div class="w-full bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                 <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏆 Top Performing Products</h3>
-                        <span class="text-sm text-gray-600">Performance Ranking</span>
+                        <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏆 {{ __('messages.Top Performing Products') }}</h3>
+                        <span class="text-sm text-gray-600">{{ __('messages.Performance Ranking') }}</span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Sold</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
+                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Rank')}}</th>
+                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Product')}}</th>
+                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Qty Sold')}}</th>
+                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Revenue')}}</th>
+                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Profit')}}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
@@ -403,9 +410,9 @@
                 new Chart(revenueCanvas, {
                     type: 'line',
                     data: {
-                        labels: revenueData.labels.length > 0 ? revenueData.labels : ['No Data'],
+                        labels: revenueData.labels.length > 0 ? revenueData.labels : ['messages.No Data'],
                         datasets: [{
-                            label: 'Revenue',
+                            label: '{{__('messages.Revenue')}}',
                             data: revenueData.data.length > 0 ? revenueData.data : [0],
                             borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -461,9 +468,9 @@
                 new Chart(profitCanvas, {
                     type: 'line',
                     data: {
-                        labels: profitData.labels.length > 0 ? profitData.labels : ['No Data'],
+                        labels: profitData.labels.length > 0 ? profitData.labels : ['{{__('messages.No Data')}}'],
                         datasets: [{
-                            label: 'Profit',
+                            label: '{{__('messages.Profit')}}',
                             data: profitData.data.length > 0 ? profitData.data : [0],
                             borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -556,16 +563,16 @@
                 new Chart(customerPaymentCanvas, {
                     type: 'bar',
                     data: {
-                        labels: customerPaymentData.labels.length > 0 ? customerPaymentData.labels : ['No Data'],
+                        labels: customerPaymentData.labels.length > 0 ? customerPaymentData.labels : ['{{__('messages.No Data')}}'],
                         datasets: [{
-                            label: 'Received',
+                            label: '{{__('messages.Received')}}',
                             data: customerPaymentData.received.length > 0 ? customerPaymentData.received : [0],
                             backgroundColor: 'rgba(34, 197, 94, 0.8)',
                             borderColor: '#22c55e',
                             borderWidth: 1,
                             borderRadius: 4
                         }, {
-                            label: 'Paid',
+                            label: '{{__('messages.Paid')}}',
                             data: customerPaymentData.paid.length > 0 ? customerPaymentData.paid : [0],
                             backgroundColor: 'rgba(239, 68, 68, 0.8)',
                             borderColor: '#ef4444',

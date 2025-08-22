@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center space-x-4">
@@ -8,7 +15,7 @@
                 </svg>
             </a>
             <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('Add New Employee') }}
+                {{ __('messages.Add New Employee') }}
             </h2>
         </div>
     </x-slot>
@@ -17,7 +24,7 @@
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Employee Information</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{__('messages.Employee Information')}}</h3>
                 </div>
 
                 <form action="{{ route('admin.employees.store') }}" method="POST" class="p-6 space-y-6">
@@ -25,14 +32,14 @@
 
                     <!-- Name -->
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">{{__('messages.Full Name')}}</label>
                         <input type="text" 
                                name="name" 
                                id="name" 
                                value="{{ old('name') }}" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter employee's full name">
+                               placeholder="{{ __('messages.Enter employee\'s full name') }}">
                         @error('name') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -40,14 +47,14 @@
 
                     <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">{{__('messages.Email Address')}}</label>
                         <input type="email" 
                                name="email" 
                                id="email" 
                                value="{{ old('email') }}" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter employee's email address">
+                               placeholder="{{ __('messages.Enter employee\'s email address') }}">
                         @error('email') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -55,13 +62,13 @@
 
                     <!-- Password -->
                     <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">{{__('messages.Password')}}</label>
                         <input type="password" 
                                name="password" 
                                id="password" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter password for the employee">
+                               placeholder="{{ __('messages.Enter password for the employee') }}">
                         @error('password') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -69,12 +76,12 @@
 
                     <!-- Shop Owner -->
                     <div>
-                        <label for="shop_owner_id" class="block text-sm font-medium text-gray-700 mb-2">Assign to Shop Owner</label>
+                        <label for="shop_owner_id" class="block text-sm font-medium text-gray-700 mb-2">{{__('messages.Assign to Shop Owner')}}</label>
                         <select name="shop_owner_id" 
                                 id="shop_owner_id" 
                                 required
                                 class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
-                            <option value="">Select Shop Owner</option>
+                            <option value="">{{__('messages.Select Shop Owner')}}</option>
                             @foreach($shopOwners as $owner)
                                 <option value="{{ $owner->id }}" {{ old('shop_owner_id') == $owner->id ? 'selected' : '' }}>
                                     {{ $owner->name }} ({{ $owner->email }})
@@ -89,7 +96,7 @@
                     <!-- Shop Owners Info -->
                     @if($shopOwners->count() > 0)
                         <div class="bg-blue-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-blue-900 mb-2">Available Shop Owners ({{ $shopOwners->count() }}):</h4>
+                            <h4 class="text-sm font-medium text-blue-900 mb-2">{{__('messages.Available Shop Owners')}} ({{ $shopOwners->count() }}):</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-blue-800">
                                 @foreach($shopOwners->take(4) as $owner)
                                     <div class="flex items-center space-x-2">
@@ -113,15 +120,15 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-yellow-800">No Shop Owners Available</h3>
+                                    <h3 class="text-sm font-medium text-yellow-800">{{__('messages.No Shop Owners Available')}}</h3>
                                     <div class="mt-2 text-sm text-yellow-700">
-                                        <p>You need to create shop owners first before adding employees.</p>
+                                        <p>{{__('messages.You need to create shop owners first before adding employees')}}.</p>
                                     </div>
                                     <div class="mt-4">
                                         <div class="-mx-2 -my-1.5 flex">
                                             <a href="{{ route('admin.shop-owners.create') }}" 
                                                class="bg-yellow-50 px-2 py-1.5 rounded-md text-sm font-medium text-yellow-800 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600">
-                                                Create Shop Owner
+                                                {{__('messages.Create Shop Owner')}}
                                             </a>
                                         </div>
                                     </div>
@@ -134,12 +141,12 @@
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                         <a href="{{ route('admin.employees.index') }}" 
                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                            Cancel
+                            {{__('messages.Cancel')}}
                         </a>
                         <button type="submit"
                                 class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
                                 {{ $shopOwners->count() == 0 ? 'disabled' : '' }}>
-                            Create Employee
+                            {{__('messages.Create Employee')}}
                         </button>
                     </div>
                 </form>

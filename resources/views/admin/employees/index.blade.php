@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -9,12 +16,12 @@
                     </svg>
                 </a>
                 <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                    {{ __('All Employees') }}
+                    {{ __('messages.All Employees') }}
                 </h2>
             </div>
-            <a href="{{ route('admin.employees.create') }}" 
+            <a href="{{ route('admin.employees.create') }}"
                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                Add Employee
+                {{ __('messages.Add Employee') }}
             </a>
         </div>
     </x-slot>
@@ -41,7 +48,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Total Employees</p>
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Total Employees') }}</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ $employees->count() }}</p>
                             </div>
                         </div>
@@ -59,7 +66,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Active Shops</p>
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Active Shops') }}</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ $employees->pluck('shopOwner')->unique('id')->count() }}</p>
                             </div>
                         </div>
@@ -77,7 +84,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Recent Hires</p>
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Recent Hires') }}</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ $employees->where('created_at', '>=', now()->subDays(30))->count() }}</p>
                             </div>
                         </div>
@@ -89,10 +96,10 @@
             <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900">Employees List</h3>
-                        <a href="{{ route('admin.employees.create') }}" 
+                        <h3 class="text-lg font-semibold text-gray-900">{{__('messages.Employees List')}}</h3>
+                        <a href="{{ route('admin.employees.create') }}"
                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                            Add Employee
+                            {{ __('messages.Add Employee') }}
                         </a>
                     </div>
                 </div>
@@ -101,11 +108,11 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop Owner</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Employee') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Shop Owner') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Contact') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Joined') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -149,22 +156,22 @@
                                             @if($employee->shopOwner)
                                                 <a href="{{ route('admin.shop-owners.show', $employee->shopOwner->id) }}" 
                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
-                                                    View Shop
+                                                    {{ __('messages.View Shop') }}
                                                 </a>
                                             @endif
-                                            <a href="{{ route('admin.employees.edit', $employee->id) }}" 
+                                            <a href="{{ route('admin.employees.edit', $employee->id) }}"
                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                Edit
+                                                {{ __('messages.Edit') }}
                                             </a>
-                                            <form action="{{ route('admin.employees.destroy', $employee->id) }}" 
-                                                  method="POST" 
+                                            <form action="{{ route('admin.employees.destroy', $employee->id) }}"
+                                                  method="POST"
                                                   class="inline"
-                                                  onsubmit="return confirm('Are you sure you want to delete this employee?');">
+                                                  onsubmit="return confirm('{{ __('messages.Are you sure you want to delete this employee?') }}');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" 
+                                                <button type="submit"
                                                         class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    Delete
+                                                    {{ __('messages.Delete') }}
                                                 </button>
                                             </form>
                                         </div>
@@ -177,11 +184,11 @@
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                             </svg>
-                                            <p class="text-lg font-medium">No employees found</p>
-                                            <p class="text-sm text-gray-400 mt-1">Get started by adding your first employee</p>
-                                            <a href="{{ route('admin.employees.create') }}" 
+                                            <p class="text-lg font-medium">{{ __('messages.No employees found') }}</p>
+                                            <p class="text-sm text-gray-400 mt-1">{{ __('messages.Get started by adding your first employee') }}</p>
+                                            <a href="{{ route('admin.employees.create') }}"
                                                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                                Add Employee
+                                                {{ __('messages.Add Employee') }}
                                             </a>
                                         </div>
                                     </td>

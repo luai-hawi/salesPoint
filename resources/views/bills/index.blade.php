@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     {{-- Bills Index Header --}}
 <x-slot name="header">
@@ -6,17 +13,17 @@
             <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            {{ __('Bills Management') }}
+            {{ __('messages.Bills Management') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Total Bills: <span class="font-bold text-blue-600">{{ $bills->total() }}</span>
+                {{ __('bills.Total Bills') }}: <span class="font-bold text-blue-600">{{ $bills->total() }}</span>
             </div>
             <a href="{{ route('bills.create') }}" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                New Bill
+                {{ __('messages.New Bill') }}
             </a>
         </div>
     </div>
@@ -47,14 +54,14 @@
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
-                            Clear Filter
+                            {{ __('messages.Clear') }}
                         </a>
                     @endif
                 </div>
                 
                 <!-- Search Box -->
                 <div class="relative">
-                    <input type="text" id="searchInput" placeholder="Search bills..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" id="searchInput" placeholder="{{ __('messages.Search...') }}" class="px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
@@ -66,7 +73,7 @@
                 <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-6 text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-green-100 text-sm font-medium">Total Sales</p>
+                            <p class="text-green-100 text-sm font-medium">{{ __('bills.Total Sales') }}</p>
                             <p class="text-2xl font-bold">${{ number_format($totalSales, 2) }}</p>
                         </div>
                         <div class="bg-green-500 bg-opacity-30 rounded-full p-3">
@@ -80,7 +87,7 @@
                 <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl p-6 text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-blue-100 text-sm font-medium">Total Profit</p>
+                            <p class="text-blue-100 text-sm font-medium">{{ __('bills.Total Profit') }}</p>
                             <p class="text-2xl font-bold">${{ number_format($totalProfit, 2) }}</p>
                         </div>
                         <div class="bg-blue-500 bg-opacity-30 rounded-full p-3">
@@ -94,9 +101,9 @@
                 <div class="bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl p-6 text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-purple-100 text-sm font-medium">Total Bills</p>
+                            <p class="text-purple-100 text-sm font-medium">{{ __('bills.Total Bills') }}</p>
                             <p class="text-2xl font-bold">{{ $bills->total() }}</p>
-                            <p class="text-purple-100 text-xs">{{ $selectedDate ? 'Today' : 'All time' }}</p>
+                            <p class="text-purple-100 text-xs">{{ $selectedDate ? __('bills.Today') : __('bills.All time') }}</p>
                         </div>
                         <div class="bg-purple-500 bg-opacity-30 rounded-full p-3">
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -112,18 +119,18 @@
         <!-- Bills Table -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h3 class="text-lg font-semibold text-gray-800">Bills List</h3>
+                <h3 class="text-lg font-semibold text-gray-800">{{ __('bills.Bills List') }}</h3>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200" id="billsTable">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bill Info</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Bill Info') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Amount') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Note') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Date') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -147,23 +154,23 @@
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">#{{ $bill->id }}</div>
-                                            <div class="text-sm text-gray-500">{{ $bill->products->count() }} items</div>
+                                            <div class="text-sm text-gray-500">{{ $bill->products->count() }} {{ __('bills.items') }}</div>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-semibold text-gray-900">${{ number_format($bill->total_price, 2) }}</div>
                                     <div class="text-sm text-gray-500">
-                                        Profit: <span class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($profit, 2) }}</span>
+                                        {{ __('bills.Profit') }}: <span class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($profit, 2) }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ $bill->note }}">
-                                        {{ $bill->note ?: 'No note' }}
+                                        {{ $bill->note ?: __('bills.No note') }}
                                     </div>
                                     @if(str_contains($bill->note, 'Damaged'))
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                            Damaged
+                                            {{ __('bills.Damaged') }}
                                         </span>
                                     @endif
                                 </td>
@@ -178,18 +185,18 @@
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                             </svg>
-                                            Edit
+                                            {{ __('bills.Edit') }}
                                         </a>
                                         <form action="{{ route('bills.destroy', $bill->id) }}" method="POST" class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" 
-                                                    onclick="return confirm('Are you sure you want to delete this bill? This will restore product quantities.')"
+                                            <button type="submit"
+                                                    onclick="return confirm('{{ __('bills.Are you sure you want to delete this bill? This will restore product quantities.') }}')"
                                                     class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition-colors">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                 </svg>
-                                                Delete
+                                                {{ __('messages.Delete') }}
                                             </button>
                                         </form>
                                     </div>
@@ -202,8 +209,8 @@
                                         <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
-                                        <h3 class="text-lg font-medium text-gray-900 mb-1">No bills found</h3>
-                                        <p class="text-gray-500">{{ $selectedDate ? 'No bills found for this date.' : 'Start by creating your first bill.' }}</p>
+                                        <h3 class="text-lg font-medium text-gray-900 mb-1">{{ __('bills.No bills found') }}</h3>
+                                        <p class="text-gray-500">{{ $selectedDate ? __('bills.No bills found for this date.') : __('bills.Start by creating your first bill.') }}</p>
                                     </div>
                                 </td>
                             </tr>

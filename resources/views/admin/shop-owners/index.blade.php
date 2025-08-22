@@ -1,12 +1,19 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('All Users Management') }}
+                {{ __('messages.All Users Management') }}
             </h2>
             <a href="{{ route('admin.shop-owners.create') }}" 
                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                Add New User
+                {{ __('messages.Add New User') }}
             </a>
         </div>
     </x-slot>
@@ -23,18 +30,18 @@
             <!-- Users Table -->
             <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Users List</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Users List') }}</h3>
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.User') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Role') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Status') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Joined') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -62,7 +69,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                             {{ $user->role === 'disabled' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                                            {{ $user->role === 'disabled' ? 'Disabled' : 'Active' }}
+                                            {{ $user->role === 'disabled' ? __('messages.Disabled') : __('messages.Active') }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -70,25 +77,25 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center space-x-3">
-                                            @if($user->role === 'shop_owner')
+                                            @if($user->role === 'shop_owner' || $user->role === 'restaurant' || $user->role === 'merchant')
                                                 <a href="{{ route('admin.shop-owners.show', $user->id) }}" 
                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
-                                                    View Shop
+                                                    {{ __('messages.View Shop') }}
                                                 </a>
                                             @endif
                                             <a href="{{ route('admin.shop-owners.edit', $user->id) }}" 
                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                Edit
+                                                {{ __('messages.Edit') }}
                                             </a>
                                             <form action="{{ route('admin.shop-owners.destroy', $user->id) }}" 
                                                   method="POST" 
                                                   class="inline"
-                                                  onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                                  onsubmit="return confirm('{{ __('messages.Are you sure you want to delete this user?') }}');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" 
                                                         class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    Delete
+                                                    {{ __('messages.Delete') }}
                                                 </button>
                                             </form>
                                         </div>
@@ -101,11 +108,11 @@
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                                             </svg>
-                                            <p class="text-lg font-medium">No users found</p>
-                                            <p class="text-sm text-gray-400 mt-1">Get started by creating your first user</p>
+                                            <p class="text-lg font-medium">{{ __('messages.No users found') }}</p>
+                                            <p class="text-sm text-gray-400 mt-1">{{ __('messages.Get started by creating your first user.') }}</p>
                                             <a href="{{ route('admin.shop-owners.create') }}" 
                                                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                                Add User
+                                                {{ __('messages.Add User') }}
                                             </a>
                                         </div>
                                     </td>

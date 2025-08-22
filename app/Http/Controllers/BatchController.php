@@ -202,6 +202,7 @@ class BatchController extends Controller
      */
     public function destroy(Batch $batch)
     {
+        
         try {
             Log::info('BatchController destroy request:', ['batch_id' => $batch->id]);
             
@@ -216,14 +217,12 @@ class BatchController extends Controller
             }
 
             DB::beginTransaction();
-
             $product = $batch->product;
             $oldProductQty = $product->quantity;
             $oldProductAvg = $product->cost_price;
 
             // Update product quantity
             $product->quantity -= $batch->quantity;
-
             // Recalculate average cost price
             if ($oldProductQty > 0) {
                 $newQty = $oldProductQty - $batch->quantity;
@@ -233,6 +232,7 @@ class BatchController extends Controller
                     $product->cost_price = 0; // No stock left
                 }
             }
+            
 
             $product->cost_price = round($product->cost_price, 2);
             $product->save();

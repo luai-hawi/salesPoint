@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
    {{-- Create Bill Header --}}
 <x-slot name="header">
@@ -6,17 +13,17 @@
             <svg class="w-8 h-8 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
-            {{ __('Create New Bill') }}
+            {{ __('messages.Create New Bill') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Mode: <span class="font-bold text-green-600">Create</span>
+                {{ __('bills.Mode') }}: <span class="font-bold text-green-600">{{ __('bills.Create') }}</span>
             </div>
             <a href="{{ route('bills.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Back to Bills
+                {{ __('bills.Back to Bills') }}
             </a>
         </div>
     </div>
@@ -32,15 +39,15 @@
                     <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    Bill Information
+                    {{ __('messages.Bill Information') }}
                 </h3>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Customer Selection -->
                     <div>
-                        <label for="customer_id" class="block text-sm font-medium text-gray-700 mb-2">Customer (Optional)</label>
-                        <select name="customer_id" id="customer_id" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">Walk-in Customer</option>
+                        <label for="customer_id" class="block text-sm font-medium text-gray-700 mb-2">{{ __('bills.Customer (Optional)') }}</label>
+                        <select name="customer_id" id="customer_id" class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">{{ __('bills.Walk-in Customer') }}</option>
                             @if(isset($customers))
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}">{{ $customer->name }} - Balance: ${{ number_format($customer->balance, 2) }}</option>
@@ -55,18 +62,18 @@
                             <input type="checkbox" name="is_damaged" id="is_damaged" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
                         </div>
                         <div class="ml-3">
-                            <label for="is_damaged" class="text-sm font-medium text-gray-700">Damaged Bill</label>
-                            <p class="text-xs text-gray-500">Mark this bill as damaged (full discount applied)</p>
+                            <label for="is_damaged" class="text-sm font-medium text-gray-700">{{ __('bills.Damaged Bill') }}</label>
+                            <p class="text-xs text-gray-500">{{ __('bills.Mark this bill as damaged (full discount applied)') }}</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Note -->
                 <div class="mt-6">
-                    <label for="note" class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                    <label for="note" class="block text-sm font-medium text-gray-700 mb-2">{{ __('bills.Note') }}</label>
                     <textarea name="note" id="note" rows="3" 
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                              placeholder="Add a note to this bill..."></textarea>
+                              placeholder="{{ __('bills.Add a note to this bill...') }}"></textarea>
                 </div>
             </div>
 
@@ -76,7 +83,7 @@
                     <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Add Products
+                    {{ __('bills.Add Products') }}
                 </h3>
 
                 <!-- Barcode Scanner -->
@@ -85,23 +92,23 @@
                         <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
                         </svg>
-                        <h4 class="text-lg font-medium text-gray-800">Barcode Scanner</h4>
+                        <h4 class="text-lg font-medium text-gray-800">{{ __('bills.Barcode Scanner') }}</h4>
                     </div>
                     <div class="flex space-x-3">
                         <input type="text" id="barcode_input" 
-                               placeholder="Scan barcode or type manually..." 
+                               placeholder="{{ __('bills.Scan barcode or type manually...') }}" 
                                class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-mono" 
                                autocomplete="off">
                         <button type="button" id="clear-barcode" 
                                 class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg transition-colors">
-                            Clear
+                            {{ __('bills.Clear') }}
                         </button>
                     </div>
                     <p class="text-sm text-gray-600 mt-2">
                         <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Scan a barcode or press Enter to add the product automatically
+                        {{ __('bills.Scan a barcode or press Enter to add the product automatically') }}
                     </p>
                 </div>
 
@@ -112,7 +119,7 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Add Product Manually
+                        {{ __('bills.Add Product Manually') }}
                     </button>
                 </div>
             </div>
@@ -124,7 +131,7 @@
                         <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
-                        Selected Products
+                        {{ __('bills.Selected Products') }}
                         <span id="products-count" class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">0</span>
                     </h3>
                 </div>
@@ -133,12 +140,12 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Product') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Quantity') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Unit Price') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Discount') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Total') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('bills.Action') }}</th>
                             </tr>
                         </thead>
                         <tbody id="products-list" class="bg-white divide-y divide-gray-200">
@@ -152,7 +159,7 @@
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <div class="flex justify-between items-center">
                     <div class="text-right">
-                        <p class="text-sm text-gray-600">Grand Total</p>
+                        <p class="text-sm text-gray-600">{{ __('bills.Grand Total') }}</p>
                         <p class="text-3xl font-bold text-gray-900" id="grand-total">$0.00</p>
                         <input type="hidden" name="total_price" id="total_price" value="0">
                     </div>
@@ -163,14 +170,14 @@
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
-                            Cancel
+                            {{ __('bills.Cancel') }}
                         </a>
                         <button type="submit" id="create-bill-btn" disabled
                                 class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg transition-colors flex items-center font-medium">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
-                            Create Bill
+                            {{ __('messages.Create Bill') }}
                         </button>
                     </div>
                 </div>
@@ -220,11 +227,11 @@
                 // Update row total display
                 const totalCell = row.querySelector('.row-total');
                 if (totalCell) {
-                    totalCell.textContent = ' + formatPrice(lineTotal);
+                    totalCell.textContent = '$' + formatPrice(lineTotal);
                 }
             });
             
-            document.getElementById('grand-total').textContent = ' + formatPrice(total);
+            document.getElementById('grand-total').textContent = '$' + formatPrice(total);
             document.getElementById('total_price').value = formatPrice(total);
         }
 
@@ -249,15 +256,15 @@
                             </div>
                         </div>
                         <div class="ml-4">
-                            <select name="product_ids[]" class="product-select w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" ${product ? 'disabled' : ''} required>
-                                <option value="">Select Product</option>
+                            <select name="product_ids[]" class="product-select w-full px-8 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" ${product ? 'disabled' : ''} required>
+                                <option value="">{{ __('bills.Select Product') }}</option>
                                 ${products.map(p => `
                                     <option value="${p.id}" ${product && p.id === product.id ? 'selected' : ''}>
                                         ${p.name} (${formatPrice(p.price)})
                                     </option>
                                 `).join('')}
                             </select>
-                            ${product ? `<div class="text-sm text-gray-500 mt-1">${product.barcode || 'No barcode'}</div>` : ''}
+                            ${product ? `<div class="text-sm text-gray-500 mt-1">${product.barcode || '{{ __('bills.No barcode') }}'}</div>` : ''}
                         </div>
                     </div>
                 </td>
@@ -299,7 +306,7 @@
                     addProductRow(product);
                     barcodeInput.value = '';
                 } else {
-                    alert('Product not found for barcode: ' + code);
+                    alert('{{ __('bills.Product not found for barcode: ') }}' + code);
                 }
             }
         });
@@ -337,7 +344,7 @@
                         row.querySelector('input[name="selling_prices[]"]').value = product.price;
                         
                         // Update unit price display
-                        row.querySelector('.unit-price').textContent = ' + formatPrice(product.price);
+                        row.querySelector('.unit-price').textContent = '$' + formatPrice(product.price);
                     }
                 } else {
                     // Clear values
@@ -358,7 +365,7 @@
                 discountInputs.forEach(input => {
                     const row = input.closest('.product-row');
                     const quantity = parseFloat(row.querySelector('.quantity').value || 0);
-                    const unitPriceText = row.querySelector('.unit-price').textContent.replace(', '');
+                    const unitPriceText = row.querySelector('.unit-price').textContent.replace('$', '');
                     const unitPrice = parseFloat(unitPriceText || 0);
                     input.value = quantity * unitPrice;
                     input.disabled = true;

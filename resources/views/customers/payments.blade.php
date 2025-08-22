@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     {{-- Customer Payment History Header --}}
 <x-slot name="header">
@@ -6,25 +13,25 @@
             <svg class="w-8 h-8 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
             </svg>
-            {{ __('Payment History') }}
+            {{ __('messages.Payment History') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Customer: <span class="font-bold text-green-600">{{ $customer->name }}</span>
+                {{ __('messages.Customer') }}: <span class="font-bold text-green-600">{{ $customer->name }}</span>
             </div>
             <div class="flex space-x-3">
                 <a href="{{ route('customers.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Back to Customers
+                    {{ __('messages.Back to Customers') }}
                 </a>
                 <a href="{{ route('customers.edit', $customer) }}"
                     class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
-                    Edit Customer
+                    {{ __('messages.Edit Customer') }}
                 </a>
             </div>
         </div>
@@ -59,7 +66,7 @@
                         <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                         </svg>
-                        Current Balance
+                        {{ __('messages.Current Balance') }}
                     </h3>
                     <div class="text-center">
                         @if($customer->balance < 0)
@@ -67,21 +74,21 @@
                                 ${{ number_format(abs($customer->balance), 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                                Outstanding Debt
+                                {{ __('messages.Outstanding Debt') }}
                             </div>
                         @elseif($customer->balance > 0)
                             <div class="text-3xl font-bold text-green-600 mb-2" id="customer-balance">
                                 ${{ number_format($customer->balance, 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                Credit Balance
+                                {{ __('messages.Credit Balance') }}
                             </div>
                         @else
                             <div class="text-3xl font-bold text-gray-600 mb-2" id="customer-balance">
                                 $0.00
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                                Balanced Account
+                                {{ __('messages.Balanced Account') }}
                             </div>
                         @endif
                     </div>
@@ -89,24 +96,50 @@
 
                 <!-- Quick Stats -->
                 <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Stats</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ __('messages.Payment Stats') }}</h3>
                     <div class="space-y-3">
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Total Payments:</span>
+                            <span class="text-sm text-gray-500">{{ __('messages.Total Payments') }}:</span>
                             <span class="text-sm font-medium text-gray-900">{{ $payments->count() }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Total Paid:</span>
+                            <span class="text-sm text-gray-500">{{ __('messages.Total Paid') }}:</span>
                             <span class="text-sm font-medium text-green-600">
                                 ${{ number_format($payments->where('amount', '>', 0)->sum('amount'), 2) }}
                             </span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Total Debt:</span>
+                            <span class="text-sm text-gray-500">{{ __('messages.Total Debt') }}:</span>
                             <span class="text-sm font-medium text-red-600">
                                 ${{ number_format(abs($payments->where('amount', '<', 0)->sum('amount')), 2) }}
                             </span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Print Filter Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        {{ __('messages.Print Report') }}
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.From Date') }}</label>
+                            <input type="date" id="print-from-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.To Date') }}</label>
+                            <input type="date" id="print-to-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <button onclick="printPaymentReport()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            </svg>
+                            {{ __('messages.Print Report') }}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -119,7 +152,7 @@
                         <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Add New Payment
+                        {{ __('messages.Add New Payment') }}
                     </h3>
                     
                     <form method="POST" action="{{ route('customers.payments.store', $customer->id) }}" class="space-y-4" id="payment-form">
@@ -127,7 +160,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Amount <span class="text-red-500">*</span>
+                                    {{ __('messages.Amount') }} <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-3 text-gray-500">$</span>
@@ -135,23 +168,23 @@
                                            step="0.01" 
                                            name="amount" 
                                            id="amount"
-                                           placeholder="0.00"
+                                           placeholder="{{ __('messages.Enter amount') }}"
                                            class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
                                            required>
                                 </div>
                                 <p class="mt-1 text-xs text-gray-500">
-                                    Positive for payments, negative for new debt
+                                    {{ __('messages.Positive for payments, negative for new debt') }}
                                 </p>
                             </div>
                             
                             <div>
                                 <label for="note" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Note (Optional)
+                                    {{ __('messages.Note (Optional)') }}
                                 </label>
                                 <input type="text" 
                                        name="note" 
                                        id="note"
-                                       placeholder="Payment description..."
+                                       placeholder="{{ __('messages.Payment description...') }}"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                             </div>
                             
@@ -161,7 +194,7 @@
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
-                                    Add Payment
+                                    {{ __('messages.Add Payment') }}
                                 </button>
                             </div>
                         </div>
@@ -175,9 +208,9 @@
                             <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                             </svg>
-                            Payment History
+                            {{ __('messages.Payment History') }}
                             <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                {{ $payments->count() }} records
+                                {{ $payments->count() }} {{ __('messages.records') }}
                             </span>
                         </h3>
                     </div>
@@ -187,11 +220,11 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Payment ID') }}</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Amount') }}</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Note') }}</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Date') }}</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -215,7 +248,7 @@
                                                     <div class="ml-4">
                                                         <div class="text-sm font-medium text-gray-900">#{{ $payment->id }}</div>
                                                         <div class="text-sm text-gray-500">
-                                                            {{ $payment->amount >= 0 ? 'Payment' : 'Debt' }}
+                                                            {{ $payment->amount >= 0 ? __('messages.Payment') : __('messages.Debt') }}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -231,7 +264,7 @@
                                                 <input type="text" 
                                                        class="edit-note w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                        value="{{ $payment->note }}"
-                                                       placeholder="No note">
+                                                       placeholder="{{ __('messages.No note') }}">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 <div>{{ $payment->created_at->format('M d, Y') }}</div>
@@ -244,14 +277,14 @@
                                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                         </svg>
-                                                        Save
+                                                        {{ __('messages.Save') }}
                                                     </button>
                                                     <button type="button" 
                                                             class="delete-payment inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition-colors">
                                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                         </svg>
-                                                        Delete
+                                                        {{ __('messages.Delete') }}
                                                     </button>
                                                 </div>
                                             </td>
@@ -266,8 +299,8 @@
                                 <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                 </svg>
-                                <h3 class="text-lg font-medium text-gray-900 mb-1">No payment history</h3>
-                                <p class="text-gray-500">Start by adding the first payment for this customer.</p>
+                                <h3 class="text-lg font-medium text-gray-900 mb-1">{{ __('messages.No payment history') }}</h3>
+                                <p class="text-gray-500">{{ __('messages.Start by adding the first payment for this customer.') }}</p>
                             </div>
                         </div>
                     @endif
@@ -278,174 +311,470 @@
 
     <script>
         function getBalance() {
-    const balanceText = document.getElementById('customer-balance').textContent;
-    return parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
-}
-
-function setBalance(value) {
-    const balanceElement = document.getElementById('customer-balance');
-    const formattedValue = '$' + Math.abs(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-    balanceElement.textContent = formattedValue;
-    
-    // Find the badge element - it's in the same parent container as the balance
-    // Looking at the HTML structure: <div class="text-center"> contains both balance and badge
-    const textCenterDiv = balanceElement.closest('.text-center');
-    const badge = textCenterDiv ? textCenterDiv.querySelector('.inline-flex') : null;
-    
-    // Check if badge exists before trying to modify it
-    if (!badge) {
-        console.error('Badge element not found in DOM structure');
-        return;
-    }
-    
-    // Reset classes
-    balanceElement.className = 'text-3xl font-bold mb-2';
-    
-    if (value < 0) {
-        balanceElement.classList.add('text-red-600');
-        badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800';
-        badge.textContent = 'Outstanding Debt';
-    } else if (value > 0) {
-        balanceElement.classList.add('text-green-600');
-        badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800';
-        badge.textContent = 'Credit Balance';
-    } else {
-        balanceElement.classList.add('text-gray-600');
-        badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800';
-        badge.textContent = 'Balanced Account';
-    }
-}
-
-// Handle Save Payment (Update)
-document.querySelectorAll('.save-payment').forEach(btn => {
-    btn.addEventListener('click', function () {
-        const row = this.closest('tr');
-        const id = row.dataset.id;
-        const amountInput = row.querySelector('.edit-amount');
-        const newAmount = parseFloat(amountInput.value);
-        const oldAmount = parseFloat(amountInput.getAttribute('data-old') || newAmount);
-
-        const diff = newAmount - oldAmount;
-        amountInput.setAttribute('data-old', newAmount);
-
-        // Update balance immediately
-        setBalance(getBalance() + diff);
-
-        const note = row.querySelector('.edit-note').value;
-
-        // Store original button content
-        const originalContent = this.innerHTML;
-        this.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-        fetch(`/payments/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
-            },
-            body: JSON.stringify({ amount: newAmount, note })
-        })
-        .then(res => {
-            if(!res.ok) throw new Error('Network response was not ok');
-            return res.json();
-        })
-        .then(() => {
-            row.style.backgroundColor = '#d1fae5';
-            setTimeout(() => row.style.backgroundColor = '', 700);
-            this.innerHTML = originalContent;
-        })
-        .catch(err => {
-            console.error('Update failed:', err);
-            // Revert balance change on error
-            setBalance(getBalance() - diff);
-            amountInput.setAttribute('data-old', oldAmount);
-            amountInput.value = oldAmount;
-            this.innerHTML = originalContent;
-            alert('Failed to update payment. Please try again.');
-        });
-    });
-});
-
-// Handle Delete Payment
-document.querySelectorAll('.delete-payment').forEach(btn => {
-    btn.addEventListener('click', function () {
-        if(!confirm('Are you sure you want to delete this payment?')) return;
-
-        const row = this.closest('tr');
-        const id = row.dataset.id;
-        const amountInput = row.querySelector('.edit-amount');
-        const amount = parseFloat(amountInput.value);
-
-        // Store original state for potential rollback
-        const originalBalance = getBalance();
-
-        // Update balance immediately (subtracting payment)
-        setBalance(getBalance() - amount);
-
-        // Store original button content and show loading
-        const originalContent = this.innerHTML;
-        this.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-        fetch(`/payments/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
-            }
-        })
-        .then(res => {
-            if(!res.ok) throw new Error('Network error while deleting');
-            return res.json();
-        })
-        .then(() => {
-            // Successful deletion - animate row removal
-            row.style.transition = 'opacity 0.3s, transform 0.3s';
-            row.style.opacity = '0';
-            row.style.transform = 'translateX(-100%)';
-            setTimeout(() => {
-                row.remove();
-                // Update payment count in header if it exists
-                const countBadge = document.querySelector('.bg-blue-100.text-blue-800');
-                if (countBadge) {
-                    const currentCount = parseInt(countBadge.textContent.match(/\d+/)?.[0] || '0');
-                    countBadge.textContent = `${currentCount - 1} records`;
-                }
-            }, 300);
-        })
-        .catch(err => {
-            console.error('Delete failed:', err);
-            // Revert balance change on error
-            setBalance(originalBalance);
-            this.innerHTML = originalContent;
-            alert('Failed to delete payment. Please try again.');
-        });
-    });
-});
-
-// Handle Add Payment Form Submit
-const addForm = document.getElementById('payment-form');
-if (addForm) {
-    addForm.addEventListener('submit', function (e) {
-        const amountInput = this.querySelector('input[name="amount"]');
-        const amount = parseFloat(amountInput.value);
-        
-        if (isNaN(amount) || amount === 0) {
-            e.preventDefault();
-            alert('Please enter a valid amount');
-            amountInput.focus();
-            return;
+            const balanceText = document.getElementById('customer-balance').textContent;
+            return parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
         }
-        
-        // Update balance optimistically
-        setBalance(getBalance() + amount);
-    });
-}
 
-// Auto-focus amount input
-document.addEventListener('DOMContentLoaded', function() {
-    const amountInput = document.getElementById('amount');
-    if (amountInput) {
-        amountInput.focus();
-    }
-});
+        function setBalance(value) {
+            const balanceElement = document.getElementById('customer-balance');
+            const formattedValue = '$' + Math.abs(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            balanceElement.textContent = formattedValue;
+            
+            // Find the badge element - it's in the same parent container as the balance
+            // Looking at the HTML structure: <div class="text-center"> contains both balance and badge
+            const textCenterDiv = balanceElement.closest('.text-center');
+            const badge = textCenterDiv ? textCenterDiv.querySelector('.inline-flex') : null;
+            
+            // Check if badge exists before trying to modify it
+            if (!badge) {
+                console.error('Badge element not found in DOM structure');
+                return;
+            }
+            
+            // Reset classes
+            balanceElement.className = 'text-3xl font-bold mb-2';
+            
+            if (value < 0) {
+                balanceElement.classList.add('text-red-600');
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800';
+                badge.textContent = '{{ __('messages.Outstanding Debt') }}';
+            } else if (value > 0) {
+                balanceElement.classList.add('text-green-600');
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800';
+                badge.textContent = '{{ __('messages.Credit Balance') }}';
+            } else {
+                balanceElement.classList.add('text-gray-600');
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800';
+                badge.textContent = '{{ __('messages.Balanced Account') }}';
+            }
+        }
+
+        // Print Payment Report Function
+        function printPaymentReport() {
+            const fromDate = document.getElementById('print-from-date').value;
+            const toDate = document.getElementById('print-to-date').value;
+            
+            // Filter payments based on date range
+            const allRows = document.querySelectorAll('tbody tr[data-id]');
+            let filteredPayments = [];
+            
+            allRows.forEach(row => {
+                const dateCell = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
+                const paymentDate = new Date(dateCell);
+                
+                const isInRange = (!fromDate || paymentDate >= new Date(fromDate)) && 
+                                 (!toDate || paymentDate <= new Date(toDate));
+                
+                if (isInRange) {
+                    const paymentId = row.querySelector('td:nth-child(1) .text-sm.font-medium').textContent.trim();
+                    const amount = parseFloat(row.querySelector('.edit-amount').value);
+                    const note = row.querySelector('.edit-note').value || '{{ __('messages.No note') }}';
+                    const dateText = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
+                    const timeText = row.querySelector('td:nth-child(4) div:last-child').textContent.trim();
+                    
+                    filteredPayments.push({
+                        id: paymentId,
+                        amount: amount,
+                        note: note,
+                        date: dateText,
+                        time: timeText
+                    });
+                }
+            });
+            
+            if (filteredPayments.length === 0) {
+                alert('{{ __('messages.No payments found in the selected date range') }}');
+                return;
+            }
+            
+            // Get shop name based on user role
+            const user = @json(auth()->user());
+            const shopOwner = @json(auth()->user()->role === 'employee' ? auth()->user()->shopOwner : null);
+            const shopName = user.role === 'employee' ? (shopOwner ? shopOwner.name : user.name) : user.name;
+            
+            // Calculate totals
+            const totalPayments = filteredPayments.filter(p => p.amount > 0).reduce((sum, p) => sum + p.amount, 0);
+            const totalDebts = Math.abs(filteredPayments.filter(p => p.amount < 0).reduce((sum, p) => sum + p.amount, 0));
+            const netAmount = totalPayments - totalDebts;
+            
+            // Get customer balance from PHP
+            const customerBalance = {{ $customer->balance }};
+            const customerPhone = '{{ $customer->phone ?? '' }}';
+            
+            // Create print content
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>{{ __('messages.Payment Report') }} - {{ $customer->name }}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 20px;
+                            color: #333;
+                        }
+                        .header {
+                            text-align: center;
+                            border-bottom: 2px solid #333;
+                            padding-bottom: 20px;
+                            margin-bottom: 30px;
+                        }
+                        .shop-name {
+                            font-size: 24px;
+                            font-weight: bold;
+                            color: #2563eb;
+                            margin-bottom: 5px;
+                        }
+                        .report-title {
+                            font-size: 20px;
+                            font-weight: bold;
+                            margin-bottom: 10px;
+                        }
+                        .customer-info {
+                            background-color: #f8f9fa;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin-bottom: 20px;
+                        }
+                        .info-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 8px;
+                        }
+                        .info-label {
+                            font-weight: bold;
+                            color: #666;
+                        }
+                        .date-range {
+                            text-align: center;
+                            margin-bottom: 20px;
+                            font-style: italic;
+                            color: #666;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                        }
+                        th, td {
+                            border: 1px solid #ddd;
+                            padding: 12px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #f8f9fa;
+                            font-weight: bold;
+                            color: #333;
+                        }
+                        .amount-positive {
+                            color: #059669;
+                            font-weight: bold;
+                        }
+                        .amount-negative {
+                            color: #dc2626;
+                            font-weight: bold;
+                        }
+                        .summary {
+                            background-color: #f8f9fa;
+                            padding: 20px;
+                            border-radius: 8px;
+                            margin-top: 20px;
+                        }
+                        .summary-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 10px;
+                            padding: 5px 0;
+                        }
+                        .summary-label {
+                            font-weight: bold;
+                        }
+                        .summary-total {
+                            border-top: 2px solid #333;
+                            margin-top: 10px;
+                            padding-top: 10px;
+                            font-size: 18px;
+                            font-weight: bold;
+                        }
+                        .footer {
+                            text-align: center;
+                            margin-top: 30px;
+                            padding-top: 20px;
+                            border-top: 1px solid #ddd;
+                            color: #666;
+                            font-size: 12px;
+                        }
+                        @media print {
+                            body { margin: 0; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="shop-name">${shopName}</div>
+                        <div class="report-title">{{ __('messages.Payment Report') }}</div>
+                    </div>
+                    
+                    <div class="customer-info">
+                        <div class="info-row">
+                            <span class="info-label">{{ __('messages.Customer') }}:</span>
+                            <span>{{ $customer->name }}</span>
+                        </div>
+                        ${customerPhone ? `
+                        <div class="info-row">
+                            <span class="info-label">{{ __('messages.Phone') }}:</span>
+                            <span>${customerPhone}</span>
+                        </div>
+                        ` : ''}
+                        <div class="info-row">
+                            <span class="info-label">{{ __('messages.Current Balance') }}:</span>
+                            <span class="${customerBalance >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                ${Math.abs(customerBalance).toFixed(2)} ${customerBalance >= 0 ? '({{ __('messages.Credit') }})' : '({{ __('messages.Debt') }})'}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">{{ __('messages.Report Generated') }}:</span>
+                            <span>${new Date().toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    ${fromDate || toDate ? `
+                    <div class="date-range">
+                        {{ __('messages.Date Range') }}: 
+                        ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'} 
+                        {{ __('messages.to') }} 
+                        ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                    </div>
+                    ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ __('messages.Payment ID') }}</th>
+                                <th>{{ __('messages.Date') }}</th>
+                                <th>{{ __('messages.Time') }}</th>
+                                <th>{{ __('messages.Amount') }}</th>
+                                <th>{{ __('messages.Note') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredPayments.map(payment => `
+                                <tr>
+                                    <td>${payment.id}</td>
+                                    <td>${payment.date}</td>
+                                    <td>${payment.time}</td>
+                                    <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                        ${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
+                                    </td>
+                                    <td>${payment.note}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <div class="summary">
+                        <div class="summary-row">
+                            <span class="summary-label">{{ __('messages.Total Records') }}:</span>
+                            <span>${filteredPayments.length}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">{{ __('messages.Total Payments') }}:</span>
+                            <span class="amount-positive">${totalPayments.toFixed(2)}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">{{ __('messages.Total Debts') }}:</span>
+                            <span class="amount-negative">${totalDebts.toFixed(2)}</span>
+                        </div>
+                        <div class="summary-row summary-total">
+                            <span class="summary-label">{{ __('messages.Net Amount') }}:</span>
+                            <span class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                ${Math.abs(netAmount).toFixed(2)} ${netAmount >= 0 ? '({{ __('messages.Credit') }})' : '({{ __('messages.Debt') }})'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>{{ __('messages.Generated by') }} ${shopName} | {{ __('messages.Date') }}: ${new Date().toLocaleDateString()}</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // Open print window
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            
+            if (!printWindow) {
+                alert('{{ __('messages.Please allow popups for this site to print reports') }}');
+                return;
+            }
+            
+            try {
+                printWindow.document.write(printContent);
+                printWindow.document.close();
+                
+                // Wait for content to load then print
+                setTimeout(() => {
+                    printWindow.focus();
+                    printWindow.print();
+                    
+                    // Close window after print dialog (give user time to print)
+                    setTimeout(() => {
+                        try {
+                            printWindow.close();
+                        } catch (e) {
+                            // User might have already closed it
+                        }
+                    }, 1000);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Print error:', error);
+                alert('{{ __('messages.An error occurred while generating the print report') }}');
+                printWindow.close();
+            }
+        }
+
+        // Set default dates (last 30 days)
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            document.getElementById('print-to-date').value = today.toISOString().split('T')[0];
+            document.getElementById('print-from-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+        });
+
+        // Handle Save Payment (Update)
+        document.querySelectorAll('.save-payment').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const row = this.closest('tr');
+                const id = row.dataset.id;
+                const amountInput = row.querySelector('.edit-amount');
+                const newAmount = parseFloat(amountInput.value);
+                const oldAmount = parseFloat(amountInput.getAttribute('data-old') || newAmount);
+
+                const diff = newAmount - oldAmount;
+                amountInput.setAttribute('data-old', newAmount);
+
+                // Update balance immediately
+                setBalance(getBalance() + diff);
+
+                const note = row.querySelector('.edit-note').value;
+
+                // Store original button content
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+                fetch(`/payments/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({ amount: newAmount, note })
+                })
+                .then(res => {
+                    if(!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(() => {
+                    row.style.backgroundColor = '#d1fae5';
+                    setTimeout(() => row.style.backgroundColor = '', 700);
+                    this.innerHTML = originalContent;
+                })
+                .catch(err => {
+                    console.error('Update failed:', err);
+                    // Revert balance change on error
+                    setBalance(getBalance() - diff);
+                    amountInput.setAttribute('data-old', oldAmount);
+                    amountInput.value = oldAmount;
+                    this.innerHTML = originalContent;
+                    alert('{{ __('messages.Failed to update payment. Please try again.') }}');
+                });
+            });
+        });
+
+        // Handle Delete Payment
+        document.querySelectorAll('.delete-payment').forEach(btn => {
+            btn.addEventListener('click', function () {
+                if(!confirm('{{ __('messages.Are you sure you want to delete this payment?') }}')) return;
+
+                const row = this.closest('tr');
+                const id = row.dataset.id;
+                const amountInput = row.querySelector('.edit-amount');
+                const amount = parseFloat(amountInput.value);
+
+                // Store original state for potential rollback
+                const originalBalance = getBalance();
+
+                // Update balance immediately (subtracting payment)
+                setBalance(getBalance() - amount);
+
+                // Store original button content and show loading
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+                fetch(`/payments/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                    }
+                })
+                .then(res => {
+                    if(!res.ok) throw new Error('Network error while deleting');
+                    return res.json();
+                })
+                .then(() => {
+                    // Successful deletion - animate row removal
+                    row.style.transition = 'opacity 0.3s, transform 0.3s';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-100%)';
+                    setTimeout(() => {
+                        row.remove();
+                        // Update payment count in header if it exists
+                        const countBadge = document.querySelector('.bg-blue-100.text-blue-800');
+                        if (countBadge) {
+                            const currentCount = parseInt(countBadge.textContent.match(/\d+/)?.[0] || '0');
+                            countBadge.textContent = `${currentCount - 1} {{ __('messages.records') }}`;
+                        }
+                    }, 300);
+                })
+                .catch(err => {
+                    console.error('Delete failed:', err);
+                    // Revert balance change on error
+                    setBalance(originalBalance);
+                    this.innerHTML = originalContent;
+                    alert('{{ __('messages.Failed to delete payment. Please try again.') }}');
+                });
+            });
+        });
+
+        // Handle Add Payment Form Submit
+        const addForm = document.getElementById('payment-form');
+        if (addForm) {
+            addForm.addEventListener('submit', function (e) {
+                const amountInput = this.querySelector('input[name="amount"]');
+                const amount = parseFloat(amountInput.value);
+                
+                if (isNaN(amount) || amount === 0) {
+                    e.preventDefault();
+                    alert('{{ __('messages.Please enter a valid amount') }}');
+                    amountInput.focus();
+                    return;
+                }
+                
+                // Update balance optimistically
+                setBalance(getBalance() + amount);
+            });
+        }
+
+        // Auto-focus amount input
+        document.addEventListener('DOMContentLoaded', function() {
+            const amountInput = document.getElementById('amount');
+            if (amountInput) {
+                amountInput.focus();
+            }
+        });
     </script>
 </x-app-layout>

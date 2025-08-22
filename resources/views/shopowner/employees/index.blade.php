@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     {{-- Employee Index Header --}}
 <x-slot name="header">
@@ -6,18 +13,18 @@
             <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
             </svg>
-            {{ __('Employee Management') }}
+            {{ __('employees.Employee Management') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Total Employees: <span class="font-bold text-blue-600">{{ $employees->total() }}</span>
+                {{ __('employees.Total Employees') }}: <span class="font-bold text-blue-600">{{ $employees->total() }}</span>
             </div>
             <a href="{{ route('shopowner.employees.create') }}"
                 class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
-                Add Employee
+                {{ __('employees.Add Employee') }}
             </a>
         </div>
     </div>
@@ -37,7 +44,7 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-2xl font-bold text-gray-900">{{ $employees->total() }}</p>
-                                <p class="text-sm text-gray-600">Total Employees</p>
+                                <p class="text-sm text-gray-600">{{ __('employees.Total Employees') }}</p>
                             </div>
                         </div>
                     </div>
@@ -50,7 +57,7 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum('monthly_salary'), 2) }}</p>
-                                <p class="text-sm text-gray-600">Monthly Payroll</p>
+                                <p class="text-sm text-gray-600">{{ __('employees.Monthly Payroll') }}</p>
                             </div>
                         </div>
                     </div>
@@ -63,7 +70,7 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum(function($emp) { return $emp->paidThisMonth(); }), 2) }}</p>
-                                <p class="text-sm text-gray-600">Paid This Month</p>
+                                <p class="text-sm text-gray-600">{{ __('employees.Paid This Month') }}</p>
                             </div>
                         </div>
                     </div>
@@ -76,7 +83,7 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum(function($emp) { return $emp->remainingThisMonth(); }), 2) }}</p>
-                                <p class="text-sm text-gray-600">Remaining to Pay</p>
+                                <p class="text-sm text-gray-600">{{ __('employees.Remaining to Pay') }}</p>
                             </div>
                         </div>
                     </div>
@@ -85,7 +92,7 @@
                 <!-- Employees Table -->
                 <div class="bg-white shadow-xl rounded-xl overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-lg font-semibold text-gray-900">Employee List</h3>
+                        <h3 class="text-lg font-semibold text-gray-900">{{ __('employees.Employee List') }}</h3>
                     </div>
                     
                     <div class="overflow-x-auto">
@@ -93,25 +100,25 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Employee
+                                        {{ __('employees.Employee') }}
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Job Title
+                                        {{ __('employees.Job Title') }}
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Monthly Salary
+                                        {{ __('employees.Monthly Salary') }}
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Paid This Month
+                                        {{ __('employees.Paid This Month') }}
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Remaining
+                                        {{ __('employees.Remaining to Pay') }}
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
+                                        {{ __('employees.Status') }}
                                     </th>
                                     <th scope="col" class="relative px-6 py-3">
-                                        <span class="sr-only">Actions</span>
+                                        <span class="sr-only">{{ __('employees.Actions') }}</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -159,21 +166,21 @@
                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Paid in Full
+                                                    {{ __('employees.Paid in Full') }}
                                                 </span>
                                             @elseif($percentage >= 50)
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Partially Paid
+                                                    {{ __('employees.Partially Paid') }}
                                                 </span>
                                             @else
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Pending Payment
+                                                    {{ __('employees.Pending Payment') }}
                                                 </span>
                                             @endif
                                         </td>
@@ -184,14 +191,14 @@
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                     </svg>
-                                                    Edit
+                                                    {{ __('employees.Edit') }}
                                                 </a>
                                                 <a href="{{ route('shopowner.employees.payments', $employee->id) }}" 
                                                    class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200">
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                                                     </svg>
-                                                    Payments
+                                                    {{ __('employees.Payments') }}
                                                 </a>
                                                 <form action="{{ route('shopowner.employees.destroy', $employee->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this employee? This action cannot be undone.')">
                                                     @csrf
@@ -201,7 +208,7 @@
                                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"/>
                                                         </svg>
-                                                        Delete
+                                                        {{ __('employees.Delete') }}
                                                     </button>
                                                 </form>
                                             </div>
@@ -227,16 +234,16 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                         </div>
-                        <h3 class="text-2xl font-semibold text-gray-900 mb-4">No employees found</h3>
+                        <h3 class="text-2xl font-semibold text-gray-900 mb-4">{{ __('employees.No employees found') }}</h3>
                         <p class="text-gray-600 mb-8 max-w-md mx-auto">
-                            Get started by adding your first employee to begin managing your team and payroll.
+                            {{ __('employees.Get started by adding your first employee to begin managing your team and payroll.') }}
                         </p>
-                        <a href="{{ route('shopowner.employees.create') }}" 
+                        <a href="{{ route('shopowner.employees.create') }}"
                            class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105 transition-all duration-200 shadow-lg">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                             </svg>
-                            Add Your First Employee
+                            {{ __('employees.Add Your First Employee') }}
                         </a>
                     </div>
                 </div>

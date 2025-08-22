@@ -1,5 +1,12 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
-    <x-slot name="header">
+     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <a href="{{ route('admin.dashboard') }}" 
@@ -9,13 +16,13 @@
                     </svg>
                 </a>
                 <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                    {{ $shopOwner->name }}'s Shop
+                    {{ __('messages.shop_title', ['name' => $shopOwner->name]) }}
                 </h2>
             </div>
             <div class="flex items-center space-x-4">
                 <a href="{{ route('admin.shop-owners.edit', $shopOwner->id) }}" 
                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    Edit Shop Owner
+                    {{ __('messages.edit_shop_owner') }}
                 </a>
             </div>
         </div>
@@ -46,7 +53,7 @@
                 <div class="lg:col-span-1">
                     <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Shop Owner Details</h3>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.shop_owner_details') }}</h3>
                         </div>
                         <div class="p-6">
                             <div class="flex items-center mb-6">
@@ -61,18 +68,18 @@
                             
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">Status</span>
+                                    <span class="text-gray-600">{{ __('messages.status') }}</span>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                                         {{ $shopOwner->role === 'shop_owner' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        {{ ucfirst(str_replace('_', ' ', $shopOwner->role)) }}
+                                        {{ __('messages.role_' . $shopOwner->role) }}
                                     </span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">Member Since</span>
+                                    <span class="text-gray-600">{{ __('messages.member_since') }}</span>
                                     <span class="text-gray-900">{{ $shopOwner->created_at->format('M j, Y') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">Total Employees</span>
+                                    <span class="text-gray-600">{{ __('messages.total_employees') }}</span>
                                     <span class="text-gray-900 font-semibold">{{ $shopOwner->employees_count }}</span>
                                 </div>
                             </div>
@@ -94,7 +101,7 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">Total Sales</p>
+                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.total_sales') }}</p>
                                         <p class="text-2xl font-bold text-gray-900">${{ number_format($shopOwner->total_sales, 2) }}</p>
                                     </div>
                                 </div>
@@ -112,7 +119,7 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">This Month</p>
+                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.this_month') }}</p>
                                         <p class="text-2xl font-bold text-gray-900">${{ number_format($shopOwner->sales_this_month, 2) }}</p>
                                     </div>
                                 </div>
@@ -130,7 +137,7 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">Products</p>
+                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.products') }}</p>
                                         <p class="text-2xl font-bold text-gray-900">{{ $shopOwner->products_count }}</p>
                                     </div>
                                 </div>
@@ -148,7 +155,7 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">Customers</p>
+                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.customers') }}</p>
                                         <p class="text-2xl font-bold text-gray-900">{{ $shopOwner->customers_count }}</p>
                                     </div>
                                 </div>
@@ -162,10 +169,10 @@
             <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900">Employees Management</h3>
+                        <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.employees_management') }}</h3>
                         <button onclick="toggleAddEmployeeForm()" 
                                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                            Add Employee
+                            {{ __('messages.add_employee') }}
                         </button>
                     </div>
                 </div>
@@ -178,31 +185,31 @@
                         
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.full_name') }}</label>
                                 <input type="text" 
                                        name="name" 
                                        id="name" 
                                        required
                                        class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                       placeholder="Enter employee name">
+                                       placeholder="{{ __('messages.enter_employee_name') }}">
                             </div>
                             <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.email_address') }}</label>
                                 <input type="email" 
                                        name="email" 
                                        id="email" 
                                        required
                                        class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                       placeholder="Enter email address">
+                                       placeholder="{{ __('messages.enter_email_address') }}">
                             </div>
                             <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.password') }}</label>
                                 <input type="password" 
                                        name="password" 
                                        id="password" 
                                        required
                                        class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                       placeholder="Enter password">
+                                       placeholder="{{ __('messages.enter_password') }}">
                             </div>
                         </div>
                         
@@ -210,11 +217,11 @@
                             <button type="button" 
                                     onclick="toggleAddEmployeeForm()"
                                     class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                                Cancel
+                                {{ __('messages.cancel') }}
                             </button>
                             <button type="submit"
                                     class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
-                                Add Employee
+                                {{ __('messages.add_employee') }}
                             </button>
                         </div>
                     </form>
@@ -225,10 +232,10 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.employee') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.contact') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.joined') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -241,7 +248,7 @@
                                             </div>
                                             <div class="ml-4">
                                                 <div class="text-sm font-medium text-gray-900">{{ $employee->name }}</div>
-                                                <div class="text-sm text-gray-500">ID: #{{ $employee->id }}</div>
+                                                <div class="text-sm text-gray-500">{{ __('messages.employee_id') }}: #{{ $employee->id }}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -256,17 +263,17 @@
                                         <div class="flex items-center space-x-3">
                                             <a href="{{ route('admin.employees.edit', $employee->id) }}" 
                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                Edit
+                                                {{ __('messages.edit') }}
                                             </a>
                                             <form action="{{ route('admin.employees.destroy', $employee->id) }}" 
                                                   method="POST" 
                                                   class="inline"
-                                                  onsubmit="return confirm('Are you sure you want to delete this employee?');">
+                                                  onsubmit="return confirm('{{ __('messages.confirm_delete_employee') }}');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" 
                                                         class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    Remove
+                                                    {{ __('messages.remove') }}
                                                 </button>
                                             </form>
                                         </div>
@@ -279,11 +286,12 @@
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                             </svg>
-                                            <p class="text-lg font-medium">No employees yet</p>
-                                            <p class="text-sm text-gray-400 mt-1">Add employees to help manage this shop</p>
+                                            <p class="text-lg font-medium">{{ __('messages.no_employees_yet') }}</p>
+                                            <p class="text-sm text-gray-400 mt-1">{{ __('messages.add_employees_help_text') }}</p>
                                             <button onclick="toggleAddEmployeeForm()" 
                                                     class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                                Add First Employee
+                                                {{ __('messages.add_first_employee') }}
+                                            </button>
                                             </button>
                                         </div>
                                     </td>
@@ -301,26 +309,26 @@
                         @csrf
                         <button type="submit"
                                 class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                                onclick="return confirm('Are you sure you want to {{ $shopOwner->role === 'shop_owner' ? 'disable' : 'enable' }} this shop owner?')">
-                            {{ $shopOwner->role === 'shop_owner' ? 'Disable Shop' : 'Enable Shop' }}
+                                onclick="return confirm('{{ __('messages.confirm_toggle_status', ['action' => $shopOwner->role === 'shop_owner' ? __('messages.disable') : __('messages.enable')]) }}')">
+                            {{ $shopOwner->role === 'shop_owner' ? __('messages.disable_shop') : __('messages.enable_shop') }}
                         </button>
                     </form>
                     
                     <a href="{{ route('admin.employees.index') }}" 
                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                        View All Employees
+                        {{ __('messages.view_all_employees') }}
                     </a>
                 </div>
                 
                 <form action="{{ route('admin.shop-owners.destroy', $shopOwner->id) }}" 
                       method="POST" 
                       class="inline"
-                      onsubmit="return confirm('Are you sure you want to permanently delete this shop owner and all associated data? This action cannot be undone.');">
+                      onsubmit="return confirm('{{ __('messages.confirm_delete_shop_owner') }}');">
                     @csrf
                     @method('DELETE')
                     <button type="submit"
                             class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                        Delete Shop Owner
+                        {{ __('messages.delete_shop_owner') }}
                     </button>
                 </form>
             </div>

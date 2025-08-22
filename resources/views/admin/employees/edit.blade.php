@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center space-x-4">
@@ -8,7 +15,7 @@
                 </svg>
             </a>
             <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('Edit Employee: ') . $employee->name }}
+                {{ __('messages.edit_employee_title', ['name' => $employee->name]) }}
             </h2>
         </div>
     </x-slot>
@@ -29,8 +36,8 @@
                             <span class="text-white font-bold text-lg">{{ strtoupper(substr($employee->name, 0, 2)) }}</span>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Edit Employee Information</h3>
-                            <p class="text-sm text-gray-600">Employee ID: #{{ $employee->id }}</p>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.edit_employee_information') }}</h3>
+                            <p class="text-sm text-gray-600">{{ __('messages.employee_id') }}: #{{ $employee->id }}</p>
                         </div>
                     </div>
                 </div>
@@ -41,7 +48,7 @@
 
                     <!-- Name -->
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.full_name') }}</label>
                         <input type="text" 
                                name="name" 
                                id="name" 
@@ -55,7 +62,7 @@
 
                     <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.email_address') }}</label>
                         <input type="email" 
                                name="email" 
                                id="email" 
@@ -70,14 +77,14 @@
                     <!-- Password -->
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-                            Password 
-                            <span class="text-xs text-gray-500">(leave empty to keep current password)</span>
+                            {{ __('messages.password') }}
+                            <span class="text-xs text-gray-500">({{ __('messages.leave_empty_keep_password') }})</span>
                         </label>
                         <input type="password" 
                                name="password" 
                                id="password"
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter new password">
+                               placeholder="{{ __('messages.enter_new_password') }}">
                         @error('password') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -85,12 +92,12 @@
 
                     <!-- Shop Owner Assignment -->
                     <div>
-                        <label for="shop_owner_id" class="block text-sm font-medium text-gray-700 mb-2">Assign to Shop Owner</label>
+                        <label for="shop_owner_id" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.assign_to_shop_owner') }}</label>
                         <select name="shop_owner_id" 
                                 id="shop_owner_id" 
                                 required
                                 class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
-                            <option value="">Select Shop Owner</option>
+                            <option value="">{{ __('messages.select_shop_owner') }}</option>
                             @foreach($shopOwners as $owner)
                                 <option value="{{ $owner->id }}" 
                                         {{ old('shop_owner_id', $employee->shop_owner_id) == $owner->id ? 'selected' : '' }}>
@@ -105,7 +112,7 @@
 
                     <!-- Current Assignment Info -->
                     <div class="bg-gray-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-gray-900 mb-2">Current Assignment:</h4>
+                        <h4 class="text-sm font-medium text-gray-900 mb-2">{{ __('messages.current_assignment') }}:</h4>
                         <div class="flex items-center space-x-2">
                             @if($employee->shopOwner)
                                 <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -116,21 +123,21 @@
                                     <p class="text-xs text-gray-600">{{ $employee->shopOwner->email }}</p>
                                 </div>
                             @else
-                                <span class="text-sm text-red-600">⚠️ Not assigned to any shop owner</span>
+                                <span class="text-sm text-red-600">⚠️ {{ __('messages.not_assigned_to_shop') }}</span>
                             @endif
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Employee since: {{ $employee->created_at->format('M j, Y') }}</p>
+                        <p class="text-xs text-gray-500 mt-2">{{ __('messages.employee_since') }}: {{ $employee->created_at->format('M j, Y') }}</p>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                         <a href="{{ route('admin.employees.index') }}" 
                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                            Cancel
+                            {{ __('messages.cancel') }}
                         </a>
                         <button type="submit"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
-                            Update Employee
+                            {{ __('messages.update_employee') }}
                         </button>
                     </div>
                 </form>
@@ -139,25 +146,25 @@
             <!-- Quick Actions -->
             <div class="mt-6 bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.quick_actions') }}</h3>
                 </div>
                 <div class="p-6">
                     <div class="flex items-center space-x-4">
                         @if($employee->shopOwner)
                             <a href="{{ route('admin.shop-owners.show', $employee->shopOwner->id) }}" 
                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                                View Shop Details
+                                {{ __('messages.view_shop_details') }}
                             </a>
                         @endif
                         <form action="{{ route('admin.employees.destroy', $employee->id) }}" 
                               method="POST" 
                               class="inline"
-                              onsubmit="return confirm('Are you sure you want to permanently delete this employee? This action cannot be undone.');">
+                              onsubmit="return confirm('{{ __('messages.confirm_delete_employee_permanent') }}');">
                             @csrf
                             @method('DELETE')
                             <button type="submit"
                                     class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                                Delete Employee
+                                {{ __('messages.delete_employee') }}
                             </button>
                         </form>
                     </div>

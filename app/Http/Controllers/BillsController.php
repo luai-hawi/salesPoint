@@ -82,6 +82,8 @@ class BillsController extends Controller
             'selling_prices' => 'required|array',
             'note' => 'nullable|string|max:1000',
             'customer_id' => 'nullable|exists:customers,id,user_id,' . $ownerId,
+            'selling_prices' => 'required|array',
+            'discount_types' => 'array',
         ]);
 
         // Check if it's a damaged bill
@@ -109,19 +111,18 @@ class BillsController extends Controller
             $qty = (int) $request->quantities[$index];
             $costPrice = (float) $request->cost_prices[$index];
             $sellingPrice = (float) $request->selling_prices[$index];
+            $discountType = $request->discount_types[$index] ?? 'total';
             $discount = $isDamaged ? ($qty * $sellingPrice) : (float) $request->discounts[$index];
+
+            if ($discountType === 'per-unit' && !$isDamaged) {
+                $discount = $discount * $qty;
+            }
 
             $product = Product::where('id', $productId)
                 ->where('user_id', $ownerId)
                 ->firstOrFail();
 
-            // Check if enough quantity is available
-            if ($product->quantity < $qty) {
-                $bill->delete(); // Clean up
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['error' => "Insufficient quantity for product '{$product->name}'. Available: {$product->quantity}, Required: {$qty}"]);
-            }
+           
 
             // Update product quantity
             $product->quantity -= $qty;
@@ -173,7 +174,7 @@ class BillsController extends Controller
         if ($bill->customer_id && $total > 0) {
             $bill->customer->payments()->create([
                 'amount' => -1 * $total,
-                'type' => 'debt',
+                'type' => 'payment',
                 'note' => "Bill #{$bill->id} created as debt",
                 'user_id' => $ownerId,
             ]);
@@ -215,14 +216,17 @@ class BillsController extends Controller
     $request->validate([
         'note' => 'nullable|string|max:1000',
         'quantities' => 'array',
+        'quantities.*' => 'integer|min:1', // Bill quantities must be minimum 1
         'discounts' => 'array',
+        'discounts.*' => 'numeric|min:0',
         'remove_products' => 'array',
         'new_product_id' => 'nullable|exists:products,id,user_id,' . $ownerId,
-        'new_quantity' => 'nullable|integer|min:1',
-        // Add validation for dynamic products
+        'new_quantity' => 'nullable|integer|min:1', // Bill quantities must be minimum 1
         'dynamic_product_ids' => 'array',
         'dynamic_quantities' => 'array',
+        'dynamic_quantities.*' => 'integer|min:1', // Bill quantities must be minimum 1
         'dynamic_discounts' => 'array',
+        'dynamic_discounts.*' => 'numeric|min:0',
     ]);
 
     // Update note
@@ -233,13 +237,14 @@ class BillsController extends Controller
     $bill->note = $noteText;
     $bill->save();
 
-    // Handle dynamic products (newly added products from JavaScript)
+    // Handle dynamic products
     $dynamicProductIds = $request->input('dynamic_product_ids', []);
     $dynamicQuantities = $request->input('dynamic_quantities', []);
     $dynamicDiscounts = $request->input('dynamic_discounts', []);
 
+    
+
     if (!empty($dynamicProductIds)) {
-        // Process each dynamic product
         foreach ($dynamicProductIds as $productId) {
             $quantity = isset($dynamicQuantities[$productId]) ? (int)$dynamicQuantities[$productId] : 1;
             $discount = isset($dynamicDiscounts[$productId]) ? (float)$dynamicDiscounts[$productId] : 0;
@@ -247,65 +252,50 @@ class BillsController extends Controller
             $product = Product::where('id', $productId)->where('user_id', $ownerId)->first();
             
             if (!$product) {
-                continue; // Skip if product not found
+                continue;
             }
 
-            // Check if this product is already in the bill
             $existingPivot = $bill->products()->where('product_id', $productId)->first();
             
             if ($existingPivot) {
-                // Product already exists, update quantity
+                // EXISTING PRODUCT UPDATE
                 $oldQty = $existingPivot->pivot->quantity;
                 $newQty = $quantity;
                 $diff = $newQty - $oldQty;
 
                 if ($diff != 0) {
-                    // Check if enough quantity is available for increase
-                    if ($diff > 0 && $product->quantity < $diff) {
-                        return redirect()->back()->withErrors(['error' => "Insufficient quantity for product '{$product->name}'. Available: {$product->quantity}, Required: {$diff}"]);
-                    }
-
-                    // Update product stock
+                    // ALLOW NEGATIVE STOCK - No stock validation
+                    // Update product stock (can go negative)
                     $product->quantity -= $diff;
                     $product->save();
 
                     // Handle batch consumption/restoration
                     if ($diff > 0) {
-                        // Consume more batches FIFO
-                        $remaining = $diff;
-                        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
-                        foreach ($batches as $batch) {
-                            if ($remaining <= 0) break;
-                            $consume = min($remaining, $batch->quantity);
-                            $batch->quantity -= $consume;
-                            $remaining -= $consume;
-                            $batch->save();
-                        }
-                        if ($remaining > 0) {
-                            $lastBatch = $product->batches()->orderByDesc('id')->first();
-                            if ($lastBatch) {
-                                $lastBatch->quantity -= $remaining;
-                                $lastBatch->save();
-                            }
-                        }
+                        // Consume more batches FIFO (allow negative batches)
+                        $this->consumeProductStockAllowNegative($product, $diff);
                     } elseif ($diff < 0) {
-                        // Return to batch
+                        // RETURNING TO STOCK
                         $returnQty = abs($diff);
                         $costPrice = $existingPivot->pivot->cost_price;
-                        $batch = $product->batches()->where('cost_price', $costPrice)->first();
-                        if ($batch) {
-                            $batch->quantity += $returnQty;
-                            $batch->save();
-                        } else {
-                            $product->batches()->create([
-                                'quantity' => $returnQty,
-                                'cost_price' => $costPrice,
-                                'user_id' => $ownerId,
-                            ]);
+                        
+                        // Return to appropriate batch
+                        $this->returnToBatch($product, $returnQty, $costPrice, $ownerId);
+
+                        // FIXED: Proper weighted average cost price calculation
+                        $oldTotalValue = $product->cost_price * ($product->quantity - $returnQty);
+                        $returnValue = $costPrice * $returnQty;
+                        $newTotalQuantity = $product->quantity;
+                        
+                        if ($newTotalQuantity > 0) {
+                            $product->cost_price = ($oldTotalValue + $returnValue) / $newTotalQuantity;
+                            $product->cost_price = round($product->cost_price, 2);
+                            $product->save();
                         }
                     }
 
-                    // Ensure discount doesn't exceed subtotal
+                    
+                }
+                // Validate and set discount
                     $maxDiscount = $newQty * $existingPivot->pivot->selling_price;
                     if ($discount > $maxDiscount) {
                         $discount = $maxDiscount;
@@ -320,36 +310,17 @@ class BillsController extends Controller
                         'quantity' => $newQty,
                         'discount' => $discount,
                     ]);
-                }
             } else {
-                // New product, add to bill
-                if ($product->quantity < $quantity) {
-                    return redirect()->back()->withErrors(['error' => "Insufficient quantity for product '{$product->name}'. Available: {$product->quantity}, Required: {$quantity}"]);
-                }
-
-                // Update product stock
+                // NEW PRODUCT - Allow adding even if no stock (overselling)
+                
+                // Update product stock (can go negative)
                 $product->quantity -= $quantity;
                 $product->save();
 
-                // Handle batch consumption FIFO
-                $remaining = $quantity;
-                $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
-                foreach ($batches as $batch) {
-                    if ($remaining <= 0) break;
-                    $consume = min($remaining, $batch->quantity);
-                    $batch->quantity -= $consume;
-                    $remaining -= $consume;
-                    $batch->save();
-                }
-                if ($remaining > 0) {
-                    $lastBatch = $product->batches()->orderByDesc('id')->first();
-                    if ($lastBatch) {
-                        $lastBatch->quantity -= $remaining;
-                        $lastBatch->save();
-                    }
-                }
+                // Handle batch consumption (allow negative)
+                $this->consumeProductStockAllowNegative($product, $quantity);
 
-                // Ensure discount doesn't exceed subtotal
+                // Set discount
                 $maxDiscount = $quantity * $product->selling_price;
                 if ($discount > $maxDiscount) {
                     $discount = $maxDiscount;
@@ -370,154 +341,55 @@ class BillsController extends Controller
         }
     }
 
-    $discounts = $request->input('discounts', []);
-    $quantities = $request->input('quantities', []);
-
-    // Update existing products (from original form)
-    foreach ($quantities as $productId => $newQty) {
-    // Skip if this product was already handled in dynamic products
-    if (in_array($productId, $dynamicProductIds)) {
-        continue;
-    }
-
-    $newQty = (int)$newQty;
-    $newDiscount = isset($discounts[$productId]) ? (float)$discounts[$productId] : 0;
-
-    $product = Product::findOrFail($productId);
-    
-    // Fix: Check if product exists in bill before accessing pivot
-    $billProduct = $bill->products()->where('product_id', $productId)->first();
-    
-    if (!$billProduct) {
-        // Product not in bill, skip or handle as needed
-        continue;
-    }
-    
-    $pivot = $billProduct->pivot;
-    $oldQty = $pivot->quantity;
-
-    $diff = $newQty - $oldQty;
-
-    // Update total stock
-    $product->quantity -= $diff;
-    $product->save();
-
-    if ($diff > 0) {
-        // Consume more batches FIFO
-        $remaining = $diff;
-        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
-        foreach ($batches as $batch) {
-            if ($remaining <= 0) break;
-            $consume = min($remaining, $batch->quantity);
-            $batch->quantity -= $consume;
-            $remaining -= $consume;
-            $batch->save();
-        }
-        if ($remaining > 0) {
-            $lastBatch = $product->batches()->orderByDesc('id')->first();
-            if ($lastBatch) {
-                $lastBatch->quantity -= $remaining;
-                $lastBatch->save();
-            }
-        }
-    } elseif ($diff < 0) {
-        // Return to batch with matching cost price
-        $returnQty = abs($diff);
-        $costPrice = $pivot->cost_price;
-        $batch = $product->batches()->where('cost_price', $costPrice)->first();
-        if ($batch) {
-            $batch->quantity += $returnQty;
-            $batch->save();
-        } else {
-            $product->batches()->create([
-                'quantity' => $returnQty,
-                'cost_price' => $costPrice,
-                'user_id' => $ownerId,
-            ]);
-        }
-
-        // Recalculate average cost price
-        $oldAvg = $product->cost_price;
-        $oldQtyProduct = $product->quantity + $returnQty;
-        $product->cost_price = $oldQtyProduct <= 0 
-            ? $costPrice 
-            : ($oldAvg * $oldQtyProduct + $costPrice * $returnQty) / max(1, ($oldQtyProduct + $returnQty));
-        $product->cost_price = round($product->cost_price, 2);
-        $product->save();
-    }
-
-    // Ensure discount does not exceed subtotal
-    $maxDiscount = $newQty * $pivot->selling_price;
-    if ($newDiscount > $maxDiscount) {
-        $newDiscount = $maxDiscount;
-    }
-    
-    if ($bill->is_damaged) {
-        $newDiscount = $newQty * $pivot->selling_price;
-    }
-
-    $bill->products()->updateExistingPivot($productId, [
-        'quantity' => $newQty,
-        'discount' => $newDiscount,
-    ]);
-}
-
     // Remove products
     $toRemove = $request->input('remove_products', []);
     if (!empty($toRemove)) {
         foreach ($toRemove as $productId) {
             $product = Product::findOrFail($productId);
-            $pivot = $bill->products()->where('product_id', $productId)->first()->pivot;
+            $billProduct = $bill->products()->where('product_id', $productId)->first();
+            
+            if (!$billProduct) {
+                continue;
+            }
+            
+            $pivot = $billProduct->pivot;
 
+            // Return quantity to stock
             $product->quantity += $pivot->quantity;
+            
+            // FIXED: Proper weighted average cost price calculation
+            $oldTotalValue = $product->cost_price * ($product->quantity - $pivot->quantity);
+            $returnValue = $pivot->cost_price * $pivot->quantity;
+            $newTotalQuantity = $product->quantity;
+            
+            if ($newTotalQuantity > 0) {
+                $product->cost_price = ($oldTotalValue + $returnValue) / $newTotalQuantity;
+                $product->cost_price = round($product->cost_price, 2);
+            }
+            
             $product->save();
 
-            $batch = $product->batches()->where('cost_price', $pivot->cost_price)->first();
-            if ($batch) {
-                $batch->quantity += $pivot->quantity;
-                $batch->save();
-            } else {
-                $product->batches()->create([
-                    'quantity' => $pivot->quantity,
-                    'cost_price' => $pivot->cost_price,
-                    'user_id' => $ownerId,
-                ]);
-            }
+            // Return to batch
+            $this->returnToBatch($product, $pivot->quantity, $pivot->cost_price, $ownerId);
         }
 
         $bill->products()->detach($toRemove);
     }
 
-    // Add new product (from dropdown selection)
+    // Add new product (from dropdown)
     $newProductId = $request->input('new_product_id');
     $newQty = (int)$request->input('new_quantity');
 
-    if ($newProductId && $newQty > 0) {
+    if ($newProductId && $newQty > 0) { // Must be positive for bill
         $product = Product::findOrFail($newProductId);
         
-        if ($product->quantity < $newQty) {
-            return redirect()->back()->withErrors(['error' => "Insufficient quantity for product '{$product->name}'. Available: {$product->quantity}, Required: {$newQty}"]);
-        }
-        
+        // ALLOW OVERSELLING - No stock validation
+        // Update product stock (can go negative)
         $product->quantity -= $newQty;
         $product->save();
 
-        $remaining = $newQty;
-        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
-        foreach ($batches as $batch) {
-            if ($remaining <= 0) break;
-            $consume = min($remaining, $batch->quantity);
-            $batch->quantity -= $consume;
-            $remaining -= $consume;
-            $batch->save();
-        }
-        if ($remaining > 0) {
-            $lastBatch = $product->batches()->orderByDesc('id')->first();
-            if ($lastBatch) {
-                $lastBatch->quantity -= $remaining;
-                $lastBatch->save();
-            }
-        }
+        // Handle batch consumption (allow negative)
+        $this->consumeProductStockAllowNegative($product, $newQty);
 
         $discount = $bill->is_damaged ? ($newQty * $product->selling_price) : 0;
 
@@ -532,42 +404,112 @@ class BillsController extends Controller
     }
 
     // Recalculate total price
+    $this->recalculateBillTotal($bill);
+
+    // Update customer balance if needed
+    $this->updateCustomerBalance($bill);
+
+    return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
+}
+
+/**
+ * Helper method to consume product stock using FIFO (ALLOWS NEGATIVE STOCK)
+ */
+private function consumeProductStockAllowNegative($product, $quantity)
+{
+    // Product stock is already updated in the main method
+    // Just handle batch consumption, allowing negative batches
+    
+    $remaining = $quantity;
+    $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
+    
+    foreach ($batches as $batch) {
+        if ($remaining <= 0) break;
+        
+        $consume = min($remaining, $batch->quantity);
+        $batch->quantity -= $consume;
+        $remaining -= $consume;
+        $batch->save();
+    }
+    
+    // If still remaining, consume from the latest batch (can go negative)
+    if ($remaining > 0) {
+        $lastBatch = $product->batches()->orderByDesc('id')->first();
+        if ($lastBatch) {
+            $lastBatch->quantity -= $remaining;
+            $lastBatch->save();
+        } else {
+            // If no batches exist, create a negative batch
+            $product->batches()->create([
+                'quantity' => -$remaining,
+                'cost_price' => $product->cost_price,
+                'user_id' => auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : auth()->user()->id,
+            ]);
+        }
+    }
+}
+/**
+ * Helper method to return stock to appropriate batch
+ */
+private function returnToBatch($product, $quantity, $costPrice, $ownerId)
+{
+    $batch = $product->batches()->where('cost_price', $costPrice)->first();
+    
+    if ($batch) {
+        $batch->quantity += $quantity;
+        $batch->save();
+    } else {
+        $product->batches()->create([
+            'quantity' => $quantity,
+            'cost_price' => $costPrice,
+            'user_id' => $ownerId,
+        ]);
+    }
+}
+
+/**
+ * Helper method to recalculate bill total (positive quantities only)
+ */
+private function recalculateBillTotal($bill)
+{
     $total = 0;
     $bill->load('products');
+    
     foreach ($bill->products as $product) {
-        $qty = $product->pivot->quantity;
+        $qty = $product->pivot->quantity; // Always positive in bills
         $unitPrice = $product->pivot->selling_price;
         $discount = $product->pivot->discount ?? 0;
-        $subtotal = max(0, $qty * $unitPrice - $discount);
+        
+        // Calculate subtotal
+        $subtotal = max(0, ($qty * $unitPrice) - $discount);
         $total += $subtotal;
     }
 
     $bill->total_price = $total;
     $bill->save();
+}
 
-    // Update customer balance if needed
+/**
+ * Helper method to update customer balance
+ */
+private function updateCustomerBalance($bill)
+{
     if ($bill->customer_id) {
         $customer = $bill->customer;
         
-        // Find existing payment for this bill
         $existingPayment = $customer->payments()
             ->where('note', "Bill #{$bill->id} created as debt")
             ->first();
         
         if ($existingPayment) {
             $oldAmount = abs($existingPayment->amount);
-            $newAmount = $total;
+            $newAmount = $bill->total_price;
             $difference = $newAmount - $oldAmount;
             
-            // Update payment amount
             $existingPayment->update(['amount' => -1 * $newAmount]);
-            
-            // Update customer balance
             $customer->update(['balance' => $customer->balance - $difference]);
         }
     }
-
-    return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
 }
 
     public function destroy(Bill $bill)

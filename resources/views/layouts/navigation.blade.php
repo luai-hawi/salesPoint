@@ -19,8 +19,8 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
-                            <span class="hidden xl:inline">{{ __('Admin Dashboard') }}</span>
-                            <span class="xl:hidden">{{ __('Dashboard') }}</span>
+                            <span class="hidden xl:inline">{{ __('navigation.Admin Dashboard') }}</span>
+                            <span class="xl:hidden">{{ __('navigation.Dashboard') }}</span>
                         </x-nav-link>
                         
                         <x-nav-link :href="route('admin.shop-owners.index')" :active="request()->routeIs('admin.shop-owners.*')"
@@ -28,7 +28,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11"></path>
                             </svg>
-                            {{ __('Shop Owners') }}
+                            {{ __('navigation.Shop Owners') }}
                         </x-nav-link>
                         
                         <x-nav-link :href="route('admin.employees.index')" :active="request()->routeIs('admin.employees.*')"
@@ -36,7 +36,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
-                            {{ __('All Employees') }}
+                            {{ __('navigation.All Employees') }}
                         </x-nav-link>
 
                         <!-- Add more admin-specific links as needed -->
@@ -45,7 +45,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            {{ __('System Settings') }}
+                            {{ __('navigation.System Settings') }}
                         </x-nav-link>
 
                     @else
@@ -56,8 +56,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v4H8V5z"></path>
                             </svg>
-                            <span class="hidden xl:inline">{{ __('Dashboard') }}</span>
-                            <span class="xl:hidden">{{ __('Home') }}</span>
+                            <span class="hidden xl:inline">{{ __('navigation.Dashboard') }}</span>
+                            <span class="xl:hidden">{{ __('navigation.Home') }}</span>
                         </x-nav-link>
                         
                         <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')"
@@ -65,7 +65,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                             </svg>
-                            {{ __('Products') }}
+                            {{ __('navigation.Products') }}
                         </x-nav-link>
                         
                         <x-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')"
@@ -73,7 +73,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            {{ __('Bills') }}
+                            {{ __('navigation.Bills') }}
                         </x-nav-link>
                         
                         <x-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')"
@@ -81,17 +81,17 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                             </svg>
-                            {{ __('Customers') }}
+                            {{ __('navigation.Customers') }}
                         </x-nav-link>
                         
-                        @if(Auth::user()->role === 'shop_owner')
+                        @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
                             <!-- Shop Owner Only Links -->
                             <x-nav-link :href="route('shopowner.employees.index')" :active="request()->routeIs('shopowner.employees.index')"
                                 class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('shopowner.employees.index') ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                 </svg>
-                                {{ __('Employees') }}
+                                {{ __('navigation.Employees') }}
                             </x-nav-link>
                             
                             <x-nav-link :href="route('shopowner.expenses.index')" :active="request()->routeIs('shopowner.expenses.index')"
@@ -99,7 +99,7 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                 </svg>
-                                {{ __('Expenses') }}
+                                {{ __('navigation.Expenses') }}
                             </x-nav-link>
                             
                             <x-nav-link :href="route('dashboard.financial')" :active="request()->routeIs('dashboard.financial')"
@@ -107,14 +107,36 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                                 </svg>
-                                <span class="hidden xl:inline">{{ __('Financial Dashboard') }}</span>
-                                <span class="xl:hidden">{{ __('Analytics') }}</span>
+                                <span class="hidden xl:inline">{{ __('navigation.Financial Dashboard') }}</span>
+                                <span class="xl:hidden">{{ __('navigation.Analytics') }}</span>
                             </x-nav-link>
                         @endif
                     @endif
                 </div>
             </div>
             
+            <!-- Language Switcher -->
+            <div class="hidden lg:flex lg:items-center lg:ml-4">
+                <x-dropdown align="right" width="48">
+                    <x-slot name="trigger">
+                        <button class="flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out">
+                            <div class="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200">
+                                {{ app()->getLocale() == 'ar' ? 'AR' : 'EN' }}
+                            </div>
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="content">
+                        <x-dropdown-link href="{{ route('lang.switch', 'en') }}">
+                            English
+                        </x-dropdown-link>
+                        <x-dropdown-link href="{{ route('lang.switch', 'ar') }}">
+                            العربية
+                        </x-dropdown-link>
+                    </x-slot>
+                </x-dropdown>
+            </div>
+
             <!-- Settings Dropdown -->
             <div class="hidden lg:flex lg:items-center lg:ml-6">
                 <x-dropdown align="right" width="48">
@@ -145,7 +167,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
-                            {{ __('Profile') }}
+                            {{ __('navigation.Profile') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -157,7 +179,7 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                                 </svg>
-                                {{ __('Log Out') }}
+                                {{ __('navigation.Log Out') }}
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -185,21 +207,21 @@
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
-                    {{ __('Admin Dashboard') }}
+                    {{ __('navigation.Admin Dashboard') }}
                 </x-responsive-nav-link>
                 
                 <x-responsive-nav-link :href="route('admin.shop-owners.index')" :active="request()->routeIs('admin.shop-owners.*')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11"></path>
                     </svg>
-                    {{ __('Shop Owners') }}
+                    {{ __('navigation.Shop Owners') }}
                 </x-responsive-nav-link>
                 
                 <x-responsive-nav-link :href="route('admin.employees.index')" :active="request()->routeIs('admin.employees.*')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
-                    {{ __('All Employees') }}
+                    {{ __('navigation.All Employees') }}
                 </x-responsive-nav-link>
             @else
                 <!-- Shop Owner/Employee Mobile Links (existing) -->
@@ -207,53 +229,72 @@
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                     </svg>
-                    {{ __('Dashboard') }}
+                    {{ __('navigation.Dashboard') }}
                 </x-responsive-nav-link>
                 
                 <x-responsive-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                     </svg>
-                    {{ __('Products') }}
+                    {{ __('navigation.Products') }}
                 </x-responsive-nav-link>
                 
                 <x-responsive-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    {{ __('Bills') }}
+                    {{ __('navigation.Bills') }}
                 </x-responsive-nav-link>
                 
                 <x-responsive-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                     </svg>
-                    {{ __('Customers') }}
+                    {{ __('navigation.Customers') }}
                 </x-responsive-nav-link>
                 
-                @if(Auth::user()->role === 'shop_owner')
+                @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
                     <x-responsive-nav-link :href="route('shopowner.employees.index')" :active="request()->routeIs('shopowner.employees.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
-                        {{ __('Employees') }}
+                        {{ __('navigation.Employees') }}
                     </x-responsive-nav-link>
                     
                     <x-responsive-nav-link :href="route('shopowner.expenses.index')" :active="request()->routeIs('shopowner.expenses.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
-                        {{ __('Expenses') }}
+                        {{ __('navigation.Expenses') }}
                     </x-responsive-nav-link>
                     
                     <x-responsive-nav-link :href="route('dashboard.financial')" :active="request()->routeIs('dashboard.financial')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
-                        {{ __('Financial Dashboard') }}
+                        {{ __('navigation.Financial Dashboard') }}
                     </x-responsive-nav-link>
                 @endif
             @endif
+        </div>
+        
+        <!-- Mobile Language Switcher -->
+        <div class="pt-4 pb-1 border-t border-gray-200">
+            <div class="px-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">{{ __('navigation.Language') }}</span>
+                    <div class="flex space-x-2">
+                        <a href="{{ route('lang.switch', 'en') }}"
+                           class="px-3 py-1 text-sm rounded-md {{ app()->getLocale() == 'en' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                            EN
+                        </a>
+                        <a href="{{ route('lang.switch', 'ar') }}"
+                           class="px-3 py-1 text-sm rounded-md {{ app()->getLocale() == 'ar' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                            AR
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Responsive Settings Options -->
@@ -267,11 +308,11 @@
                         <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                         <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
                         @if(Auth::user()->role === 'admin')
-                            <div class="text-xs text-blue-600 font-semibold">{{ __('Administrator') }}</div>
-                        @elseif(Auth::user()->role === 'shop_owner')
-                            <div class="text-xs text-green-600 font-semibold">{{ __('Shop Owner') }}</div>
+                            <div class="text-xs text-blue-600 font-semibold">{{ __('navigation.Administrator') }}</div>
+                        @elseif(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
+                            <div class="text-xs text-green-600 font-semibold">{{ __('navigation.Shop Owner') }}</div>
                         @else
-                            <div class="text-xs text-gray-600">{{ __('Employee') }}</div>
+                            <div class="text-xs text-gray-600">{{ __('navigation.Employee') }}</div>
                         @endif
                     </div>
                 </div>
@@ -282,7 +323,7 @@
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                     </svg>
-                    {{ __('Profile') }}
+                    {{ __('navigation.Profile') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
@@ -294,7 +335,7 @@
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                         </svg>
-                        {{ __('Log Out') }}
+                        {{ __('navigation.Log Out') }}
                     </x-responsive-nav-link>
                 </form>
             </div>

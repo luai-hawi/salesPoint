@@ -132,7 +132,13 @@ class CustomerController extends Controller
 
         $payments = $customer->payments()->where('user_id', $ownerId)->latest()->get();
 
-        return view('customers.payments', compact('customer', 'payments'));
+        // Load shop owner data if user is an employee
+        $shopOwner = null;
+        if ($user->role === 'employee' && $user->shop_owner_id) {
+            $shopOwner = \App\Models\User::find($user->shop_owner_id);
+        }
+
+        return view('customers.payments', compact('customer', 'payments', 'shopOwner'));
     }
 
     public function storePayment(Request $request, Customer $customer)
@@ -193,4 +199,52 @@ class CustomerController extends Controller
             abort(403, 'Unauthorized access to customer.');
         }
     }
+
+
+    public function quickStorePayment(Request $request, Customer $customer)
+{
+    $user = auth()->user();
+    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    $this->authorizeCustomer($customer);
+
+    $validated = $request->validate([
+        'amount' => 'required|numeric|not_in:0',
+        'type' => 'required|string|in:cash,card,transfer',
+        'note' => 'nullable|string|max:255',
+    ]);
+
+    $customer->payments()->create([
+        'amount' => $validated['amount'],
+        'type' => $validated['type'],
+        'note' => $validated['note'] ?? null,
+        'user_id' => $ownerId,
+    ]);
+
+    $customer->update(['balance' => $customer->balance + $validated['amount']]);
+
+    return response()->json(['success' => true, 'message' => 'Payment added successfully!']);
+}
+public function getRecentPayments(Customer $customer)
+{
+    $user = auth()->user();
+    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    $this->authorizeCustomer($customer);
+    // Get the last 10 payments for this customer
+    $payments = $customer->payments()
+        ->latest()
+        ->take(10)
+        ->get()
+        ->map(function ($payment) {
+            return [
+                'id' => $payment->id,
+                'amount' => $payment->amount,
+                'type' => $payment->type,
+                'note' => $payment->note,
+                'created_at' => $payment->created_at->format('M d, Y H:i'),
+                'created_at_human' => $payment->created_at->diffForHumans(),
+            ];
+        });
+
+    return response()->json($payments);
+}
 }

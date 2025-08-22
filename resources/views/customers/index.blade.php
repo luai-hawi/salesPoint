@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     {{-- Customer Index Header --}}
 <x-slot name="header">
@@ -6,18 +13,18 @@
             <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
             </svg>
-            {{ __('Customer Management') }}
+            {{ __('messages.Customer Management') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Total Customers: <span class="font-bold text-blue-600">{{ $customers->total() }}</span>
+                {{ __('messages.Total Customers') }}: <span class="font-bold text-blue-600">{{ $customers->total() }}</span>
             </div>
             <a href="{{ route('customers.create') }}"
                 class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                Add Customer
+                {{ __('messages.Add Customer') }}
             </a>
         </div>
     </div>
@@ -29,7 +36,7 @@
             <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-blue-100 text-sm font-medium">Total Customers</p>
+                        <p class="text-blue-100 text-sm font-medium">{{ __('messages.Total Customers') }}</p>
                         <p class="text-2xl font-bold">{{ $customers->total() ?? 0 }}</p>
                     </div>
                     <div class="bg-blue-500 bg-opacity-30 rounded-full p-3">
@@ -43,7 +50,7 @@
             <div class="bg-gradient-to-br from-red-400 to-red-600 rounded-xl p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-red-100 text-sm font-medium">Total Debt</p>
+                        <p class="text-red-100 text-sm font-medium">{{ __('messages.Total Debt') }}</p>
                         <p class="text-2xl font-bold">
                             ${{ number_format($customers->where('balance', '<', 0)->sum('balance') * -1, 2) }}
                         </p>
@@ -59,7 +66,7 @@
             <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-green-100 text-sm font-medium">Active Today</p>
+                        <p class="text-green-100 text-sm font-medium">{{ __('messages.Active Today') }}</p>
                         <p class="text-2xl font-bold">{{ $customers->where('updated_at', '>=', now()->startOfDay())->count() }}</p>
                     </div>
                     <div class="bg-green-500 bg-opacity-30 rounded-full p-3">
@@ -81,22 +88,22 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
-                    <input type="text" id="customer-search" 
-                           placeholder="Search by name, phone, or ID..." 
-                           class="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    <input type="text" id="customer-search"
+                           placeholder="{{ __('messages.Search by name, phone, or ID...') }}"
+                           class="px-8 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                            value="{{ request('search') }}">
                 </div>
 
                 <!-- Filter Buttons -->
                 <div class="flex space-x-2">
                     <button id="filter-all" class="filter-btn active px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        All Customers
+                        {{ __('messages.All Customers') }}
                     </button>
                     <button id="filter-debt" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        With Debt
+                        {{ __('messages.With Debt') }}
                     </button>
                     <button id="filter-credit" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        With Credit
+                        {{ __('messages.With Credit') }}
                     </button>
                 </div>
             </div>
@@ -105,18 +112,18 @@
         <!-- Customers Table -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h3 class="text-lg font-semibold text-gray-800">Customers List</h3>
+                <h3 class="text-lg font-semibold text-gray-800">{{ __('messages.Customer Management') }}</h3>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Customer') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Contact') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Balance') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Last Activity') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody id="customers-table-body" class="bg-white divide-y divide-gray-200">
@@ -145,7 +152,7 @@
                                                 {{ $customer->phone }}
                                             </div>
                                         @else
-                                            <span class="text-gray-400 italic">No phone</span>
+                                            <span class="text-gray-400 italic">{{ __('messages.No phone') }}</span>
                                         @endif
                                     </div>
                                 </td>
@@ -155,18 +162,18 @@
                                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                                             </svg>
-                                            ${{ number_format(abs($customer->balance), 2) }} Debt
+                                            ${{ number_format(abs($customer->balance), 2) }} {{ __('messages.Debt') }}
                                         </span>
                                     @elseif($customer->balance > 0)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                             </svg>
-                                            ${{ number_format($customer->balance, 2) }} Credit
+                                            ${{ number_format($customer->balance, 2) }} {{ __('messages.Credit') }}
                                         </span>
                                     @else
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                            $0.00 Balanced
+                                            $0.00 {{ __('messages.Balanced') }}
                                         </span>
                                     @endif
                                 </td>
@@ -181,14 +188,14 @@
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
-                                            Edit
+                                            {{ __('messages.Edit') }}
                                         </a>
                                         <a href="{{ route('customers.payments', $customer) }}" 
                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                             </svg>
-                                            Payments
+                                            {{ __('messages.Payments') }}
                                         </a>
                                     </div>
                                 </td>
@@ -200,8 +207,8 @@
                                         <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                         </svg>
-                                        <h3 class="text-lg font-medium text-gray-900 mb-1">No customers found</h3>
-                                        <p class="text-gray-500">Start by adding your first customer.</p>
+                                        <h3 class="text-lg font-medium text-gray-900 mb-1">{{ __('messages.No customers found') }}</h3>
+                                        <p class="text-gray-500">{{ __('messages.Start by adding your first customer.') }}</p>
                                     </div>
                                 </td>
                             </tr>

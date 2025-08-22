@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -5,10 +12,10 @@
                 <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                 </svg>
-                {{ __('Product Management') }}
+                {{ __('messages.Product Management') }}
             </h2>
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Total Products: <span class="font-bold text-blue-600">{{ $products->total() }}</span>
+                {{ __('messages.Total Products:') }} <span class="font-bold text-blue-600">{{ $products->total() }}</span>
             </div>
         </div>
     </x-slot>
@@ -25,8 +32,8 @@
                             type="text" 
                             id="product-search" 
                             name="search" 
-                            placeholder="Search by name, barcode, or price..." 
-                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                            placeholder="{{ __('messages.Search by name, barcode, or price...') }}" 
+                            class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                             value="{{ request('search') }}"
                         />
                         <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,14 +47,14 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
-                            Add New Product
+                            {{ __('messages.Add New Product') }}
                         </a>
                         
                         <a href="{{ route('products.export') }}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            Export CSV
+                            {{ __('messages.Export CSV') }}
                         </a>
                     </div>
                 </div>
@@ -60,7 +67,7 @@
                         <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                         </svg>
-                        Product Inventory
+                        {{ __('messages.Product Inventory') }}
                     </h3>
                 </div>
 
@@ -75,7 +82,7 @@
                     <!-- Loading State -->
                     <div id="loading-indicator" class="hidden text-center py-8">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p class="text-gray-500 mt-2">Loading products...</p>
+                        <p class="text-gray-500 mt-2">{{ __('messages.Loading products...') }}</p>
                     </div>
 
                     <!-- Empty State -->
@@ -84,11 +91,11 @@
                             <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                             </svg>
-                            <h3 class="mt-4 text-lg font-medium text-gray-900">No products found</h3>
-                            <p class="mt-2 text-gray-500">Get started by creating your first product.</p>
+                            <h3 class="mt-4 text-lg font-medium text-gray-900">{{ __('messages.No products found') }}</h3>
+                            <p class="mt-2 text-gray-500">{{ __('messages.Get started by creating your first product.') }}</p>
                             <div class="mt-6">
                                 <a href="{{ route('products.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                                    Add Product
+                                    {{ __('messages.Add Product') }}
                                 </a>
                             </div>
                         </div>
@@ -120,19 +127,19 @@
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Add Stock
+                                {{ __('messages.Add Stock') }}
                             </h3>
                             <div class="mt-4">
                                 <p class="text-sm text-gray-500 mb-4" id="product-name-display"></p>
                                 
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity to Add</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Quantity to Add') }}</label>
                                         <input type="number" id="add-quantity" min="1" value="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                     
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Cost Price per Unit</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Cost Price per Unit') }}</label>
                                         <input type="number" id="add-cost-price" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                 </div>
@@ -142,10 +149,10 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button type="button" id="confirm-add-stock" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        Add Stock
+                        {{ __('messages.Add Stock') }}
                     </button>
                     <button type="button" id="cancel-add-stock" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Cancel
+                        {{ __('messages.Cancel') }}
                     </button>
                 </div>
             </div>
@@ -268,7 +275,7 @@
             })
             .catch(error => {
                 console.error('Error loading products:', error);
-                showNotification('Failed to load products', 'error');
+                showNotification("{{ __('messages.Error loading products') }}", 'error');
             })
             .finally(() => {
                 document.getElementById('loading-indicator').classList.add('hidden');
@@ -278,7 +285,7 @@
         // Modal functionality
         function showAddStockModal(productId, productName) {
             currentProductId = productId;
-            document.getElementById('product-name-display').textContent = `Adding stock for: ${productName}`;
+            document.getElementById('product-name-display').textContent = `{{ __('messages.Adding stock for: ') }}${productName}`;
             document.getElementById('add-quantity').value = 1;
             document.getElementById('add-cost-price').value = '';
             document.getElementById('bulk-add-modal').classList.remove('hidden');
@@ -295,12 +302,12 @@
             const costPrice = parseFloat(document.getElementById('add-cost-price').value);
 
             if (!quantity || quantity < 1) {
-                showNotification('Please enter a valid quantity', 'error');
+                showNotification("{{ __('messages.Please enter a valid quantity') }}", 'error');
                 return;
             }
 
             if (!costPrice || costPrice <= 0) {
-                showNotification('Please enter a valid cost price', 'error');
+                showNotification("{{ __('messages.Please enter a valid cost price') }}", 'error');
                 return;
             }
 
@@ -333,15 +340,15 @@
                         }
                     }
                     
-                    showNotification('Stock added successfully!', 'success');
+                    showNotification("{{ __('messages.Stock added successfully!') }}", 'success');
                     hideAddStockModal();
                 } else {
-                    showNotification('Failed to add stock', 'error');
+                    showNotification("{{ __('messages.Failed to add stock') }}", 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showNotification('Failed to add stock', 'error');
+                showNotification("{{ __('messages.Failed to add stock') }}", 'error');
             });
         });
 
@@ -351,7 +358,7 @@
 
         // Delete confirmation
         function confirmDelete(productId, productName) {
-            if (confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
+            if (confirm(`{{ __('messages.Are you sure you want to delete') }} "${productName}"? {{ __('messages.This action cannot be undone.') }}`)) {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/products/${productId}`;

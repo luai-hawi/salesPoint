@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     {{-- Edit Employee Header --}}
 <x-slot name="header">
@@ -6,11 +13,11 @@
             <svg class="w-8 h-8 mr-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
-            {{ __('Edit Employee') }}
+            {{ __('messages.Edit Employee') }}
         </h2>
         <div class="flex items-center space-x-4">
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                Editing: <span class="font-bold text-orange-600">{{ $employee->name }}</span>
+                {{ __('messages.Editing') }}: <span class="font-bold text-orange-600">{{ $employee->name }}</span>
             </div>
             <div class="flex space-x-3">
                 <a href="{{ route('shopowner.employees.payments', $employee->id) }}"
@@ -18,14 +25,14 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                     </svg>
-                    View Payments
+                    {{ __('messages.View Payments') }}
                 </a>
                 <a href="{{ route('shopowner.employees.index') }}"
                     class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Back to Employees
+                    {{ __('messages.Back to Employees') }}
                 </a>
             </div>
         </div>
@@ -52,9 +59,9 @@
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                                         </svg>
-                                        ${{ number_format($employee->monthly_salary, 2) }}/month
+                                        ${{ number_format($employee->monthly_salary, 2) }}/{{ __('messages.month') }}
                                     </span>
-                                    <span class="text-sm text-gray-500">ID: #{{ $employee->id }}</span>
+                                    <span class="text-sm text-gray-500">{{ __('messages.ID') }}: #{{ $employee->id }}</span>
                                 </div>
                             </div>
                         </div>
@@ -67,7 +74,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div>
                                 <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    Full Name
+                                    {{ __('messages.Full Name') }}
                                     <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
@@ -86,7 +93,7 @@
 
                             <div>
                                 <label for="job_title" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    Job Title
+                                    {{ __('messages.Job Title') }}
                                     <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
@@ -105,7 +112,7 @@
 
                             <div>
                                 <label for="monthly_salary" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    Monthly Salary
+                                    {{ __('messages.Monthly Salary') }}
                                     <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
@@ -127,33 +134,33 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-8 p-6 bg-gray-50 rounded-lg">
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-green-600">${{ number_format($employee->monthly_salary, 2) }}</div>
-                                <div class="text-sm text-gray-600">Monthly Salary</div>
+                                <div class="text-sm text-gray-600">{{ __('messages.Monthly Salary') }}</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-blue-600">${{ number_format($employee->paidThisMonth(), 2) }}</div>
-                                <div class="text-sm text-gray-600">Paid This Month</div>
+                                <div class="text-sm text-gray-600">{{ __('messages.Paid This Month') }}</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-orange-600">${{ number_format($employee->remainingThisMonth(), 2) }}</div>
-                                <div class="text-sm text-gray-600">Remaining</div>
+                                <div class="text-sm text-gray-600">{{ __('messages.Remaining') }}</div>
                             </div>
                         </div>
 
                         <div class="flex items-center justify-between pt-6 border-t border-gray-200">
                             <p class="text-sm text-gray-600">
-                                <span class="text-red-500">*</span> Required fields
+                                <span class="text-red-500">*</span> {{ __('messages.Required fields') }}
                             </p>
                             <div class="flex space-x-3">
                                 <a href="{{ route('shopowner.employees.index') }}" 
                                    class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200">
-                                    Cancel
+                                    {{ __('messages.Cancel') }}
                                 </a>
                                 <button type="submit" 
                                         class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transform hover:scale-105 transition-all duration-200 shadow-lg">
                                     <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                                     </svg>
-                                    Update Employee
+                                    {{ __('messages.Update Employee') }}
                                 </button>
                             </div>
                         </div>

@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -23,8 +24,40 @@ class User extends Authenticatable
         'password',
         'role',
         'shop_owner_id',
+        'session_id',
     ];
 
+
+     /**
+     * Logout all other sessions for this user
+     */
+    public function logoutOtherSessions($currentSessionId)
+    {
+        return DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->where('id', '!=', $currentSessionId)
+            ->delete();
+    }
+
+    /**
+     * Check if user has active sessions
+     */
+    public function hasActiveSessions()
+    {
+        return DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->exists();
+    }
+
+    /**
+     * Get count of active sessions
+     */
+    public function getActiveSessionsCount()
+    {
+        return DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->count();
+    }
     /**
      * The attributes that should be hidden for serialization.
      *

@@ -47,7 +47,7 @@ Route::get('/dashboard', function () {
         ->sum('total_price');
 
     return view('dashboard', compact('products', 'totalToday', 'customers'));
-})->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,admin'])
+})->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 
 
@@ -72,6 +72,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin'])
         Route::put('/{employee}', [ShopOwnerController::class, 'updateEmployee'])->name('update');
         Route::delete('/{employee}', [ShopOwnerController::class, 'destroyEmployee'])->name('destroy');
     });
+     
 });
 
 // Additional middleware for admin role
@@ -81,14 +82,26 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// ------------------- SHOP OWNER AND EMPLOYEE ROUTES -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee'])
+//-------------------ROUTES FOR ADMIN, EMPLOYEE, SHOP OWNER-------------------
+// These routes are accessible to admin, shop owner, and employee roles
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
-
         // Profile
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
+
+
+
+// ------------------- SHOP OWNER AND EMPLOYEE ROUTES -------------------
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant'])
+    ->group(function () {
+
+        Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
+
+        // Quick Payment for Customers
+        Route::post('customers/{customer}/quick-payments', [CustomerController::class, 'quickStorePayment'])->name('customers.quick-payments.store');
 
         // Products
         Route::resource('products', ProductsController::class)->except(['show']);
@@ -133,7 +146,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
 // ------------------- SHOP OWNER SPECIFIC ROUTES -------------------
 Route::prefix('shopowner')
     ->as('shopowner.')
-    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner'])
+    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])
     ->group(function () {
         Route::resource('employees', EmployeeController::class);
         Route::get('employees/{employee}/payments', [EmployeeController::class, 'payments'])->name('employees.payments');
@@ -147,7 +160,7 @@ Route::prefix('shopowner')
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
 
@@ -439,5 +452,11 @@ Route::get('/quick-compress-images', function () {
     
     return response()->json($results);
 })->name('quick.compress.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
+
+
+
+// ------------------- LANGUAGE ROUTES -------------------
+require __DIR__.'/language.php';
+
 // ------------------- AUTH ROUTES -------------------
 require __DIR__.'/auth.php';

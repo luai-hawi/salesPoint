@@ -1,3 +1,10 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+    @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center space-x-4">
@@ -8,7 +15,7 @@
                 </svg>
             </a>
             <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('Add New User') }}
+                {{ __('messages.Add New User') }}
             </h2>
         </div>
     </x-slot>
@@ -17,7 +24,7 @@
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">User Information</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.User Information') }}</h3>
                 </div>
 
                 <form action="{{ route('admin.shop-owners.store') }}" method="POST" class="p-6 space-y-6">
@@ -25,14 +32,14 @@
 
                     <!-- Name -->
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Full Name') }}</label>
                         <input type="text" 
                                name="name" 
                                id="name" 
                                value="{{ old('name') }}" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter full name">
+                               placeholder="{{ __('messages.Enter full name') }}">
                         @error('name') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -40,14 +47,14 @@
 
                     <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Email Address') }}</label>
                         <input type="email" 
                                name="email" 
                                id="email" 
                                value="{{ old('email') }}" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter email address">
+                               placeholder="{{ __('messages.Enter email address') }}">
                         @error('email') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -55,13 +62,13 @@
 
                     <!-- Password -->
                     <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Password') }}</label>
                         <input type="password" 
                                name="password" 
                                id="password" 
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                               placeholder="Enter password">
+                               placeholder="{{ __('messages.Enter password') }}">
                         @error('password') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -69,13 +76,15 @@
 
                     <!-- Role -->
                     <div>
-                        <label for="role" class="block text-sm font-medium text-gray-700 mb-2">User Role</label>
+                        <label for="role" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.User Role') }}</label>
                         <select name="role" 
                                 id="role" 
                                 required
-                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
-                            <option value="">Select a role</option>
+                                class="w-full border border-gray-300 px-8 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                            <option value="">{{ __('messages.Select a role') }}</option>
                             <option value="shop_owner" {{ old('role') == 'shop_owner' ? 'selected' : '' }}>Shop Owner</option>
+                            <option value="restaurant" {{ old('role') == 'restaurant' ? 'selected' : '' }}>Restaurant</option>
+                            <option value="merchant" {{ old('role') == 'merchant' ? 'selected' : '' }}>Merchant</option>
                             <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
                         </select>
                         @error('role') 
@@ -85,18 +94,30 @@
 
                     <!-- Role Descriptions -->
                     <div class="bg-gray-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-gray-900 mb-2">Role Descriptions:</h4>
+                        <h4 class="text-sm font-medium text-gray-900 mb-2">{{ __('messages.Role Descriptions:') }}</h4>
                         <div class="space-y-2 text-sm text-gray-600">
                             <div class="flex items-start space-x-2">
                                 <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                                 <div>
-                                    <span class="font-medium">Shop Owner:</span> Can manage their own shop, products, employees, and sales data.
+                                    <span class="font-medium">{{ __('messages.Shop Owner:') }}</span> {{ __('messages.Can manage their own shop, products, employees, and sales data.') }}
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                                <div>
+                                    <span class="font-medium">{{ __('messages.Restaurant:') }}</span> {{ __('messages.Can manage orders, customers, and payments with restaurant-specific features.') }}
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <div class="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                                <div>
+                                    <span class="font-medium">{{ __('messages.Merchant:') }}</span> {{ __('messages.Can manage online sales, inventory, and customer orders for e-commerce.') }}
                                 </div>
                             </div>
                             <div class="flex items-start space-x-2">
                                 <div class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
                                 <div>
-                                    <span class="font-medium">Admin:</span> Full system access, can manage all shop owners and their data.
+                                    <span class="font-medium">{{ __('messages.Admin:') }}</span> {{ __('messages.Full system access, can manage all shop owners and their data.') }}
                                 </div>
                             </div>
                         </div>
@@ -106,11 +127,11 @@
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                         <a href="{{ route('admin.dashboard') }}" 
                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                            Cancel
+                            {{ __('messages.Cancel') }}
                         </a>
                         <button type="submit"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
-                            Create User
+                            {{ __('messages.Create User') }}
                         </button>
                     </div>
                 </form>

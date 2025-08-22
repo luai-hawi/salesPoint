@@ -20,7 +20,7 @@ class ShopOwnerController extends Controller
      */
     public function index()
     {
-        $users = User::whereIn('role', ['shop_owner', 'admin', 'disabled'])
+        $users = User::whereIn('role', ['shop_owner', 'admin', 'disabled', 'restaurant', 'merchant'])
             ->withCount('employees')
             ->latest()
             ->get();
@@ -45,7 +45,7 @@ class ShopOwnerController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:shop_owner,admin',
+            'role' => 'required|in:shop_owner,admin,restaurant,merchant',
         ]);
 
         try {
@@ -73,7 +73,7 @@ class ShopOwnerController extends Controller
     public function show(User $shopOwner)
     {
         // Ensure we're only showing shop owners
-        if (!in_array($shopOwner->role, ['shop_owner', 'disabled'])) {
+        if (!in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant'])) {
             abort(404);
         }
 
