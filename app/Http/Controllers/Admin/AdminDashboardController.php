@@ -81,7 +81,7 @@ class AdminDashboardController extends Controller
      */
     private function getShopOwnersWithMetrics()
     {
-        return User::where('role', 'shop_owner,disabled,restaurant,merchant')
+        return User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
             ->withCount(['employees'])
             ->with(['employees' => function($query) {
                 $query->select('id', 'name', 'email', 'shop_owner_id', 'created_at')

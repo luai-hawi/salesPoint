@@ -149,7 +149,7 @@ class ShopOwnerController extends Controller
             
             DB::commit();
             
-            $redirectRoute = in_array($shopOwner->role, ['shop_owner', 'disabled']) 
+            $redirectRoute = in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant']) 
                 ? 'admin.shop-owners.show' 
                 : 'admin.shop-owners.index';
                 
@@ -173,7 +173,7 @@ class ShopOwnerController extends Controller
             DB::beginTransaction();
             
             // Delete all employees first
-            if ($shopOwner->role === 'shop_owner') {
+            if ($shopOwner->role === 'shop_owner' || $shopOwner->role === 'restaurant' || $shopOwner->role === 'merchant' || $shopOwner->role === 'disabled') {
                 $shopOwner->employees()->delete();
                 
                 // Delete related business data
@@ -204,10 +204,10 @@ class ShopOwnerController extends Controller
     public function toggleStatus(User $shopOwner)
     {
         try {
-            $newRole = $shopOwner->role === 'shop_owner' ? 'disabled' : 'shop_owner';
+            $newRole = $shopOwner->role;
             $shopOwner->update(['role' => $newRole]);
 
-            $status = $newRole === 'shop_owner' ? 'activated' : 'disabled';
+            $status = ($newRole === 'shop_owner' || $newRole === 'restaurant' || $newRole === 'merchant') ? 'activated' : 'disabled';
             return redirect()->back()
                 ->with('success', "Shop owner has been {$status} successfully.");
                 
@@ -239,7 +239,7 @@ class ShopOwnerController extends Controller
      */
     public function createEmployee()
     {
-        $shopOwners = User::where('role', 'shop_owner')
+        $shopOwners = User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
             ->select('id', 'name', 'email')
             ->orderBy('name')
             ->get();
@@ -261,7 +261,7 @@ class ShopOwnerController extends Controller
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->where('role', 'shop_owner,disabled,restaurant,merchant')
+            ->whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
             ->first();
             
         if (!$shopOwner) {
@@ -307,7 +307,7 @@ class ShopOwnerController extends Controller
             abort(404);
         }
         
-        $shopOwners = User::where('role', 'shop_owner,disabled,restaurant,merchant')
+        $shopOwners = User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
             ->select('id', 'name', 'email')
             ->orderBy('name')
             ->get();
@@ -334,7 +334,7 @@ class ShopOwnerController extends Controller
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->where('role', 'shop_owner,disabled,restaurant,merchant')
+            ->whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
             ->first();
             
         if (!$shopOwner) {
