@@ -545,7 +545,7 @@
 
         .product-card.out-of-stock {
             opacity: 0.7;
-            pointer-events: none;
+            /*pointer-events: none;*/
         }
 
         .product-card.out-of-stock:hover {
@@ -1535,7 +1535,7 @@
 
             // Product card click (now for both restaurant and regular users)
             const card = e.target.closest('.product-card');
-            if (card && !card.classList.contains('out-of-stock')) {
+            if (card) {
                 const nameElement = card.querySelector('.text-sm.font-medium');
                 if (!nameElement) return;
 
