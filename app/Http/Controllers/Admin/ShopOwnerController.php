@@ -133,7 +133,7 @@ class ShopOwnerController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($shopOwner->id)],
             'password' => 'nullable|string|min:8',
-            'role' => 'required|in:shop_owner,admin,disabled',
+            'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
         ]);
 
         try {
@@ -261,7 +261,7 @@ class ShopOwnerController extends Controller
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->where('role', 'shop_owner')
+            ->where('role', 'shop_owner,disabled,restaurant,merchant')
             ->first();
             
         if (!$shopOwner) {
@@ -307,7 +307,7 @@ class ShopOwnerController extends Controller
             abort(404);
         }
         
-        $shopOwners = User::where('role', 'shop_owner')
+        $shopOwners = User::where('role', 'shop_owner,disabled,restaurant,merchant')
             ->select('id', 'name', 'email')
             ->orderBy('name')
             ->get();
@@ -334,7 +334,7 @@ class ShopOwnerController extends Controller
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->where('role', 'shop_owner')
+            ->where('role', 'shop_owner,disabled,restaurant,merchant')
             ->first();
             
         if (!$shopOwner) {
