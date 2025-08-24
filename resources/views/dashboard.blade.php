@@ -12,8 +12,10 @@
     } elseif (auth()->user()->role !== 'employee') {
         $shopName = auth()->user()->name ?? 'Shop';
     }
+    $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
     
-    $isRestaurant = auth()->user()->role === 'restaurant';
+    
+    
 @endphp
 <x-app-layout>
     <x-slot name="header">
