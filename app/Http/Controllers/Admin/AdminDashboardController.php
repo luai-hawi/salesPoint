@@ -19,7 +19,7 @@ class AdminDashboardController extends Controller
             // Cache expensive queries for 5 minutes
             $stats = Cache::remember('admin_dashboard_stats', 300, function () {
                 return [
-                    'total_shop_owners' => User::where('role', 'shop_owner,disabled,restaurant,merchant')->count(),
+                    'total_shop_owners' => User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])->count(),
                     'disabled_shop_owners' => User::where('role', 'disabled')->count(),
                     'total_employees' => User::where('role', 'employee')->count(),
                     'total_admins' => User::where('role', 'admin')->count(),
