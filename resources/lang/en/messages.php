@@ -412,6 +412,7 @@ return [
     'Please copy this content to your printer app or use device print function' => 'Please copy this content to your printer app or use device print function',
     'Copy Text' => 'Copy Text',
     'Close' => 'Close',
+    'This product has customizable tags' => 'This product has customizable tags',
 
     // Financial Dashboard
     'Period:' => 'Period:',

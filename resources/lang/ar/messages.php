@@ -128,6 +128,7 @@ return [
     'Please copy this content to your printer app or use device print function' => 'يرجى نسخ هذا المحتوى إلى تطبيق الطابعة أو استخدام وظيفة طباعة الجهاز',
     'Copy Text' => 'نسخ النص',
     'Close' => 'إغلاق',
+    'This product has customizable tags' => 'هذا المنتج يحتوي على علامات قابلة للتخصيص',
 
   
     "Select Tags for"=> "اختر العلامات لـ",
