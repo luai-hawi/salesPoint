@@ -45,4 +45,7 @@ return [
     'Add Payment' => 'إضافة دفعة',
     'Recent Payments' => 'المدفوعات الأخيرة',
     'No recent payments' => 'لا توجد مدفوعات حديثة',
+    'Multiple Products Found' => 'تم العثور على منتجات متعددة',
+    'Multiple products were found with barcode' => 'تم العثور على منتجات متعددة بالباركود',
+    'Please select which product you want to add' => 'يرجى تحديد المنتج الذي تريد إضافته',
 ];

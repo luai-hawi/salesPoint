@@ -45,4 +45,7 @@ return [
     'Add Payment' => 'Add Payment',
     'Recent Payments' => 'Recent Payments',
     'No recent payments' => 'No recent payments',
+    'Multiple Products Found' => 'Multiple Products Found',
+    'Multiple products were found with barcode' => 'Multiple products were found with barcode',
+    'Please select which product you want to add' => 'Please select which product you want to add',
 ];

@@ -750,7 +750,7 @@
                             </h3>
                             <div class="mt-2">
                                 <p class="text-sm text-gray-500">
-                                    Multiple products were found with barcode "<span id="duplicate-barcode"></span>". Please select which product you want to add:
+                                    {{__('messages.Multiple products were found with barcode')}} "<span id="duplicate-barcode"></span>". {{__('messages.Please select which product you want to add')}}:
                                 </p>
                             </div>
                             <div id="duplicate-products" class="mt-4 space-y-2">
@@ -761,7 +761,7 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button type="button" id="close-modal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Cancel
+                        {{__('messages.Cancel')}}
                     </button>
                 </div>
             </div>
@@ -1085,11 +1085,11 @@
                 productDiv.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors';
                 productDiv.innerHTML = `
                     <div class="flex-1">
-                        <div class="font-medium text-gray-900">${product.name}</div>
-                        <div class="text-sm text-gray-500">Price: ${product.selling_price} | Stock: ${product.quantity}</div>
+                        <div class="px-8 font-medium text-gray-900">${product.name}</div>
+                        <div class="px-8 text-sm text-gray-500">Price: ${product.selling_price} | Stock: ${product.quantity}</div>
                     </div>
                     <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                        Select
+                        {{__('messages.Select')}}
                     </button>
                 `;
                 duplicateProducts.appendChild(productDiv);
