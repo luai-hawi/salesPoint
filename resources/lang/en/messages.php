@@ -408,6 +408,10 @@ return [
     'Time' => 'Time',
     'Total Discount' => 'Total Discount',
     'Unknown' => 'Unknown',
+    'Manual Print Required' => 'Manual Print Required',
+    'Please copy this content to your printer app or use device print function' => 'Please copy this content to your printer app or use device print function',
+    'Copy Text' => 'Copy Text',
+    'Close' => 'Close',
 
     // Financial Dashboard
     'Period:' => 'Period:',

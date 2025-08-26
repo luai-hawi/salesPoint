@@ -766,6 +766,28 @@
                 display: block !important;
             }
         }
+
+
+        /* Mobile printing optimizations */
+@media print and (max-width: 480px) {
+    .print-receipt #receipt-area {
+        width: 100% !important;
+        font-size: 12pt !important;
+    }
+    
+    .receipt-content {
+        width: 100% !important;
+        padding: 5mm !important;
+    }
+}
+
+/* Android WebView specific adjustments */
+@media screen and (-webkit-device-pixel-ratio: 2) and (max-width: 800px) {
+    .receipt-content {
+        font-size: 10pt;
+        line-height: 1.3;
+    }
+}
     </style>
 
     <!-- Barcode Duplicate Selection Modal -->
@@ -1993,52 +2015,417 @@
 
 
         //print functions
-        // ESC/POS Thermal Printer Commands
+// ESC/POS Thermal Printer Commands
 const ESC = '\x1B';
 const GS = '\x1D';
 
-// Printer command functions
+// Enhanced printer command functions with Android support
 function sendToPrinter(data) {
+    console.log('Attempting to print with data length:', data.length);
+    
+    // Check if we're on Android
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
+    if (isAndroid) {
+        // Try Android-specific methods first
+        tryAndroidPrinting(data);
+    } else {
+        // Desktop/laptop approach
+        tryDesktopPrinting(data);
+    }
+}
+
+function tryAndroidPrinting(data) {
+    console.log('Trying Android printing methods for legacy device...');
+    
+    // Method 1: Check for built-in printer object (common on POS devices)
+    if (typeof AndroidPrinter !== 'undefined') {
+        try {
+            AndroidPrinter.printText(data);
+            showNotification('Printing via AndroidPrinter...', 'success');
+            return;
+        } catch (error) {
+            console.log('AndroidPrinter failed:', error);
+        }
+    }
+    
+    // Method 2: Check for SunmiPrinter (common on Sunmi devices, but worth trying)
+    if (typeof SunmiPrinter !== 'undefined') {
+        try {
+            SunmiPrinter.printText(data);
+            showNotification('Printing via SunmiPrinter...', 'success');
+            return;
+        } catch (error) {
+            console.log('SunmiPrinter failed:', error);
+        }
+    }
+    
+    // Method 3: Try generic printer interfaces
+    const printerInterfaces = [
+        'ThermalPrinter',
+        'POSPrinter', 
+        'AndroidPrint',
+        'PrinterBridge',
+        'NativePrinter',
+        'DevicePrinter'
+    ];
+    
+    for (const interfaceName of printerInterfaces) {
+        if (typeof window[interfaceName] !== 'undefined') {
+            try {
+                if (window[interfaceName].print) {
+                    window[interfaceName].print(data);
+                    showNotification(`Printing via ${interfaceName}...`, 'success');
+                    return;
+                } else if (window[interfaceName].printText) {
+                    window[interfaceName].printText(data);
+                    showNotification(`Printing via ${interfaceName}...`, 'success');
+                    return;
+                }
+            } catch (error) {
+                console.log(`${interfaceName} failed:`, error);
+            }
+        }
+    }
+    
+    // Method 4: Try Android Intent approach for older devices
+    tryAndroidIntent(data);
+}
+
+function tryAndroidIntent(data) {
+    try {
+        // Create a data URL with the receipt content
+        const encodedData = encodeURIComponent(data);
+        
+        // Try to trigger Android intent for printing
+        const intentUrl = `intent://print?data=${encodedData}#Intent;scheme=printer;package=com.printer.app;end`;
+        
+        // Create a hidden link and click it to trigger the intent
+        const link = document.createElement('a');
+        link.href = intentUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification('Attempting to open printer app...', 'info');
+        
+        // Fallback after a short delay
+        setTimeout(() => {
+            tryLegacyMethods(data);
+        }, 2000);
+        
+    } catch (error) {
+        console.log('Android intent failed:', error);
+        tryLegacyMethods(data);
+    }
+}
+
+function tryLegacyMethods(data) {
+    console.log('Trying legacy printing methods...');
+    
+    // Method 1: Try to send data to a hidden iframe (some old WebViews support this)
+    try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data);
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.print();
+            }
+            document.body.removeChild(iframe);
+        }, 500);
+        
+        showNotification('Attempting legacy print method...', 'info');
+        return;
+    } catch (error) {
+        console.log('Iframe method failed:', error);
+    }
+    
+    // Method 2: Try localStorage + page refresh approach
+    try {
+        localStorage.setItem('pendingPrint', data);
+        localStorage.setItem('printRequested', 'true');
+        showNotification('Print data saved, please use device print function', 'warning');
+        return;
+    } catch (error) {
+        console.log('localStorage method failed:', error);
+    }
+    
+    // Final fallback - show print dialog
+    showPrintDialog(data);
+}
+
+function showPrintDialog(data) {
+    // Create a modal with the receipt content for manual printing
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50';
+    modal.innerHTML = `
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 class="text-lg font-semibold mb-4">{{ __('messages.Manual Print Required') }}</h3>
+                <div class="bg-gray-100 p-4 rounded text-xs font-mono max-h-60 overflow-y-auto mb-4" style="white-space: pre-wrap;">${data}</div>
+                <p class="text-sm text-gray-600 mb-4">{{ __('messages.Please copy this content to your printer app or use device print function') }}</p>
+                <div class="flex gap-2">
+                    <button onclick="copyToClipboard('${data.replace(/'/g, "\\'")}'); this.textContent='Copied!'" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                        {{ __('messages.Copy Text') }}
+                    </button>
+                    <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded text-sm">
+                        {{ __('messages.Close') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Add copy to clipboard function
+function copyToClipboard(text) {
+    try {
+        // Try modern clipboard API first
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+        } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+    } catch (error) {
+        console.log('Copy failed:', error);
+    }
+}
+function checkPrinterCapabilities() {
+    console.log('=== Printer Capability Check ===');
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Available objects:');
+    
+    const possiblePrinters = [
+        'AndroidPrinter', 'SunmiPrinter', 'ThermalPrinter', 'POSPrinter',
+        'AndroidPrint', 'PrinterBridge', 'NativePrinter', 'DevicePrinter'
+    ];
+    
+    possiblePrinters.forEach(name => {
+        if (typeof window[name] !== 'undefined') {
+            console.log(`✓ ${name} is available:`, window[name]);
+            console.log(`Methods:`, Object.getOwnPropertyNames(window[name]));
+        } else {
+            console.log(`✗ ${name} not available`);
+        }
+    });
+    
+    console.log('Web APIs:');
+    console.log('USB:', !!navigator.usb);
+    console.log('Bluetooth:', !!navigator.bluetooth);
+    console.log('LocalStorage:', !!localStorage);
+    console.log('=== End Check ===');
+}
+
+function tryDesktopPrinting(data) {
+    console.log('Trying desktop printing methods...');
+    
     // Try USB first, then Bluetooth
     if (navigator.usb) {
         sendToUSBPrinter(data);
     } else if (navigator.bluetooth) {
         sendToBluetoothPrinter(data);
     } else {
-        // Fallback to browser print
         console.warn('Direct printer access not supported, falling back to browser print');
+        printReceipt();
+    }
+}
+
+function tryWebViewBridge(data) {
+    // Try common WebView bridges for printing
+    const bridges = [
+        'AndroidPrint',
+        'PrinterBridge', 
+        'ThermalPrinter',
+        'POSPrinter'
+    ];
+    
+    for (const bridge of bridges) {
+        if (window[bridge] && typeof window[bridge].print === 'function') {
+            try {
+                window[bridge].print(data);
+                showNotification('Printing via WebView bridge...', 'info');
+                return;
+            } catch (error) {
+                console.log(`Bridge ${bridge} failed:`, error);
+            }
+        }
+    }
+    
+    // If no bridge works, try Bluetooth
+    if (navigator.bluetooth) {
+        tryBluetoothSerial(data);
+    } else {
+        // Final fallback
+        showNotification('No direct printing available, using browser print', 'warning');
+        printReceipt();
+    }
+}
+
+async function tryBluetoothSerial(data) {
+    try {
+        console.log('Attempting Bluetooth Serial connection...');
+        
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [
+                { services: ['00001101-0000-1000-8000-00805f9b34fb'] }, // Serial Port Profile
+            ],
+            optionalServices: [
+                '000018f0-0000-1000-8000-00805f9b34fb',
+                '0000180f-0000-1000-8000-00805f9b34fb',
+                '00001101-0000-1000-8000-00805f9b34fb'
+            ]
+        });
+        
+        const server = await device.gatt.connect();
+        
+        // Try different service UUIDs commonly used by thermal printers
+        const serviceUUIDs = [
+            '00001101-0000-1000-8000-00805f9b34fb', // Serial Port Profile
+            '000018f0-0000-1000-8000-00805f9b34fb', // Common thermal printer service
+            '0000180a-0000-1000-8000-00805f9b34fb'  // Device Information Service
+        ];
+        
+        let service = null;
+        for (const uuid of serviceUUIDs) {
+            try {
+                service = await server.getPrimaryService(uuid);
+                break;
+            } catch (e) {
+                console.log(`Service ${uuid} not available`);
+            }
+        }
+        
+        if (!service) {
+            throw new Error('No compatible service found');
+        }
+        
+        const characteristics = await service.getCharacteristics();
+        let writeChar = null;
+        
+        // Find writable characteristic
+        for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+                writeChar = char;
+                break;
+            }
+        }
+        
+        if (!writeChar) {
+            throw new Error('No writable characteristic found');
+        }
+        
+        // Split data into chunks for reliable transmission
+        const encoder = new TextEncoder();
+        const dataArray = encoder.encode(data);
+        const chunkSize = 20; // Small chunks for reliability
+        
+        for (let i = 0; i < dataArray.length; i += chunkSize) {
+            const chunk = dataArray.slice(i, i + chunkSize);
+            if (writeChar.properties.writeWithoutResponse) {
+                await writeChar.writeValueWithoutResponse(chunk);
+            } else {
+                await writeChar.writeValue(chunk);
+            }
+            // Small delay between chunks
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        
+        showNotification('Receipt printed via Bluetooth!', 'success');
+        
+    } catch (error) {
+        console.error('Bluetooth printing failed:', error);
+        showNotification('Bluetooth printing failed: ' + error.message, 'warning');
+        
+        // Final fallback
         printReceipt();
     }
 }
 
 async function sendToUSBPrinter(data) {
     try {
+        console.log('Requesting USB device...');
+        
         const device = await navigator.usb.requestDevice({
             filters: [
                 { vendorId: 0x0483 }, // Common thermal printer vendor
                 { vendorId: 0x04b8 }, // Epson
                 { vendorId: 0x1a86 }, // WinChipHead (common in Chinese printers)
+                { vendorId: 0x28e9 }, // Another common vendor
+                { vendorId: 0x4348 }, // WCH
             ]
         });
         
+        console.log('USB device selected:', device);
+        
         await device.open();
-        await device.selectConfiguration(1);
-        await device.claimInterface(0);
+        
+        // Try different configurations
+        let configValue = 1;
+        if (device.configurations.length > 0) {
+            configValue = device.configurations[0].configurationValue;
+        }
+        
+        await device.selectConfiguration(configValue);
+        
+        // Try different interfaces
+        let interfaceNumber = 0;
+        if (device.configuration.interfaces.length > 0) {
+            interfaceNumber = device.configuration.interfaces[0].interfaceNumber;
+        }
+        
+        await device.claimInterface(interfaceNumber);
         
         const encoder = new TextEncoder();
         const dataArray = encoder.encode(data);
         
-        await device.transferOut(1, dataArray);
+        // Try different endpoint numbers
+        const endpoints = [1, 2, 3, 4];
+        let success = false;
+        
+        for (const endpoint of endpoints) {
+            try {
+                await device.transferOut(endpoint, dataArray);
+                success = true;
+                break;
+            } catch (e) {
+                console.log(`Endpoint ${endpoint} failed:`, e.message);
+            }
+        }
+        
         await device.close();
         
-        showNotification('Receipt printed successfully!', 'success');
+        if (success) {
+            showNotification('Receipt printed successfully!', 'success');
+        } else {
+            throw new Error('No working endpoint found');
+        }
+        
     } catch (error) {
         console.error('USB printing failed:', error);
-        showNotification('USB printing failed, trying alternative method', 'warning');
-        printReceipt(); // Fallback
+        showNotification('USB printing failed: ' + error.message, 'warning');
+        
+        // Try Bluetooth as fallback
+        if (navigator.bluetooth) {
+            tryBluetoothSerial(data);
+        } else {
+            printReceipt();
+        }
     }
 }
 
+// Keep the existing sendToBluetoothPrinter function as fallback
 async function sendToBluetoothPrinter(data) {
     try {
         const device = await navigator.bluetooth.requestDevice({
@@ -2057,10 +2444,18 @@ async function sendToBluetoothPrinter(data) {
         showNotification('Receipt printed via Bluetooth!', 'success');
     } catch (error) {
         console.error('Bluetooth printing failed:', error);
-        showNotification('Bluetooth printing failed, trying alternative method', 'warning');
-        printReceipt(); // Fallback
+        tryBluetoothSerial(data);
     }
 }
+
+// Add the missing printReceipt function
+function printReceipt() {
+    updatePrintAreas();
+    document.body.classList.add('print-receipt');
+    window.print();
+    document.body.classList.remove('print-receipt');
+}
+
 
 function formatReceiptForThermalPrinter() {
     let receiptData = '';

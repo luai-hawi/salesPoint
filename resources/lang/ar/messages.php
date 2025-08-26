@@ -124,6 +124,10 @@ return [
     'Time' => 'الوقت', 
     'Total Discount' => 'إجمالي الخصم',
     'Unknown' => 'غير معروف',
+    'Manual Print Required' => 'مطلوب طباعة يدوية',
+    'Please copy this content to your printer app or use device print function' => 'يرجى نسخ هذا المحتوى إلى تطبيق الطابعة أو استخدام وظيفة طباعة الجهاز',
+    'Copy Text' => 'نسخ النص',
+    'Close' => 'إغلاق',
 
   
     "Select Tags for"=> "اختر العلامات لـ",
