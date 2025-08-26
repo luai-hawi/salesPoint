@@ -129,6 +129,7 @@ return [
     'Copy Text' => 'نسخ النص',
     'Close' => 'إغلاق',
     'This product has customizable tags' => 'هذا المنتج يحتوي على علامات قابلة للتخصيص',
+    'Check this if customers can add extra options/tags to this product' => 'حدد هذا إذا كان بإمكان العملاء إضافة خيارات/علامات إضافية إلى هذا المنتج',
 
   
     "Select Tags for"=> "اختر العلامات لـ",

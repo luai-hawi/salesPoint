@@ -413,6 +413,7 @@ return [
     'Copy Text' => 'Copy Text',
     'Close' => 'Close',
     'This product has customizable tags' => 'This product has customizable tags',
+    'Check this if customers can add extra options/tags to this product' => 'Check this if customers can add extra options/tags to this product',
 
     // Financial Dashboard
     'Period:' => 'Period:',
