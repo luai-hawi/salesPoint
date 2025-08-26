@@ -47,6 +47,21 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label for="details" :value="__('messages.Business Details')" />
+            <textarea 
+                id="details" 
+                name="details" 
+                rows="4"
+                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                placeholder="{{ __('messages.Enter business details that will appear on printed bills (address, phone, etc.)') }}"
+            >{{ old('details', $user->details) }}</textarea>
+            <x-input-error class="mt-2" :messages="$errors->get('details')" />
+            <p class="mt-1 text-sm text-gray-500">
+                {{ __('messages.These details will appear on your printed bills and receipts.') }}
+            </p>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('messages.Save') }}</x-primary-button>
 

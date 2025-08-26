@@ -6,7 +6,7 @@
     }
     
     // Get shop name based on user role
-    $shopName = 'Shop'; // Default fallback
+    $shopName = __('messages.Shop'); // Default fallback
     if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
         $shopName = auth()->user()->shopOwner->name ?? 'Shop';
     } elseif (auth()->user()->role !== 'employee') {
@@ -156,7 +156,11 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($bill->products as $product)
-                                <tr data-product-id="{{ $product->id }}" class="hover:bg-gray-50">
+                                @php
+                                    $tags = $product->pivot->tags ?? '';
+                                    $uniqueKey = $product->id . '_' . $tags;
+                                @endphp
+                                <tr data-product-id="{{ $product->id }}" data-unique-key="{{ $uniqueKey }}" class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-8 w-8">
@@ -169,35 +173,82 @@
                                             <div class="ml-4">
                                                 <div class="text-sm font-medium text-gray-900">{{ $product->name }}</div>
                                                 <div class="text-sm text-gray-500">{{ $product->barcode ?? __('bills.No barcode') }}</div>
+                                                @if($product->pivot->tags)
+                                                    <div class="text-xs text-blue-600 mt-1">
+                                                        <span class="font-medium">{{ __('bills.Tags') }}:</span>
+                                                        @php
+                                                            $tagPairs = explode('&', $product->pivot->tags);
+                                                        @endphp
+                                                        @foreach($tagPairs as $tagPair)
+                                                            @if(str_contains($tagPair, '@'))
+                                                                @php
+                                                                    [$tagName, $tagPrice] = explode('@', $tagPair);
+                                                                @endphp
+                                                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs mr-1 mt-0.5">
+                                                                    {{ $tagName }} (+${{ number_format($tagPrice, 2) }})
+                                                                </span>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <input type="number" name="quantities[{{ $product->id }}]" 
-                                               value="{{ old("quantities.$product->id", $product->pivot->quantity) }}" 
-                                               min="1" 
-                                               class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent quantity" 
-                                               required>
+                                        <input type="number" name="quantities[{{ $uniqueKey }}]" 
+                                            value="{{ old("quantities.$uniqueKey", $product->pivot->quantity) }}"
+                                            min="1" 
+                                            class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent quantity" 
+                                            required>
                                         <input type="hidden" name="product_ids[]" value="{{ $product->id }}">
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                        ${{ number_format($product->pivot->selling_price, 2) }}
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900 font-medium">
+                                            <div>${{ number_format($product->pivot->selling_price, 2) }}</div>
+                                            @if($product->pivot->tags)
+                                                @php
+                                                    $tagPairs = explode('&', $product->pivot->tags);
+                                                    $totalTagPrice = 0;
+                                                    foreach($tagPairs as $tagPair) {
+                                                        if(str_contains($tagPair, '@')) {
+                                                            $totalTagPrice += floatval(explode('@', $tagPair)[1]);
+                                                        }
+                                                    }
+                                                @endphp
+                                                @if($totalTagPrice > 0)
+                                                    <div class="text-xs text-blue-600">
+                                                        {{ __('bills.Tags Price') }}: +${{ number_format($totalTagPrice, 2) }}
+                                                    </div>
+                                                @endif
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <input type="number" name="discounts[{{ $product->id }}]" 
-                                               value="{{ old("discounts.$product->id", $product->pivot->discount ?? 0) }}" 
-                                               min="0" 
-                                               class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent discount" 
-                                               step="0.01" 
-                                               required>
+                                        <input type="number" name="discounts[{{ $uniqueKey }}]" 
+                                            value="{{ old("discounts.$uniqueKey", $product->pivot->discount ?? 0) }}" 
+                                            min="0" 
+                                            class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent discount" 
+                                            step="0.01" 
+                                            required>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 total-cell">
-                                        ${{ number_format($product->pivot->quantity * $product->pivot->selling_price - ($product->pivot->discount ?? 0), 2) }}
+                                        @php
+                                            $basePrice = $product->pivot->selling_price;
+                                            $tagPairs = explode('&', $product->pivot->tags ?? '');
+                                            $totalTagPrice = 0;
+                                            foreach($tagPairs as $tagPair) {
+                                                if(str_contains($tagPair, '@')) {
+                                                    $totalTagPrice += floatval(explode('@', $tagPair)[1]);
+                                                }
+                                            }
+                                            $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
+                                        @endphp
+                                        ${{ number_format($finalPrice, 2) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <label class="inline-flex items-center">
-                                            <input type="checkbox" name="remove_products[]" value="{{ $product->id }}" 
-                                                   class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50">
+                                            <input type="checkbox" name="remove_products[]" value="{{ $uniqueKey }}" 
+                                                class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50">
                                             <span class="ml-2 text-sm text-red-600">{{ __('bills.Remove') }}</span>
                                         </label>
                                     </td>
@@ -495,158 +546,268 @@ const form = document.getElementById('form');
 const saveButton = document.getElementById('save');
 const shopName = '{{ $shopName }}';
 
-function formatPrice(num) {
-    return parseFloat(num).toFixed(2);
-}
+let availableTags = [];
 
-function isProductInTable(productId) {
-    return !!productsTableBody.querySelector(`tr[data-product-id="${productId}"]`);
-}
-
-function updateGrandTotal() {
-    let total = 0;
-    document.querySelectorAll('#products-table tbody tr').forEach(row => {
-        const totalCell = row.querySelector('.total-cell');
-        if (totalCell) {
-            const amount = parseFloat(totalCell.textContent.replace('$', '').replace(',', '')) || 0;
-            total += amount;
+async function fetchTags() {
+    try {
+        const response = await fetch('/api/tags');
+        if (response.ok) {
+            availableTags = await response.json();
         }
-    });
-    document.getElementById('grand-total').textContent ='$' + formatPrice(total);
+    } catch (error) {
+        console.error('Failed to fetch tags:', error);
+    }
 }
 
-function addProductRow(product) {
-    console.log("Adding product:", product);
-    if (isProductInTable(product.id)) {
-        alert('{{ __('bills.Product already added to this bill') }}');
+function showTagsDialog(product) {
+    const modal = document.createElement('div');
+    modal.id = 'tags-modal';
+    modal.className = 'fixed inset-0 z-50 overflow-y-auto';
+    modal.innerHTML = `
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="modal-overlay fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Select Tags for ${product.name}</h3>
+                    <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
+                        ${availableTags.map(tag => `
+                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                <div class="flex-1">
+                                    <div class="font-medium">${tag.name}</div>
+                                    <div class="text-sm text-gray-500">+$${parseFloat(tag.price).toFixed(2)}</div>
+                                </div>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirm-tags" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mr-2">{{__('messages.Add to Bill')}}</button>
+                    <button type="button" id="cancel-tags" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">{{__('messages.Cancel')}}</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('confirm-tags').addEventListener('click', () => {
+        const selectedTags = [];
+        const checkboxes = modal.querySelectorAll('.tag-checkbox:checked');
+        checkboxes.forEach(cb => {
+            selectedTags.push(`${cb.dataset.name}@${cb.dataset.price}`);
+        });
+        const tagsString = selectedTags.join('&');
+        addProductToTable(product, tagsString);
+        document.body.removeChild(modal);
+    });
+    
+    document.getElementById('cancel-tags').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('.modal-overlay').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+function generateUniqueKey(productId, tags) {
+    return `${productId}_${tags || ''}`;
+}
+
+function isProductWithTagsExists(productId, tags) {
+    const uniqueKey = generateUniqueKey(productId, tags);
+    return !!document.querySelector(`tr[data-unique-key="${uniqueKey}"]`);
+}
+
+function addProductToTable(product, tagsString = '') {
+    // Check if exact combination exists
+    if (isProductWithTagsExists(product.id, tagsString)) {
+        alert('This product with the same tags is already in the bill');
         return;
+    }
+
+    const uniqueKey = generateUniqueKey(product.id, tagsString);
+    const basePrice = parseFloat(product.price || product.selling_price);
+    
+    // Calculate tags price
+    let totalTagPrice = 0;
+    let tagsDisplay = '';
+    if (tagsString) {
+        const tagPairs = tagsString.split('&');
+        tagPairs.forEach(pair => {
+            if (pair.includes('@')) {
+                const [name, price] = pair.split('@');
+                totalTagPrice += parseFloat(price) || 0;
+            }
+        });
+        tagsDisplay = tagPairs.map(tag => {
+            const [name, price] = tag.split('@');
+            return `<span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs mr-1">${name} (+$${parseFloat(price).toFixed(2)})</span>`;
+        }).join('');
     }
 
     const tr = document.createElement('tr');
     tr.setAttribute('data-product-id', product.id);
+    tr.setAttribute('data-unique-key', uniqueKey);
     tr.className = 'hover:bg-gray-50';
 
     tr.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
-                <div class="flex-shrink-0 h-8 w-8">
-                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                        <svg class="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
-                        </svg>
-                    </div>
-                </div>
                 <div class="ml-4">
                     <div class="text-sm font-medium text-gray-900">${product.name}</div>
                     <div class="text-sm text-gray-500">${product.barcode || '{{__('messages.No barcode')}}'}</div>
+                    ${tagsString ? `<div class="text-xs text-blue-600 mt-1"><span class="font-medium">Tags:</span> ${tagsDisplay}</div>` : ''}
                 </div>
             </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
-            <input type="number" name="quantities[${product.id}]" value="1" min="1" 
-                   class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent quantity" required>
-            <input type="hidden" name="product_ids[]" value="${product.id}">
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-            ${formatPrice(product.price || product.selling_price)}
+            <input type="number" name="quantities[${uniqueKey}]" value="1" min="1"
+                   class="w-20 px-3 py-2 border border-gray-300 rounded-md quantity" required>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
-            <input type="number" name="discounts[${product.id}]" value="0" min="0" 
-                   class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent discount" 
-                   step="0.01" required>
+            <div class="text-sm text-gray-900 font-medium">
+                <div>$${basePrice.toFixed(2)}</div>
+                ${totalTagPrice > 0 ? `<div class="text-xs text-blue-600">Tags: +$${totalTagPrice.toFixed(2)}</div>` : ''}
+            </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+            <input type="number" name="discounts[${uniqueKey}]" value="0" min="0" step="0.01"
+                   class="w-20 px-3 py-2 border border-gray-300 rounded-md discount" required>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 total-cell">
-            ${formatPrice(product.price || product.selling_price)}
+            $${(basePrice + totalTagPrice).toFixed(2)}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-center">
             <label class="inline-flex items-center">
-                <input type="checkbox" name="remove_products[]" value="${product.id}" 
-                       class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50">
-                <span class="ml-2 text-sm text-red-600">Remove</span>
+                <input type="checkbox" name="remove_products[]" value="${uniqueKey}" 
+                       class="rounded border-gray-300 text-red-600">
+                <span class="ml-2 text-sm text-red-600">{{__('messages.Remove')}}</span>
             </label>
         </td>
     `;
 
     productsTableBody.appendChild(tr);
     updateGrandTotal();
-    console.log("Product row added successfully");
 }
 
-function addDynamicProductsToForm() {
-    // Remove any existing dynamic product inputs to avoid duplicates
-    form.querySelectorAll('input[name^="dynamic_"]').forEach(input => input.remove());
-    
-    // Collect all products currently in the table
-    document.querySelectorAll('#products-table tbody tr').forEach(function(row) {
-        const productIdInput = row.querySelector('input[name="product_ids[]"]');
-        const quantityInput = row.querySelector('input.quantity');
-        const discountInput = row.querySelector('input.discount');
+function addProductRow(product) {
+    if (product.has_tags && availableTags.length > 0) {
+        showTagsDialog(product);
+    } else {
+        addProductToTable(product, '');
+    }
+}
+
+function updateGrandTotal() {
+    let total = 0;
+    document.querySelectorAll('#products-table tbody tr').forEach(row => {
+        const qtyInput = row.querySelector('.quantity');
+        const discountInput = row.querySelector('.discount');
         
-        if (productIdInput && quantityInput && discountInput) {
-            const productId = productIdInput.value;
+        if (qtyInput && discountInput) {
+            const qty = parseInt(qtyInput.value) || 0;
+            const discount = parseFloat(discountInput.value) || 0;
             
-            // Add hidden inputs for this product
-            const hiddenProductId = document.createElement('input');
-            hiddenProductId.type = 'hidden';
-            hiddenProductId.name = 'dynamic_product_ids[]';
-            hiddenProductId.value = productId;
-            form.appendChild(hiddenProductId);
+            const priceCell = row.children[2];
+            const basePriceText = priceCell.querySelector('div').textContent.replace('$', '');
+            const basePrice = parseFloat(basePriceText) || 0;
             
-            const hiddenQuantity = document.createElement('input');
-            hiddenQuantity.type = 'hidden';
-            hiddenQuantity.name = `dynamic_quantities[${productId}]`;
-            hiddenQuantity.value = quantityInput.value;
-            form.appendChild(hiddenQuantity);
+            let tagsPrice = 0;
+            const tagsElement = priceCell.querySelector('.text-xs.text-blue-600');
+            if (tagsElement) {
+                const match = tagsElement.textContent.match(/\+\$([0-9.]+)/);
+                if (match) tagsPrice = parseFloat(match[1]) || 0;
+            }
             
-            const hiddenDiscount = document.createElement('input');
-            hiddenDiscount.type = 'hidden';
-            hiddenDiscount.name = `dynamic_discounts[${productId}]`;
-            hiddenDiscount.value = discountInput.value;
-            form.appendChild(hiddenDiscount);
+            const lineTotal = Math.max(0, (basePrice + tagsPrice) * qty - discount);
+            total += lineTotal;
+            
+            const totalCell = row.querySelector('.total-cell');
+            if (totalCell) {
+                totalCell.textContent = '$' + lineTotal.toFixed(2);
+            }
         }
     });
-    
-    console.log('Dynamic products added to form');
+    document.getElementById('grand-total').textContent = '$' + total.toFixed(2);
 }
 
-function handleBarcodeAdd() {
-    console.log("handleBarcodeAdd called");
-    const code = barcodeInput.value.trim();
-    console.log("Barcode entered:", code);
+// Add this debug function right before the form submission
+function addDynamicProductsToForm() {
+    // Clear existing dynamic inputs
+    form.querySelectorAll('input[name^="dynamic_"]').forEach(input => input.remove());
     
-    if (!code) {
-        console.log("No barcode entered");
-        alert('{{ __('bills.Please enter a barcode') }}');
-        return;
-    }
-
-    console.log("Available products:", products);
-    const product = products.find(p => p.barcode === code);
-    console.log("Product found:", product);
+    console.log('=== FORM SUBMISSION DEBUG ===');
     
-    if (!product) {
-        alert('{{ __('bills.Product not found for barcode: ') }}' + code);
-        return;
+    // Check what remove checkboxes are checked
+    const removeCheckboxes = document.querySelectorAll('input[name="remove_products[]"]:checked');
+    console.log('Remove checkboxes checked:', removeCheckboxes.length);
+    removeCheckboxes.forEach(cb => {
+        console.log('- Remove value:', cb.value);
+    });
+    
+    // Add current table products as dynamic inputs
+    document.querySelectorAll('#products-table tbody tr').forEach(row => {
+        const uniqueKey = row.getAttribute('data-unique-key');
+        const productId = row.getAttribute('data-product-id');
+        const qty = row.querySelector('.quantity')?.value;
+        const discount = row.querySelector('.discount')?.value;
+        
+        console.log('Processing table row:', {
+            uniqueKey,
+            productId,
+            qty,
+            discount
+        });
+        
+        // Extract tags from uniqueKey (everything after the first underscore)
+        const tags = uniqueKey.includes('_') ? uniqueKey.split('_').slice(1).join('_') : '';
+        
+        // Create hidden inputs
+        ['product_ids', 'quantities', 'discounts', 'product_tags'].forEach(field => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `dynamic_${field}[${uniqueKey}]`;
+            
+            switch(field) {
+                case 'product_ids': input.value = productId; break;
+                case 'quantities': input.value = qty; break;
+                case 'discounts': input.value = discount; break;
+                case 'product_tags': input.value = tags; break;
+            }
+            
+            console.log('Adding hidden input:', input.name, '=', input.value);
+            form.appendChild(input);
+        });
+    });
+    
+    // Log all form data that will be sent
+    const formData = new FormData(form);
+    console.log('=== FINAL FORM DATA ===');
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ':', value);
     }
-
-    addProductRow(product);
-    barcodeInput.value = '';
-    console.log("Barcode cleared, product should be added");
+    console.log('=== END DEBUG ===');
 }
 
 // Event Listeners
-addBarcodeBtn.addEventListener('click', function(e) {
-    e.preventDefault();
-    handleBarcodeAdd();
+addBarcodeBtn.addEventListener('click', () => {
+    const code = barcodeInput.value.trim();
+    if (!code) return alert('Please enter a barcode');
+    
+    const product = products.find(p => p.barcode === code);
+    if (!product) return alert('Product not found');
+    
+    product.has_tags = product.has_tags === true || product.has_tags === 1 || product.has_tags === '1';
+    addProductRow(product);
+    barcodeInput.value = '';
 });
 
-barcodeInput.addEventListener('keydown', function(e) {
-    console.log("Key pressed:", e.key);
+barcodeInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
-        e.stopPropagation();
-        console.log("Enter detected, calling handleBarcodeAdd");
-        handleBarcodeAdd();
+        addBarcodeBtn.click();
     }
 });
 
@@ -656,166 +817,30 @@ productSelect.addEventListener('change', function() {
     
     const product = products.find(p => p.id == productId);
     if (product) {
+        product.has_tags = product.has_tags === true || product.has_tags === 1 || product.has_tags === '1';
         addProductRow(product);
         this.value = '';
-        if (newQuantityInput) {
-            newQuantityInput.value = '';
-        }
+        if (newQuantityInput) newQuantityInput.value = '';
     }
 });
 
-// Save button click handler
-saveButton.addEventListener('click', function(e) {
+saveButton.addEventListener('click', (e) => {
     e.preventDefault();
-    console.log('Save button clicked - preparing form submission');
-    
-    // Add dynamic products to form before submission
     addDynamicProductsToForm();
-    
-    // Submit the form
-    console.log('Submitting form with dynamic products');
     form.submit();
 });
 
-// Backup: Form submit handler
-form.addEventListener('submit', function(e) {
-    console.log('Form submit event triggered');
-    addDynamicProductsToForm();
-});
-
-// Update totals when quantities or discounts change
-document.querySelector('#products-table').addEventListener('input', function(e) {
+document.querySelector('#products-table').addEventListener('input', (e) => {
     if (e.target.classList.contains('quantity') || e.target.classList.contains('discount')) {
-        const tr = e.target.closest('tr');
-        const qtyInput = tr.querySelector('input.quantity');
-        const discountInput = tr.querySelector('input.discount');
-        
-        const qty = parseInt(qtyInput ? qtyInput.value : 0) || 0;
-        const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
-        
-        // Get price from the price cell
-        const priceCell = tr.children[2];
-        const priceText = priceCell.textContent.replace('$', '').replace(',', '');
-        const price = parseFloat(priceText) || 0;
-        
-        const totalCell = tr.querySelector('.total-cell');
-        if (totalCell) {
-            let total = (qty * price) - discount;
-            totalCell.textContent = '$' + formatPrice(Math.max(0, total));
-        }
-        
         updateGrandTotal();
     }
 });
 
-// Enhanced print functionality
-document.getElementById('print-button').addEventListener('click', function() {
-    updatePrintAreas();
-    document.body.classList.remove('print-receipt');
-    window.print();
-});
-
-// Receipt print functionality
-document.getElementById('print-receipt-button').addEventListener('click', function() {
-    updatePrintAreas();
-    document.body.classList.add('print-receipt');
-    window.print();
-    document.body.classList.remove('print-receipt');
-});
-
-function updatePrintAreas() {
-    const printList = document.getElementById('print-products-list');
-    const receiptList = document.getElementById('receipt-products-list');
-    
-    printList.innerHTML = '';
-    receiptList.innerHTML = '';
-
-    let totalPrice = 0;
-    let totalDiscount = 0;
-
-    document.querySelectorAll('#products-table tbody tr').forEach(function(row) {
-        const nameElement = row.querySelector('.text-sm.font-medium.text-gray-900');
-        const name = nameElement ? nameElement.textContent.trim() : '{{ __('messages.Unknown Product') }}';
-        
-        const qtyInput = row.querySelector('input.quantity');
-        const quantity = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
-        
-        const unitPriceText = row.children[2].textContent.replace('$', '').replace(',', '');
-        const unitPrice = parseFloat(unitPriceText) || 0;
-        
-        const discountInput = row.querySelector('input.discount');
-        const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
-        
-        const lineTotal = Math.max(0, (unitPrice * quantity) - discount);
-        
-        totalDiscount += discount;
-        totalPrice += lineTotal;
-
-        // Standard print table row
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="border px-2 py-1">${name}</td>
-            <td class="border px-2 py-1 text-right">${quantity}</td>
-            <td class="border px-2 py-1 text-right">${unitPrice.toFixed(2)}</td>
-            <td class="border px-2 py-1 text-right">${discount.toFixed(2)}</td>
-            <td class="border px-2 py-1 text-right">${lineTotal.toFixed(2)}</td>
-        `;
-        printList.appendChild(tr);
-
-        // Receipt format
-        const receiptDiv = document.createElement('div');
-        receiptDiv.className = 'receipt-product-row';
-        receiptDiv.innerHTML = `
-            <div class="receipt-product-name">${name}</div>
-            <div class="receipt-product-details">
-                <span>${quantity} x ${unitPrice.toFixed(2)}</span>
-                <span>${lineTotal.toFixed(2)}</span>
-            </div>
-            ${discount > 0 ? `<div class="text-center text-xs">{{__('messages.Discount')}}: -${discount.toFixed(2)}</div>` : ''}
-        `;
-        receiptList.appendChild(receiptDiv);
-    });
-
-    // Add receipt totals
-    const receiptTotalsDiv = document.createElement('div');
-    receiptTotalsDiv.innerHTML = `
-        <div class="border-t border-dashed my-2"></div>
-        <div class="text-center text-xs">{{__('messages.Total')}}: ${totalPrice.toFixed(2)}</div>
-        ${totalDiscount > 0 ? `<div class="text-center text-xs">{{__('messages.Total Discount')}}: -${totalDiscount.toFixed(2)}</div>` : ''}
-        <div class="text-center text-xs mt-3">
-            <div>{{__('messages.Thank you for your business!')}}</div>
-            <div class="border-t border-dashed mt-2"></div>
-        </div>
-    `;
-    receiptList.appendChild(receiptTotalsDiv);
-
-    // Update print totals
-    document.getElementById('print-total-discount').textContent = '$' + totalDiscount.toFixed(2);
-    document.getElementById('print-total-price').textContent = '$' + totalPrice.toFixed(2);
-
-    // Update customer information for both print formats
-    const customerName = '{{ $bill->customer->name ?? "" }}';
-    const customerPhone = '{{ $bill->customer->phone ?? "" }}';
-
-    document.getElementById('print-customer').textContent = customerName ? `{{ __('messages.Customer') }}: ${customerName}` : '';
-    document.getElementById('print-customer-phone').textContent = customerPhone ? `{{ __('messages.Phone') }}: ${customerPhone}` : '';
-    document.getElementById('receipt-customer').textContent = customerName ? `{{ __('messages.Customer') }}: ${customerName}` : '';
-}
-
-// Initialize grand total when page loads
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    fetchTags();
     updateGrandTotal();
-    console.log("Page loaded, products available:", products.length);
 });
-
-// Initialize if DOM is already loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        updateGrandTotal();
-    });
-} else {
-    updateGrandTotal();
-}
 
     </script>
 </x-app-layout>

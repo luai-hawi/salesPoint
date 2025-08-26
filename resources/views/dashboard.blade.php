@@ -5,17 +5,34 @@
         app()->setLocale($sessionLocale);
     }
     
-    // Get shop name based on user role
-    $shopName = 'Shop'; // Default fallback
+    // Get shop name and details based on user role
+    $shopName = __('messages.Shop'); // Default fallback
+    $shopDetails = '';
+    $shopPhone = '';
+    $shopWhatsApp = '';
+    
     if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-        $shopName = auth()->user()-> shopOwner->name ?? 'Shop';
+        $shopOwner = auth()->user()->shopOwner;
+        $shopName = $shopOwner->name ?? 'Shop';
+        $shopDetails = $shopOwner->details ?? '';
+        // Parse details JSON if it exists
+        if ($shopDetails) {
+            $detailsArray = json_decode($shopDetails, true);
+            $shopPhone = $detailsArray['phone'] ?? '';
+            $shopWhatsApp = $detailsArray['whatsapp'] ?? '';
+        }
     } elseif (auth()->user()->role !== 'employee') {
         $shopName = auth()->user()->name ?? 'Shop';
+        $shopDetails = auth()->user()->details ?? '';
+        // Parse details JSON if it exists
+        if ($shopDetails) {
+            $detailsArray = json_decode($shopDetails, true);
+            $shopPhone = $detailsArray['phone'] ?? '';
+            $shopWhatsApp = $detailsArray['whatsapp'] ?? '';
+        }
     }
+    
     $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
-    
-    
-    
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -269,13 +286,7 @@
                                 <!-- Products will be added here dynamically -->
                             </div>
 
-                            <!-- Add Product Button -->
-                            <button type="button" id="add-product-row" class="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                {{ __('dashboard.Add Product Manually') }}
-                            </button>
+                            
 
                             <!-- Action Buttons -->
                             <div class="flex gap-3">
@@ -432,6 +443,15 @@
     <div class="receipt-content">
         <div class="text-center mb-2">
             <div class="text-lg font-bold">{{ $shopName }}</div>
+            @if($shopWhatsApp || $shopPhone)
+                @if($shopWhatsApp)
+                <div class="text-xs">WhatsApp: {{ $shopWhatsApp }}</div>
+                @endif
+                @if($shopPhone)
+                <div class="text-xs">{{ __('messages.Phone') }}: {{ $shopPhone }}</div>
+                @endif
+            @endif
+            <div class="border-t border-dashed my-2"></div>
             <div class="text-xs">{{ now()->format('Y-m-d H:i:s') }}</div>
             <div id="receipt-bill-id" class="text-xs font-medium">{{ __('messages.Bill') }}: #<span id="receipt-current-bill-id">-</span></div>
             <div class="border-t border-dashed my-2"></div>
@@ -439,18 +459,29 @@
        
         <div id="receipt-customer" class="text-xs mb-2"></div>
        
+        <div class="text-xs font-bold mb-1">
+            <span class="inline-block w-16">{{ __('messages.Product Name') }}</span>
+            <span class="inline-block w-8 text-center">{{ __('messages.Qty') }}</span>
+            <span class="inline-block w-10 text-right">{{ __('messages.Price') }}</span>
+        </div>
+        <div class="border-t border-dashed mb-2"></div>
+       
         <div id="receipt-products-list" class="text-xs">
             <!-- Products will be added here -->
         </div>
        
         <div class="border-t border-dashed my-2"></div>
        
-        <div id="receipt-totals-container">
+        <div id="receipt-totals-container" class="text-sm font-bold">
             <!-- Totals will be added dynamically -->
         </div>
        
         <div class="text-center text-xs mt-3">
+            <div class="border-t border-dashed mb-2"></div>
             <div>{{ __('messages.Thank you for your business!') }}</div>
+            <div>{{ __('messages.Please come again') }}</div>
+            <div class="mt-2">[LOGO]</div>
+            <div class="text-xs">{{ config('app.name', 'POS System') }}</div>
             <div class="border-t border-dashed mt-2"></div>
         </div>
     </div>
@@ -777,6 +808,7 @@
     {{-- Enhanced High-Performance JavaScript --}}
     <script>
         const products = @json($products);
+        let availableTags = [];
         const customers = @json($customers);
         let customerDebounceTimeout = null;
         let paymentCustomerDebounceTimeout = null;
@@ -784,6 +816,8 @@
         const productsList = document.getElementById('products-list');
         const isRestaurant = {{ $isRestaurant ? 'true' : 'false' }};
         const shopName = '{{ $shopName }}';
+        const shopPhone = '{{ $shopPhone }}';
+        const shopWhatsApp = '{{ $shopWhatsApp }}';
         let currentBillId = null;
 
         // State management
@@ -817,6 +851,11 @@
                 setupCustomerSearch();
             } else {
                 setupRestaurantCustomerSelectors();
+            }
+
+            // Add this inside the DOMContentLoaded event listener
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                showNotification('Direct printer access requires HTTPS connection', 'warning');
             }
         });
 
@@ -959,6 +998,20 @@
             }, options);
         }
 
+
+        // Fetch available tags
+            async function fetchTags() {
+                try {
+                    const response = await fetch('/api/tags');
+                    if (response.ok) {
+                        availableTags = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch tags:', error);
+                }
+            }
+
+
         // Customer search functionality
         function setupCustomerSearch() {
             const searchInput = document.getElementById('customer_search');
@@ -1020,6 +1073,9 @@
             document.getElementById('customer_search').value = customer.name;
             document.getElementById('customer_id').value = customer.id;
             document.getElementById('customer_suggestions').classList.add('hidden');
+            if (!isRestaurant) {
+                document.getElementById('barcode_input').focus();
+            }
         }
 
         // Enhanced barcode input handler (only for non-restaurant)
@@ -1043,6 +1099,8 @@
                             showBarcodeModal(result.products, result.barcode);
                             e.target.value = '';
                         } else if (result && result.id) {
+                            // Set has_tags from the result
+                            result.has_tags = result.has_tags || false;
                             addProductRow(result);
                             e.target.value = '';
                             showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', result.name), 'success');
@@ -1091,6 +1149,9 @@
                 addProductRow(product);
                 closeBarcodeModal();
                 showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
             }
         });
 
@@ -1235,6 +1296,7 @@
             card.dataset.productId = product.id;
             card.dataset.cost_price = product.cost_price;
             card.dataset.selling_price = product.selling_price;
+            card.dataset.has_tags = product.has_tags ? 'true' : 'false';
 
             let firstImage = null;
             try {
@@ -1285,196 +1347,276 @@
             }
         }
 
-        // Enhanced product row addition
-        function addProductRow(product = null) {
-            if (product) {
-                if (product.quantity === 0) {
-                    showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name), 'warning');
-                }
+        function addProductRow(product) {
+            if (!product) return; // Only allow products with data
 
-                const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => input.value == product.id);
-                if (existing) {
-                    const row = existing.closest('.product-row');
-                    const qty = row.querySelector('.quantity');
-                    const currentQty = parseInt(qty.value);
-                    
-                    if (currentQty >= product.quantity) {
-                        showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
-                    }
-                    
-                    qty.value = currentQty + 1;
-
-                    const manualRow = [...document.querySelectorAll('.product-select')].find(select => !select.disabled && select.value == product.id)?.closest('.product-row');
-                    if (manualRow) manualRow.remove();
-
-                    calculateTotal();
-                    return;
-                }
+            if (product.quantity === 0) {
+                showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name), 'warning');
             }
 
+            // Check if product has tags - show dialog if it does
+            if (product.has_tags && availableTags.length > 0) {
+                showTagsDialog(product);
+                return;
+            }
+
+            // For products without tags, check for existing product with no tags
+            const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
+                const row = input.closest('.product-row');
+                const tagsInput = row.querySelector('input[name="product_tags[]"]');
+                return input.value == product.id && (!tagsInput || !tagsInput.value);
+            });
+
+            if (existing) {
+                const row = existing.closest('.product-row');
+                const qty = row.querySelector('.quantity');
+                const currentQty = parseInt(qty.value);
+                
+                if (currentQty >= product.quantity) {
+                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
+                    return;
+                }
+                
+                qty.value = currentQty + 1;
+                calculateTotal();
+                return;
+            }
+
+            // Create new product row
             const row = document.createElement('div');
-            row.className = 'product-row bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3';
+            row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
 
-            const id = product?.id ?? '';
-            const cost = product?.cost_price ?? '';
-            const price = product?.selling_price ?? '';
-            const maxStock = product?.quantity ?? 999;
+            const id = product.id;
+            const cost = product.cost_price;
+            const price = product.selling_price;
+            const maxStock = product.quantity;
 
-            if (product) {
-                row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
-                row.innerHTML = `
-                    <input type="hidden" name="product_ids[]" value="${id}">
-                    <input type="hidden" name="cost_prices[]" value="${cost}">
-                    
-                    <div class="flex items-center justify-between p-2">
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
-                            <div class="text-xs text-gray-500">${maxStock} in stock</div>
-                        </div>
-                        <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
+            row.innerHTML = `
+                <input type="hidden" name="product_ids[]" value="${id}">
+                <input type="hidden" name="cost_prices[]" value="${cost}">
+                <input type="hidden" name="product_tags[]" value="">
+                
+                <div class="flex items-center justify-between p-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                        <div class="text-xs text-gray-500">${maxStock} in stock</div>
                     </div>
-                    
-                <div class="px-2 pb-2">
-                    <div class="grid grid-cols-3 gap-2 text-xs">
-                        <div class="grid grid-cols-2 gap-1 col-span-2">
-                            <div>
-                                <label class="block text-gray-600 mb-1">Qty</label>
-                                <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-600 mb-1">Price</label>
-                                <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${price}" required>
-                            </div>
+                    <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+            <div class="px-2 pb-2">
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="grid grid-cols-2 gap-1 col-span-2">
+                        <div>
+                            <label class="block text-gray-600 mb-1">Qty</label>
+                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
                         </div>
                         <div>
-                            <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
-                            <div class="flex gap-1 h-7">
-                                <div class="discount-toggle text-xs h-full">
-                                    <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
-                                    <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
-                                </div>
-                                <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
-                                <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                            <label class="block text-gray-600 mb-1">Price</label>
+                            <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${price}" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
+                        <div class="flex gap-1 h-7">
+                            <div class="discount-toggle text-xs h-full">
+                                <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
+                                <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
                             </div>
+                            <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
+                            <input type="hidden" name="discount_types[]" class="discount-type" value="total">
                         </div>
                     </div>
                 </div>
-                `;
-            } else {
-                row.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-medium text-gray-900">Select Product</h4>
-                        <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Product</label>
-                        <select class="product-select w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                            <option value="">Select Product</option>
-                            ${products.map(p => `
-                                <option value="${p.id}" data-cost="${p.cost_price}" data-price="${p.selling_price}" data-stock="${p.quantity}">
-                                    ${p.name} (${p.selling_price}) - ${p.quantity} in stock
-                                </option>
-                            `).join('')}
-                        </select>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="1" value="1" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Discount</label>
-                            <input type="number" name="discounts[]" class="discount w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="0" step="0.01" value="0" required>
-                        </div>
-                    </div>
-                `;
-            }
+            </div>
+            `;
 
             productsList.appendChild(row);
             calculateTotal();
         }
 
-        // Enhanced event listeners
-        document.getElementById('add-product-row').addEventListener('click', () => {
-            addProductRow();
-        });
+
+        // Show tags selection dialog
+        function showTagsDialog(product) {
+            // Create modal HTML
+            const modal = document.createElement('div');
+            modal.id = 'tags-modal';
+            modal.className = 'fixed inset-0 z-50 overflow-y-auto';
+            modal.innerHTML = `
+                <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="modal-overlay fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
+                    
+                    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                        {{__('messages.Select Tags for')}} ${product.name}
+                                    </h3>
+                                    <div class="mt-4">
+                                        <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
+                                            ${availableTags.map(tag => `
+                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">${tag.name}</div>
+                                                        <div class="text-sm text-gray-500">+$${parseFloat(tag.price).toFixed(2)}</div>
+                                                    </div>
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button type="button" id="confirm-tags" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                {{__('messages.Add to Bill')}}
+                            </button>
+                            <button type="button" id="cancel-tags" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                {{__('messages.Cancel')}}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle confirm button
+            document.getElementById('confirm-tags').addEventListener('click', () => {
+                const selectedTags = [];
+                const checkboxes = modal.querySelectorAll('.tag-checkbox:checked');
+                
+                checkboxes.forEach(cb => {
+                    selectedTags.push(`${cb.dataset.name}@${cb.dataset.price}`);
+                });
+                
+                const tagsString = selectedTags.join('&');
+                addProductRowWithTags(product, tagsString);
+                document.body.removeChild(modal);
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
+            });
+            
+            // Handle cancel button
+            document.getElementById('cancel-tags').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
+            });
+            
+            // Handle overlay click
+            modal.querySelector('.modal-overlay').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
+            });
+        }
+
+        // Add product row with tags
+        function addProductRowWithTags(product, tagsString) {
+            // Check for existing product with the same tags
+            const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
+                const row = input.closest('.product-row');
+                const tagsInput = row.querySelector('input[name="product_tags[]"]');
+                return input.value == product.id && tagsInput && tagsInput.value === tagsString;
+            });
+
+            if (existing) {
+                // Increment quantity of existing row with same tags
+                const row = existing.closest('.product-row');
+                const qty = row.querySelector('.quantity');
+                const currentQty = parseInt(qty.value);
+                
+                if (currentQty >= product.quantity) {
+                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
+                    return;
+                }
+                
+                qty.value = currentQty + 1;
+                calculateTotal();
+                showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name), 'success');
+                return;
+            }
+
+            // Create new row if no duplicate found
+            const row = document.createElement('div');
+            row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
+            
+            const tagsDisplay = tagsString ? tagsString.split('&').map(tag => {
+                const [name, price] = tag.split('@');
+                return `${name} (+$${parseFloat(price).toFixed(2)})`;
+            }).join(', ') : '';
+            
+            row.innerHTML = `
+                <input type="hidden" name="product_ids[]" value="${product.id}">
+                <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
+                <input type="hidden" name="product_tags[]" value="${tagsString}">
+                
+                <div class="flex items-center justify-between p-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                        <div class="text-xs text-gray-500">${product.quantity} in stock</div>
+                        ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
+                    </div>
+                    <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+            <div class="px-2 pb-2">
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="grid grid-cols-2 gap-1 col-span-2">
+                        <div>
+                            <label class="block text-gray-600 mb-1">Qty</label>
+                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 mb-1">Price</label>
+                            <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${product.selling_price}" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
+                        <div class="flex gap-1 h-7">
+                            <div class="discount-toggle text-xs h-full">
+                                <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
+                                <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
+                            </div>
+                            <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
+                            <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            productsList.appendChild(row);
+            calculateTotal();
+            showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name), 'success');
+        }
+
 
         document.getElementById('clear-all').addEventListener('click', () => {
             if (confirm('{{ __('messages.Are you sure you want to clear all products?') }}')) {
                 productsList.innerHTML = '';
                 calculateTotal();
                 showNotification('{{ __('messages.All products cleared') }}', 'info');
-            }
-        });
-
-        // Enhanced product selection handling
-        document.addEventListener('change', function(e) {
-            if (e.target.matches('.product-select') && !e.target.disabled) {
-                const selectedId = e.target.value;
-                const currentRow = e.target.closest('.product-row');
-                if (!selectedId || !currentRow) return;
-
-                const option = e.target.selectedOptions[0];
-                const stock = parseInt(option.dataset.stock);
-                
-                if (stock === 0) {
-                    showNotification('{{ __('messages.Selected product is out of stock!') }}', 'warning');
-                    e.target.value = '';
-                    return;
-                }
-
-                const existingRow = Array.from(document.querySelectorAll('.product-row')).find(row => {
-                    const hiddenId = row.querySelector('input[name="product_ids[]"]');
-                    return hiddenId?.value == selectedId && row !== currentRow;
-                });
-
-                if (existingRow) {
-                    const qtyInput = existingRow.querySelector('.quantity');
-                    const currentQty = parseInt(qtyInput.value || 0);
-                    
-                    if (currentQty >= stock) {
-                        showNotification(`{{ __('messages.Cannot add more. Only {stock} in stock.') }}`.replace('{stock}', stock), 'warning');
-                        e.target.value = '';
-                        return;
-                    }
-                    
-                    qtyInput.value = currentQty + 1;
-                    currentRow.remove();
-                } else {
-                    const product = products.find(p => p.id == selectedId);
-                    if (!product) return;
-
-                    const qtyInput = currentRow.querySelector('.quantity');
-                    qtyInput.max = stock;
-
-                    const hiddenInputs = `
-                        <input type="hidden" name="product_ids[]" value="${product.id}">
-                        <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
-                        <input type="hidden" name="selling_prices[]" value="${product.selling_price}">
-                    `;
-                    currentRow.insertAdjacentHTML('afterbegin', hiddenInputs);
-                    e.target.disabled = true;
-                    
-                    const selectDiv = e.target.closest('div');
-                    selectDiv.innerHTML = `
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Product</label>
-                        <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm">
-                            ${product.name} (${product.selling_price}) - ${stock} in stock
-                        </div>
-                    `;
-                }
-
-                calculateTotal();
             }
         });
 
@@ -1490,8 +1632,22 @@
                 const discount = parseFloat(row.querySelector('.discount')?.value || 0);
                 const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
                 const discountType = row.querySelector('.discount-type')?.value || 'total';
+                const tagsInput = row.querySelector('input[name="product_tags[]"]');
+                const tagsString = tagsInput ? tagsInput.value : '';
 
-                let subtotal = price * qty;
+                // Calculate tags total
+                let tagsTotal = 0;
+                if (tagsString) {
+                    const tagPairs = tagsString.split('&');
+                    for (const pair of tagPairs) {
+                        if (pair.includes('@')) {
+                            const [name, tagPrice] = pair.split('@');
+                            tagsTotal += parseFloat(tagPrice) || 0;
+                        }
+                    }
+                }
+
+                let subtotal = (price * qty) + (tagsTotal * qty);
                 let appliedDiscount = 0;
 
                 if (discountType === 'per-unit') {
@@ -1546,11 +1702,15 @@
                     name: nameElement.textContent,
                     cost_price: parseFloat(card.dataset.cost_price),
                     selling_price: parseFloat(card.dataset.selling_price),
-                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(/\d+/)?.[0] || 0)
+                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(/\d+/)?.[0] || 0),
+                    has_tags: card.dataset.has_tags === 'true'
                 };
 
                 addProductRow(product);
                 showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
             }
         });
 
@@ -1567,12 +1727,18 @@
             window.print();
         });
 
-        // Receipt print functionality
+        // Receipt print functionality - REPLACE EXISTING
         document.getElementById('print-receipt-button').addEventListener('click', () => {
-            updatePrintAreas();
-            document.body.classList.add('print-receipt');
-            window.print();
-            document.body.classList.remove('print-receipt');
+            if (navigator.usb || navigator.bluetooth) {
+                const receiptData = formatReceiptForThermalPrinter();
+                sendToPrinter(receiptData);
+            } else {
+                // Fallback to regular print
+                updatePrintAreas();
+                document.body.classList.add('print-receipt');
+                window.print();
+                document.body.classList.remove('print-receipt');
+            }
         });
 
         function updatePrintAreas() {
@@ -1787,6 +1953,7 @@
 
         // Auto-focus management
         document.addEventListener('DOMContentLoaded', () => {
+            fetchTags();
             if (!isRestaurant) {
                 document.getElementById('barcode_input').focus();
             }
@@ -1820,5 +1987,204 @@
         window.setBillId = function(billId) {
             currentBillId = billId;
         };
+
+
+
+
+
+        //print functions
+        // ESC/POS Thermal Printer Commands
+const ESC = '\x1B';
+const GS = '\x1D';
+
+// Printer command functions
+function sendToPrinter(data) {
+    // Try USB first, then Bluetooth
+    if (navigator.usb) {
+        sendToUSBPrinter(data);
+    } else if (navigator.bluetooth) {
+        sendToBluetoothPrinter(data);
+    } else {
+        // Fallback to browser print
+        console.warn('Direct printer access not supported, falling back to browser print');
+        printReceipt();
+    }
+}
+
+async function sendToUSBPrinter(data) {
+    try {
+        const device = await navigator.usb.requestDevice({
+            filters: [
+                { vendorId: 0x0483 }, // Common thermal printer vendor
+                { vendorId: 0x04b8 }, // Epson
+                { vendorId: 0x1a86 }, // WinChipHead (common in Chinese printers)
+            ]
+        });
+        
+        await device.open();
+        await device.selectConfiguration(1);
+        await device.claimInterface(0);
+        
+        const encoder = new TextEncoder();
+        const dataArray = encoder.encode(data);
+        
+        await device.transferOut(1, dataArray);
+        await device.close();
+        
+        showNotification('Receipt printed successfully!', 'success');
+    } catch (error) {
+        console.error('USB printing failed:', error);
+        showNotification('USB printing failed, trying alternative method', 'warning');
+        printReceipt(); // Fallback
+    }
+}
+
+async function sendToBluetoothPrinter(data) {
+    try {
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+        });
+        
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+        const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+        
+        const encoder = new TextEncoder();
+        const dataArray = encoder.encode(data);
+        
+        await characteristic.writeValue(dataArray);
+        showNotification('Receipt printed via Bluetooth!', 'success');
+    } catch (error) {
+        console.error('Bluetooth printing failed:', error);
+        showNotification('Bluetooth printing failed, trying alternative method', 'warning');
+        printReceipt(); // Fallback
+    }
+}
+
+function formatReceiptForThermalPrinter() {
+    let receiptData = '';
+    
+    // Initialize printer
+    receiptData += ESC + '@'; // Initialize
+    receiptData += ESC + 'a' + String.fromCharCode(1); // Center align
+    
+    // Shop name in large bold
+    receiptData += ESC + '!' + String.fromCharCode(0x38); // Double height, double width, bold
+    receiptData += shopName + '\n';
+    receiptData += ESC + '!' + String.fromCharCode(0x00); // Reset font
+    receiptData += '\n';
+    
+    // Get shop owner details from variables
+    let ownerDetails = '';
+    if (shopWhatsApp) {
+        ownerDetails += 'WhatsApp: ' + shopWhatsApp + '\n';
+    }
+    if (shopPhone) {
+        ownerDetails += '{{ __("messages.Phone") }}: ' + shopPhone + '\n';
+    }
+    if (ownerDetails) {
+        receiptData += ownerDetails;
+        receiptData += '================================\n';
+    }
+    
+    // Date and time
+    const now = new Date();
+    receiptData += ESC + 'a' + String.fromCharCode(0); // Left align
+    receiptData += '{{ __("messages.Date") }}: ' + now.toLocaleDateString() + '\n';
+    receiptData += '{{ __("messages.Time") }}: ' + now.toLocaleTimeString() + '\n';
+    
+    if (currentBillId) {
+        receiptData += '{{ __("messages.Bill ID") }}: ' + currentBillId + '\n';
+    }
+    
+    receiptData += '================================\n';
+    
+    // Customer info
+    let customerName = '';
+    if (isRestaurant) {
+        const customerSelect = document.getElementById('customer_id');
+        if (customerSelect && customerSelect.value) {
+            const selectedOption = customerSelect.selectedOptions[0];
+            customerName = selectedOption ? selectedOption.textContent.split(' - ')[0] : '';
+        }
+    } else {
+        const customerSearch = document.getElementById('customer_search');
+        customerName = customerSearch ? customerSearch.value : '';
+    }
+    
+    if (customerName) {
+        receiptData += '{{ __("messages.Customer") }}: ' + customerName + '\n';
+        receiptData += '================================\n';
+    }
+    
+    // Headers
+    receiptData += ESC + '!' + String.fromCharCode(0x08); // Bold
+    receiptData += '{{ __("messages.Product Name") }}'.padEnd(16) + '{{ __("messages.Qty") }}'.padStart(8) + '{{ __("messages.Price") }}'.padStart(8) + '\n';
+    receiptData += ESC + '!' + String.fromCharCode(0x00); // Reset
+    receiptData += '================================\n';
+    
+    // Products
+    let total = 0;
+    let totalDiscount = 0;
+    
+    document.querySelectorAll('.product-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+        const discount = parseFloat(row.querySelector('.discount')?.value || 0);
+        const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
+        const discountType = row.querySelector('.discount-type')?.value || 'total';
+        
+        let actualDiscount = 0;
+        if (discountType === 'per-unit') {
+            actualDiscount = discount * qty;
+        } else {
+            actualDiscount = discount;
+        }
+        
+        let name = '{{ __("messages.Unknown") }}';
+        const nameDiv = row.querySelector('.font-medium.text-gray-900');
+        if (nameDiv) name = nameDiv.textContent?.trim() || '{{ __("messages.Unknown") }}';
+        
+        const subtotal = Math.max(0, (price * qty) - actualDiscount);
+        total += subtotal;
+        totalDiscount += actualDiscount;
+        
+        // Product line
+        receiptData += name.substring(0, 16).padEnd(16);
+        receiptData += qty.toString().padStart(8);
+        receiptData += subtotal.toFixed(2).padStart(8) + '\n';
+        
+        if (actualDiscount > 0) {
+            receiptData += '  {{ __("messages.Discount") }}: -' + actualDiscount.toFixed(2) + '\n';
+        }
+    });
+    
+    receiptData += '================================\n';
+    
+    // Totals in large bold
+    receiptData += ESC + '!' + String.fromCharCode(0x18); // Double width, bold
+    if (totalDiscount > 0) {
+        receiptData += '{{ __("messages.Total Discount") }}: ' + totalDiscount.toFixed(2) + '\n';
+    }
+    receiptData += '{{ __("messages.Total") }}: ' + total.toFixed(2) + '\n';
+    receiptData += ESC + '!' + String.fromCharCode(0x00); // Reset
+    
+    receiptData += '================================\n';
+    receiptData += ESC + 'a' + String.fromCharCode(1); // Center align
+    receiptData += '{{ __("messages.Thank you for your business!") }}\n';
+    receiptData += '{{ __("messages.Please come again") }}\n';
+    receiptData += '\n';
+    
+    // Add logo placeholder
+    receiptData += '   [LOGO PLACEHOLDER]\n';
+    receiptData += '{{ config("app.name", "POS System") }}\n';
+    receiptData += '\n';
+    
+    // Feed and cut
+    receiptData += '\n\n\n\n\n'; // Feed 5 lines
+    receiptData += GS + 'V' + String.fromCharCode(66, 0); // Full cut
+    
+    return receiptData;
+}
     </script>
 </x-app-layout>

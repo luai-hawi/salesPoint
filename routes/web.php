@@ -16,6 +16,7 @@ use App\Http\Controllers\ShopOwner\ExpenseController;
 use App\Http\Controllers\ShopOwner\DashboardController;
 use App\Http\Controllers\FinancialDashboardController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\TagsController;
 
 
 
@@ -98,6 +99,12 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin,sh
 Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant'])
     ->group(function () {
 
+        // Tags Management
+        Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
+        Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
+        Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
+
+        Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
         Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
 
         // Quick Payment for Customers

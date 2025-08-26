@@ -20,4 +20,5 @@ return [
     'Administrator' => 'مدير',
     'Shop Owner' => 'مالك متجر',
     'Employee' => 'موظف',
+    'Tags' => 'العلامات',
 ];

@@ -16,13 +16,14 @@ class Product extends Model
         'pictures',
         'cost_price',
         'selling_price',
+        'has_tags',
         'user_id', // the user who owns this product
     ];
 
     public function bills()
 {
     return $this->belongsToMany(Bill::class, 'bill_product')
-        ->withPivot('quantity','discount', 'cost_price', 'selling_price');
+        ->withPivot('quantity','discount', 'cost_price', 'selling_price', 'tags');
 }
 
 public function batches()

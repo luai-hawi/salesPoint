@@ -83,6 +83,14 @@
                             </svg>
                             {{ __('navigation.Customers') }}
                         </x-nav-link>
+
+                        <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')"
+                            class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('tags.*') ? 'bg-orange-100 text-orange-700 border-orange-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            {{ __('navigation.Tags') }}
+                        </x-nav-link>
                         
                         @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
                             <!-- Shop Owner Only Links -->
@@ -251,6 +259,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                     </svg>
                     {{ __('navigation.Customers') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')" class="flex items-center">
+                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    </svg>
+                    {{ __('navigation.Tags') }}
                 </x-responsive-nav-link>
                 
                 @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')

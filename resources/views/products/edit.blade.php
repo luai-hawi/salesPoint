@@ -98,6 +98,17 @@
                                         <span class="absolute left-3 top-3.5 text-gray-400">$</span>
                                     </div>
                                 </div>
+                                <!-- Has Tags Checkbox -->
+                                <div class="mb-6">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="has_tags" id="has_tags" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
+                                            value="1" {{ old('has_tags', $product->has_tags ?? false) ? 'checked' : '' }}>
+                                        <label for="has_tags" class="ml-2 block text-sm font-medium text-gray-700">
+                                            This product has customizable tags
+                                        </label>
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-500">Check this if customers can add extra options/tags to this product</p>
+                                </div>
 
                                 <!-- Product Pictures -->
                                 <div class="md:col-span-2">

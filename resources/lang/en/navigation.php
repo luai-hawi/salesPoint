@@ -20,4 +20,5 @@ return [
     'Administrator' => 'Administrator',
     'Shop Owner' => 'Shop Owner',
     'Employee' => 'Employee',
+    'Tags' => 'Tags',
 ];

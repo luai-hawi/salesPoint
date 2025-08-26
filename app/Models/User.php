@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'shop_owner_id',
         'session_id',
+        'details', // Added details field
     ];
 
 
@@ -82,8 +83,8 @@ class User extends Authenticatable
     }
 
     public function employees() {
-    return $this->hasMany(User::class, 'shop_owner_id');
-}
+        return $this->hasMany(User::class, 'shop_owner_id');
+    }
 
     public function shopOwner() {
         return $this->belongsTo(User::class, 'shop_owner_id');

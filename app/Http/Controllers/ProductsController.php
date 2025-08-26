@@ -52,6 +52,7 @@ class ProductsController extends Controller
             'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
+            'has_tags' => 'boolean',
         ]);
 
         $product = new Product();
@@ -61,6 +62,7 @@ class ProductsController extends Controller
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
         $product->user_id = $ownerId;
+        $product->has_tags = $request->has('has_tags');
 
         if ($request->hasFile('pictures')) {
             $pictures = [];
@@ -103,12 +105,14 @@ class ProductsController extends Controller
             'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
+            'has_tags' => 'boolean',
         ]);
 
         $product->name = $request->name;
         $product->barcode = $request->barcode;
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
+        $product->has_tags = $request->has('has_tags');
 
         // Handle image updates
         if ($request->hasFile('pictures')) {
@@ -158,7 +162,7 @@ class ProductsController extends Controller
         $search = $request->query('search', '');
         $page = $request->query('page', 1);
 
-        $query = Product::select('id', 'name', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode')
+        $query = Product::select('id', 'name', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags')
             ->where('user_id', $ownerId);
 
         if ($search) {
