@@ -344,99 +344,264 @@
     </div>
 
     {{-- Standard Printable Invoice --}}
-    <div id="print-area" class="print-hidden p-6 text-sm">
-        <div class="text-center mb-4">
-            <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
-            <p>{{ now()->format('Y-m-d H:i') }}</p>
-            <p class="text-sm font-medium">Bill ID: #{{ $bill->id }}</p>
-            <hr class="my-2">
+<div id="print-area" class="print-hidden p-4 text-xs">
+    <!-- Shop Owner Name at Top Center -->
+    <div class="text-center mb-3">
+        <div class="text-xl font-bold">
+            @php
+                $shopOwnerName = '';
+                if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
+                    $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
+                } elseif (auth()->user()->role !== 'employee') {
+                    $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
+                }
+            @endphp
+            {{ $shopOwnerName }}
         </div>
-        <div id="print-customer" class="font-semibold text-left">
-            {{ $bill->customer ? __('messages.Customer') . ': ' . $bill->customer->name : '' }}
-        </div>
-        <div id="print-customer-phone" class="font-semibold text-left">
-            {{ $bill->customer && $bill->customer->phone ? __('messages.Phone') . ': ' . $bill->customer->phone : '' }}
-        </div>
-
-        <table class="w-full border border-gray-400 text-sm">
-            <thead>
-                <tr>
-                    <th class="border px-2 py-1">{{ __('bills.Product') }}</th>
-                    <th class="border px-2 py-1 text-right">{{ __('bills.Qty') }}</th>
-                    <th class="border px-2 py-1 text-right">{{ __('bills.Unit Price') }}</th>
-                    <th class="border px-2 py-1 text-right">{{ __('bills.Discount') }}</th>
-                    <th class="border px-2 py-1 text-right">{{ __('bills.Total') }}</th>
-                </tr>
-            </thead>
-            <tbody id="print-products-list">
-                @foreach($bill->products as $product)
-                    <tr>
-                        <td class="border px-2 py-1">{{ $product->name }}</td>
-                        <td class="border px-2 py-1 text-right">{{ $product->pivot->quantity }}</td>
-                        <td class="border px-2 py-1 text-right">${{ number_format($product->pivot->selling_price, 2) }}</td>
-                        <td class="border px-2 py-1 text-right">${{ number_format($product->pivot->discount ?? 0, 2) }}</td>
-                        <td class="border px-2 py-1 text-right">${{ number_format($product->pivot->quantity * $product->pivot->selling_price - ($product->pivot->discount ?? 0), 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="border px-2 py-1 text-right font-bold">{{ __('bills.Totals') }}</td>
-                    <td id="print-total-discount" class="border px-2 py-1 text-right">${{ number_format($bill->products->sum('pivot.discount'), 2) }}</td>
-                    <td id="print-total-price" class="border px-2 py-1 text-right">${{ number_format($bill->total_price, 2) }}</td>
-                </tr>
-            </tfoot>
-        </table>
     </div>
 
-    {{-- Roll Paper Receipt --}}
-    <div id="receipt-area" class="print-hidden">
-        <div class="receipt-content">
-            <div class="text-center mb-2">
-                <div class="text-lg font-bold">{{ $shopName }}</div>
-                <div class="text-xs">{{ now()->format('Y-m-d H:i:s') }}</div>
-                <div class="text-xs font-medium">Bill: #{{ $bill->id }}</div>
-                <div class="border-t border-dashed my-2"></div>
-            </div>
-            
-            <div id="receipt-customer" class="text-xs mb-2">
+    <!-- Header Information Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
+        <!-- Left Side Info -->
+        <div class="text-left">
+            <div class="font-semibold">{{ $shopName }}</div>
+            <div class="font-medium">{{ __('messages.Bill ID') }}: #{{ $bill->id }}</div>
+            <div>{{ __('messages.Printed by') }}: {{ auth()->user()->name }}</div>
+            <div>{{ $bill->created_at->format('Y-m-d H:i:s') }}</div>
+            <div class="mt-1">{{ auth()->user()->details ?? "" }}</div>
+        </div>
+        
+        <!-- Right Side Info -->
+        <div class="text-right">
+            <div class="font-semibold">
                 {{ $bill->customer ? __('messages.Customer') . ': ' . $bill->customer->name : '' }}
             </div>
-            
-            <div id="receipt-products-list" class="text-xs">
-                @foreach($bill->products as $product)
-                    <div class="receipt-product-row">
-                        <div class="receipt-product-name">{{ $product->name }}</div>
-                        <div class="receipt-product-details">
-                            <span>{{ $product->pivot->quantity }} x ${{ number_format($product->pivot->selling_price, 2) }}</span>
-                            <span>${{ number_format($product->pivot->quantity * $product->pivot->selling_price - ($product->pivot->discount ?? 0), 2) }}</span>
-                        </div>
-                        @if($product->pivot->discount > 0)
-                            <div class="text-center text-xs">Discount: -${{ number_format($product->pivot->discount, 2) }}</div>
-                        @endif
-                    </div>
-                @endforeach
+            <div>
+                {{ $bill->customer && $bill->customer->phone ? __('messages.Phone') . ': ' . $bill->customer->phone : '' }}
             </div>
-            
-            <div class="border-t border-dashed my-2"></div>
-            
         </div>
     </div>
+    
+    <!-- Products Table - Full Width -->
+    <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
+            </tr>
+        </thead>
+        <tbody id="print-products-list">
+            @foreach($bill->products as $product)
+                @php
+                    $basePrice = $product->pivot->selling_price;
+                    $tagPairs = explode('&', $product->pivot->tags ?? '');
+                    $totalTagPrice = 0;
+                    $tagsDisplay = '';
+                    
+                    foreach($tagPairs as $tagPair) {
+                        if(str_contains($tagPair, '@')) {
+                            [$name, $tagPrice] = explode('@', $tagPair);
+                            $totalTagPrice += floatval($tagPrice);
+                            $tagsDisplay .= $tagsDisplay ? ', ' . $name . ' (+$' . number_format($tagPrice, 2) . ')' : $name . ' (+$' . number_format($tagPrice, 2) . ')';
+                        }
+                    }
+                    
+                    $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
+                @endphp
+                <tr>
+                    <td class="border-2 border-black px-2 py-1 text-center">
+                        <div class="font-semibold text-xs">{{ $product->name }}</div>
+                        @if($tagsDisplay)
+                            <div class="text-xs text-blue-600">{{__('messages.Tags')}}: {{ $tagsDisplay }}</div>
+                        @endif
+                    </td>
+                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">{{ $product->pivot->quantity }}</td>
+                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                        ${{ number_format($basePrice, 2) }}
+                        @if($totalTagPrice > 0)
+                            <br><small class="text-xs">+${{ number_format($totalTagPrice, 2) }}</small>
+                        @endif
+                    </td>
+                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">${{ number_format($product->pivot->discount ?? 0, 2) }}</td>
+                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">${{ number_format($finalPrice, 2) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="bg-gray-50">
+                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->products->sum('pivot.discount'), 2) }}</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->total_price, 2) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    <!-- Footer -->
+    <div class="text-left">
+        <div class="text-xs">HawiTech</div>
+        <div class="text-xs">WhatsApp: +(970) 599647713</div>
+    </div>
+</div>
 
+    {{-- Professional Receipt Print --}}
+<div id="receipt-area" class="print-hidden">
+    <div class="receipt-content">
+        <!-- Header with Shop Info -->
+        <div class="text-center mb-6">
+            <div class="mb-3">
+                <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
+                <p class="text-sm font-bold">HawiTech</p>
+                <p class="text-xs">WhatsApp: +(970) 599647713</p>
+            </div>
+            <hr class="border-2 border-black my-3">
+        </div>
+
+        <!-- Shop Owner Name Prominently Displayed -->
+        <div class="text-center mb-4">
+            <div class="text-lg font-bold bg-gray-200 py-2 px-4 rounded">
+                @php
+                    $shopOwnerName = '';
+                    if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
+                        $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
+                    } elseif (auth()->user()->role !== 'employee') {
+                        $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
+                    }
+                @endphp
+                {{ $shopOwnerName }}
+            </div>
+        </div>
+
+        <!-- Bill Info Section -->
+        <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+            <div>
+                <div class="font-bold">{{__('messages.Date')}}: {{ $bill->created_at->format('d-m-Y') }}</div>
+                <div class="font-bold">{{__('messages.Time')}}: {{ $bill->created_at->format('H:i:s') }}</div>
+            </div>
+            <div class="text-right">
+                <div class="font-bold">{{__('messages.Bill number')}}: {{ $bill->id }}</div>
+                <div class="font-bold">
+                    {{ $bill->customer ? $bill->customer->name : '' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="mb-4">
+            <div class="font-bold text-sm">{{__('messages.Created By')}}: {{ $bill->creator->name }}</div>
+            <div class="text-xs">{{ auth()->user()->details ?? "" }}</div>
+        </div>
+
+        <!-- Products Table -->
+        <div class="w-full overflow-x-auto">
+            <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">#</th>
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">اسم الطبق</th>
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الكمية</th>
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">السعر</th>
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الخصم</th>
+                        <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">المجموع</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($bill->products as $index => $product)
+                        @php
+                            $basePrice = $product->pivot->selling_price;
+                            $tagPairs = explode('&', $product->pivot->tags ?? '');
+                            $totalTagPrice = 0;
+                            $tagsDisplayArabic = '';
+                            
+                            foreach($tagPairs as $tagPair) {
+                                if(str_contains($tagPair, '@')) {
+                                    [$name, $tagPrice] = explode('@', $tagPair);
+                                    $totalTagPrice += floatval($tagPrice);
+                                    $tagsDisplayArabic .= $tagsDisplayArabic ? '، ' . $name . ' (+' . number_format($tagPrice, 1) . ')' : $name . ' (+' . number_format($tagPrice, 1) . ')';
+                                }
+                            }
+                            
+                            $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
+                        @endphp
+                        <tr>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">{{ $index + 1 }}</td>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">
+                                <div>{{ $product->name }}</div>
+                                @if($tagsDisplayArabic)
+                                    <div class="text-xs">إضافات: {{ $tagsDisplayArabic }}</div>
+                                @endif
+                            </td>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">{{ $product->pivot->quantity }}</td>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">
+                                <div>{{ number_format($basePrice, 1) }}</div>
+                                @if($totalTagPrice > 0)
+                                    <div class="text-xs">+{{ number_format($totalTagPrice, 1) }} إضافات</div>
+                                @endif
+                            </td>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">
+                                {{ ($product->pivot->discount ?? 0) > 0 ? number_format($product->pivot->discount, 1) : '-' }}
+                            </td>
+                            <td class="border-2 border-black px-2 py-2 text-center font-bold">{{ number_format($finalPrice, 1) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Detailed Totals Section -->
+        <div class="border-2 border-black mb-4">
+            @php
+                $subtotal = 0;
+                $totalDiscount = 0;
+                foreach($bill->products as $product) {
+                    $basePrice = $product->pivot->selling_price;
+                    $tagPairs = explode('&', $product->pivot->tags ?? '');
+                    $totalTagPrice = 0;
+                    foreach($tagPairs as $tagPair) {
+                        if(str_contains($tagPair, '@')) {
+                            $totalTagPrice += floatval(explode('@', $tagPair)[1]);
+                        }
+                    }
+                    $subtotal += ($basePrice + $totalTagPrice) * $product->pivot->quantity;
+                    $totalDiscount += $product->pivot->discount ?? 0;
+                }
+            @endphp
+            <!-- Subtotal -->
+            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black">
+                <div class="border-r-2 border-black py-2">{{__('messages.Subtotal')}}:</div>
+                <div class="py-2">{{ number_format($subtotal, 1) }}</div>
+            </div>
+            <!-- Total Discount -->
+            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black">
+                <div class="border-r-2 border-black py-2">{{__('messages.Total discount')}}:</div>
+                <div class="py-2">{{ number_format($totalDiscount, 1) }}</div>
+            </div>
+            <!-- Final Total -->
+            <div class="grid grid-cols-2 text-center font-bold text-lg bg-gray-200">
+                <div class="border-r-2 border-black py-3">{{__('messages.Total')}}:</div>
+                <div class="py-3">{{ number_format($bill->total_price, 1) }}</div>
+            </div>
+        </div>
+
+        <!-- User Details -->
+        <div class="mt-4 text-center">
+            <div class="text-xs font-bold">{{ auth()->user()->details ?? "" }}</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm font-bold">
+            <div class="mb-2">{{__('messages.Thank you for your business!')}}</div>
+            <hr class="border-2 border-black my-3">
+            <div class="text-xs">HawiTech</div>
+            <p class="text-xs">WhatsApp: +(970) 599647713</p>
+        </div>
+    </div>
+</div>
     {{-- Enhanced Performance Styles --}}
     <style>
         /* Receipt styles for roll paper */
-        #receipt-area {
-            display: none;
-            font-family: 'Courier New', monospace;
-        }
-
-        .receipt-content {
-            width: 58mm;
-            padding: 2mm;
-            font-size: 8pt;
-            line-height: 1.2;
-        }
 
         .receipt-product-row {
             margin-bottom: 1mm;
@@ -500,29 +665,116 @@
         }
 
         /* Receipt print styles */
-        @media print {
-            .print-receipt #print-area {
-                display: none !important;
-            }
+        /* Professional Receipt Print Styles */
+.receipt-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20px !important;
+    font-size: 14pt !important;
+    line-height: 1.4 !important;
+    font-weight: bold !important;
+    font-family: Arial, sans-serif !important;
+    color: black !important;
+    background: white !important;
+    margin: 0 auto !important;
+}
 
-            .print-receipt #receipt-area, .print-receipt #receipt-area * {
-                visibility: visible !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
+#receipt-area {
+    display: none;
+    font-family: Arial, sans-serif;
+}
 
-            .print-receipt #receipt-area {
-                display: block !important;
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 58mm !important;
-                padding: 0 !important;
-                background: white;
-                font-size: 8pt !important;
-            }
-        }
+@media print {
+    .print-receipt #print-area {
+        display: none !important;
+    }
 
+    .print-receipt #receipt-area, .print-receipt #receipt-area * {
+        visibility: visible !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .print-receipt #receipt-area {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+        font-size: 14pt !important;
+        font-weight: bold !important;
+    }
+
+    .print-receipt .receipt-content {
+        font-weight: bold !important;
+        width: 100% !important;
+        height: auto !important;
+        max-width: none !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .print-receipt table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        table-layout: auto !important;
+    }
+
+    .print-receipt th, .print-receipt td {
+        border: 2px solid black !important;
+        padding: 8px !important;
+        font-weight: bold !important;
+        word-wrap: break-word !important;
+    }
+
+    /* Make table columns responsive */
+    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) { width: 8%; } /* # */
+    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 35%; } /* Product name */
+    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 12%; } /* Quantity */
+    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 15%; } /* Price */
+    .print-receipt th:nth-child(5), .print-receipt td:nth-child(5) { width: 15%; } /* Discount */
+    .print-receipt th:nth-child(6), .print-receipt td:nth-child(6) { width: 15%; } /* Total */
+
+    .print-receipt .grid {
+        display: grid !important;
+    }
+
+    .print-receipt .grid-cols-2 {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 20px !important;
+    }
+
+    .print-receipt .border-r-2 {
+        border-right: 2px solid black !important;
+    }
+
+    .print-receipt .border-b-2 {
+        border-bottom: 2px solid black !important;
+    }
+}
+
+.receipt-product-row {
+    margin-bottom: 2mm !important;
+    font-weight: bold !important;
+}
+
+.receipt-product-name {
+    font-weight: bold !important;
+    font-size: 11pt !important;
+}
+
+.receipt-product-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+}
         #print-area {
             display: none;
         }
@@ -568,7 +820,7 @@ function showTagsDialog(product) {
             <div class="modal-overlay fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Select Tags for ${product.name}</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{__('messages.Select Tags for')}} ${product.name}</h3>
                     <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                         ${availableTags.map(tag => `
                             <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
@@ -623,7 +875,7 @@ function isProductWithTagsExists(productId, tags) {
 function addProductToTable(product, tagsString = '') {
     // Check if exact combination exists
     if (isProductWithTagsExists(product.id, tagsString)) {
-        alert('This product with the same tags is already in the bill');
+        alert('{{__('messages.This product with the same tags is already in the bill')}}');
         return;
     }
 
@@ -658,7 +910,7 @@ function addProductToTable(product, tagsString = '') {
                 <div class="ml-4">
                     <div class="text-sm font-medium text-gray-900">${product.name}</div>
                     <div class="text-sm text-gray-500">${product.barcode || '{{__('messages.No barcode')}}'}</div>
-                    ${tagsString ? `<div class="text-xs text-blue-600 mt-1"><span class="font-medium">Tags:</span> ${tagsDisplay}</div>` : ''}
+                    ${tagsString ? `<div class="text-xs text-blue-600 mt-1"><span class="font-medium">{{__('messages.Tags')}}:</span> ${tagsDisplay}</div>` : ''}
                 </div>
             </div>
         </td>
@@ -840,6 +1092,17 @@ document.querySelector('#products-table').addEventListener('input', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     fetchTags();
     updateGrandTotal();
+});
+document.getElementById('print-button').addEventListener('click', () => {
+    document.body.classList.remove('print-receipt');
+    window.print();
+});
+
+// Receipt print functionality
+document.getElementById('print-receipt-button').addEventListener('click', () => {
+    document.body.classList.add('print-receipt');
+    window.print();
+    document.body.classList.remove('print-receipt');
 });
 
     </script>

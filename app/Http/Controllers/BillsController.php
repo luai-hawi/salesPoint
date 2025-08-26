@@ -505,6 +505,19 @@ private function consumeProductStockAllowNegative($product, $quantity)
  */
 private function returnToBatch($product, $quantity, $costPrice, $ownerId)
 {
+    $previousQuantity = $product->quantity - $quantity; // Quantity before return
+    //recalculate average cost price
+    if($product->quantity <= 0){
+        $product->cost_price = $costPrice;
+    }else{
+        $product->cost_price = 
+        ($product->cost_price * $previousQuantity + $costPrice * $quantity) 
+        / max(1, ($previousQuantity + $quantity));
+    }
+    $product->cost_price = round($product->cost_price, 2);
+    $product->save();
+
+
     $batch = $product->batches()->where('cost_price', $costPrice)->first();
     
     if ($batch) {
@@ -517,6 +530,7 @@ private function returnToBatch($product, $quantity, $costPrice, $ownerId)
             'user_id' => $ownerId,
         ]);
     }
+    
 }
 
 /**

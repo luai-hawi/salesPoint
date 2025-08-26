@@ -86,6 +86,32 @@
                                     </p>
                                 @enderror
                             </div>
+                            <div>
+                                <label for="category" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    {{ __('messages.Category') }}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    name="category" 
+                                    id="category" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('category') border-red-500 @enderror" 
+                                    value="{{ old('category') }}" 
+                                    placeholder="{{ __('messages.Enter product category (optional)...') }}"
+                                    list="category-suggestions"
+                                >
+                                <datalist id="category-suggestions">
+                                    <!-- This will be populated with existing categories -->
+                                </datalist>
+                                <p class="text-xs text-gray-500 mt-1">{{ __('messages.Optional - helps organize products by category.') }}</p>
+                                @error('category')
+                                    <p class="text-red-500 text-xs mt-1 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
 
                             <!-- Product Code/Barcode -->
                             <div>
@@ -345,9 +371,32 @@
             input.files = dt.files;
             handleImagePreview(input.files);
         }
+        // Add this to your existing JavaScript in create.blade.php and edit.blade.php
+
+// Fetch existing categories for autocomplete
+async function loadCategoryAutoComplete() {
+    try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+            const categories = await response.json();
+            const datalist = document.getElementById('category-suggestions');
+            
+            datalist.innerHTML = '';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                datalist.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+    }
+}
 
         // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {             
+        document.addEventListener('DOMContentLoaded', function() {  
+                loadCategoryAutoComplete();
+           
             // Profit margin calculation             
             document.getElementById('cost_price').addEventListener('input', calculateProfitMargin);             
             document.getElementById('selling_price').addEventListener('input', calculateProfitMargin);             
@@ -537,5 +586,6 @@
     document.getElementById("pictures").addEventListener("change", async function (e) {
         await handleCompressedImages(e.target);
     });
+    
     </script>
 </x-app-layout>

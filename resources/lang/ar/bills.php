@@ -92,4 +92,5 @@ return [
     'Batch deleted successfully!' => 'تم حذف الدفعة بنجاح!',
     'Failed to delete batch. Please try again.' => 'فشل في حذف الدفعة. يرجى المحاولة مرة أخرى.',
     'Print Receipt' => 'طباعة الإيصال',
+    'Tags' => 'العلامات',
 ];

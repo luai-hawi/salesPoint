@@ -56,6 +56,17 @@
                                     <input type="text" name="name" value="{{ old('name', $product->name) }}"
                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors" required>
                                 </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Category') }}</label>
+                                    <input type="text" name="category" value="{{ old('category', $product->category) }}"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
+                                        placeholder="{{ __('messages.Enter product category (optional)...') }}"
+                                        list="category-suggestions">
+                                    <datalist id="category-suggestions">
+                                        <!-- This will be populated with existing categories -->
+                                    </datalist>
+                                    <small class="text-gray-500">{{ __('messages.Optional - helps organize products by category.') }}</small>
+                                </div>
 
                                 <!-- Barcode -->
                                 <div>
@@ -632,5 +643,32 @@ document.getElementById("pictures").addEventListener("change", async function (e
                 if (saveBtn) saveBtn.click();
             }
         });
+
+        // Add this to your existing JavaScript in create.blade.php and edit.blade.php
+
+// Fetch existing categories for autocomplete
+async function loadCategoryAutoComplete() {
+    try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+            const categories = await response.json();
+            const datalist = document.getElementById('category-suggestions');
+            
+            datalist.innerHTML = '';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                datalist.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+    }
+}
+
+// Load categories when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategoryAutoComplete();
+});
     </script>
 </x-app-layout>

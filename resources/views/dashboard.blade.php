@@ -390,66 +390,169 @@
         </div>
     </div>
 
-    {{-- Standard Printable Invoice --}}
-<div id="print-area" class="print-hidden p-6 text-sm">
-    <div class="text-center mb-4">
-        <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
-        <p>{{ now()->format('Y-m-d H:i') }}</p>
-        <p id="print-bill-id" class="text-sm font-medium">{{ __('messages.Bill ID') }}: #<span id="current-bill-id">-</span></p>
-        <hr class="my-2">
+{{-- Standard Printable Invoice --}}
+<div id="print-area" class="print-hidden p-4 text-xs">
+    <!-- Shop Owner Name at Top Center -->
+    <div class="text-center mb-3">
+        <div class="text-xl font-bold">
+            @php
+                $shopOwnerName = '';
+                if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
+                    $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
+                } elseif (auth()->user()->role !== 'employee') {
+                    $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
+                }
+            @endphp
+            {{ $shopOwnerName }}
+        </div>
     </div>
-    <div id="print-customer" class="font-semibold text-left"></div>
-    <div id="print-customer-phone" class="font-semibold text-left"></div>
-    <table class="w-full border border-gray-400 text-sm">
+
+    <!-- Header Information Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
+        <!-- Left Side Info -->
+        <div class="text-left">
+            <div class="font-semibold">{{ $shopName }}</div>
+            <div class="font-medium">{{ __('messages.Bill ID') }}: #<span id="current-bill-id">-</span></div>
+            <div>{{ __('messages.Printed by') }}: {{ auth()->user()->name }}</div>
+            <div>{{ now()->format('Y-m-d H:i:s') }}</div>
+            <div id="print-user-details" class="mt-1"></div>
+        </div>
+        
+        <!-- Right Side Info -->
+        <div class="text-right">
+            <div id="print-customer" class="font-semibold"></div>
+            <div id="print-customer-phone"></div>
+        </div>
+    </div>
+    
+    <!-- Products Table - Full Width -->
+    <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
         <thead>
-            <tr>
-                <th class="border px-2 py-1">{{ __('messages.Product') }}</th>
-                <th class="border px-2 py-1 text-right">{{ __('messages.Qty') }}</th>
-                <th class="border px-2 py-1 text-right">{{ __('messages.Unit Price') }}</th>
-                <th class="border px-2 py-1 text-right">{{ __('messages.Discount') }}</th>
-                <th class="border px-2 py-1 text-right">{{ __('messages.Total') }}</th>
+            <tr class="bg-gray-100">
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
+                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
             </tr>
         </thead>
         <tbody id="print-products-list"></tbody>
         <tfoot>
-            <tr>
-                <td colspan="3" class="border px-2 py-1 text-right font-bold">{{ __('messages.Totals') }}</td>
-                <td id="print-total-discount" class="border px-2 py-1 text-right">0.00₪</td>
-                <td id="print-total-price" class="border px-2 py-1 text-right">0.00₪</td>
+            <tr class="bg-gray-50">
+                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
+                <td id="print-total-discount" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
+                <td id="print-total-price" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
             </tr>
         </tfoot>
     </table>
+    
+    <!-- Footer -->
+    
+        <div class="text-left">
+            <div class="text-xs">HawiTech</div>
+            <div class="text-xs">WhatsApp: +(970) 599647713</div>
+        </div>
+    
 </div>
-
-{{-- Roll Paper Receipt --}}
+{{-- Professional Receipt Print --}}
 <div id="receipt-area" class="print-hidden">
     <div class="receipt-content">
-        <div class="text-center mb-2">
-            <div class="text-lg font-bold">{{ $shopName }}</div>
-            <div class="text-xs">{{ now()->format('Y-m-d H:i:s') }}</div>
-            <div id="receipt-bill-id" class="text-xs font-medium">{{ __('messages.Bill') }}: #<span id="receipt-current-bill-id">-</span></div>
-            <div class="border-t border-dashed my-2"></div>
+        <!-- Header with Logo and Shop Info -->
+        <div class="text-center mb-6">
+            <div class="flex items-center justify-center mb-3">
+                <div>
+                    <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
+                    <p class="text-sm font-bold">HawiTech</p>
+                    <p class="text-xs">WhatsApp: +(970) 599647713</p>
+                </div>
+            </div>
+            <hr class="border-2 border-black my-3">
         </div>
-       
-        <div id="receipt-customer" class="text-xs mb-2"></div>
-       
-        <div id="receipt-products-list" class="text-xs">
-            <!-- Products will be added here -->
+
+        <!-- Shop Owner Name Prominently Displayed -->
+        <div class="text-center mb-4">
+            <div class="text-lg font-bold bg-gray-200 py-2 px-4 rounded">
+                @php
+                    $shopOwnerName = '';
+                    if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
+                        $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
+                    } elseif (auth()->user()->role !== 'employee') {
+                        $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
+                    }
+                @endphp
+                {{ $shopOwnerName }}
+            </div>
         </div>
-       
-        <div class="border-t border-dashed my-2"></div>
-       
-        <div id="receipt-totals-container">
-            <!-- Totals will be added dynamically -->
+
+        <!-- Bill Info Section -->
+        <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+            <div>
+                <div class="font-bold">{{__('messages.Date')}}: {{ now()->format('d-m-Y') }}</div>
+                <div class="font-bold">{{__('messages.Time')}}: {{ now()->format('H:i:s') }}</div>
+            </div>
+            <div class="text-right">
+                <div id="receipt-bill-id" class="font-bold">{{__('messages.Bill number')}}: <span id="receipt-current-bill-id">-</span></div>
+                <div class="font-bold"><span id="print-customer2"></span></div>
+            </div>
         </div>
-       
-        <div class="text-center text-xs mt-3">
-            <div>{{ __('messages.Thank you for your business!') }}</div>
-            <div class="border-t border-dashed mt-2"></div>
+
+        <!-- Customer Info -->
+        <div class="mb-4">
+            <div class="font-bold text-sm">{{__('messages.Created By')}}: {{ auth()->user()->name }}</div>
+            <div id="receipt-user-details" class="text-xs"></div>
+        </div>
+
+        <!-- Products Table -->
+        <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">#</th>
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">اسم الطبق</th>
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الكمية</th>
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">السعر</th>
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الخصم</th>
+                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">المجموع</th>
+                </tr>
+            </thead>
+            <tbody id="receipt-products-table">
+                <!-- Products will be added here -->
+            </tbody>
+        </table>
+
+        <!-- Detailed Totals Section -->
+        <div class="border-2 border-black mb-4">
+            <!-- Subtotal -->
+            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black">
+                <div class="border-r-2 border-black py-2">{{__('messages.Subtotal')}}:</div>
+                <div class="py-2" id="receipt-subtotal">0.00</div>
+            </div>
+            <!-- Total Discount -->
+            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black" id="receipt-total-discount-row">
+                <div class="border-r-2 border-black py-2">{{__('messages.Toatal discount')}}:</div>
+                <div class="py-2" id="receipt-total-discount-amount">0.00</div>
+            </div>
+            <!-- Final Total -->
+            <div class="grid grid-cols-2 text-center font-bold text-lg bg-gray-200">
+                <div class="border-r-2 border-black py-3">{{__('messages.Total')}}:</div>
+                <div class="py-3" id="receipt-final-amount">0.00</div>
+            </div>
+        </div>
+
+        <!-- User Details -->
+        <div class="mt-4 text-center">
+            <div id="receipt-final-user-details" class="text-xs font-bold"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm font-bold">
+            <div class="mb-2">{{__('messages.Thank you for your business!')}}</div>
+            <hr class="border-2 border-black my-3">
+            <div class="text-xs">HawiTech</div>
+            <p class="text-xs">WhatsApp: +(970) 599647713</p>
+            
         </div>
     </div>
 </div>
-
     {{-- Enhanced Performance Styles --}}
     <style>
         /* Customer suggestions dropdown */
@@ -694,6 +797,14 @@
             .product-row, .x-block, .py-12, .flex, form {
                 display: none !important;
             }
+
+
+            body {
+        font-size: 16px; /* Larger text */
+        font-weight: bold;
+        line-height: 1.6;
+    }
+
         }
 
         /* Receipt print styles */
@@ -729,6 +840,138 @@
                 display: block !important;
             }
         }
+
+        /* Enhanced print styles */
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1.4;
+    }
+
+    body * {
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #print-area, #print-area * {
+        visibility: visible !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    #print-area {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        padding: 0.5cm !important;
+        background: white;
+        font-size: 18px !important;
+        font-weight: bold !important;
+    }
+
+    #print-area h1 {
+        font-size: 32px !important;
+        font-weight: bold !important;
+    }
+
+    #print-area table {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        border-collapse: collapse !important;
+    }
+
+    #print-area th, #print-area td {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        border: 2px solid #000 !important;
+        padding: 8px !important;
+    }
+}
+
+/* Receipt print styles */
+/* Professional Receipt Print Styles */
+.receipt-content {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    padding: 10mm !important;
+    font-size: 14pt !important;
+    line-height: 1.4 !important;
+    font-weight: bold !important;
+    font-family: Arial, sans-serif !important;
+    color: black !important;
+    background: white !important;
+}
+
+@media print {
+    .print-receipt #print-area {
+        display: none !important;
+    }
+
+    .print-receipt #receipt-area, .print-receipt #receipt-area * {
+        visibility: visible !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .print-receipt #receipt-area {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+        font-size: 14pt !important;
+        font-weight: bold !important;
+    }
+
+    .print-receipt .receipt-content {
+        font-weight: bold !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .print-receipt table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+
+    .print-receipt th, .print-receipt td {
+        border: 2px solid black !important;
+        padding: 8px !important;
+        font-weight: bold !important;
+    }
+
+    .print-receipt img {
+        max-width: 64px !important;
+        height: 64px !important;
+    }
+}
+
+.receipt-product-row {
+    margin-bottom: 2mm !important;
+    font-weight: bold !important;
+}
+
+.receipt-product-name {
+    font-weight: bold !important;
+    font-size: 11pt !important;
+}
+
+.receipt-product-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+}
+
     </style>
 
     <!-- Barcode Duplicate Selection Modal -->
@@ -1197,14 +1440,7 @@
                 });
         }
 
-        // Batch rendering for better performance
-        function batchRenderProducts(products) {
-            renderQueue = [...renderQueue, ...products];
-            
-            if (!isRenderingQueue) {
-                processRenderQueue();
-            }
-        }
+        
 
         function processRenderQueue() {
             if (renderQueue.length === 0) {
@@ -1244,56 +1480,137 @@
         }
 
         // Highly optimized product card creation
-        function createOptimizedProductCard(product) {
-            const card = document.createElement('div');
-            const isOutOfStock = product.quantity === 0;
-            
-            card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
-            card.dataset.productId = product.id;
-            card.dataset.cost_price = product.cost_price;
-            card.dataset.selling_price = product.selling_price;
-            card.dataset.has_tags = product.has_tags ? 'true' : 'false';
+function createOptimizedProductCard(product) {
+    const card = document.createElement('div');
+    const isOutOfStock = product.quantity === 0;
+    
+    card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
+    card.dataset.productId = product.id;
+    card.dataset.cost_price = product.cost_price;
+    card.dataset.selling_price = product.selling_price;
+    card.dataset.has_tags = product.has_tags ? 'true' : 'false';
+    card.dataset.category = product.category || ''; // Add category data
 
-            let firstImage = null;
-            try {
-                const pictures = typeof product.pictures === 'string' ? JSON.parse(product.pictures) : product.pictures;
-                firstImage = Array.isArray(pictures) ? pictures[0] : null;
-            } catch (e) {
-                // Silent fail for better performance
+    let firstImage = null;
+    try {
+        const pictures = typeof product.pictures === 'string' ? JSON.parse(product.pictures) : product.pictures;
+        firstImage = Array.isArray(pictures) ? pictures[0] : null;
+    } catch (e) {
+        // Silent fail for better performance
+    }
+
+    const imageHtml = firstImage
+        ? `<img data-src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
+        : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+           </div>`;
+
+    // Category badge HTML
+    const categoryBadge = product.category ? 
+        `<div class="mb-1">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                ${product.category}
+            </span>
+         </div>` : '';
+
+    card.innerHTML = `
+        <div class="space-y-2">
+            <div class="relative overflow-hidden rounded-lg">
+                ${imageHtml}
+            </div>
+            <div class="min-w-0">
+                ${categoryBadge}
+                <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
+                <div class="mt-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                        ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Setup lazy loading for images
+    if (firstImage && intersectionObserver) {
+        intersectionObserver.observe(card);
+    }
+
+    return card;
+}
+
+// Enhanced batch rendering with category grouping
+function batchRenderProducts(products) {
+    // Group products by category
+    const groupedProducts = {};
+    let uncategorizedProducts = [];
+
+    products.forEach(product => {
+        const category = product.category || '';
+        if (category) {
+            if (!groupedProducts[category]) {
+                groupedProducts[category] = [];
             }
+            groupedProducts[category].push(product);
+        } else {
+            uncategorizedProducts.push(product);
+        }
+    });
 
-            const imageHtml = firstImage
-                ? `<img data-src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
-                : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                   </div>`;
-
-            card.innerHTML = `
-                <div class="space-y-2">
-                    <div class="relative overflow-hidden rounded-lg">
-                        ${imageHtml}
-                    </div>
-                    <div class="min-w-0">
-                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
-                        <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
-                        <div class="mt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
-                            </span>
-                        </div>
-                    </div>
+    // Clear the container
+    const container = document.getElementById('product-results');
+    
+    // Add categorized products first
+    Object.keys(groupedProducts).sort().forEach(category => {
+        // Add category header if there are multiple categories or mixed categorized/uncategorized
+        if (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0) {
+            const categoryHeader = document.createElement('div');
+            categoryHeader.className = 'col-span-full mb-2 mt-4 first:mt-0';
+            categoryHeader.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
+                        ${category}
+                    </span>
+                    <div class="flex-grow border-t border-gray-300"></div>
                 </div>
             `;
-
-            // Setup lazy loading for images
-            if (firstImage && intersectionObserver) {
-                intersectionObserver.observe(card);
-            }
-
-            return card;
+            container.appendChild(categoryHeader);
         }
+
+        // Add products in this category
+        groupedProducts[category].forEach(product => {
+            const card = createOptimizedProductCard(product);
+            container.appendChild(card);
+        });
+    });
+
+    // Add uncategorized products at the end
+    if (uncategorizedProducts.length > 0) {
+        // Add "Uncategorized" header only if there are also categorized products
+        if (Object.keys(groupedProducts).length > 0) {
+            const uncategorizedHeader = document.createElement('div');
+            uncategorizedHeader.className = 'col-span-full mb-2 mt-4';
+            uncategorizedHeader.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
+                        {{__('messages.Uncategorized')}}
+                    </span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+            `;
+            container.appendChild(uncategorizedHeader);
+        }
+
+        uncategorizedProducts.forEach(product => {
+            const card = createOptimizedProductCard(product);
+            container.appendChild(card);
+        });
+    }
+}
 
         // Loading indicator
         function showLoadingIndicator(show) {
@@ -1691,22 +2008,41 @@
             document.body.classList.remove('print-receipt');
         });
 
-        function updatePrintAreas() {
+function updatePrintAreas() {
     const printList = document.getElementById('print-products-list');
-    const receiptList = document.getElementById('receipt-products-list');
+    const receiptTableBody = document.getElementById('receipt-products-table');
     
     printList.innerHTML = '';
-    receiptList.innerHTML = '';
+    receiptTableBody.innerHTML = '';
 
-    let total = 0, totalDiscount = 0;
+    let total = 0, totalDiscount = 0, subtotal = 0;
+    let discountDetails = [];
 
-    document.querySelectorAll('.product-row').forEach(row => {
+    document.querySelectorAll('.product-row').forEach((row, index) => {
         const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
         const discountValue = parseFloat(row.querySelector('.discount')?.value || 0);
         const price = parseFloat(row.querySelector('.selling-price')?.value || 
                     row.querySelector('input[name="selling_prices[]"]')?.value || 0);
         const discountType = row.querySelector('.discount-type')?.value || 'total';
-        
+        const tagsInput = row.querySelector('input[name="product_tags[]"]');
+        const tagsString = tagsInput ? tagsInput.value : '';
+
+        // Calculate tags total
+        let tagsTotal = 0;
+        let tagsDisplay = '';
+        let tagsDisplayArabic = '';
+        if (tagsString) {
+            const tagPairs = tagsString.split('&');
+            tagPairs.forEach(pair => {
+                if (pair.includes('@')) {
+                    const [name, tagPrice] = pair.split('@');
+                    tagsTotal += parseFloat(tagPrice) || 0;
+                    tagsDisplay += tagsDisplay ? `, ${name} (+${parseFloat(tagPrice).toFixed(2)}₪)` : `${name} (+${parseFloat(tagPrice).toFixed(2)}₪)`;
+                    tagsDisplayArabic += tagsDisplayArabic ? `، ${name} (+${parseFloat(tagPrice).toFixed(1)})` : `${name} (+${parseFloat(tagPrice).toFixed(1)})`;
+                }
+            });
+        }
+
         // Calculate actual discount amount based on type
         let actualDiscount = 0;
         if (discountType === 'per-unit') {
@@ -1715,78 +2051,112 @@
             actualDiscount = discountValue;
         }
 
-        let name = '{{ __('messages.Unknown') }}';
+        let name = 'Unknown';
         const select = row.querySelector('.product-select');
         if (select && !select.disabled) {
-            name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || '{{ __('messages.Unknown') }}';
+            name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
         } else {
             const nameDiv = row.querySelector('.font-medium.text-gray-900');
-            if (nameDiv) name = nameDiv.textContent?.trim() || '{{ __('messages.Unknown') }}';
+            if (nameDiv) name = nameDiv.textContent?.trim() || 'Unknown';
         }
 
-        const sub = Math.max(0, (price * qty) - actualDiscount);
-        total += sub;
+        const unitPriceWithTags = price + tagsTotal;
+        const subtotalWithTags = (price * qty) + (tagsTotal * qty);
+        const finalSubtotal = Math.max(0, subtotalWithTags - actualDiscount);
+        
+        subtotal += subtotalWithTags;
+        total += finalSubtotal;
         totalDiscount += actualDiscount;
+
+        // Track discount details
+        if (actualDiscount > 0) {
+            discountDetails.push({
+                name: name,
+                discount: actualDiscount,
+                type: discountType
+            });
+        }
 
         // Standard print table row
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="border px-2 py-1">${name}</td>
-            <td class="border px-2 py-1 text-right">${qty}</td>
-            <td class="border px-2 py-1 text-right">${price.toFixed(2)}₪</td>
-            <td class="border px-2 py-1 text-right">${actualDiscount.toFixed(2)}₪</td>
-            <td class="border px-2 py-1 text-right">${sub.toFixed(2)}₪</td>
+            <td class="border-2 border-black px-2 py-1 text-center">
+                <div class="font-semibold text-xs">${name}</div>
+                ${tagsDisplay ? `<div class="text-xs text-blue-600">Tags: ${tagsDisplay}</div>` : ''}
+            </td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${qty}</td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${price.toFixed(2)}₪${tagsTotal > 0 ? `<br><small class="text-xs">+${tagsTotal.toFixed(2)}₪</small>` : ''}</td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${actualDiscount.toFixed(2)}₪</td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${finalSubtotal.toFixed(2)}₪</td>
         `;
         printList.appendChild(tr);
 
-        // Receipt format
-        const receiptDiv = document.createElement('div');
-        receiptDiv.className = 'receipt-product-row';
-        receiptDiv.innerHTML = `
-            <div class="receipt-product-name">${name}</div>
-            <div class="receipt-product-details">
-                <span>${qty} x ${price.toFixed(2)}₪</span>
-                <span>${sub.toFixed(2)}₪</span>
-            </div>
-            ${actualDiscount > 0 ? `<div class="text-center text-xs">{{ __('messages.Discount') }}: -${actualDiscount.toFixed(2)}₪</div>` : ''}
+        // Receipt table row with enhanced details
+        const receiptTr = document.createElement('tr');
+        receiptTr.innerHTML = `
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">${index + 1}</td>
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">
+                <div>${name}</div>
+                ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
+            </td>
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">${qty}</td>
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">
+                <div>${price.toFixed(1)}</div>
+                ${tagsTotal > 0 ? `<div class="text-xs">+${tagsTotal.toFixed(1)} إضافات</div>` : ''}
+            </td>
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">${actualDiscount > 0 ? actualDiscount.toFixed(1) : '-'}</td>
+            <td class="border-2 border-black px-2 py-2 text-center font-bold">${finalSubtotal.toFixed(1)}</td>
         `;
-        receiptList.appendChild(receiptDiv);
+        receiptTableBody.appendChild(receiptTr);
     });
-    
-    const receiptDiv = document.createElement('div');
-    receiptDiv.className = 'receipt-product-row';
-    receiptDiv.innerHTML = `
-        <div class="border-t border-dashed my-2"></div>
-        <div class="border-t border-dashed my-2"></div>
-        <div class="text-center text-xs">{{ __('messages.Total') }}: ${total.toFixed(2)}₪</div>
-        ${totalDiscount > 0 ? `<div class="text-center text-xs">{{ __('messages.Discount') }}: -${totalDiscount.toFixed(2)}₪</div>` : ''}
-    `;
-    
-    receiptList.appendChild(receiptDiv);
 
-    // Update totals
+    // Update totals for standard print
     document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
     document.getElementById('print-total-discount').textContent = totalDiscount.toFixed(2) + '₪';
 
-    // Update customer info
-    let customerName = '';
+    // Update receipt totals with enhanced details
+    document.getElementById('receipt-subtotal').textContent = subtotal.toFixed(1);
+    document.getElementById('receipt-total-discount-amount').textContent = totalDiscount.toFixed(1);
+    document.getElementById('receipt-final-amount').textContent = total.toFixed(1);
+
+
+   let customerName = '';
+    let customerPhone = '';
+
     if (isRestaurant) {
-        // For restaurant users, get the selected customer name from the dropdown
         const customerSelect = document.getElementById('customer_id');
         if (customerSelect && customerSelect.value) {
             const selectedOption = customerSelect.selectedOptions[0];
-            customerName = selectedOption ? selectedOption.textContent.split(' - ')[0] : '';
+            if (selectedOption) {
+                const fullText = selectedOption.textContent;
+                const parts = fullText.split(' - ');
+                customerName = parts[0] || '';
+                customerPhone = parts[1] ? parts[1].split(' (')[0] : '';
+            }
         }
     } else {
-        // For non-restaurant users, get from the search input
         const customerSearch = document.getElementById('customer_search');
         customerName = customerSearch ? customerSearch.value : '';
+        // Try to find phone from customer data if available
+        if (customerName && customers) {
+            const foundCustomer = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+            customerPhone = foundCustomer ? foundCustomer.phone : '';
+        }
     }
 
-    const customerInfo = customerName ? `{{ __('messages.Customer') }}: ${customerName}` : '';
+    // Update print areas with customer info
+    const customerInfo = customerName ? `{{__('messages.Customer')}}: ${customerName}` : '';
+    const phoneInfo = customerPhone ? `{{__('messages.Phone')}}: ${customerPhone}` : '';
+
+    document.getElementById('print-customer2').textContent= customerInfo;
 
     document.getElementById('print-customer').textContent = customerInfo;
-    document.getElementById('receipt-customer').textContent = customerInfo;
+    document.getElementById('print-customer-phone').textContent = phoneInfo;
+
+    // Add user details
+    const userDetails = '{{ auth()->user()->details ?? "" }}';
+    document.getElementById('print-user-details').textContent = userDetails ? `Details: ${userDetails}` : '';
+    document.getElementById('receipt-user-details').textContent = userDetails || '';
 
     // Update bill ID if available
     if (currentBillId) {
@@ -1939,9 +2309,5 @@
         };
 
 
-
-
-
-        //print functions
     </script>
 </x-app-layout>

@@ -461,6 +461,21 @@ Route::get('/quick-compress-images', function () {
 })->name('quick.compress.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
 
 
+// Add this to your web.php routes
+Route::get('/api/categories', function () {
+    $user = auth()->user();
+    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    
+    $categories = \App\Models\Product::where('user_id', $ownerId)
+        ->whereNotNull('category')
+        ->where('category', '!=', '')
+        ->distinct()
+        ->pluck('category')
+        ->sort()
+        ->values();
+    
+    return response()->json($categories);
+})->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant']);
 
 // ------------------- LANGUAGE ROUTES -------------------
 require __DIR__.'/language.php';

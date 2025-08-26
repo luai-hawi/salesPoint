@@ -91,4 +91,5 @@ return [
     'Batch deleted successfully!' => 'Batch deleted successfully!',
     'Failed to delete batch. Please try again.' => 'Failed to delete batch. Please try again.',
     'Print Receipt' => 'Print Receipt',
+    'Tags' => 'Tags',
 ];
