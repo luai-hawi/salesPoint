@@ -5,34 +5,17 @@
         app()->setLocale($sessionLocale);
     }
     
-    // Get shop name and details based on user role
+    // Get shop name based on user role
     $shopName = __('messages.Shop'); // Default fallback
-    $shopDetails = '';
-    $shopPhone = '';
-    $shopWhatsApp = '';
-    
     if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-        $shopOwner = auth()->user()->shopOwner;
-        $shopName = $shopOwner->name ?? 'Shop';
-        $shopDetails = $shopOwner->details ?? '';
-        // Parse details JSON if it exists
-        if ($shopDetails) {
-            $detailsArray = json_decode($shopDetails, true);
-            $shopPhone = $detailsArray['phone'] ?? '';
-            $shopWhatsApp = $detailsArray['whatsapp'] ?? '';
-        }
+        $shopName = auth()->user()-> shopOwner->name ?? 'Shop';
     } elseif (auth()->user()->role !== 'employee') {
         $shopName = auth()->user()->name ?? 'Shop';
-        $shopDetails = auth()->user()->details ?? '';
-        // Parse details JSON if it exists
-        if ($shopDetails) {
-            $detailsArray = json_decode($shopDetails, true);
-            $shopPhone = $detailsArray['phone'] ?? '';
-            $shopWhatsApp = $detailsArray['whatsapp'] ?? '';
-        }
     }
-    
     $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
+    
+    
+    
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -443,15 +426,6 @@
     <div class="receipt-content">
         <div class="text-center mb-2">
             <div class="text-lg font-bold">{{ $shopName }}</div>
-            @if($shopWhatsApp || $shopPhone)
-                @if($shopWhatsApp)
-                <div class="text-xs">WhatsApp: {{ $shopWhatsApp }}</div>
-                @endif
-                @if($shopPhone)
-                <div class="text-xs">{{ __('messages.Phone') }}: {{ $shopPhone }}</div>
-                @endif
-            @endif
-            <div class="border-t border-dashed my-2"></div>
             <div class="text-xs">{{ now()->format('Y-m-d H:i:s') }}</div>
             <div id="receipt-bill-id" class="text-xs font-medium">{{ __('messages.Bill') }}: #<span id="receipt-current-bill-id">-</span></div>
             <div class="border-t border-dashed my-2"></div>
@@ -459,29 +433,18 @@
        
         <div id="receipt-customer" class="text-xs mb-2"></div>
        
-        <div class="text-xs font-bold mb-1">
-            <span class="inline-block w-16">{{ __('messages.Product Name') }}</span>
-            <span class="inline-block w-8 text-center">{{ __('messages.Qty') }}</span>
-            <span class="inline-block w-10 text-right">{{ __('messages.Price') }}</span>
-        </div>
-        <div class="border-t border-dashed mb-2"></div>
-       
         <div id="receipt-products-list" class="text-xs">
             <!-- Products will be added here -->
         </div>
        
         <div class="border-t border-dashed my-2"></div>
        
-        <div id="receipt-totals-container" class="text-sm font-bold">
+        <div id="receipt-totals-container">
             <!-- Totals will be added dynamically -->
         </div>
        
         <div class="text-center text-xs mt-3">
-            <div class="border-t border-dashed mb-2"></div>
             <div>{{ __('messages.Thank you for your business!') }}</div>
-            <div>{{ __('messages.Please come again') }}</div>
-            <div class="mt-2">[LOGO]</div>
-            <div class="text-xs">{{ config('app.name', 'POS System') }}</div>
             <div class="border-t border-dashed mt-2"></div>
         </div>
     </div>
@@ -766,28 +729,6 @@
                 display: block !important;
             }
         }
-
-
-        /* Mobile printing optimizations */
-@media print and (max-width: 480px) {
-    .print-receipt #receipt-area {
-        width: 100% !important;
-        font-size: 12pt !important;
-    }
-    
-    .receipt-content {
-        width: 100% !important;
-        padding: 5mm !important;
-    }
-}
-
-/* Android WebView specific adjustments */
-@media screen and (-webkit-device-pixel-ratio: 2) and (max-width: 800px) {
-    .receipt-content {
-        font-size: 10pt;
-        line-height: 1.3;
-    }
-}
     </style>
 
     <!-- Barcode Duplicate Selection Modal -->
@@ -838,8 +779,6 @@
         const productsList = document.getElementById('products-list');
         const isRestaurant = {{ $isRestaurant ? 'true' : 'false' }};
         const shopName = '{{ $shopName }}';
-        const shopPhone = '{{ $shopPhone }}';
-        const shopWhatsApp = '{{ $shopWhatsApp }}';
         let currentBillId = null;
 
         // State management
@@ -873,11 +812,6 @@
                 setupCustomerSearch();
             } else {
                 setupRestaurantCustomerSelectors();
-            }
-
-            // Add this inside the DOMContentLoaded event listener
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                showNotification('Direct printer access requires HTTPS connection', 'warning');
             }
         });
 
@@ -1749,18 +1683,12 @@
             window.print();
         });
 
-        // Receipt print functionality - REPLACE EXISTING
+        // Receipt print functionality
         document.getElementById('print-receipt-button').addEventListener('click', () => {
-            if (navigator.usb || navigator.bluetooth) {
-                const receiptData = formatReceiptForThermalPrinter();
-                sendToPrinter(receiptData);
-            } else {
-                // Fallback to regular print
-                updatePrintAreas();
-                document.body.classList.add('print-receipt');
-                window.print();
-                document.body.classList.remove('print-receipt');
-            }
+            updatePrintAreas();
+            document.body.classList.add('print-receipt');
+            window.print();
+            document.body.classList.remove('print-receipt');
         });
 
         function updatePrintAreas() {
@@ -2014,386 +1942,6 @@
 
 
 
-       //print functions
-// ESC/POS Thermal Printer Commands
-const ESC = '\x1B';
-const GS = '\x1D';
-
-// Android-first printer approach
-function sendToPrinter(data) {
-    console.log('Attempting to print with data length:', data.length);
-    
-    // Check for built-in printer functions first (most Android POS devices have these)
-    if (tryBuiltinPrinter(data)) {
-        return;
-    }
-    
-    // Try WebView JavaScript interfaces
-    if (tryWebViewInterfaces(data)) {
-        return;
-    }
-    
-    // Try creating a print intent
-    if (tryPrintIntent(data)) {
-        return;
-    }
-    
-    // Show manual print dialog as last resort
-    showPrintDialog(data);
-}
-
-function tryBuiltinPrinter(data) {
-    // Common built-in printer objects on Android POS devices
-    const printerObjects = [
-        'AndroidPrinter',
-        'ThermalPrinter', 
-        'POSPrinter',
-        'PrinterService',
-        'DevicePrinter',
-        'SunmiPrinter', // Common on Sunmi devices
-        'printer', // Generic lowercase
-        'Printer' // Generic uppercase
-    ];
-    
-    for (const printerName of printerObjects) {
-        if (typeof window[printerName] !== 'undefined') {
-            const printer = window[printerName];
-            console.log(`Found printer object: ${printerName}`);
-            
-            // Try different method names
-            const methodNames = ['print', 'printText', 'printReceipt', 'sendData', 'write'];
-            
-            for (const method of methodNames) {
-                if (typeof printer[method] === 'function') {
-                    try {
-                        console.log(`Trying ${printerName}.${method}`);
-                        printer[method](data);
-                        showNotification('Printing via built-in printer...', 'success');
-                        return true;
-                    } catch (error) {
-                        console.log(`${printerName}.${method} failed:`, error);
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-function tryWebViewInterfaces(data) {
-    // Check for WebView JavaScript interfaces
-    const interfaces = [
-        'AndroidInterface',
-        'WebAppInterface', 
-        'JSInterface',
-        'NativeInterface',
-        'AppInterface'
-    ];
-    
-    for (const interfaceName of interfaces) {
-        if (typeof window[interfaceName] !== 'undefined') {
-            const iface = window[interfaceName];
-            console.log(`Found interface: ${interfaceName}`);
-            
-            const methods = ['print', 'printText', 'sendToPrinter', 'printReceipt'];
-            
-            for (const method of methods) {
-                if (typeof iface[method] === 'function') {
-                    try {
-                        console.log(`Trying ${interfaceName}.${method}`);
-                        iface[method](data);
-                        showNotification('Printing via WebView interface...', 'success');
-                        return true;
-                    } catch (error) {
-                        console.log(`${interfaceName}.${method} failed:`, error);
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-function tryPrintIntent(data) {
-    try {
-        // Create a Blob with the receipt data
-        const blob = new Blob([data], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        
-        // Try to trigger a print intent
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'receipt.txt';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        showNotification('Receipt file created. Please open with printer app.', 'info');
-        
-        // Also try to call Android print dialog if available
-        if (window.print) {
-            setTimeout(() => {
-                window.print();
-            }, 500);
-        }
-        
-        return true;
-    } catch (error) {
-        console.log('Print intent failed:', error);
-        return false;
-    }
-}
-
-function showPrintDialog(data) {
-    // Create a user-friendly modal with the receipt content
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4';
-    
-    modal.innerHTML = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">{{ __('messages.Print Receipt') }}</h3>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="bg-gray-100 p-4 rounded text-xs font-mono mb-4 max-h-60 overflow-y-auto" style="white-space: pre-wrap;">${data}</div>
-            
-            <div class="space-y-3">
-                <p class="text-sm text-gray-600">{{ __('messages.Choose an option to print:') }}</p>
-                
-                <div class="grid grid-cols-1 gap-2">
-                    <button onclick="copyToClipboard(\`${data.replace(/`/g, '\\`')}\`); showNotification('Receipt copied to clipboard!', 'success')" 
-                            class="w-full bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
-                        📋 {{ __('messages.Copy to Clipboard') }}
-                    </button>
-                    
-                    <button onclick="downloadReceipt(\`${data.replace(/`/g, '\\`')}\`)" 
-                            class="w-full bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
-                        💾 {{ __('messages.Download as Text File') }}
-                    </button>
-                    
-                    <button onclick="shareReceipt(\`${data.replace(/`/g, '\\`')}\`)" 
-                            class="w-full bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">
-                        📤 {{ __('messages.Share Receipt') }}
-                    </button>
-                    
-                    <button onclick="window.print()" 
-                            class="w-full bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700">
-                        🖨️ {{ __('messages.Browser Print') }}
-                    </button>
-                </div>
-                
-                <p class="text-xs text-gray-500 mt-4">
-                    {{ __('messages.If you have a thermal printer app installed, you can copy the text and paste it there.') }}
-                </p>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-}
-
-// Helper functions
-function copyToClipboard(text) {
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text);
-        } else {
-            // Fallback for older browsers
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-        }
-    } catch (error) {
-        console.log('Copy failed:', error);
-        showNotification('Copy failed', 'error');
-    }
-}
-
-function downloadReceipt(data) {
-    try {
-        const blob = new Blob([data], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `receipt_${new Date().getTime()}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showNotification('Receipt downloaded!', 'success');
-    } catch (error) {
-        console.log('Download failed:', error);
-        showNotification('Download failed', 'error');
-    }
-}
-
-function shareReceipt(data) {
-    try {
-        if (navigator.share) {
-            navigator.share({
-                title: 'Receipt',
-                text: data,
-            });
-        } else {
-            // Fallback - copy to clipboard
-            copyToClipboard(data);
-            showNotification('Copied to clipboard (sharing not available)', 'info');
-        }
-    } catch (error) {
-        console.log('Share failed:', error);
-        copyToClipboard(data);
-        showNotification('Copied to clipboard instead', 'info');
-    }
-}
-
-function formatReceiptForThermalPrinter() {
-    let receiptData = '';
-    
-    // Shop name in large text
-    receiptData += '================================\n';
-    receiptData += shopName.toUpperCase() + '\n';
-    receiptData += '================================\n';
-    
-    // Shop details
-    if (shopWhatsApp) {
-        receiptData += 'WhatsApp: ' + shopWhatsApp + '\n';
-    }
-    if (shopPhone) {
-        receiptData += '{{ __("messages.Phone") }}: ' + shopPhone + '\n';
-    }
-    receiptData += '================================\n';
-    
-    // Date and time
-    const now = new Date();
-    receiptData += '{{ __("messages.Date") }}: ' + now.toLocaleDateString() + '\n';
-    receiptData += '{{ __("messages.Time") }}: ' + now.toLocaleTimeString() + '\n';
-    
-    if (currentBillId) {
-        receiptData += '{{ __("messages.Bill ID") }}: ' + currentBillId + '\n';
-    }
-    receiptData += '================================\n';
-    
-    // Customer info
-    let customerName = '';
-    if (isRestaurant) {
-        const customerSelect = document.getElementById('customer_id');
-        if (customerSelect && customerSelect.value) {
-            const selectedOption = customerSelect.selectedOptions[0];
-            customerName = selectedOption ? selectedOption.textContent.split(' - ')[0] : '';
-        }
-    } else {
-        const customerSearch = document.getElementById('customer_search');
-        customerName = customerSearch ? customerSearch.value : '';
-    }
-    
-    if (customerName) {
-        receiptData += '{{ __("messages.Customer") }}: ' + customerName + '\n';
-        receiptData += '================================\n';
-    }
-    
-    // Headers
-    receiptData += 'ITEM'.padEnd(20) + 'QTY'.padStart(5) + 'PRICE'.padStart(8) + '\n';
-    receiptData += '--------------------------------\n';
-    
-    // Products
-    let total = 0;
-    let totalDiscount = 0;
-    
-    document.querySelectorAll('.product-row').forEach(row => {
-        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-        const discount = parseFloat(row.querySelector('.discount')?.value || 0);
-        const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
-        const discountType = row.querySelector('.discount-type')?.value || 'total';
-        
-        let actualDiscount = 0;
-        if (discountType === 'per-unit') {
-            actualDiscount = discount * qty;
-        } else {
-            actualDiscount = discount;
-        }
-        
-        let name = '{{ __("messages.Unknown") }}';
-        const nameDiv = row.querySelector('.font-medium.text-gray-900');
-        if (nameDiv) name = nameDiv.textContent?.trim() || '{{ __("messages.Unknown") }}';
-        
-        const subtotal = Math.max(0, (price * qty) - actualDiscount);
-        total += subtotal;
-        totalDiscount += actualDiscount;
-        
-        // Product line
-        receiptData += name.substring(0, 20).padEnd(20);
-        receiptData += qty.toString().padStart(5);
-        receiptData += subtotal.toFixed(2).padStart(8) + '\n';
-        
-        if (actualDiscount > 0) {
-            receiptData += '  {{ __("messages.Discount") }}: -' + actualDiscount.toFixed(2) + '\n';
-        }
-    });
-    
-    receiptData += '================================\n';
-    
-    // Totals
-    if (totalDiscount > 0) {
-        receiptData += '{{ __("messages.Total Discount") }}: ' + totalDiscount.toFixed(2) + '\n';
-    }
-    receiptData += '{{ __("messages.TOTAL") }}: $' + total.toFixed(2) + '\n';
-    receiptData += '================================\n';
-    receiptData += '{{ __("messages.Thank you for your business!") }}\n';
-    receiptData += '{{ __("messages.Please come again") }}\n';
-    receiptData += '================================\n';
-    receiptData += '{{ config("app.name", "POS System") }}\n';
-    receiptData += '================================\n';
-    
-    return receiptData;
-}
-
-// Add the missing printReceipt function
-function printReceipt() {
-    updatePrintAreas();
-    document.body.classList.add('print-receipt');
-    window.print();
-    document.body.classList.remove('print-receipt');
-}
-
-// Capability check function for debugging
-function checkPrinterCapabilities() {
-    console.log('=== Printer Capability Check ===');
-    console.log('User Agent:', navigator.userAgent);
-    console.log('Available printer objects:');
-    
-    const possiblePrinters = [
-        'AndroidPrinter', 'ThermalPrinter', 'POSPrinter', 'PrinterService',
-        'DevicePrinter', 'SunmiPrinter', 'printer', 'Printer'
-    ];
-    
-    possiblePrinters.forEach(name => {
-        if (typeof window[name] !== 'undefined') {
-            console.log(`✓ ${name} is available:`, window[name]);
-            if (window[name]) {
-                console.log(`${name} methods:`, Object.getOwnPropertyNames(window[name]));
-            }
-        } else {
-            console.log(`✗ ${name} not available`);
-        }
-    });
-    
-    console.log('=== End Check ===');
-}
-
-// Uncomment the next line to test printer capabilities on Anypos80
-checkPrinterCapabilities();
+        //print functions
     </script>
 </x-app-layout>
