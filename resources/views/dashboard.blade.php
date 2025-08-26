@@ -2036,196 +2036,26 @@ function sendToPrinter(data) {
 }
 
 function tryAndroidPrinting(data) {
-    console.log('Trying Android printing methods for legacy device...');
+    console.log('Trying Android printing methods...');
     
-    // Method 1: Check for built-in printer object (common on POS devices)
-    if (typeof AndroidPrinter !== 'undefined') {
+    // Method 1: Try Android Intent (if available)
+    if (window.Android && window.Android.print) {
         try {
-            AndroidPrinter.printText(data);
-            showNotification('Printing via AndroidPrinter...', 'success');
+            window.Android.print(data);
+            showNotification('Printing via Android interface...', 'info');
             return;
         } catch (error) {
-            console.log('AndroidPrinter failed:', error);
+            console.log('Android interface failed:', error);
         }
     }
     
-    // Method 2: Check for SunmiPrinter (common on Sunmi devices, but worth trying)
-    if (typeof SunmiPrinter !== 'undefined') {
-        try {
-            SunmiPrinter.printText(data);
-            showNotification('Printing via SunmiPrinter...', 'success');
-            return;
-        } catch (error) {
-            console.log('SunmiPrinter failed:', error);
-        }
+    // Method 2: Try Bluetooth Serial (common on Android POS devices)
+    if (navigator.bluetooth) {
+        tryBluetoothSerial(data);
+    } else {
+        // Method 3: Try WebView bridge
+        tryWebViewBridge(data);
     }
-    
-    // Method 3: Try generic printer interfaces
-    const printerInterfaces = [
-        'ThermalPrinter',
-        'POSPrinter', 
-        'AndroidPrint',
-        'PrinterBridge',
-        'NativePrinter',
-        'DevicePrinter'
-    ];
-    
-    for (const interfaceName of printerInterfaces) {
-        if (typeof window[interfaceName] !== 'undefined') {
-            try {
-                if (window[interfaceName].print) {
-                    window[interfaceName].print(data);
-                    showNotification(`Printing via ${interfaceName}...`, 'success');
-                    return;
-                } else if (window[interfaceName].printText) {
-                    window[interfaceName].printText(data);
-                    showNotification(`Printing via ${interfaceName}...`, 'success');
-                    return;
-                }
-            } catch (error) {
-                console.log(`${interfaceName} failed:`, error);
-            }
-        }
-    }
-    
-    // Method 4: Try Android Intent approach for older devices
-    tryAndroidIntent(data);
-}
-
-function tryAndroidIntent(data) {
-    try {
-        // Create a data URL with the receipt content
-        const encodedData = encodeURIComponent(data);
-        
-        // Try to trigger Android intent for printing
-        const intentUrl = `intent://print?data=${encodedData}#Intent;scheme=printer;package=com.printer.app;end`;
-        
-        // Create a hidden link and click it to trigger the intent
-        const link = document.createElement('a');
-        link.href = intentUrl;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showNotification('Attempting to open printer app...', 'info');
-        
-        // Fallback after a short delay
-        setTimeout(() => {
-            tryLegacyMethods(data);
-        }, 2000);
-        
-    } catch (error) {
-        console.log('Android intent failed:', error);
-        tryLegacyMethods(data);
-    }
-}
-
-function tryLegacyMethods(data) {
-    console.log('Trying legacy printing methods...');
-    
-    // Method 1: Try to send data to a hidden iframe (some old WebViews support this)
-    try {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data);
-        document.body.appendChild(iframe);
-        
-        setTimeout(() => {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.print();
-            }
-            document.body.removeChild(iframe);
-        }, 500);
-        
-        showNotification('Attempting legacy print method...', 'info');
-        return;
-    } catch (error) {
-        console.log('Iframe method failed:', error);
-    }
-    
-    // Method 2: Try localStorage + page refresh approach
-    try {
-        localStorage.setItem('pendingPrint', data);
-        localStorage.setItem('printRequested', 'true');
-        showNotification('Print data saved, please use device print function', 'warning');
-        return;
-    } catch (error) {
-        console.log('localStorage method failed:', error);
-    }
-    
-    // Final fallback - show print dialog
-    showPrintDialog(data);
-}
-
-function showPrintDialog(data) {
-    // Create a modal with the receipt content for manual printing
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50';
-    modal.innerHTML = `
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 max-w-md w-full">
-                <h3 class="text-lg font-semibold mb-4">{{ __('messages.Manual Print Required') }}</h3>
-                <div class="bg-gray-100 p-4 rounded text-xs font-mono max-h-60 overflow-y-auto mb-4" style="white-space: pre-wrap;">${data}</div>
-                <p class="text-sm text-gray-600 mb-4">{{ __('messages.Please copy this content to your printer app or use device print function') }}</p>
-                <div class="flex gap-2">
-                    <button onclick="copyToClipboard('${data.replace(/'/g, "\\'")}'); this.textContent='Copied!'" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                        {{ __('messages.Copy Text') }}
-                    </button>
-                    <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded text-sm">
-                        {{ __('messages.Close') }}
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-}
-
-// Add copy to clipboard function
-function copyToClipboard(text) {
-    try {
-        // Try modern clipboard API first
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text);
-        } else {
-            // Fallback for older browsers
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-        }
-    } catch (error) {
-        console.log('Copy failed:', error);
-    }
-}
-function checkPrinterCapabilities() {
-    console.log('=== Printer Capability Check ===');
-    console.log('User Agent:', navigator.userAgent);
-    console.log('Available objects:');
-    
-    const possiblePrinters = [
-        'AndroidPrinter', 'SunmiPrinter', 'ThermalPrinter', 'POSPrinter',
-        'AndroidPrint', 'PrinterBridge', 'NativePrinter', 'DevicePrinter'
-    ];
-    
-    possiblePrinters.forEach(name => {
-        if (typeof window[name] !== 'undefined') {
-            console.log(`✓ ${name} is available:`, window[name]);
-            console.log(`Methods:`, Object.getOwnPropertyNames(window[name]));
-        } else {
-            console.log(`✗ ${name} not available`);
-        }
-    });
-    
-    console.log('Web APIs:');
-    console.log('USB:', !!navigator.usb);
-    console.log('Bluetooth:', !!navigator.bluetooth);
-    console.log('LocalStorage:', !!localStorage);
-    console.log('=== End Check ===');
 }
 
 function tryDesktopPrinting(data) {
