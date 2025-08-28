@@ -279,6 +279,7 @@
                                     </svg>
                                     {{ __('dashboard.Create Bill (F2)') }}
                                 </button>
+                                
                                 <button type="button" id="clear-all" class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -2000,13 +2001,397 @@ function batchRenderProducts(products) {
             window.print();
         });
 
-        // Receipt print functionality
-        document.getElementById('print-receipt-button').addEventListener('click', () => {
-            updatePrintAreas();
-            document.body.classList.add('print-receipt');
-            window.print();
-            document.body.classList.remove('print-receipt');
-        });
+        // Replace your existing print button event listeners with these enhanced versions:
+
+// Enhanced mobile device detection
+function isMobileDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
+    const isMobileScreen = window.innerWidth <= 768 || window.innerHeight <= 600;
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    return isMobileUA || (isMobileScreen && isTouchDevice);
+}
+
+// Standard Print Button - Enhanced for mobile
+document.getElementById('print-button').addEventListener('click', () => {
+    if (isMobileDevice()) {
+        // For mobile: Open in new tab
+        openPrintInNewTab(false); // false = standard print
+    } else {
+        // For desktop: Use existing method
+        updatePrintAreas();
+        document.body.classList.remove('print-receipt');
+        window.print();
+    }
+});
+
+// Receipt Print Button - Enhanced for mobile  
+document.getElementById('print-receipt-button').addEventListener('click', () => {
+    if (isMobileDevice()) {
+        // For mobile: Open in new tab
+        openPrintInNewTab(true); // true = receipt print
+    } else {
+        // For desktop: Use existing method
+        updatePrintAreas();
+        document.body.classList.add('print-receipt');
+        window.print();
+        document.body.classList.remove('print-receipt');
+    }
+});
+
+// Function to open print content in new tab
+function openPrintInNewTab(isReceipt = false) {
+    try {
+        // Update print areas first
+        updatePrintAreas();
+        
+        let htmlContent;
+        
+        if (isReceipt) {
+            // Get receipt content and create 80mm receipt HTML
+            const receiptArea = document.getElementById('receipt-area');
+            if (!receiptArea) {
+                showNotification('Receipt template not found', 'error');
+                return;
+            }
+            
+            // Temporarily show to get content
+            const originalDisplay = receiptArea.style.display;
+            receiptArea.style.display = 'block';
+            const receiptContent = receiptArea.innerHTML;
+            receiptArea.style.display = originalDisplay;
+            
+            htmlContent = generateReceiptPageHTML(receiptContent);
+        } else {
+            // Get standard print content
+            const printArea = document.getElementById('print-area');
+            if (!printArea) {
+                showNotification('Print template not found', 'error');
+                return;
+            }
+            
+            // Temporarily show to get content
+            const originalDisplay = printArea.style.display;
+            printArea.style.display = 'block';
+            const printContent = printArea.innerHTML;
+            printArea.style.display = originalDisplay;
+            
+            htmlContent = generateStandardPageHTML(printContent);
+        }
+        
+        // Open in new tab
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showNotification('Please allow popups for printing', 'error');
+            return;
+        }
+        
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Auto-print after a short delay and close tab
+    printWindow.onload = function() {
+    setTimeout(() => {
+        printWindow.print();
+        // Close the tab after printing (with a small delay for print dialog)
+        setTimeout(() => {
+            printWindow.close();
+        }, 1000);
+    }, 500);
+};
+        
+    } catch (error) {
+        console.error('Print error:', error);
+        showNotification('Print failed. Please try again.', 'error');
+    }
+}
+
+// Generate HTML for 80mm receipt (optimized for thermal printers)
+function generateReceiptPageHTML(content) {
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <title>Receipt - ${shopName}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                body {
+                    font-family: 'Arial', sans-serif;
+                    font-size: 12px;
+                    font-weight: bold;
+                    line-height: 1.3;
+                    color: black;
+                    background: white;
+                    direction: rtl;
+                    padding: 5mm;
+                }
+                
+                .receipt-content {
+                    width: 100%;
+                    max-width: 80mm;
+                    margin: 0 auto;
+                }
+                
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    margin: 2mm 0 !important;
+                }
+                
+                th, td {
+                    border: 1px solid black !important;
+                    padding: 2px 1px !important;
+                    text-align: center !important;
+                    font-weight: bold !important;
+                    font-size: 10px !important;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                
+                h1, h2, h3 {
+                    font-size: 14px !important;
+                    font-weight: bold !important;
+                    margin: 2mm 0 !important;
+                    text-align: center !important;
+                }
+                
+                .text-center { text-align: center !important; }
+                .text-right { text-align: right !important; }
+                .text-left { text-align: left !important; }
+                .font-bold { font-weight: bold !important; }
+                .text-lg { font-size: 16px !important; }
+                .text-sm { font-size: 11px !important; }
+                .text-xs { font-size: 9px !important; }
+                .mb-2 { margin-bottom: 2mm !important; }
+                .mb-4 { margin-bottom: 4mm !important; }
+                .mb-6 { margin-bottom: 6mm !important; }
+                .mt-4 { margin-top: 4mm !important; }
+                .mt-6 { margin-top: 6mm !important; }
+                .py-2 { padding: 2mm 0 !important; }
+                .py-3 { padding: 3mm 0 !important; }
+                .bg-gray-200 { background-color: #e5e7eb !important; }
+                .border-r-2 { border-right: 1px solid black !important; }
+                
+                .grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 2mm;
+                }
+                
+                .grid-cols-2 > div {
+                    flex: 1;
+                    min-width: 45%;
+                }
+                
+                hr {
+                    border: 1px solid black;
+                    margin: 2mm 0;
+                }
+                
+                /* Print-specific styles for 80mm thermal paper */
+                @media print {
+                    body {
+                        margin: 0 !important;
+                        padding: 2mm !important;
+                        font-size: 10px !important;
+                    }
+                    
+                    .receipt-content {
+                        width: 76mm !important; /* Leave 2mm margins on 80mm paper */
+                        max-width: 76mm !important;
+                    }
+                    
+                    table {
+                        page-break-inside: avoid;
+                        font-size: 9px !important;
+                    }
+                    
+                    th, td {
+                        padding: 1px !important;
+                        font-size: 9px !important;
+                    }
+                    
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+                
+                /* Mobile adjustments */
+                @media (max-width: 768px) {
+                    body {
+                        font-size: 14px;
+                    }
+                    
+                    table {
+                        font-size: 12px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt-content">
+                ${content}
+                
+                <!-- Print button for mobile users -->
+                <div class="no-print" style="text-align: center; margin-top: 10mm;">
+                    <button onclick="window.print(); return false;" 
+                            style="background: #4CAF50; color: white; padding: 10px 20px; 
+                                   border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                        🖨️ Print Receipt
+                    </button>
+                    <br><br>
+                    <button onclick="window.close(); return false;" 
+                            style="background: #f44336; color: white; padding: 8px 16px; 
+                                   border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
+                        ❌ Close
+                    </button>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+// Generate HTML for standard print
+function generateStandardPageHTML(content) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Bill - ${shopName}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                    font-weight: bold;
+                    line-height: 1.4;
+                    color: black;
+                    background: white;
+                    padding: 10mm;
+                }
+                
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    margin: 5mm 0 !important;
+                }
+                
+                th, td {
+                    border: 2px solid black !important;
+                    padding: 3mm !important;
+                    text-align: center !important;
+                    font-weight: bold !important;
+                    font-size: 12px !important;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                
+                h1, h2, h3 {
+                    font-weight: bold !important;
+                    margin: 3mm 0 !important;
+                }
+                
+                .grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 5mm;
+                    margin: 3mm 0;
+                }
+                
+                .grid-cols-2 > div {
+                    flex: 1;
+                    min-width: 45%;
+                }
+                
+                .text-center { text-align: center !important; }
+                .text-left { text-align: left !important; }
+                .text-right { text-align: right !important; }
+                .font-semibold, .font-bold { font-weight: bold !important; }
+                .text-xl { font-size: 18px !important; }
+                .text-lg { font-size: 16px !important; }
+                .text-sm { font-size: 12px !important; }
+                .text-xs { font-size: 10px !important; }
+                .mb-3 { margin-bottom: 3mm !important; }
+                .mb-4 { margin-bottom: 4mm !important; }
+                
+                @media print {
+                    body {
+                        margin: 0 !important;
+                        padding: 5mm !important;
+                        font-size: 12px !important;
+                    }
+                    
+                    table {
+                        page-break-inside: avoid;
+                        font-size: 11px !important;
+                    }
+                    
+                    th, td {
+                        padding: 2mm !important;
+                        font-size: 11px !important;
+                    }
+                    
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+                
+                /* Mobile adjustments */
+                @media (max-width: 768px) {
+                    body {
+                        font-size: 16px;
+                        padding: 5mm;
+                    }
+                    
+                    table {
+                        font-size: 14px;
+                    }
+                    
+                    th, td {
+                        padding: 2mm;
+                        font-size: 14px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+            
+            <!-- Print button for mobile users -->
+            <div class="no-print" style="text-align: center; margin-top: 10mm;">
+                <button onclick="window.print(); return false;" 
+                        style="background: #2196F3; color: white; padding: 10px 20px; 
+                               border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                    🖨️ Print Bill
+                </button>
+                <br><br>
+                <button onclick="window.close(); return false;" 
+                        style="background: #f44336; color: white; padding: 8px 16px; 
+                               border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
+                    ❌ Close
+                </button>
+            </div>
+        </body>
+        </html>
+    `;
+}
 
 function updatePrintAreas() {
     const printList = document.getElementById('print-products-list');
