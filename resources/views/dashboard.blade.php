@@ -2539,7 +2539,7 @@ function updatePrintAreas() {
     document.getElementById('print-customer-phone').textContent = phoneInfo;
 
     // Add user details
-    const userDetails = '{{ auth()->user()->details ?? "" }}';
+    const userDetails = {!! json_encode(auth()->user()->details ?? "") !!};
     document.getElementById('print-user-details').textContent = userDetails ? `Details: ${userDetails}` : '';
     document.getElementById('receipt-user-details').textContent = userDetails || '';
 
