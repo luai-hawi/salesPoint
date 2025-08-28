@@ -13,9 +13,6 @@
         $shopName = auth()->user()->name ?? 'Shop';
     }
     $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
-    
-    
-    
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -87,8 +84,8 @@
                             {{ __('dashboard.Available Products') }}
                         </h4>
                     </div>
-                    <div id="product-cards-container" class="max-h-96 overflow-y-auto scroll-container">
-                        <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4 products-grid">
+                    <div id="product-cards-container" class="max-h-96 overflow-y-auto">
+                        <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
                             <!-- Products will be loaded here -->
                         </div>
                         <div id="loading-indicator" class="hidden p-4 text-center">
@@ -202,7 +199,7 @@
                     @endif
 
                     <!-- Bill Form -->
-                    <div id="printable" class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-6 border-b border-gray-100">
                             <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                                 <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,8 +266,6 @@
                                 <!-- Products will be added here dynamically -->
                             </div>
 
-                            
-
                             <!-- Action Buttons -->
                             <div class="flex gap-3">
                                 <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
@@ -290,7 +285,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                                     </svg>
                                 </button>
-                                <button type="button" id="print-receipt-button" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <button type="button" id="print-receipt-button" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>
@@ -391,711 +386,10 @@
         </div>
     </div>
 
-{{-- Standard Printable Invoice - Updated with Discount Column --}}
-<div id="print-area" class="print-hidden p-4 text-xs" dir="rtl">
-    <!-- Shop Owner Name at Top Center -->
-    <div class="text-center mb-3">
-        <div class="text-xl font-bold">
-            @php
-                $shopOwnerName = '';
-                if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-                    $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
-                } elseif (auth()->user()->role !== 'employee') {
-                    $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
-                }
-            @endphp
-            {{ $shopOwnerName }}
-        </div>
-    </div>
-
-    <!-- Header Information Grid -->
-    <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
-        <!-- Left Side Info -->
-        <div class="text-right">
-            <div class="font-semibold">{{ $shopName }}</div>
-            <div class="font-medium">{{ __('messages.Bill ID') }}: #<span id="current-bill-id">-</span></div>
-            <div>{{ __('messages.Printed by') }}: {{ auth()->user()->name }}</div>
-            <div>{{ now()->format('Y-m-d H:i:s') }}</div>
-            <div id="print-user-details" class="mt-1"></div>
-        </div>
-        
-        <!-- Right Side Info -->
-        <div class="text-left">
-            <div id="print-customer" class="font-semibold"></div>
-            <div id="print-customer-phone"></div>
-        </div>
-    </div>
-    
-    <!-- Products Table - Full Width with Discount Column -->
-    <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
-        <thead>
-            <tr class="bg-gray-100">
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
-            </tr>
-        </thead>
-        <tbody id="print-products-list"></tbody>
-        <tfoot>
-            <tr class="bg-gray-50">
-                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Subtotal') }}</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
-                <td id="print-subtotal" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
-            </tr>
-            <tr class="bg-gray-100">
-                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Total Discount') }}</td>
-                <td id="print-total-discount" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
-            </tr>
-            <tr class="bg-gray-200">
-                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
-                <td id="print-total-price" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
-            </tr>
-        </tfoot>
-    </table>
-    
-    <!-- Footer -->
-    <div class="text-left">
-        <div class="text-xs">HawiTech</div>
-        <div class="text-xs">WhatsApp: +(970) 599647713</div>
-    </div>
-</div>
-{{-- Professional Receipt Print --}}
-<div id="receipt-area" class="print-hidden">
-    <div class="receipt-content">
-        <!-- Header with Logo and Shop Info -->
-        <div class="text-center mb-6">
-            <div class="flex items-center justify-center mb-3">
-                <div>
-                    <h1 class="text-2xl font-bold">{{ $shopName }}</h1>
-                    <p class="text-sm font-bold">HawiTech</p>
-                    <p class="text-xs">WhatsApp: +(970) 599647713</p>
-                </div>
-            </div>
-            <hr class="border-2 border-black my-3">
-        </div>
-
-        <!-- Shop Owner Name Prominently Displayed -->
-        <div class="text-center mb-4">
-            <div class="text-lg font-bold bg-gray-200 py-2 px-4 rounded">
-                @php
-                    $shopOwnerName = '';
-                    if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-                        $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
-                    } elseif (auth()->user()->role !== 'employee') {
-                        $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
-                    }
-                @endphp
-                {{ $shopOwnerName }}
-            </div>
-        </div>
-
-        <!-- Bill Info Section -->
-        <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
-            <div>
-                <div class="font-bold">{{__('messages.Date')}}: {{ now()->format('d-m-Y') }}</div>
-                <div class="font-bold">{{__('messages.Time')}}: {{ now()->format('H:i:s') }}</div>
-            </div>
-            <div class="text-right">
-                <div id="receipt-bill-id" class="font-bold">{{__('messages.Bill number')}}: <span id="receipt-current-bill-id">-</span></div>
-                <div class="font-bold"><span id="print-customer2"></span></div>
-            </div>
-        </div>
-
-        <!-- Customer Info -->
-        <div class="mb-4">
-            <div class="font-bold text-sm">{{__('messages.Created By')}}: {{ auth()->user()->name }}</div>
-            <div id="receipt-user-details" class="text-xs"></div>
-        </div>
-
-        <!-- Products Table -->
-        <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
-            <thead>
-                <tr class="bg-gray-200">
-                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
-                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
-                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
-                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
-                </tr>
-            </thead>
-            <tbody id="receipt-products-table">
-                <!-- Products will be added here -->
-            </tbody>
-        </table>
-
-        <!-- Detailed Totals Section -->
-        <div class="border-2 border-black mb-4">
-            <!-- Subtotal -->
-            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black">
-                <div class="border-r-2 border-black py-2">{{__('messages.Subtotal')}}:</div>
-                <div class="py-2" id="receipt-subtotal">0.00</div>
-            </div>
-            <!-- Total Discount -->
-            <div class="grid grid-cols-2 text-center font-bold text-base border-b-2 border-black" id="receipt-total-discount-row">
-                <div class="border-r-2 border-black py-2">{{__('messages.Toatal discount')}}:</div>
-                <div class="py-2" id="receipt-total-discount-amount">0.00</div>
-            </div>
-            <!-- Final Total -->
-            <div class="grid grid-cols-2 text-center font-bold text-lg bg-gray-200">
-                <div class="border-r-2 border-black py-3">{{__('messages.Total')}}:</div>
-                <div class="py-3" id="receipt-final-amount">0.00</div>
-            </div>
-        </div>
-
-        <!-- User Details -->
-        <div class="mt-4 text-center">
-            <div id="receipt-final-user-details" class="text-xs font-bold"></div>
-        </div>
-
-        <!-- Footer -->
-        <div class="text-center mt-6 text-sm font-bold">
-            <div class="mb-2">{{__('messages.Thank you for your business!')}}</div>
-            <hr class="border-2 border-black my-3">
-            <div class="text-xs">HawiTech</div>
-            <p class="text-xs">WhatsApp: +(970) 599647713</p>
-            
-        </div>
-    </div>
-</div>
-    {{-- Enhanced Performance Styles --}}
-    <style>
-        /* Customer suggestions dropdown */
-        .customer-suggestion-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .customer-suggestion-item:hover {
-            background-color: #f3f4f6;
-        }
-
-        .customer-suggestion-item:last-child {
-            border-bottom: none;
-        }
-
-        /* Discount type toggle */
-        .discount-toggle {
-            display: flex;
-            background-color: #f3f4f6;
-            border-radius: 6px;
-            padding: 2px;
-        }
-
-        .discount-toggle button {
-            flex: 1;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .discount-toggle button.active {
-            background-color: white;
-            color: #1f2937;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Compact product row styles */
-        .product-row.compact {
-            padding: 8px 12px;
-            background-color: #f9fafb;
-        }
-
-        /* Filter button styles */
-        .filter-btn.active {
-            background-color: rgb(59 130 246);
-            color: white;
-            border-color: rgb(59 130 246);
-        }
-
-        /* Optimized scrolling container */
-        .scroll-container {
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            overflow-y: auto;
-            transform: translate3d(0, 0, 0);
-            will-change: scroll-position;
-            -webkit-transform: translate3d(0, 0, 0);
-            contain: layout style paint;
-        }
-
-        /* Optimized grid container */
-        .products-grid {
-            transform: translate3d(0, 0, 0);
-            will-change: contents;
-            contain: layout style;
-            backface-visibility: hidden;
-            perspective: 1000px;
-        }
-
-        /* High-performance product cards */
-        .product-card {
-            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
-            transform: translate3d(0, 0, 0);
-            will-change: transform;
-            contain: layout style paint;
-            backface-visibility: hidden;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .product-card:hover {
-            transform: translate3d(0, -1px, 0);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .product-card.out-of-stock {
-            opacity: 0.7;
-            /*pointer-events: none;*/
-        }
-
-        .product-card.out-of-stock:hover {
-            transform: translate3d(0, 0, 0);
-            box-shadow: none;
-        }
-
-        /* Optimized image rendering */
-        .product-card img {
-            transition: transform 0.15s ease-out;
-            transform: translate3d(0, 0, 0);
-            image-rendering: auto;
-            backface-visibility: hidden;
-        }
-
-        .product-card:hover img {
-            transform: translate3d(0, 0, 0) scale(1.02);
-        }
-
-        /* Optimize text rendering */
-        .product-card .text-sm {
-            user-select: none;
-            -webkit-user-select: none;
-            text-rendering: optimizeSpeed;
-        }
-
-        /* Virtual scrolling optimization */
-        .product-card {
-            min-height: 120px;
-            height: auto;
-        }
-
-        /* Reduce paint complexity */
-        .product-card * {
-            transform: translate3d(0, 0, 0);
-        }
-
-        /* Product row animations (keep minimal) */
-        .product-row {
-            animation: slideIn 0.2s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translate3d(0, -5px, 0);
-            }
-            to {
-                opacity: 1;
-                transform: translate3d(0, 0, 0);
-            }
-        }
-
-        /* Barcode duplicate selection modal */
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-        }
-
-        /* Receipt styles for roll paper */
-        #receipt-area {
-            display: none;
-            font-family: 'Courier New', monospace;
-        }
-
-        .receipt-content {
-            width: 58mm;
-            padding: 2mm;
-            font-size: 8pt;
-            line-height: 1.2;
-        }
-
-        .receipt-product-row {
-            margin-bottom: 1mm;
-        }
-
-        .receipt-product-name {
-            font-weight: bold;
-        }
-
-        .receipt-product-details {
-            display: flex;
-            justify-content: space-between;
-            font-size: 7pt;
-        }
-
-        /* Optimize for mobile scrolling */
-        @media (max-width: 768px) {
-            .scroll-container {
-                -webkit-overflow-scrolling: touch;
-                overflow-scrolling: touch;
-            }
-            
-            .products-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .product-card {
-                transition: none;
-            }
-            
-            .product-card:hover {
-                transform: translate3d(0, 0, 0);
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            }
-        }
-
-        /* Standard print styles */
-        @media print {
-            body {
-                margin: 0;
-                padding: 0;
-            }
-
-            body * {
-                visibility: hidden !important;
-                height: 0 !important;
-                overflow: hidden !important;
-            }
-
-            #print-area, #print-area * {
-                visibility: visible !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area {
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                padding: 0.5cm !important;
-                background: white;
-            }
-
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area table {
-                page-break-inside: auto;
-            }
-
-            #print-area tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
-
-            .product-row, .x-block, .py-12, .flex, form {
-                display: none !important;
-            }
-
-
-            body {
-        font-size: 16px; /* Larger text */
-        font-weight: bold;
-        line-height: 1.6;
-    }
-
-        }
-
-        /* Enhanced print styles with RTL support */
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        font-size: 16px;
-        font-weight: bold;
-        line-height: 1.4;
-        direction: rtl;
-        text-align: right;
-    }
-
-    body * {
-        visibility: hidden !important;
-        height: 0 !important;
-        overflow: hidden !important;
-    }
-
-    #print-area, #print-area * {
-        visibility: visible !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-
-    #print-area {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        padding: 0.5cm !important;
-        background: white;
-        font-size: 16px !important;
-        font-weight: bold !important;
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
-    #print-area .text-center {
-        text-align: center !important;
-    }
-
-    #print-area .text-left {
-        text-align: left !important;
-    }
-
-    #print-area .text-right {
-        text-align: right !important;
-    }
-
-    #print-area h1, #print-area h2, #print-area h3 {
-        font-size: 24px !important;
-        font-weight: bold !important;
-        text-align: center !important;
-    }
-
-    #print-area table {
-        font-size: 14px !important;
-        font-weight: bold !important;
-        border-collapse: collapse !important;
-        width: 100% !important;
-        direction: rtl !important;
-    }
-
-    #print-area th, #print-area td {
-        font-size: 14px !important;
-        font-weight: bold !important;
-        border: 2px solid #000 !important;
-        padding: 6px !important;
-        text-align: center !important;
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-        vertical-align: middle !important;
-    }
-
-    #print-area .grid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 4mm !important;
-        margin: 3mm 0 !important;
-    }
-
-    #print-area .grid-cols-2 > div {
-        flex: 1 !important;
-        min-width: 45% !important;
-    }
-
-    #print-area tfoot tr {
-        background-color: #f3f4f6 !important;
-    }
-
-    #print-area tfoot .bg-gray-100 {
-        background-color: #e5e7eb !important;
-    }
-
-    #print-area tfoot .bg-gray-200 {
-        background-color: #d1d5db !important;
-    }
-
-    /* Specific styling for Arabic text */
-    #print-area .text-xs {
-        font-size: 11px !important;
-        line-height: 1.3 !important;
-    }
-
-    /* Ensure proper spacing for discount info */
-    #print-area td small {
-        display: block;
-        margin-top: 2px;
-        color: #666;
-        font-size: 10px !important;
-    }
-}
-        /* Receipt print styles */
-        @media print {
-            .print-receipt #print-area {
-                display: none !important;
-            }
-
-            .print-receipt #receipt-area, .print-receipt #receipt-area * {
-                visibility: visible !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            .print-receipt #receipt-area {
-                display: block !important;
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 58mm !important;
-                padding: 0 !important;
-                background: white;
-                font-size: 8pt !important;
-            }
-        }
-
-        #print-area {
-            display: none;
-        }
-
-        @media print {
-            #print-area {
-                display: block !important;
-            }
-        }
-
-        /* Enhanced print styles */
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        font-size: 16px;
-        font-weight: bold;
-        line-height: 1.4;
-    }
-
-    body * {
-        visibility: hidden !important;
-        height: 0 !important;
-        overflow: hidden !important;
-    }
-
-    #print-area, #print-area * {
-        visibility: visible !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-
-    #print-area {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        padding: 0.5cm !important;
-        background: white;
-        font-size: 18px !important;
-        font-weight: bold !important;
-    }
-
-    #print-area h1 {
-        font-size: 32px !important;
-        font-weight: bold !important;
-    }
-
-    #print-area table {
-        font-size: 16px !important;
-        font-weight: bold !important;
-        border-collapse: collapse !important;
-    }
-
-    #print-area th, #print-area td {
-        font-size: 16px !important;
-        font-weight: bold !important;
-        border: 2px solid #000 !important;
-        padding: 8px !important;
-    }
-}
-
-/* Receipt print styles */
-/* Professional Receipt Print Styles */
-.receipt-content {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    padding: 10mm !important;
-    font-size: 14pt !important;
-    line-height: 1.4 !important;
-    font-weight: bold !important;
-    font-family: Arial, sans-serif !important;
-    color: black !important;
-    background: white !important;
-}
-
-@media print {
-    .print-receipt #print-area {
-        display: none !important;
-    }
-
-    .print-receipt #receipt-area, .print-receipt #receipt-area * {
-        visibility: visible !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-
-    .print-receipt #receipt-area {
-        display: block !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 210mm !important;
-        height: 297mm !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: white !important;
-        font-size: 14pt !important;
-        font-weight: bold !important;
-    }
-
-    .print-receipt .receipt-content {
-        font-weight: bold !important;
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    .print-receipt table {
-        border-collapse: collapse !important;
-        width: 100% !important;
-    }
-
-    .print-receipt th, .print-receipt td {
-        border: 2px solid black !important;
-        padding: 8px !important;
-        font-weight: bold !important;
-    }
-
-    .print-receipt img {
-        max-width: 64px !important;
-        height: 64px !important;
-    }
-}
-
-.receipt-product-row {
-    margin-bottom: 2mm !important;
-    font-weight: bold !important;
-}
-
-.receipt-product-name {
-    font-weight: bold !important;
-    font-size: 11pt !important;
-}
-
-.receipt-product-details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10pt !important;
-    font-weight: bold !important;
-}
-
-    </style>
-
     <!-- Barcode Duplicate Selection Modal -->
     <div id="barcode-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="modal-overlay fixed inset-0 transition-opacity" aria-hidden="true"></div>
+            <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true"></div>
             
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -1129,8 +423,79 @@
         </div>
     </div>
 
-    {{-- Enhanced High-Performance JavaScript --}}
+    <!-- Optimized Styles -->
+    <style>
+        /* Core styles only - removed duplicate and unused styles */
+        .customer-suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .customer-suggestion-item:hover { background-color: #f3f4f6; }
+        .customer-suggestion-item:last-child { border-bottom: none; }
+
+        .discount-toggle {
+            display: flex;
+            background-color: #f3f4f6;
+            border-radius: 6px;
+            padding: 2px;
+        }
+        .discount-toggle button {
+            flex: 1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .discount-toggle button.active {
+            background-color: white;
+            color: #1f2937;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-row.compact {
+            padding: 8px 12px;
+            background-color: #f9fafb;
+        }
+
+        .filter-btn.active {
+            background-color: rgb(59 130 246);
+            color: white;
+            border-color: rgb(59 130 246);
+        }
+
+        .product-card {
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+        }
+        .product-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .product-card.out-of-stock {
+            opacity: 0.7;
+        }
+
+        .product-row {
+            animation: slideIn 0.2s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .product-card:hover {
+                transform: none;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+        }
+    </style>
+
+    <!-- Clean JavaScript -->
     <script>
+        // Global variables
         const products = @json($products);
         let availableTags = [];
         const customers = @json($customers);
@@ -1149,53 +514,40 @@
         let hasMore = true;
         let isLoading = false;
         let searchTerm = '';
-        
-        // Performance optimization variables
-        let scrollTimeout = null;
-        let renderQueue = [];
-        let isRenderingQueue = false;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            // Always initialize product search and fetch for both restaurant and regular users
             fetchProducts(true);
-            setupIntersectionObserver();
             
             if (!isRestaurant) {
-                // Only focus barcode input for non-restaurant users
                 document.getElementById('barcode_input').focus();
-            } else {
-                // Setup restaurant-specific functionality
-                loadRecentPayments();
-            }
-            updateTotalSalesToday();
-            if (!isRestaurant) {
                 setupCustomerSearch();
             } else {
                 setupRestaurantCustomerSelectors();
+                loadRecentPayments();
             }
+            
+            fetchTags();
         });
 
         // Restaurant customer selector functionality
-            function setupRestaurantCustomerSelectors() {
-            // Handle payment customer select
+        function setupRestaurantCustomerSelectors() {
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
             if (paymentCustomerSelect) {
                 paymentCustomerSelect.addEventListener('change', function() {
                     const selectedOption = this.selectedOptions[0];
                     if (selectedOption && selectedOption.value) {
                         document.getElementById('payment_customer_id').value = selectedOption.value;
-                        loadRecentPayments(); // Load recent payments when customer is selected
+                        loadRecentPayments();
                     } else {
                         document.getElementById('payment_customer_id').value = '';
-                        loadRecentPayments(); // Clear recent payments when no customer is selected
+                        loadRecentPayments();
                     }
                 });
             }
         }
 
-        
-       // Handle quick payment form submission
+        // Handle quick payment form submission
         document.getElementById('quick-payment-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -1234,7 +586,6 @@
         });
 
         // Load recent payments for restaurant
-        // Load recent payments for restaurant
         async function loadRecentPayments() {
             const customerId = document.getElementById('payment_customer_id').value;
             
@@ -1249,9 +600,7 @@
 
             try {
                 const response = await fetch(`/customers/${customerId}/recent-payments`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch payments');
-                }
+                if (!response.ok) throw new Error('Failed to fetch payments');
                 
                 const payments = await response.json();
                 
@@ -1268,7 +617,7 @@
                     <div class="p-3 border-b border-gray-100 last:border-b-0">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
-                                <div class="font-medium text-gray-900">$${parseFloat(payment.amount).toFixed(2)}</div>
+                                <div class="font-medium text-gray-900">${parseFloat(payment.amount).toFixed(2)}</div>
                                 <div class="text-xs text-gray-500 capitalize">${payment.type}</div>
                                 ${payment.note ? `<div class="text-xs text-gray-600 mt-1">${payment.note}</div>` : ''}
                             </div>
@@ -1292,42 +641,17 @@
             }
         }
 
-        // Intersection Observer for better scroll performance
-        let intersectionObserver;
-        function setupIntersectionObserver() {
-            const options = {
-                root: document.getElementById('product-cards-container'),
-                rootMargin: '50px',
-                threshold: 0.1
-            };
-
-            intersectionObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target.querySelector('img[data-src]');
-                        if (img) {
-                            img.src = img.dataset.src;
-                            img.removeAttribute('data-src');
-                            intersectionObserver.unobserve(entry.target);
-                        }
-                    }
-                });
-            }, options);
-        }
-
-
         // Fetch available tags
-            async function fetchTags() {
-                try {
-                    const response = await fetch('/api/tags');
-                    if (response.ok) {
-                        availableTags = await response.json();
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch tags:', error);
+        async function fetchTags() {
+            try {
+                const response = await fetch('/api/tags');
+                if (response.ok) {
+                    availableTags = await response.json();
                 }
+            } catch (error) {
+                console.error('Failed to fetch tags:', error);
             }
-
+        }
 
         // Customer search functionality
         function setupCustomerSearch() {
@@ -1400,7 +724,6 @@
             document.getElementById('barcode_input').addEventListener('keydown', async e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    console.log("Barcode input detected:", e.target.value);
                     const code = e.target.value.trim();
                     if (!code) return;
 
@@ -1416,7 +739,6 @@
                             showBarcodeModal(result.products, result.barcode);
                             e.target.value = '';
                         } else if (result && result.id) {
-                            // Set has_tags from the result
                             result.has_tags = result.has_tags || false;
                             addProductRow(result);
                             e.target.value = '';
@@ -1480,7 +802,7 @@
         document.getElementById('close-modal')?.addEventListener('click', closeBarcodeModal);
         document.querySelector('.modal-overlay')?.addEventListener('click', closeBarcodeModal);
 
-        // Filter buttons (now for both restaurant and regular users)
+        // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -1492,7 +814,7 @@
             });
         });
 
-        // Enhanced product search with debouncing (now for both restaurant and regular users)
+        // Enhanced product search with debouncing
         document.getElementById('product-search').addEventListener('input', function () {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
@@ -1503,7 +825,7 @@
             }, 300);
         });
 
-        // Optimized product fetching with batching (now for both restaurant and regular users)
+        // Product fetching
         function fetchProducts(reset = false) {
             if (isLoading || !hasMore) return;
             isLoading = true;
@@ -1539,7 +861,7 @@
                     }
 
                     const filteredProducts = filterProducts(products);
-                    batchRenderProducts(filteredProducts);
+                    renderProducts(filteredProducts);
 
                     hasMore = data.current_page < data.last_page;
                     currentPage++;
@@ -1558,33 +880,6 @@
                 });
         }
 
-        
-
-        function processRenderQueue() {
-            if (renderQueue.length === 0) {
-                isRenderingQueue = false;
-                return;
-            }
-
-            isRenderingQueue = true;
-            const fragment = document.createDocumentFragment();
-            const batchSize = 6;
-            
-            for (let i = 0; i < Math.min(batchSize, renderQueue.length); i++) {
-                const product = renderQueue.shift();
-                const card = createOptimizedProductCard(product);
-                fragment.appendChild(card);
-            }
-
-            document.getElementById('product-results').appendChild(fragment);
-
-            if (renderQueue.length > 0) {
-                requestAnimationFrame(processRenderQueue);
-            } else {
-                isRenderingQueue = false;
-            }
-        }
-
         // Filter products based on current filter
         function filterProducts(products) {
             switch (currentFilter) {
@@ -1597,138 +892,125 @@
             }
         }
 
-        // Highly optimized product card creation
-function createOptimizedProductCard(product) {
-    const card = document.createElement('div');
-    const isOutOfStock = product.quantity === 0;
-    
-    card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
-    card.dataset.productId = product.id;
-    card.dataset.cost_price = product.cost_price;
-    card.dataset.selling_price = product.selling_price;
-    card.dataset.has_tags = product.has_tags ? 'true' : 'false';
-    card.dataset.category = product.category || ''; // Add category data
+        // Create product card
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            const isOutOfStock = product.quantity === 0;
+            
+            card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
+            card.dataset.productId = product.id;
+            card.dataset.cost_price = product.cost_price;
+            card.dataset.selling_price = product.selling_price;
+            card.dataset.has_tags = product.has_tags ? 'true' : 'false';
+            card.dataset.category = product.category || '';
 
-    let firstImage = null;
-    try {
-        const pictures = typeof product.pictures === 'string' ? JSON.parse(product.pictures) : product.pictures;
-        firstImage = Array.isArray(pictures) ? pictures[0] : null;
-    } catch (e) {
-        // Silent fail for better performance
-    }
-
-    const imageHtml = firstImage
-        ? `<img data-src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
-        : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-            </svg>
-           </div>`;
-
-    // Category badge HTML
-    const categoryBadge = product.category ? 
-        `<div class="mb-1">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                ${product.category}
-            </span>
-         </div>` : '';
-
-    card.innerHTML = `
-        <div class="space-y-2">
-            <div class="relative overflow-hidden rounded-lg">
-                ${imageHtml}
-            </div>
-            <div class="min-w-0">
-                ${categoryBadge}
-                <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
-                <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
-                <div class="mt-1">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                        ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
-                    </span>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Setup lazy loading for images
-    if (firstImage && intersectionObserver) {
-        intersectionObserver.observe(card);
-    }
-
-    return card;
-}
-
-// Enhanced batch rendering with category grouping
-function batchRenderProducts(products) {
-    // Group products by category
-    const groupedProducts = {};
-    let uncategorizedProducts = [];
-
-    products.forEach(product => {
-        const category = product.category || '';
-        if (category) {
-            if (!groupedProducts[category]) {
-                groupedProducts[category] = [];
+            let firstImage = null;
+            try {
+                const pictures = typeof product.pictures === 'string' ? JSON.parse(product.pictures) : product.pictures;
+                firstImage = Array.isArray(pictures) ? pictures[0] : null;
+            } catch (e) {
+                // Silent fail
             }
-            groupedProducts[category].push(product);
-        } else {
-            uncategorizedProducts.push(product);
-        }
-    });
 
-    // Clear the container
-    const container = document.getElementById('product-results');
-    
-    // Add categorized products first
-    Object.keys(groupedProducts).sort().forEach(category => {
-        // Add category header if there are multiple categories or mixed categorized/uncategorized
-        if (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0) {
-            const categoryHeader = document.createElement('div');
-            categoryHeader.className = 'col-span-full mb-2 mt-4 first:mt-0';
-            categoryHeader.innerHTML = `
-                <div class="flex items-center">
-                    <div class="flex-grow border-t border-gray-300"></div>
-                    <span class="flex-shrink mx-4 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                        ${category}
+            const imageHtml = firstImage
+                ? `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
+                : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                   </div>`;
+
+            const categoryBadge = product.category ? 
+                `<div class="mb-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ${product.category}
                     </span>
-                    <div class="flex-grow border-t border-gray-300"></div>
+                 </div>` : '';
+
+            card.innerHTML = `
+                <div class="space-y-2">
+                    <div class="relative overflow-hidden rounded-lg">
+                        ${imageHtml}
+                    </div>
+                    <div class="min-w-0">
+                        ${categoryBadge}
+                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                        <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
+                        <div class="mt-1">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             `;
-            container.appendChild(categoryHeader);
+
+            return card;
         }
 
-        // Add products in this category
-        groupedProducts[category].forEach(product => {
-            const card = createOptimizedProductCard(product);
-            container.appendChild(card);
-        });
-    });
+        // Render products with category grouping
+        function renderProducts(products) {
+            const groupedProducts = {};
+            let uncategorizedProducts = [];
 
-    // Add uncategorized products at the end
-    if (uncategorizedProducts.length > 0) {
-        // Add "Uncategorized" header only if there are also categorized products
-        if (Object.keys(groupedProducts).length > 0) {
-            const uncategorizedHeader = document.createElement('div');
-            uncategorizedHeader.className = 'col-span-full mb-2 mt-4';
-            uncategorizedHeader.innerHTML = `
-                <div class="flex items-center">
-                    <div class="flex-grow border-t border-gray-300"></div>
-                    <span class="flex-shrink mx-4 text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
-                        {{__('messages.Uncategorized')}}
-                    </span>
-                    <div class="flex-grow border-t border-gray-300"></div>
-                </div>
-            `;
-            container.appendChild(uncategorizedHeader);
+            products.forEach(product => {
+                const category = product.category || '';
+                if (category) {
+                    if (!groupedProducts[category]) {
+                        groupedProducts[category] = [];
+                    }
+                    groupedProducts[category].push(product);
+                } else {
+                    uncategorizedProducts.push(product);
+                }
+            });
+
+            const container = document.getElementById('product-results');
+            
+            Object.keys(groupedProducts).sort().forEach(category => {
+                if (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0) {
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.className = 'col-span-full mb-2 mt-4 first:mt-0';
+                    categoryHeader.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="flex-grow border-t border-gray-300"></div>
+                            <span class="flex-shrink mx-4 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
+                                ${category}
+                            </span>
+                            <div class="flex-grow border-t border-gray-300"></div>
+                        </div>
+                    `;
+                    container.appendChild(categoryHeader);
+                }
+
+                groupedProducts[category].forEach(product => {
+                    const card = createProductCard(product);
+                    container.appendChild(card);
+                });
+            });
+
+            if (uncategorizedProducts.length > 0) {
+                if (Object.keys(groupedProducts).length > 0) {
+                    const uncategorizedHeader = document.createElement('div');
+                    uncategorizedHeader.className = 'col-span-full mb-2 mt-4';
+                    uncategorizedHeader.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="flex-grow border-t border-gray-300"></div>
+                            <span class="flex-shrink mx-4 text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
+                                {{__('messages.Uncategorized')}}
+                            </span>
+                            <div class="flex-grow border-t border-gray-300"></div>
+                        </div>
+                    `;
+                    container.appendChild(uncategorizedHeader);
+                }
+
+                uncategorizedProducts.forEach(product => {
+                    const card = createProductCard(product);
+                    container.appendChild(card);
+                });
+            }
         }
-
-        uncategorizedProducts.forEach(product => {
-            const card = createOptimizedProductCard(product);
-            container.appendChild(card);
-        });
-    }
-}
 
         // Loading indicator
         function showLoadingIndicator(show) {
@@ -1738,20 +1020,19 @@ function batchRenderProducts(products) {
             }
         }
 
+        // Add product row
         function addProductRow(product) {
-            if (!product) return; // Only allow products with data
+            if (!product) return;
 
             if (product.quantity === 0) {
                 showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name), 'warning');
             }
 
-            // Check if product has tags - show dialog if it does
             if (product.has_tags && availableTags.length > 0) {
                 showTagsDialog(product);
                 return;
             }
 
-            // For products without tags, check for existing product with no tags
             const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
                 const row = input.closest('.product-row');
                 const tagsInput = row.querySelector('input[name="product_tags[]"]');
@@ -1773,7 +1054,6 @@ function batchRenderProducts(products) {
                 return;
             }
 
-            // Create new product row
             const row = document.createElement('div');
             row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
 
@@ -1830,10 +1110,8 @@ function batchRenderProducts(products) {
             calculateTotal();
         }
 
-
         // Show tags selection dialog
         function showTagsDialog(product) {
-            // Create modal HTML
             const modal = document.createElement('div');
             modal.id = 'tags-modal';
             modal.className = 'fixed inset-0 z-50 overflow-y-auto';
@@ -1860,7 +1138,7 @@ function batchRenderProducts(products) {
                                                     <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
                                                     <div class="flex-1">
                                                         <div class="font-medium">${tag.name}</div>
-                                                        <div class="text-sm text-gray-500">+$${parseFloat(tag.price).toFixed(2)}</div>
+                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
                                                     </div>
                                                 </label>
                                             `).join('')}
@@ -1883,7 +1161,6 @@ function batchRenderProducts(products) {
             
             document.body.appendChild(modal);
             
-            // Handle confirm button
             document.getElementById('confirm-tags').addEventListener('click', () => {
                 const selectedTags = [];
                 const checkboxes = modal.querySelectorAll('.tag-checkbox:checked');
@@ -1900,7 +1177,6 @@ function batchRenderProducts(products) {
                 }
             });
             
-            // Handle cancel button
             document.getElementById('cancel-tags').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 if (!isRestaurant) {
@@ -1908,7 +1184,6 @@ function batchRenderProducts(products) {
                 }
             });
             
-            // Handle overlay click
             modal.querySelector('.modal-overlay').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 if (!isRestaurant) {
@@ -1919,7 +1194,6 @@ function batchRenderProducts(products) {
 
         // Add product row with tags
         function addProductRowWithTags(product, tagsString) {
-            // Check for existing product with the same tags
             const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
                 const row = input.closest('.product-row');
                 const tagsInput = row.querySelector('input[name="product_tags[]"]');
@@ -1927,7 +1201,6 @@ function batchRenderProducts(products) {
             });
 
             if (existing) {
-                // Increment quantity of existing row with same tags
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
                 const currentQty = parseInt(qty.value);
@@ -1943,13 +1216,12 @@ function batchRenderProducts(products) {
                 return;
             }
 
-            // Create new row if no duplicate found
             const row = document.createElement('div');
             row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
             
             const tagsDisplay = tagsString ? tagsString.split('&').map(tag => {
                 const [name, price] = tag.split('@');
-                return `${name} (+$${parseFloat(price).toFixed(2)})`;
+                return `${name} (+${parseFloat(price).toFixed(2)})`;
             }).join(', ') : '';
             
             row.innerHTML = `
@@ -2002,7 +1274,7 @@ function batchRenderProducts(products) {
             showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name), 'success');
         }
 
-
+        // Clear all products
         document.getElementById('clear-all').addEventListener('click', () => {
             if (confirm('{{ __('messages.Are you sure you want to clear all products?') }}')) {
                 productsList.innerHTML = '';
@@ -2011,7 +1283,7 @@ function batchRenderProducts(products) {
             }
         });
 
-        // Enhanced calculation with validation
+        // Calculate total
         function calculateTotal() {
             let total = 0;
             let totalDiscount = 0;
@@ -2026,7 +1298,6 @@ function batchRenderProducts(products) {
                 const tagsInput = row.querySelector('input[name="product_tags[]"]');
                 const tagsString = tagsInput ? tagsInput.value : '';
 
-                // Calculate tags total
                 let tagsTotal = 0;
                 if (tagsString) {
                     const tagPairs = tagsString.split('&');
@@ -2059,7 +1330,7 @@ function batchRenderProducts(products) {
             document.getElementById('total_discount_display').textContent = totalDiscount.toFixed(2);
         }
 
-        // Optimized event delegation
+        // Event delegation
         document.addEventListener('click', e => {
             if (e.target.closest('.remove-row')) {
                 e.target.closest('.product-row').remove();
@@ -2068,7 +1339,6 @@ function batchRenderProducts(products) {
                 return;
             }
 
-            // Handle discount type toggle
             if (e.target.classList.contains('discount-type-btn')) {
                 const row = e.target.closest('.product-row');
                 const buttons = row.querySelectorAll('.discount-type-btn');
@@ -2082,7 +1352,6 @@ function batchRenderProducts(products) {
                 return;
             }
 
-            // Product card click (now for both restaurant and regular users)
             const card = e.target.closest('.product-card');
             if (card) {
                 const nameElement = card.querySelector('.text-sm.font-medium');
@@ -2111,539 +1380,587 @@ function batchRenderProducts(products) {
             }
         });
 
-        // Enhanced print functionality - consolidated into single handlers below
-
-// Enhanced mobile device detection
-function isMobileDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
-    const isMobileScreen = window.innerWidth <= 768 || window.innerHeight <= 600;
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    return isMobileUA || (isMobileScreen && isTouchDevice);
-}
-
-// Standard Print Button - Always open in new tab
-document.getElementById('print-button').addEventListener('click', () => {
-    updatePrintAreas();
-    openPrintInNewTab(false); // false = standard print
-});
-
-// Receipt Print Button - Always open in new tab  
-document.getElementById('print-receipt-button').addEventListener('click', () => {
-    updatePrintAreas();
-    openPrintInNewTab(true); // true = receipt print
-});
-
-// Function to open print content in new tab
-function openPrintInNewTab(isReceipt = false) {
-    try {
-        let htmlContent;
+        // NEW CLEAN PRINT SYSTEM - Always opens in new tab
         
-        if (isReceipt) {
-            const receiptArea = document.getElementById('receipt-area');
-            if (!receiptArea) {
-                showNotification('Receipt template not found', 'error');
+        // Standard Print Button
+        document.getElementById('print-button').addEventListener('click', () => {
+            const printData = collectPrintData();
+            openStandardPrintTab(printData);
+        });
+
+        // Receipt Print Button  
+        document.getElementById('print-receipt-button').addEventListener('click', () => {
+            const printData = collectPrintData();
+            openReceiptPrintTab(printData);
+        });
+
+        // Collect print data from current form
+        function collectPrintData() {
+            const rows = document.querySelectorAll('.product-row');
+            const products = [];
+            let total = 0, totalDiscount = 0, subtotal = 0;
+
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+                const discountValue = parseFloat(row.querySelector('.discount')?.value || 0);
+                const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
+                const discountType = row.querySelector('.discount-type')?.value || 'total';
+                const tagsInput = row.querySelector('input[name="product_tags[]"]');
+                const tagsString = tagsInput ? tagsInput.value : '';
+
+                let tagsTotal = 0;
+                if (tagsString) {
+                    const tagPairs = tagsString.split('&');
+                    tagPairs.forEach(pair => {
+                        if (pair.includes('@')) {
+                            const [name, tagPrice] = pair.split('@');
+                            tagsTotal += parseFloat(tagPrice) || 0;
+                        }
+                    });
+                }
+
+                let actualDiscount = 0;
+                if (discountType === 'per-unit') {
+                    actualDiscount = discountValue * qty;
+                } else {
+                    actualDiscount = discountValue;
+                }
+
+                let name = 'Unknown';
+                const nameDiv = row.querySelector('.font-medium.text-gray-900');
+                if (nameDiv) name = nameDiv.textContent?.trim() || 'Unknown';
+
+                const unitPriceWithTags = price + tagsTotal;
+                const subtotalWithTags = (price * qty) + (tagsTotal * qty);
+                const finalSubtotal = Math.max(0, subtotalWithTags - actualDiscount);
+                
+                subtotal += subtotalWithTags;
+                total += finalSubtotal;
+                totalDiscount += actualDiscount;
+
+                products.push({
+                    name: name,
+                    qty: qty,
+                    price: price,
+                    tagsTotal: tagsTotal,
+                    tagsString: tagsString,
+                    actualDiscount: actualDiscount,
+                    discountType: discountType,
+                    finalSubtotal: finalSubtotal
+                });
+            });
+
+            let customerName = '';
+            let customerPhone = '';
+
+            if (isRestaurant) {
+                const customerSelect = document.getElementById('customer_id');
+                if (customerSelect && customerSelect.value) {
+                    const selectedOption = customerSelect.selectedOptions[0];
+                    if (selectedOption) {
+                        const fullText = selectedOption.textContent;
+                        const parts = fullText.split(' - ');
+                        customerName = parts[0] || '';
+                        customerPhone = parts[1] ? parts[1].split(' (')[0] : '';
+                    }
+                }
+            } else {
+                const customerSearch = document.getElementById('customer_search');
+                customerName = customerSearch ? customerSearch.value : '';
+                if (customerName && customers) {
+                    const foundCustomer = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+                    customerPhone = foundCustomer ? foundCustomer.phone : '';
+                }
+            }
+
+            const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
+            const shopOwnerName = 
+                @if(auth()->user()->role === 'employee' && auth()->user()->shop_owner_id)
+                    '{{ auth()->user()->shopOwner->name ?? 'Shop Owner' }}'
+                @else
+                    '{{ auth()->user()->name ?? 'Shop Owner' }}'
+                @endif
+            ;
+
+            return {
+                products: products,
+                subtotal: subtotal,
+                totalDiscount: totalDiscount,
+                total: total,
+                customerName: customerName,
+                customerPhone: customerPhone,
+                userDetails: userDetails,
+                shopName: shopName,
+                shopOwnerName: shopOwnerName,
+                userName: '{{ auth()->user()->name }}',
+                currentDate: new Date().toLocaleDateString('en-GB'),
+                currentTime: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+                currentDateTime: new Date().toLocaleString('en-GB'),
+                billId: currentBillId || '-'
+            };
+        }
+
+        // Open standard print in new tab
+        function openStandardPrintTab(data) {
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                showNotification('Please allow popups for printing', 'error');
                 return;
             }
-            
-            const originalDisplay = receiptArea.style.display;
-            receiptArea.style.display = 'block';
-            const receiptContent = receiptArea.innerHTML;
-            receiptArea.style.display = originalDisplay;
-            
-            htmlContent = generateReceiptPageHTML(receiptContent);
-        } else {
-            const printArea = document.getElementById('print-area');
-            if (!printArea) {
-                showNotification('Print template not found', 'error');
-                return;
-            }
-            
-            const originalDisplay = printArea.style.display;
-            printArea.style.display = 'block';
-            const printContent = printArea.innerHTML;
-            printArea.style.display = originalDisplay;
-            
-            htmlContent = generateStandardPageHTML(printContent);
-        }
-        
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            showNotification('Please allow popups for printing', 'error');
-            return;
-        }
-        
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        
-        printWindow.onload = function() {
-            setTimeout(() => {
-                printWindow.print();
+
+            const standardHtml = generateStandardPrintHtml(data);
+            printWindow.document.write(standardHtml);
+            printWindow.document.close();
+
+            printWindow.onload = function() {
                 setTimeout(() => {
-                    printWindow.close();
-                }, 1000);
-            }, 500);
-        };
-        
-    } catch (error) {
-        console.error('Print error:', error);
-        showNotification('Print failed. Please try again.', 'error');
-    }
-}
-
-// Generate HTML for 80mm receipt (optimized for thermal printers)
-function generateReceiptPageHTML(content) {
-    return `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-            <title>Receipt - ${shopName}</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                * {
-                    box-sizing: border-box;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                body {
-                    font-family: 'Arial', sans-serif;
-                    font-size: 14px;
-                    font-weight: bold;
-                    line-height: 1.4;
-                    color: black;
-                    background: white;
-                    direction: rtl;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                .receipt-content {
-                    width: 100%;
-                    max-width: none;
-                    margin: 0;
-                    padding: 3mm 2mm;
-                    min-height: 100vh;
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
-                    margin: 2mm 0 !important;
-                }
-                
-                th, td {
-                    border: 1px solid black !important;
-                    padding: 2mm !important;
-                    text-align: center !important;
-                    font-weight: bold !important;
-                    font-size: 13px !important;
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                    vertical-align: middle;
-                }
-                
-                h1, h2, h3 {
-                    font-size: 18px !important;
-                    font-weight: bold !important;
-                    margin: 2mm 0 !important;
-                    text-align: center !important;
-                }
-                
-                .text-center { text-align: center !important; }
-                .text-right { text-align: right !important; }
-                .text-left { text-align: left !important; }
-                .font-bold { font-weight: bold !important; }
-                .text-lg { font-size: 16px !important; }
-                .text-sm { font-size: 13px !important; }
-                .text-xs { font-size: 11px !important; }
-                .mb-2 { margin-bottom: 2mm !important; }
-                .mb-4 { margin-bottom: 3mm !important; }
-                .mb-6 { margin-bottom: 4mm !important; }
-                .mt-4 { margin-top: 3mm !important; }
-                .mt-6 { margin-top: 4mm !important; }
-                .py-2 { padding: 2mm 0 !important; }
-                .py-3 { padding: 3mm 0 !important; }
-                .bg-gray-200 { background-color: #e5e7eb !important; }
-                .border-r-2 { border-right: 1px solid black !important; }
-                
-                .grid {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 2mm;
-                }
-                
-                .grid-cols-2 > div {
-                    flex: 1;
-                    min-width: 45%;
-                }
-                
-                hr {
-                    border: 1px solid black;
-                    margin: 2mm 0;
-                }
-                
-                @media print {
-                    body {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        font-size: 14px !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    
-                    .receipt-content {
-                        padding: 2mm !important;
-                        min-height: auto !important;
-                    }
-                    
-                    @page {
-                        margin: 0;
-                        size: auto;
-                    }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="receipt-content">
-                ${content}
-            </div>
-        </body>
-        </html>
-    `;
-}
-
-function generateStandardPageHTML(content) {
-    return `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-            <title>فاتورة - ${shopName}</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                * {
-                    box-sizing: border-box;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                body {
-                    font-family: 'Arial', 'Tahoma', sans-serif;
-                    font-size: 16px;
-                    font-weight: bold;
-                    line-height: 1.4;
-                    color: black;
-                    background: white;
-                    margin: 0;
-                    padding: 10mm;
-                    direction: rtl;
-                    text-align: right;
-                }
-                
-                table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
-                    margin: 3mm 0 !important;
-                    direction: rtl;
-                }
-                
-                th, td {
-                    border: 2px solid black !important;
-                    padding: 4mm !important;
-                    text-align: center !important;
-                    font-weight: bold !important;
-                    font-size: 14px !important;
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                    vertical-align: middle;
-                }
-                
-                h1, h2, h3 {
-                    font-weight: bold !important;
-                    margin: 3mm 0 !important;
-                    text-align: center !important;
-                }
-                
-                .grid {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 4mm;
-                    margin: 3mm 0;
-                }
-                
-                .grid-cols-2 > div {
-                    flex: 1;
-                    min-width: 45%;
-                }
-                
-                .text-center { text-align: center !important; }
-                .text-left { text-align: left !important; }
-                .text-right { text-align: right !important; }
-                .font-semibold, .font-bold { font-weight: bold !important; }
-                .text-xl { font-size: 20px !important; }
-                .text-lg { font-size: 18px !important; }
-                .text-sm { font-size: 14px !important; }
-                .text-xs { 
-                    font-size: 11px !important; 
-                    line-height: 1.3 !important;
-                }
-                .mb-3 { margin-bottom: 3mm !important; }
-                .mb-4 { margin-bottom: 4mm !important; }
-                
-                /* Arabic text support */
-                .text-blue-600 { color: #2563eb !important; }
-                
-                /* Footer styling */
-                tfoot tr { background-color: #f3f4f6 !important; }
-                tfoot .bg-gray-100 { background-color: #e5e7eb !important; }
-                tfoot .bg-gray-200 { background-color: #d1d5db !important; }
-                
-                small {
-                    display: block;
-                    margin-top: 2px;
-                    color: #666;
-                    font-size: 10px !important;
-                }
-                
-                @media print {
-                    @page {
-                        margin: 5mm;
-                        size: A4;
-                    }
-                    
-                    body {
-                        font-size: 16px !important;
-                        direction: rtl !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    
-                    table {
-                        direction: rtl !important;
-                    }
-                    
-                    th, td {
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                }
-            </style>
-        </head>
-        <body>
-            ${content}
-        </body>
-        </html>
-    `;
-}
-
-function updatePrintAreas() {
-    const printList = document.getElementById('print-products-list');
-    const receiptTableBody = document.getElementById('receipt-products-table');
-    
-    printList.innerHTML = '';
-    receiptTableBody.innerHTML = '';
-
-    let total = 0, totalDiscount = 0, subtotal = 0;
-    let discountDetails = [];
-
-    document.querySelectorAll('.product-row').forEach((row, index) => {
-        const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
-        const discountValue = parseFloat(row.querySelector('.discount')?.value || 0);
-        const price = parseFloat(row.querySelector('.selling-price')?.value || 
-                    row.querySelector('input[name="selling_prices[]"]')?.value || 0);
-        const discountType = row.querySelector('.discount-type')?.value || 'total';
-        const tagsInput = row.querySelector('input[name="product_tags[]"]');
-        const tagsString = tagsInput ? tagsInput.value : '';
-
-        // Calculate tags total
-        let tagsTotal = 0;
-        let tagsDisplay = '';
-        let tagsDisplayArabic = '';
-        if (tagsString) {
-            const tagPairs = tagsString.split('&');
-            tagPairs.forEach(pair => {
-                if (pair.includes('@')) {
-                    const [name, tagPrice] = pair.split('@');
-                    tagsTotal += parseFloat(tagPrice) || 0;
-                    tagsDisplay += tagsDisplay ? `, ${name} (+${parseFloat(tagPrice).toFixed(2)}₪)` : `${name} (+${parseFloat(tagPrice).toFixed(2)}₪)`;
-                    tagsDisplayArabic += tagsDisplayArabic ? `، ${name} (+${parseFloat(tagPrice).toFixed(1)})` : `${name} (+${parseFloat(tagPrice).toFixed(1)})`;
-                }
-            });
+                    printWindow.print();
+                    printWindow.addEventListener('afterprint', () => {
+                        setTimeout(() => printWindow.close(), 1000);
+                    });
+                }, 500);
+            };
         }
 
-        // Calculate actual discount amount based on type
-        let actualDiscount = 0;
-        if (discountType === 'per-unit') {
-            actualDiscount = discountValue * qty;
-        } else {
-            actualDiscount = discountValue;
-        }
-
-        let name = 'Unknown';
-        const select = row.querySelector('.product-select');
-        if (select && !select.disabled) {
-            name = select.selectedOptions[0]?.textContent.split('(')[0]?.trim() || 'Unknown';
-        } else {
-            const nameDiv = row.querySelector('.font-medium.text-gray-900');
-            if (nameDiv) name = nameDiv.textContent?.trim() || 'Unknown';
-        }
-
-        const unitPriceWithTags = price + tagsTotal;
-        const subtotalWithTags = (price * qty) + (tagsTotal * qty);
-        const finalSubtotal = Math.max(0, subtotalWithTags - actualDiscount);
-        
-        subtotal += subtotalWithTags;
-        total += finalSubtotal;
-        totalDiscount += actualDiscount;
-
-        // Track discount details
-        if (actualDiscount > 0) {
-            discountDetails.push({
-                name: name,
-                discount: actualDiscount,
-                type: discountType
-            });
-        }
-
-        // Standard print table row WITH discount column
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="border-2 border-black px-2 py-1 text-center">
-                <div class="font-semibold text-xs">${name}</div>
-                ${tagsDisplay ? `<div class="text-xs text-blue-600">إضافات: ${tagsDisplay}</div>` : ''}
-            </td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${qty}</td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">
-                <div>${price.toFixed(2)}₪</div>
-                ${tagsTotal > 0 ? `<small class="text-xs">+${tagsTotal.toFixed(2)}₪ إضافات</small>` : ''}
-            </td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">
-                ${actualDiscount > 0 ? `
-                    <div>${actualDiscount.toFixed(2)}₪</div>
-                    <small class="text-xs">${discountType === 'per-unit' ? 'لكل وحدة' : 'إجمالي'}</small>
-                ` : '-'}
-            </td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${finalSubtotal.toFixed(2)}₪</td>
-        `;
-        printList.appendChild(tr);
-
-        // Receipt table row (UNCHANGED - no discount column)
-        const receiptTr = document.createElement('tr');
-        receiptTr.innerHTML = `
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">
-                <div>${name}</div>
-                ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
-            </td>
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">${qty}</td>
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">
-                <div>${price.toFixed(1)}</div>
-                ${tagsTotal > 0 ? `<div class="text-xs">+${tagsTotal.toFixed(1)} إضافات</div>` : ''}
-            </td>
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">${finalSubtotal.toFixed(1)}</td>
-        `;
-        receiptTableBody.appendChild(receiptTr);
-    });
-
-    // Update totals for standard print (NEW structure with subtotal and discount rows)
-    document.getElementById('print-subtotal').textContent = subtotal.toFixed(2) + '₪';
-    document.getElementById('print-total-discount').textContent = totalDiscount.toFixed(2) + '₪';
-    document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
-
-    // Update receipt totals (UNCHANGED)
-    document.getElementById('receipt-subtotal').textContent = subtotal.toFixed(1);
-    document.getElementById('receipt-total-discount-amount').textContent = totalDiscount.toFixed(1);
-    document.getElementById('receipt-final-amount').textContent = total.toFixed(1);
-
-    let customerName = '';
-    let customerPhone = '';
-
-    if (isRestaurant) {
-        const customerSelect = document.getElementById('customer_id');
-        if (customerSelect && customerSelect.value) {
-            const selectedOption = customerSelect.selectedOptions[0];
-            if (selectedOption) {
-                const fullText = selectedOption.textContent;
-                const parts = fullText.split(' - ');
-                customerName = parts[0] || '';
-                customerPhone = parts[1] ? parts[1].split(' (')[0] : '';
+        // Open receipt print in new tab  
+        function openReceiptPrintTab(data) {
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            if (!printWindow) {
+                showNotification('Please allow popups for printing', 'error');
+                return;
             }
+
+            const receiptHtml = generateReceiptPrintHtml(data);
+            printWindow.document.write(receiptHtml);
+            printWindow.document.close();
+
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.addEventListener('afterprint', () => {
+                        setTimeout(() => printWindow.close(), 1000);
+                    });
+                }, 500);
+            };
         }
-    } else {
-        const customerSearch = document.getElementById('customer_search');
-        customerName = customerSearch ? customerSearch.value : '';
-        // Try to find phone from customer data if available
-        if (customerName && customers) {
-            const foundCustomer = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
-            customerPhone = foundCustomer ? foundCustomer.phone : '';
+
+        // Generate Standard Print HTML
+        function generateStandardPrintHtml(data) {
+            const productsHtml = data.products.map(product => {
+                const tagsDisplay = product.tagsString ? product.tagsString.split('&').map(tag => {
+                    const [name, price] = tag.split('@');
+                    return `${name} (+${parseFloat(price).toFixed(2)}₪)`;
+                }).join(', ') : '';
+
+                return `
+                    <tr>
+                        <td class="border-2 border-black px-2 py-1 text-center">
+                            <div class="font-semibold text-xs">${product.name}</div>
+                            ${tagsDisplay ? `<div class="text-xs text-blue-600">إضافات: ${tagsDisplay}</div>` : ''}
+                        </td>
+                        <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.qty}</td>
+                        <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                            <div>${product.price.toFixed(2)}₪</div>
+                            ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ إضافات</small>` : ''}
+                        </td>
+                        <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                            ${product.actualDiscount > 0 ? `
+                                <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                <small class="text-xs">${product.discountType === 'per-unit' ? 'لكل وحدة' : 'إجمالي'}</small>
+                            ` : '-'}
+                        </td>
+                        <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head>
+                    <title>فاتورة - ${data.shopName}</title>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        
+                        body {
+                            font-family: 'Arial', 'Tahoma', sans-serif;
+                            font-size: 16px;
+                            font-weight: bold;
+                            line-height: 1.4;
+                            color: black;
+                            background: white;
+                            margin: 0;
+                            padding: 10mm;
+                            direction: rtl;
+                            text-align: right;
+                        }
+                        
+                        table {
+                            width: 100% !important;
+                            border-collapse: collapse !important;
+                            margin: 3mm 0 !important;
+                            direction: rtl;
+                        }
+                        
+                        th, td {
+                            border: 2px solid black !important;
+                            padding: 4mm !important;
+                            text-align: center !important;
+                            font-weight: bold !important;
+                            font-size: 14px !important;
+                            word-wrap: break-word;
+                            overflow-wrap: break-word;
+                            vertical-align: middle;
+                        }
+                        
+                        .text-center { text-align: center !important; }
+                        .text-right { text-align: right !important; }
+                        .text-left { text-align: left !important; }
+                        .font-bold { font-weight: bold !important; }
+                        .text-xl { font-size: 20px !important; }
+                        .text-lg { font-size: 18px !important; }
+                        .text-sm { font-size: 14px !important; }
+                        .text-xs { font-size: 11px !important; line-height: 1.3 !important; }
+                        .mb-3 { margin-bottom: 3mm !important; }
+                        .mb-4 { margin-bottom: 4mm !important; }
+                        
+                        .grid { display: flex; flex-wrap: wrap; gap: 4mm; margin: 3mm 0; }
+                        .grid-cols-2 > div { flex: 1; min-width: 45%; }
+                        
+                        tfoot tr { background-color: #f3f4f6 !important; }
+                        tfoot .bg-gray-100 { background-color: #e5e7eb !important; }
+                        tfoot .bg-gray-200 { background-color: #d1d5db !important; }
+                        
+                        small { display: block; margin-top: 2px; color: #666; font-size: 10px !important; }
+                        
+                        @media print {
+                            @page { margin: 5mm; size: A4; }
+                            body { font-size: 16px !important; direction: rtl !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="text-center mb-3">
+                        <div class="text-xl font-bold">${data.shopOwnerName}</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
+                        <div class="text-right">
+                            <div class="font-semibold">${data.shopName}</div>
+                            <div class="font-medium">رقم الفاتورة: #${data.billId}</div>
+                            <div>تم الطباعة بواسطة: ${data.userName}</div>
+                            <div>${data.currentDateTime}</div>
+                            ${data.userDetails ? `<div class="mt-1">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                        </div>
+                        
+                        <div class="text-left">
+                            ${data.customerName ? `<div class="font-semibold">الزبون: ${data.customerName}</div>` : ''}
+                            ${data.customerPhone ? `<div>الهاتف: ${data.customerPhone}</div>` : ''}
+                        </div>
+                    </div>
+                    
+                    <table class="w-full border-2 border-black text-xs mb-4">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المنتج</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الكمية</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">سعر الوحدة</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الخصم</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المجموع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${productsHtml}
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-50">
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع الفرعي</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.subtotal.toFixed(2)}₪</td>
+                            </tr>
+                            <tr class="bg-gray-100">
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">إجمالي الخصم</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.totalDiscount.toFixed(2)}₪</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+                            </tr>
+                            <tr class="bg-gray-200">
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع النهائي</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.total.toFixed(2)}₪</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div class="text-left">
+                        <div class="text-xs">HawiTech</div>
+                        <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                    </div>
+                </body>
+                </html>
+            `;
         }
-    }
 
-    // Update print areas with customer info
-    const customerInfo = customerName ? `الزبون: ${customerName}` : '';
-    const phoneInfo = customerPhone ? `الهاتف: ${customerPhone}` : '';
+        // Generate Receipt Print HTML - Optimized for 56-104mm thermal rolls
+        function generateReceiptPrintHtml(data) {
+            const productsHtml = data.products.map(product => {
+                const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
+                    const [name, price] = tag.split('@');
+                    return `${name} (+${parseFloat(price).toFixed(1)})`;
+                }).join(', ') : '';
 
-    document.getElementById('print-customer').textContent = customerInfo;
-    document.getElementById('print-customer-phone').textContent = phoneInfo;
+                return `
+                    <tr>
+                        <td class="border px-1 py-1 text-center font-bold text-xs">
+                            <div>${product.name}</div>
+                            ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
+                        </td>
+                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.qty}</td>
+                        <td class="border px-1 py-1 text-center font-bold text-xs">
+                            <div>${product.price.toFixed(1)}</div>
+                            ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
+                        </td>
+                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.finalSubtotal.toFixed(1)}</td>
+                    </tr>
+                `;
+            }).join('');
 
-    // Add user details
-    const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
-    if (userDetails) {
-        document.getElementById('print-user-details').innerHTML = `التفاصيل: ${userDetails.replace(/\n/g, '<br>')}`;
-        document.getElementById('receipt-user-details').innerHTML = userDetails.replace(/\n/g, '<br>');
-    } else {
-        document.getElementById('print-user-details').textContent = '';
-        document.getElementById('receipt-user-details').textContent = '';
-    }
+            return `
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head>
+                    <title>Receipt - ${data.shopName}</title>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        
+                        body {
+                            font-family: 'Arial', 'Courier New', monospace;
+                            font-size: 11px;
+                            font-weight: bold;
+                            line-height: 1.3;
+                            color: black;
+                            background: white;
+                            direction: rtl;
+                            margin: 0;
+                            padding: 2mm;
+                            width: 100%;
+                            max-width: 104mm;
+                            min-width: 56mm;
+                        }
+                        
+                        .receipt-container {
+                            width: 100%;
+                            max-width: 100%;
+                            overflow-wrap: break-word;
+                            word-wrap: break-word;
+                        }
+                        
+                        table {
+                            width: 100% !important;
+                            border-collapse: collapse !important;
+                            margin: 1mm 0 !important;
+                            table-layout: fixed !important;
+                        }
+                        
+                        th, td {
+                            border: 1px solid black !important;
+                            padding: 1mm !important;
+                            text-align: center !important;
+                            font-weight: bold !important;
+                            font-size: 10px !important;
+                            word-wrap: break-word !important;
+                            overflow-wrap: break-word !important;
+                            vertical-align: middle !important;
+                            hyphens: auto !important;
+                        }
+                        
+                        /* Column widths for better text fit */
+                        .col-product { width: 40% !important; }
+                        .col-qty { width: 15% !important; }
+                        .col-price { width: 20% !important; }
+                        .col-total { width: 25% !important; }
+                        
+                        h1, h2, h3 {
+                            font-size: 13px !important;
+                            font-weight: bold !important;
+                            margin: 1mm 0 !important;
+                            text-align: center !important;
+                            word-wrap: break-word !important;
+                        }
+                        
+                        .text-center { text-align: center !important; }
+                        .text-right { text-align: right !important; }
+                        .text-left { text-align: left !important; }
+                        .font-bold { font-weight: bold !important; }
+                        .text-lg { font-size: 12px !important; }
+                        .text-sm { font-size: 10px !important; }
+                        .text-xs { font-size: 8px !important; }
+                        .mb-1 { margin-bottom: 1mm !important; }
+                        .mb-2 { margin-bottom: 2mm !important; }
+                        .mb-3 { margin-bottom: 3mm !important; }
+                        .mt-2 { margin-top: 2mm !important; }
+                        .mt-3 { margin-top: 3mm !important; }
+                        .py-1 { padding: 1mm 0 !important; }
+                        .py-2 { padding: 2mm 0 !important; }
+                        .bg-gray-200 { background-color: #e5e7eb !important; }
+                        
+                        .totals-section {
+                            border: 1px solid black;
+                            margin: 2mm 0;
+                        }
+                        
+                        .totals-row {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 1mm 2mm;
+                            border-bottom: 1px solid black;
+                            font-weight: bold;
+                        }
+                        
+                        .totals-row:last-child {
+                            border-bottom: none;
+                            background-color: #e5e7eb;
+                            font-size: 12px;
+                        }
+                        
+                        hr {
+                            border: 1px solid black;
+                            margin: 2mm 0;
+                        }
+                        
+                        .info-grid {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 2mm 0;
+                            flex-wrap: wrap;
+                        }
+                        
+                        .info-left, .info-right {
+                            flex: 1;
+                            min-width: 45%;
+                        }
+                        
+                        /* Responsive adjustments for very small widths */
+                        @media (max-width: 60mm) {
+                            body { font-size: 9px; padding: 1mm; }
+                            th, td { font-size: 8px !important; padding: 0.5mm !important; }
+                            h1, h2, h3 { font-size: 11px !important; }
+                            .info-grid { flex-direction: column; }
+                            .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
+                        }
+                        
+                        @media print {
+                            @page { 
+                                margin: 0; 
+                                size: auto;
+                            }
+                            
+                            body {
+                                margin: 0 !important;
+                                padding: 1mm !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="receipt-container">
+                        <!-- Header -->
+                        <div class="text-center mb-3">
+                            <h1>${data.shopName}</h1>
+                            <div class="text-sm font-bold">HawiTech</div>
+                            <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                            <hr>
+                        </div>
 
-    // Update bill ID if available
-    if (currentBillId) {
-        document.getElementById('current-bill-id').textContent = currentBillId;
-        document.getElementById('receipt-current-bill-id').textContent = currentBillId;
-    }
-}
-        // Keyboard shortcuts
-        document.addEventListener('keydown', e => {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                document.getElementById('create-bill').submit();
-            }
-            
-            if (e.key === 'Escape') {
-                if (!document.getElementById('barcode-modal').classList.contains('hidden')) {
-                    closeBarcodeModal();
-                }
-            }
-            
-            if (e.key === 'F1' && !isRestaurant) {
-                e.preventDefault();
-                document.getElementById('barcode_input').focus();
-            }
-        });
+                        <!-- Shop Owner Name -->
+                        <div class="text-center mb-2">
+                            <div class="text-lg font-bold bg-gray-200 py-1" style="padding: 1mm; border: 1px solid black;">
+                                ${data.shopOwnerName}
+                            </div>
+                        </div>
 
-        // High-performance scroll handler with throttling (now for both restaurant and regular users)
+                        <!-- Bill Info -->
+                        <div class="info-grid text-xs">
+                            <div class="info-right">
+                                <div class="font-bold">التاريخ: ${data.currentDate}</div>
+                                <div class="font-bold">الوقت: ${data.currentTime}</div>
+                            </div>
+                            <div class="info-left">
+                                <div class="font-bold">رقم الفاتورة: ${data.billId}</div>
+                                ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Creator Info -->
+                        <div class="mb-2">
+                            <div class="font-bold text-xs">تم إنشاؤها بواسطة: ${data.userName}</div>
+                            ${data.userDetails ? `<div class="text-xs">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                        </div>
+
+                        <!-- Products Table -->
+                        <table>
+                            <thead>
+                                <tr class="bg-gray-200">
+                                    <th class="col-product">المنتج</th>
+                                    <th class="col-qty">الكمية</th>
+                                    <th class="col-price">السعر</th>
+                                    <th class="col-total">المجموع</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${productsHtml}
+                            </tbody>
+                        </table>
+
+                        <!-- Totals Section -->
+                        <div class="totals-section">
+                            <div class="totals-row">
+                                <div>المجموع الفرعي:</div>
+                                <div>${data.subtotal.toFixed(1)}</div>
+                            </div>
+                            ${data.totalDiscount > 0 ? `
+                                <div class="totals-row">
+                                    <div>إجمالي الخصم:</div>
+                                    <div>${data.totalDiscount.toFixed(1)}</div>
+                                </div>
+                            ` : ''}
+                            <div class="totals-row">
+                                <div>المجموع:</div>
+                                <div>${data.total.toFixed(1)}</div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="text-center mt-3 text-xs font-bold">
+                            <div class="mb-1">شكراً لك على التعامل معنا!</div>
+                            <hr>
+                            <div>HawiTech</div>
+                            <div>WhatsApp: +(970) 599647713</div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+        }
+
+        // Scroll handler
         document.getElementById('product-cards-container').addEventListener('scroll', (e) => {
-            if (scrollTimeout) return;
+            const container = e.target;
+            const scrollTop = container.scrollTop;
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
             
-            scrollTimeout = setTimeout(() => {
-                const container = e.target;
-                const scrollTop = container.scrollTop;
-                const scrollHeight = container.scrollHeight;
-                const clientHeight = container.clientHeight;
-                
-                if (scrollTop + clientHeight >= scrollHeight - 100) {
-                    fetchProducts();
-                }
-                scrollTimeout = null;
-            }, 150);
+            if (scrollTop + clientHeight >= scrollHeight - 100) {
+                fetchProducts();
+            }
         });
 
-        // Enhanced notification system with better performance
+        // Notification system
         function showNotification(message, type = 'info') {
             let notification = document.querySelector('.notification-toast');
             
@@ -2681,12 +1998,7 @@ function updatePrintAreas() {
             }, 3000);
         }
 
-        // Update today's sales display
-        function updateTotalSalesToday() {
-            // You can add real-time updates here if needed
-        }
-
-        // Enhanced form validation
+        // Form validation
         document.getElementById('create-bill').addEventListener('submit', (e) => {
             const rows = document.querySelectorAll('.product-row');
             if (rows.length === 0) {
@@ -2714,43 +2026,35 @@ function updatePrintAreas() {
             showNotification('{{ __('messages.Creating bill...') }}', 'info');
         });
 
-        // Auto-focus management
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchTags();
-            if (!isRestaurant) {
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                document.getElementById('create-bill').submit();
+            }
+            
+            if (e.key === 'Escape') {
+                if (!document.getElementById('barcode-modal').classList.contains('hidden')) {
+                    closeBarcodeModal();
+                }
+            }
+            
+            if (e.key === 'F1' && !isRestaurant) {
+                e.preventDefault();
                 document.getElementById('barcode_input').focus();
             }
         });
 
-        // Prevent form submission on Enter in barcode input (only for non-restaurant)
-        if (!isRestaurant) {
-            document.getElementById('barcode_input').addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                }
-            });
-        }
-
-        // Cleanup function for better memory management
+        // Cleanup
         window.addEventListener('beforeunload', () => {
-            if (intersectionObserver) {
-                intersectionObserver.disconnect();
-            }
-            
             clearTimeout(debounceTimeout);
-            clearTimeout(scrollTimeout);
             clearTimeout(customerDebounceTimeout);
             clearTimeout(paymentCustomerDebounceTimeout);
-            
-            renderQueue = [];
-            isRenderingQueue = false;
         });
 
-        // Set current bill ID when bill is created (you'll need to handle this in your Laravel response)
+        // Set current bill ID
         window.setBillId = function(billId) {
             currentBillId = billId;
         };
-
-
     </script>
 </x-app-layout>
