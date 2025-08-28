@@ -2307,7 +2307,7 @@ function generateReceiptPageHTML(content) {
     `;
 }
 
-// Generate simplified mobile-friendly receipt HTML
+// Generate simplified mobile-friendly receipt HTML for 76mm thermal paper
 function generateMobileReceiptHTML(content) {
     return `
         <!DOCTYPE html>
@@ -2324,31 +2324,31 @@ function generateMobileReceiptHTML(content) {
                 }
 
                 body {
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
                     font-weight: bold;
-                    line-height: 1.4;
+                    line-height: 1.3;
                     color: black;
                     background: white;
-                    padding: 15mm;
+                    padding: 3mm;
                     direction: rtl;
                 }
 
                 .receipt-container {
-                    max-width: 210mm;
+                    width: 76mm;
                     margin: 0 auto;
                 }
 
                 table {
                     width: 100% !important;
                     border-collapse: collapse !important;
-                    margin: 8mm 0 !important;
-                    font-size: 12px !important;
+                    margin: 2mm 0 !important;
+                    font-size: 10px !important;
                 }
 
                 th, td {
                     border: 1px solid black !important;
-                    padding: 4mm 2mm !important;
+                    padding: 1mm !important;
                     text-align: center !important;
                     font-weight: bold !important;
                     word-wrap: break-word;
@@ -2356,9 +2356,9 @@ function generateMobileReceiptHTML(content) {
                 }
 
                 h1, h2, h3 {
-                    font-size: 16px !important;
+                    font-size: 12px !important;
                     font-weight: bold !important;
-                    margin: 4mm 0 !important;
+                    margin: 2mm 0 !important;
                     text-align: center !important;
                 }
 
@@ -2366,19 +2366,19 @@ function generateMobileReceiptHTML(content) {
                 .text-left { text-align: left !important; }
                 .text-right { text-align: right !important; }
                 .font-bold { font-weight: bold !important; }
-                .text-sm { font-size: 11px !important; }
-                .text-xs { font-size: 10px !important; }
-                .mb-2 { margin-bottom: 2mm !important; }
-                .mb-4 { margin-bottom: 4mm !important; }
-                .mb-6 { margin-bottom: 6mm !important; }
-                .mt-4 { margin-top: 4mm !important; }
-                .mt-6 { margin-top: 6mm !important; }
+                .text-sm { font-size: 9px !important; }
+                .text-xs { font-size: 8px !important; }
+                .mb-2 { margin-bottom: 1mm !important; }
+                .mb-4 { margin-bottom: 2mm !important; }
+                .mb-6 { margin-bottom: 3mm !important; }
+                .mt-4 { margin-top: 2mm !important; }
+                .mt-6 { margin-top: 3mm !important; }
 
                 .grid {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 4mm;
-                    margin: 4mm 0;
+                    gap: 2mm;
+                    margin: 2mm 0;
                 }
 
                 .grid-cols-2 > div {
@@ -2396,28 +2396,28 @@ function generateMobileReceiptHTML(content) {
 
                 hr {
                     border: 1px solid black;
-                    margin: 3mm 0;
+                    margin: 2mm 0;
                 }
 
                 @media print {
                     body {
                         margin: 0 !important;
-                        padding: 10mm !important;
-                        font-size: 12px !important;
+                        padding: 2mm !important;
+                        font-size: 10px !important;
                     }
 
                     .receipt-container {
-                        max-width: none !important;
+                        width: 72mm !important; /* Leave 2mm margins on 76mm paper */
                     }
 
                     table {
                         page-break-inside: avoid;
-                        font-size: 11px !important;
+                        font-size: 9px !important;
                     }
 
                     th, td {
-                        padding: 3mm 2mm !important;
-                        font-size: 11px !important;
+                        padding: 1mm !important;
+                        font-size: 9px !important;
                     }
 
                     .no-print {
@@ -2428,17 +2428,17 @@ function generateMobileReceiptHTML(content) {
                 /* Mobile-specific adjustments */
                 @media (max-width: 768px) {
                     body {
-                        font-size: 16px;
-                        padding: 10mm;
+                        font-size: 12px;
+                        padding: 3mm;
                     }
 
                     table {
-                        font-size: 14px;
+                        font-size: 11px;
                     }
 
                     th, td {
-                        padding: 3mm;
-                        font-size: 14px;
+                        padding: 1mm;
+                        font-size: 10px;
                     }
                 }
             </style>
