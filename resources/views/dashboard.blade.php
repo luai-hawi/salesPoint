@@ -2099,7 +2099,7 @@ function openPrintInNewTab(isReceipt = false) {
         setTimeout(() => {
             printWindow.close();
         }, 1000);
-    }, 2000);
+    }, 500);
 };
         
     } catch (error) {
