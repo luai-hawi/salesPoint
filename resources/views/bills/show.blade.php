@@ -448,19 +448,19 @@
     {{-- Professional Receipt Print --}}
 <div id="receipt-area" class="print-hidden">
     <div class="receipt-content">
-        <!-- Header with Shop Info - Compact -->
-        <div class="text-center mb-3">
-            <div class="mb-2">
+        <!-- Header with Shop Info - Ultra Compact -->
+        <div class="text-center mb-2">
+            <div class="mb-1">
                 <h1 class="text-lg font-bold">{{ $shopName }}</h1>
                 <p class="text-xs font-bold">HawiTech</p>
                 <p class="text-xs">WhatsApp: +(970) 599647713</p>
             </div>
-            <hr class="border-2 border-black my-2">
+            <hr class="border-2 border-black my-1">
         </div>
 
         <!-- Shop Owner Name Prominently Displayed - Compact -->
-        <div class="text-center mb-2">
-            <div class="text-sm font-bold bg-gray-200 py-1 px-3 rounded">
+        <div class="text-center mb-1">
+            <div class="text-sm font-bold bg-gray-200 py-1 px-2 rounded">
                 @php
                     $shopOwnerName = '';
                     if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
@@ -473,8 +473,8 @@
             </div>
         </div>
 
-        <!-- Bill Info Section - Compact -->
-        <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
+        <!-- Bill Info Section - Ultra Compact -->
+        <div class="grid grid-cols-2 gap-1 mb-1 text-xs">
             <div>
                 <div class="font-bold">{{__('messages.Date')}}: {{ $bill->created_at->format('d-m-Y') }}</div>
                 <div class="font-bold">{{__('messages.Time')}}: {{ $bill->created_at->format('H:i:s') }}</div>
@@ -487,15 +487,15 @@
             </div>
         </div>
 
-        <!-- Customer Info - Compact -->
-        <div class="mb-2">
+        <!-- Customer Info - Ultra Compact -->
+        <div class="mb-1">
             <div class="font-bold text-xs">{{__('messages.Created By')}}: {{ $bill->creator->name }}</div>
             <div class="text-xs">{{ auth()->user()->details ?? "" }}</div>
         </div>
 
-        <!-- Products Table - Compact for 76mm thermal paper -->
+        <!-- Products Table -->
         <div class="w-full overflow-x-auto">
-            <table class="w-full border-2 border-black mb-2" style="border-collapse: collapse;">
+            <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
                 <thead>
                     <tr class="bg-gray-200">
                         <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">#</th>
@@ -511,7 +511,7 @@
                             $tagPairs = explode('&', $product->pivot->tags ?? '');
                             $totalTagPrice = 0;
                             $tagsDisplayArabic = '';
-
+                            
                             foreach($tagPairs as $tagPair) {
                                 if(str_contains($tagPair, '@')) {
                                     [$name, $tagPrice] = explode('@', $tagPair);
@@ -519,7 +519,7 @@
                                     $tagsDisplayArabic .= $tagsDisplayArabic ? '، ' . $name . ' (+' . number_format($tagPrice, 1) . ')' : $name . ' (+' . number_format($tagPrice, 1) . ')';
                                 }
                             }
-
+                            
                             $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
                         @endphp
                         <tr>
@@ -531,32 +531,15 @@
                                 @endif
                             </td>
                             <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ $product->pivot->quantity }}</td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">
-                                <div class="text-xs">{{ number_format($finalPrice, 1) }}</div>
-                                @if($totalTagPrice > 0)
-                                    <div class="text-xs">({{ number_format($basePrice, 1) }} + {{ number_format($totalTagPrice, 1) }})</div>
-                                @endif
-                            </td>
+                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ number_format($finalPrice, 1) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
 
-        <!-- Total Discounts Section - Below table -->
-        @php
-            $totalDiscountAmount = $bill->products->sum('pivot.discount');
-        @endphp
-        @if($totalDiscountAmount > 0)
-        <div class="border-2 border-black mb-2 p-1">
-            <div class="text-center font-bold text-xs">
-                إجمالي الخصم: {{ number_format($totalDiscountAmount, 1) }}
-            </div>
-        </div>
-        @endif
-
-        <!-- Detailed Totals Section - Compact -->
-        <div class="border-2 border-black mb-2">
+        <!-- Detailed Totals Section - Ultra Compact -->
+        <div class="border-2 border-black mb-1">
             @php
                 $subtotal = 0;
                 $totalDiscount = 0;
@@ -579,14 +562,16 @@
                 <div class="py-1">{{ number_format($subtotal, 1) }}</div>
             </div>
             <!-- Total Discount -->
+            @if($totalDiscount > 0)
             <div class="grid grid-cols-2 text-center font-bold text-sm border-b-2 border-black">
                 <div class="border-r-2 border-black py-1">{{__('messages.Total discount')}}:</div>
                 <div class="py-1">{{ number_format($totalDiscount, 1) }}</div>
             </div>
+            @endif
             <!-- Final Total -->
             <div class="grid grid-cols-2 text-center font-bold text-base bg-gray-200">
-                <div class="border-r-2 border-black py-2">{{__('messages.Total')}}:</div>
-                <div class="py-2">{{ number_format($bill->total_price, 1) }}</div>
+                <div class="border-r-2 border-black py-1">{{__('messages.Total')}}:</div>
+                <div class="py-1">{{ number_format($bill->total_price, 1) }}</div>
             </div>
         </div>
 
@@ -595,10 +580,10 @@
             <div class="text-xs font-bold">{{ auth()->user()->details ?? "" }}</div>
         </div>
 
-        <!-- Footer - No bottom spacing -->
-        <div class="text-center mt-4 text-sm font-bold">
+        <!-- Footer - Ultra Compact -->
+        <div class="text-center mt-2 text-xs font-bold">
             <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
-            <hr class="border-2 border-black my-2">
+            <hr class="border-2 border-black my-1">
             <div class="text-xs">HawiTech</div>
             <p class="text-xs">WhatsApp: +(970) 599647713</p>
         </div>
@@ -738,11 +723,13 @@
         word-wrap: break-word !important;
     }
 
-    /* Make table columns responsive for 4-column layout */
+    /* Make table columns responsive */
     .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) { width: 8%; } /* # */
-    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 50%; } /* Product name */
-    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 15%; } /* Quantity */
-    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 27%; } /* Price/Total */
+    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 35%; } /* Product name */
+    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 12%; } /* Quantity */
+    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 15%; } /* Price */
+    .print-receipt th:nth-child(5), .print-receipt td:nth-child(5) { width: 15%; } /* Discount */
+    .print-receipt th:nth-child(6), .print-receipt td:nth-child(6) { width: 15%; } /* Total */
 
     .print-receipt .grid {
         display: grid !important;
@@ -1236,7 +1223,7 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
         }
     }
 
-    // Generate compact mobile-friendly receipt HTML for bills (76mm thermal paper)
+    // Generate simplified mobile-friendly receipt HTML for bills
     function generateBillMobileReceiptHTML(content) {
         return `
             <!DOCTYPE html>
@@ -1256,50 +1243,45 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         font-family: 'Courier New', monospace;
                         font-size: 10px;
                         font-weight: bold;
-                        line-height: 1.2;
+                        line-height: 1.1;
                         color: black;
                         background: white;
-                        padding: 1mm 1mm 0 1mm; /* Remove bottom padding */
+                        padding: 1mm 1mm 0 1mm; /* Ultra-minimal padding, no bottom */
                         direction: rtl;
                         width: 100%; /* Responsive width */
-                        max-width: 100mm; /* Max for 104mm paper */
-                        min-width: 52mm; /* Min for 56mm paper */
+                        max-width: 98mm; /* Max for 104mm paper with margins */
+                        min-width: 50mm; /* Min for 56mm paper with margins */
                         margin: 0 auto;
                         height: auto; /* Ensure no extra height */
                     }
 
                     .receipt-container {
                         width: 100%;
+                        max-width: 96mm;
+                        min-width: 48mm;
+                        margin: 0 auto;
                     }
 
                     table {
                         width: 100% !important;
                         border-collapse: collapse !important;
-                        margin: 1mm 0 !important;
-                        font-size: 8px !important;
-                        table-layout: fixed;
+                        margin: 2mm 0 !important;
+                        font-size: 10px !important;
                     }
 
                     th, td {
-                        border: 0.5px solid black !important;
-                        padding: 0.5mm 0.3mm !important;
+                        border: 1px solid black !important;
+                        padding: 1mm !important;
                         text-align: center !important;
                         font-weight: bold !important;
                         word-wrap: break-word;
                         overflow-wrap: break-word;
-                        vertical-align: top;
                     }
 
-                    /* Compact table layout for 56mm-104mm paper - 4 columns */
-                    th:nth-child(1), td:nth-child(1) { width: 8%; } /* # */
-                    th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name - more space */
-                    th:nth-child(3), td:nth-child(3) { width: 12%; } /* Quantity */
-                    th:nth-child(4), td:nth-child(4) { width: 25%; } /* Total */
-
                     h1, h2, h3 {
-                        font-size: 10px !important;
+                        font-size: 12px !important;
                         font-weight: bold !important;
-                        margin: 1mm 0 !important;
+                        margin: 2mm 0 !important;
                         text-align: center !important;
                     }
 
@@ -1307,19 +1289,19 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                     .text-left { text-align: left !important; }
                     .text-right { text-align: right !important; }
                     .font-bold { font-weight: bold !important; }
-                    .text-sm { font-size: 7px !important; }
-                    .text-xs { font-size: 6px !important; }
-                    .mb-2 { margin-bottom: 0.5mm !important; }
-                    .mb-4 { margin-bottom: 1mm !important; }
-                    .mb-6 { margin-bottom: 1.5mm !important; }
-                    .mt-4 { margin-top: 1mm !important; }
-                    .mt-6 { margin-top: 1.5mm !important; }
+                    .text-sm { font-size: 9px !important; }
+                    .text-xs { font-size: 8px !important; }
+                    .mb-2 { margin-bottom: 1mm !important; }
+                    .mb-4 { margin-bottom: 2mm !important; }
+                    .mb-6 { margin-bottom: 3mm !important; }
+                    .mt-4 { margin-top: 2mm !important; }
+                    .mt-6 { margin-top: 3mm !important; }
 
                     .grid {
                         display: flex;
                         flex-wrap: wrap;
-                        gap: 1mm;
-                        margin: 1mm 0;
+                        gap: 2mm;
+                        margin: 2mm 0;
                     }
 
                     .grid-cols-2 > div {
@@ -1328,97 +1310,64 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                     }
 
                     .border-r-2 {
-                        border-right: 0.5px solid black !important;
+                        border-right: 1px solid black !important;
                     }
 
                     .border-b-2 {
-                        border-bottom: 0.5px solid black !important;
+                        border-bottom: 1px solid black !important;
                     }
 
                     hr {
-                        border: 0.5px solid black;
-                        margin: 1mm 0;
-                    }
-
-                    /* Compact totals section */
-                    .totals-section {
-                        border: 1px solid black !important;
-                        margin: 1mm 0 !important;
-                        padding: 1mm !important;
-                    }
-
-                    .totals-section .grid-cols-2 {
-                        gap: 0.5mm;
-                        margin: 0.5mm 0;
+                        border: 1px solid black;
+                        margin: 2mm 0;
                     }
 
                     @media print {
                         body {
                             margin: 0 !important;
-                            padding: 0.5mm 0.5mm 0 0.5mm !important; /* Remove bottom padding */
-                            font-size: 8px !important;
-                            width: 100% !important; /* Full width for any paper size */
-                            max-width: 100mm !important; /* Max for 104mm paper */
-                            min-width: 52mm !important; /* Min for 56mm paper */
-                            height: auto !important; /* No extra height */
+                            padding: 2mm !important;
+                            font-size: 10px !important;
                         }
 
                         .receipt-container {
-                            width: 100% !important;
-                            margin: 0 !important; /* Remove all margins */
+                            width: 72mm !important; /* Leave 2mm margins on 76mm paper */
                         }
 
                         table {
                             page-break-inside: avoid;
-                            font-size: 7px !important;
-                            margin-bottom: 0 !important; /* Remove bottom margin */
+                            font-size: 9px !important;
                         }
 
                         th, td {
-                            padding: 0.3mm !important;
-                            font-size: 7px !important;
+                            padding: 1mm !important;
+                            font-size: 9px !important;
                         }
 
                         .no-print {
                             display: none !important;
                         }
 
-                        /* Remove margins from all elements */
-                        * {
-                            margin-bottom: 0 !important;
-                        }
-
-                        /* Ensure table fits perfectly */
-                        table {
-                            width: 100% !important;
-                        }
-
-                        /* Remove bottom margin from last elements */
-                        .receipt-container > *:last-child {
-                            margin-bottom: 0 !important;
-                        }
-
-                        /* Responsive column widths for different paper sizes */
+                        /* Responsive column widths for 4-column table */
                         th:nth-child(1), td:nth-child(1) { width: 8%; } /* # */
-                        th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name - more space */
+                        th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name */
                         th:nth-child(3), td:nth-child(3) { width: 12%; } /* Quantity */
-                        th:nth-child(4), td:nth-child(4) { width: 25%; } /* Price/Total */
+                        th:nth-child(4), td:nth-child(4) { width: 25%; } /* Total */
                     }
 
                     /* Mobile-specific adjustments */
                     @media (max-width: 768px) {
                         body {
-                            font-size: 10px;
-                            padding: 1mm;
+                            font-size: 12px;
+                            padding: 3mm;
                         }
 
                         table {
-                            font-size: 9px;
+                            font-size: 11px;
                         }
 
                         th, td {
-                            padding: 0.5mm 0.3mm;
-                            font-size: 8px;
+                            padding: 1mm;
+                            font-size: 10px;
                         }
                     }
                 </style>
@@ -1428,15 +1377,16 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                     ${content}
 
                     <!-- Print button for mobile users -->
-                    <div class="no-print" style="text-align: center; margin: 3mm 0 0 0;">
+                    <div class="no-print" style="text-align: center; margin-top: 15mm;">
                         <button onclick="window.print(); return false;"
-                                style="background: #4CAF50; color: white; padding: 6px 12px;
-                                       border: none; border-radius: 3px; font-size: 11px; cursor: pointer; margin: 1px;">
-                            🖨️ Print
+                                style="background: #4CAF50; color: white; padding: 12px 24px;
+                                       border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin: 5px;">
+                            🖨️ Print Receipt
                         </button>
+                        <br><br>
                         <button onclick="window.close(); return false;"
-                                style="background: #f44336; color: white; padding: 5px 10px;
-                                       border: none; border-radius: 3px; font-size: 9px; cursor: pointer;">
+                                style="background: #f44336; color: white; padding: 10px 20px;
+                                       border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
                             ❌ Close
                         </button>
                     </div>
@@ -1614,16 +1564,17 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                     table {
                         width: 100% !important;
                         border-collapse: collapse !important;
-                        margin: 2mm 0 !important;
-                        font-size: 10px !important;
+                        margin: 1mm 0 !important; /* Reduced margin */
+                        font-size: 9px !important;
+                        table-layout: fixed; /* Fixed layout for consistent sizing */
                     }
 
                     th, td {
                         border: 1px solid black !important;
-                        padding: 1mm !important;
+                        padding: 0.5mm !important; /* Ultra-compact padding */
                         text-align: center !important;
                         font-weight: bold !important;
-                        font-size: 9px !important;
+                        font-size: 8px !important;
                         word-wrap: break-word;
                         overflow-wrap: break-word;
                     }
@@ -1681,8 +1632,9 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         }
 
                         .receipt-content {
-                            width: 76mm !important;
-                            max-width: 76mm !important;
+                            width: 100% !important;
+                            max-width: 94mm !important; /* Leave 2mm margins */
+                            min-width: 46mm !important;
                         }
 
                         table {
@@ -1700,14 +1652,25 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         }
                     }
 
-                    /* Mobile adjustments */
+                    /* Mobile adjustments - Ultra Compact */
                     @media (max-width: 768px) {
                         body {
-                            font-size: 14px;
+                            font-size: 12px;
+                            padding: 2mm 2mm 0 2mm;
+                        }
+
+                        .receipt-container {
+                            width: 90%;
+                            max-width: 70mm;
                         }
 
                         table {
-                            font-size: 12px;
+                            font-size: 10px;
+                        }
+
+                        th, td {
+                            padding: 1mm;
+                            font-size: 9px;
                         }
                     }
                 </style>
