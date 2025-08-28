@@ -2539,10 +2539,15 @@ function updatePrintAreas() {
     document.getElementById('print-customer-phone').textContent = phoneInfo;
 
     // Add user details
-    const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
-    document.getElementById('print-user-details').textContent = userDetails ? `Details: ${userDetails}` : '';
-    document.getElementById('receipt-user-details').textContent = userDetails || '';
-
+    // Add user details
+const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
+if (userDetails) {
+    document.getElementById('print-user-details').innerHTML = `Details: ${userDetails.replace(/\n/g, '<br>')}`;
+    document.getElementById('receipt-user-details').innerHTML = userDetails.replace(/\n/g, '<br>');
+} else {
+    document.getElementById('print-user-details').textContent = '';
+    document.getElementById('receipt-user-details').textContent = '';
+}
     // Update bill ID if available
     if (currentBillId) {
         document.getElementById('current-bill-id').textContent = currentBillId;
