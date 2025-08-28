@@ -427,6 +427,7 @@ return [
     'Enter product category (optional)...' => 'Enter product category (optional)...',
     'Optional - helps organize products by category.' => 'Optional - helps organize products by category.',
     'Uncategorized' => 'Uncategorized',
+    'Final Total' => 'Final Total',
 
     // Financial Dashboard
     'Period:' => 'Period:',

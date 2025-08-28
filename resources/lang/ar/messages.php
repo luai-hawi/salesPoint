@@ -143,6 +143,7 @@ return [
     'Enter product category (optional)...'=> "أدخل فئة المنتج (اختياري)...",
     'Optional - helps organize products by category.'=> "اختياري - يساعد في تنظيم المنتجات حسب الفئة.",
     'Uncategorized'=> "غير مصنف",
+    'Final Total'=> "المجموع النهائي",
 
   
     "Select Tags for"=> "اختر العلامات لـ",

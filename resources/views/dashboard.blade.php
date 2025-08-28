@@ -391,8 +391,8 @@
         </div>
     </div>
 
-{{-- Standard Printable Invoice --}}
-<div id="print-area" class="print-hidden p-4 text-xs">
+{{-- Standard Printable Invoice - Updated with Discount Column --}}
+<div id="print-area" class="print-hidden p-4 text-xs" dir="rtl">
     <!-- Shop Owner Name at Top Center -->
     <div class="text-center mb-3">
         <div class="text-xl font-bold">
@@ -411,7 +411,7 @@
     <!-- Header Information Grid -->
     <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
         <!-- Left Side Info -->
-        <div class="text-left">
+        <div class="text-right">
             <div class="font-semibold">{{ $shopName }}</div>
             <div class="font-medium">{{ __('messages.Bill ID') }}: #<span id="current-bill-id">-</span></div>
             <div>{{ __('messages.Printed by') }}: {{ auth()->user()->name }}</div>
@@ -420,13 +420,13 @@
         </div>
         
         <!-- Right Side Info -->
-        <div class="text-right">
+        <div class="text-left">
             <div id="print-customer" class="font-semibold"></div>
             <div id="print-customer-phone"></div>
         </div>
     </div>
     
-    <!-- Products Table - Full Width -->
+    <!-- Products Table - Full Width with Discount Column -->
     <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
         <thead>
             <tr class="bg-gray-100">
@@ -440,20 +440,27 @@
         <tbody id="print-products-list"></tbody>
         <tfoot>
             <tr class="bg-gray-50">
-                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
+                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Subtotal') }}</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+                <td id="print-subtotal" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
+            </tr>
+            <tr class="bg-gray-100">
+                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Total Discount') }}</td>
                 <td id="print-total-discount" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+            </tr>
+            <tr class="bg-gray-200">
+                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
                 <td id="print-total-price" class="border-2 border-black px-2 py-2 text-center font-bold">0.00₪</td>
             </tr>
         </tfoot>
     </table>
     
     <!-- Footer -->
-    
-        <div class="text-left">
-            <div class="text-xs">HawiTech</div>
-            <div class="text-xs">WhatsApp: +(970) 599647713</div>
-        </div>
-    
+    <div class="text-left">
+        <div class="text-xs">HawiTech</div>
+        <div class="text-xs">WhatsApp: +(970) 599647713</div>
+    </div>
 </div>
 {{-- Professional Receipt Print --}}
 <div id="receipt-area" class="print-hidden">
@@ -507,12 +514,10 @@
         <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
             <thead>
                 <tr class="bg-gray-200">
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">#</th>
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">اسم الطبق</th>
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الكمية</th>
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">السعر</th>
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">الخصم</th>
-                    <th class="border-2 border-black px-2 py-2 text-center font-bold text-sm">المجموع</th>
+                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
+                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                    <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
                 </tr>
             </thead>
             <tbody id="receipt-products-table">
@@ -808,6 +813,118 @@
 
         }
 
+        /* Enhanced print styles with RTL support */
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1.4;
+        direction: rtl;
+        text-align: right;
+    }
+
+    body * {
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #print-area, #print-area * {
+        visibility: visible !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    #print-area {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        padding: 0.5cm !important;
+        background: white;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
+    #print-area .text-center {
+        text-align: center !important;
+    }
+
+    #print-area .text-left {
+        text-align: left !important;
+    }
+
+    #print-area .text-right {
+        text-align: right !important;
+    }
+
+    #print-area h1, #print-area h2, #print-area h3 {
+        font-size: 24px !important;
+        font-weight: bold !important;
+        text-align: center !important;
+    }
+
+    #print-area table {
+        font-size: 14px !important;
+        font-weight: bold !important;
+        border-collapse: collapse !important;
+        width: 100% !important;
+        direction: rtl !important;
+    }
+
+    #print-area th, #print-area td {
+        font-size: 14px !important;
+        font-weight: bold !important;
+        border: 2px solid #000 !important;
+        padding: 6px !important;
+        text-align: center !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        vertical-align: middle !important;
+    }
+
+    #print-area .grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 4mm !important;
+        margin: 3mm 0 !important;
+    }
+
+    #print-area .grid-cols-2 > div {
+        flex: 1 !important;
+        min-width: 45% !important;
+    }
+
+    #print-area tfoot tr {
+        background-color: #f3f4f6 !important;
+    }
+
+    #print-area tfoot .bg-gray-100 {
+        background-color: #e5e7eb !important;
+    }
+
+    #print-area tfoot .bg-gray-200 {
+        background-color: #d1d5db !important;
+    }
+
+    /* Specific styling for Arabic text */
+    #print-area .text-xs {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+    }
+
+    /* Ensure proper spacing for discount info */
+    #print-area td small {
+        display: block;
+        margin-top: 2px;
+        color: #666;
+        font-size: 10px !important;
+    }
+}
         /* Receipt print styles */
         @media print {
             .print-receipt #print-area {
@@ -2007,50 +2124,30 @@ function isMobileDevice() {
     return isMobileUA || (isMobileScreen && isTouchDevice);
 }
 
-// Standard Print Button - Enhanced for mobile
+// Standard Print Button - Always open in new tab
 document.getElementById('print-button').addEventListener('click', () => {
-    if (isMobileDevice()) {
-        // For mobile: Open in new tab
-        openPrintInNewTab(false); // false = standard print
-    } else {
-        // For desktop: Use existing method
-        updatePrintAreas();
-        document.body.classList.remove('print-receipt');
-        window.print();
-    }
+    updatePrintAreas();
+    openPrintInNewTab(false); // false = standard print
 });
 
-// Receipt Print Button - Enhanced for mobile  
+// Receipt Print Button - Always open in new tab  
 document.getElementById('print-receipt-button').addEventListener('click', () => {
-    if (isMobileDevice()) {
-        // For mobile: Open in new tab
-        openPrintInNewTab(true); // true = receipt print
-    } else {
-        // For desktop: Use existing method
-        updatePrintAreas();
-        document.body.classList.add('print-receipt');
-        window.print();
-        document.body.classList.remove('print-receipt');
-    }
+    updatePrintAreas();
+    openPrintInNewTab(true); // true = receipt print
 });
 
 // Function to open print content in new tab
 function openPrintInNewTab(isReceipt = false) {
     try {
-        // Update print areas first
-        updatePrintAreas();
-        
         let htmlContent;
         
         if (isReceipt) {
-            // Get receipt content and create 80mm receipt HTML
             const receiptArea = document.getElementById('receipt-area');
             if (!receiptArea) {
                 showNotification('Receipt template not found', 'error');
                 return;
             }
             
-            // Temporarily show to get content
             const originalDisplay = receiptArea.style.display;
             receiptArea.style.display = 'block';
             const receiptContent = receiptArea.innerHTML;
@@ -2058,14 +2155,12 @@ function openPrintInNewTab(isReceipt = false) {
             
             htmlContent = generateReceiptPageHTML(receiptContent);
         } else {
-            // Get standard print content
             const printArea = document.getElementById('print-area');
             if (!printArea) {
                 showNotification('Print template not found', 'error');
                 return;
             }
             
-            // Temporarily show to get content
             const originalDisplay = printArea.style.display;
             printArea.style.display = 'block';
             const printContent = printArea.innerHTML;
@@ -2074,7 +2169,6 @@ function openPrintInNewTab(isReceipt = false) {
             htmlContent = generateStandardPageHTML(printContent);
         }
         
-        // Open in new tab
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             showNotification('Please allow popups for printing', 'error');
@@ -2084,16 +2178,14 @@ function openPrintInNewTab(isReceipt = false) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         
-        // Auto-print after a short delay and close tab
-    printWindow.onload = function() {
-    setTimeout(() => {
-        printWindow.print();
-        // Close the tab after printing (with a small delay for print dialog)
-        setTimeout(() => {
-            printWindow.close();
-        }, 1000);
-    }, 500);
-};
+        printWindow.onload = function() {
+            setTimeout(() => {
+                printWindow.print();
+                setTimeout(() => {
+                    printWindow.close();
+                }, 1000);
+            }, 500);
+        };
         
     } catch (error) {
         console.error('Print error:', error);
@@ -2119,19 +2211,24 @@ function generateReceiptPageHTML(content) {
                 
                 body {
                     font-family: 'Arial', sans-serif;
-                    font-size: 12px;
+                    font-size: 14px;
                     font-weight: bold;
-                    line-height: 1.3;
+                    line-height: 1.4;
                     color: black;
                     background: white;
                     direction: rtl;
-                    padding: 5mm;
+                    margin: 0;
+                    padding: 0;
                 }
                 
                 .receipt-content {
                     width: 100%;
-                    max-width: 80mm;
-                    margin: 0 auto;
+                    max-width: none;
+                    margin: 0;
+                    padding: 3mm 2mm;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
                 }
                 
                 table {
@@ -2142,16 +2239,17 @@ function generateReceiptPageHTML(content) {
                 
                 th, td {
                     border: 1px solid black !important;
-                    padding: 2px 1px !important;
+                    padding: 2mm !important;
                     text-align: center !important;
                     font-weight: bold !important;
-                    font-size: 10px !important;
+                    font-size: 13px !important;
                     word-wrap: break-word;
                     overflow-wrap: break-word;
+                    vertical-align: middle;
                 }
                 
                 h1, h2, h3 {
-                    font-size: 14px !important;
+                    font-size: 18px !important;
                     font-weight: bold !important;
                     margin: 2mm 0 !important;
                     text-align: center !important;
@@ -2162,13 +2260,13 @@ function generateReceiptPageHTML(content) {
                 .text-left { text-align: left !important; }
                 .font-bold { font-weight: bold !important; }
                 .text-lg { font-size: 16px !important; }
-                .text-sm { font-size: 11px !important; }
-                .text-xs { font-size: 9px !important; }
+                .text-sm { font-size: 13px !important; }
+                .text-xs { font-size: 11px !important; }
                 .mb-2 { margin-bottom: 2mm !important; }
-                .mb-4 { margin-bottom: 4mm !important; }
-                .mb-6 { margin-bottom: 6mm !important; }
-                .mt-4 { margin-top: 4mm !important; }
-                .mt-6 { margin-top: 6mm !important; }
+                .mb-4 { margin-bottom: 3mm !important; }
+                .mb-6 { margin-bottom: 4mm !important; }
+                .mt-4 { margin-top: 3mm !important; }
+                .mt-6 { margin-top: 4mm !important; }
                 .py-2 { padding: 2mm 0 !important; }
                 .py-3 { padding: 3mm 0 !important; }
                 .bg-gray-200 { background-color: #e5e7eb !important; }
@@ -2190,42 +2288,23 @@ function generateReceiptPageHTML(content) {
                     margin: 2mm 0;
                 }
                 
-                /* Print-specific styles for 80mm thermal paper */
                 @media print {
                     body {
                         margin: 0 !important;
-                        padding: 2mm !important;
-                        font-size: 10px !important;
+                        padding: 0 !important;
+                        font-size: 14px !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     
                     .receipt-content {
-                        width: 76mm !important; /* Leave 2mm margins on 80mm paper */
-                        max-width: 76mm !important;
+                        padding: 2mm !important;
+                        min-height: auto !important;
                     }
                     
-                    table {
-                        page-break-inside: avoid;
-                        font-size: 9px !important;
-                    }
-                    
-                    th, td {
-                        padding: 1px !important;
-                        font-size: 9px !important;
-                    }
-                    
-                    .no-print {
-                        display: none !important;
-                    }
-                }
-                
-                /* Mobile adjustments */
-                @media (max-width: 768px) {
-                    body {
-                        font-size: 14px;
-                    }
-                    
-                    table {
-                        font-size: 12px;
+                    @page {
+                        margin: 0;
+                        size: auto;
                     }
                 }
             </style>
@@ -2233,34 +2312,18 @@ function generateReceiptPageHTML(content) {
         <body>
             <div class="receipt-content">
                 ${content}
-                
-                <!-- Print button for mobile users -->
-                <div class="no-print" style="text-align: center; margin-top: 10mm;">
-                    <button onclick="window.print(); return false;" 
-                            style="background: #4CAF50; color: white; padding: 10px 20px; 
-                                   border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                        🖨️ Print Receipt
-                    </button>
-                    <br><br>
-                    <button onclick="window.close(); return false;" 
-                            style="background: #f44336; color: white; padding: 8px 16px; 
-                                   border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
-                        ❌ Close
-                    </button>
-                </div>
             </div>
         </body>
         </html>
     `;
 }
 
-// Generate HTML for standard print
 function generateStandardPageHTML(content) {
     return `
         <!DOCTYPE html>
-        <html>
+        <html dir="rtl" lang="ar">
         <head>
-            <title>Bill - ${shopName}</title>
+            <title>فاتورة - ${shopName}</title>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
@@ -2271,40 +2334,46 @@ function generateStandardPageHTML(content) {
                 }
                 
                 body {
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
+                    font-family: 'Arial', 'Tahoma', sans-serif;
+                    font-size: 16px;
                     font-weight: bold;
                     line-height: 1.4;
                     color: black;
                     background: white;
+                    margin: 0;
                     padding: 10mm;
+                    direction: rtl;
+                    text-align: right;
                 }
                 
                 table {
                     width: 100% !important;
                     border-collapse: collapse !important;
-                    margin: 5mm 0 !important;
+                    margin: 3mm 0 !important;
+                    direction: rtl;
                 }
                 
                 th, td {
                     border: 2px solid black !important;
-                    padding: 3mm !important;
+                    padding: 4mm !important;
                     text-align: center !important;
                     font-weight: bold !important;
-                    font-size: 12px !important;
+                    font-size: 14px !important;
                     word-wrap: break-word;
                     overflow-wrap: break-word;
+                    vertical-align: middle;
                 }
                 
                 h1, h2, h3 {
                     font-weight: bold !important;
                     margin: 3mm 0 !important;
+                    text-align: center !important;
                 }
                 
                 .grid {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 5mm;
+                    gap: 4mm;
                     margin: 3mm 0;
                 }
                 
@@ -2317,70 +2386,57 @@ function generateStandardPageHTML(content) {
                 .text-left { text-align: left !important; }
                 .text-right { text-align: right !important; }
                 .font-semibold, .font-bold { font-weight: bold !important; }
-                .text-xl { font-size: 18px !important; }
-                .text-lg { font-size: 16px !important; }
-                .text-sm { font-size: 12px !important; }
-                .text-xs { font-size: 10px !important; }
+                .text-xl { font-size: 20px !important; }
+                .text-lg { font-size: 18px !important; }
+                .text-sm { font-size: 14px !important; }
+                .text-xs { 
+                    font-size: 11px !important; 
+                    line-height: 1.3 !important;
+                }
                 .mb-3 { margin-bottom: 3mm !important; }
                 .mb-4 { margin-bottom: 4mm !important; }
                 
-                @media print {
-                    body {
-                        margin: 0 !important;
-                        padding: 5mm !important;
-                        font-size: 12px !important;
-                    }
-                    
-                    table {
-                        page-break-inside: avoid;
-                        font-size: 11px !important;
-                    }
-                    
-                    th, td {
-                        padding: 2mm !important;
-                        font-size: 11px !important;
-                    }
-                    
-                    .no-print {
-                        display: none !important;
-                    }
+                /* Arabic text support */
+                .text-blue-600 { color: #2563eb !important; }
+                
+                /* Footer styling */
+                tfoot tr { background-color: #f3f4f6 !important; }
+                tfoot .bg-gray-100 { background-color: #e5e7eb !important; }
+                tfoot .bg-gray-200 { background-color: #d1d5db !important; }
+                
+                small {
+                    display: block;
+                    margin-top: 2px;
+                    color: #666;
+                    font-size: 10px !important;
                 }
                 
-                /* Mobile adjustments */
-                @media (max-width: 768px) {
+                @media print {
+                    @page {
+                        margin: 5mm;
+                        size: A4;
+                    }
+                    
                     body {
-                        font-size: 16px;
-                        padding: 5mm;
+                        font-size: 16px !important;
+                        direction: rtl !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     
                     table {
-                        font-size: 14px;
+                        direction: rtl !important;
                     }
                     
                     th, td {
-                        padding: 2mm;
-                        font-size: 14px;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
             </style>
         </head>
         <body>
             ${content}
-            
-            <!-- Print button for mobile users -->
-            <div class="no-print" style="text-align: center; margin-top: 10mm;">
-                <button onclick="window.print(); return false;" 
-                        style="background: #2196F3; color: white; padding: 10px 20px; 
-                               border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                    🖨️ Print Bill
-                </button>
-                <br><br>
-                <button onclick="window.close(); return false;" 
-                        style="background: #f44336; color: white; padding: 8px 16px; 
-                               border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
-                    ❌ Close
-                </button>
-            </div>
         </body>
         </html>
     `;
@@ -2455,24 +2511,31 @@ function updatePrintAreas() {
             });
         }
 
-        // Standard print table row
+        // Standard print table row WITH discount column
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="border-2 border-black px-2 py-1 text-center">
                 <div class="font-semibold text-xs">${name}</div>
-                ${tagsDisplay ? `<div class="text-xs text-blue-600">Tags: ${tagsDisplay}</div>` : ''}
+                ${tagsDisplay ? `<div class="text-xs text-blue-600">إضافات: ${tagsDisplay}</div>` : ''}
             </td>
             <td class="border-2 border-black px-2 py-1 text-center font-semibold">${qty}</td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${price.toFixed(2)}₪${tagsTotal > 0 ? `<br><small class="text-xs">+${tagsTotal.toFixed(2)}₪</small>` : ''}</td>
-            <td class="border-2 border-black px-2 py-1 text-center font-semibold">${actualDiscount.toFixed(2)}₪</td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                <div>${price.toFixed(2)}₪</div>
+                ${tagsTotal > 0 ? `<small class="text-xs">+${tagsTotal.toFixed(2)}₪ إضافات</small>` : ''}
+            </td>
+            <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                ${actualDiscount > 0 ? `
+                    <div>${actualDiscount.toFixed(2)}₪</div>
+                    <small class="text-xs">${discountType === 'per-unit' ? 'لكل وحدة' : 'إجمالي'}</small>
+                ` : '-'}
+            </td>
             <td class="border-2 border-black px-2 py-1 text-center font-semibold">${finalSubtotal.toFixed(2)}₪</td>
         `;
         printList.appendChild(tr);
 
-        // Receipt table row with enhanced details
+        // Receipt table row (UNCHANGED - no discount column)
         const receiptTr = document.createElement('tr');
         receiptTr.innerHTML = `
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">${index + 1}</td>
             <td class="border-2 border-black px-2 py-2 text-center font-bold">
                 <div>${name}</div>
                 ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
@@ -2482,23 +2545,22 @@ function updatePrintAreas() {
                 <div>${price.toFixed(1)}</div>
                 ${tagsTotal > 0 ? `<div class="text-xs">+${tagsTotal.toFixed(1)} إضافات</div>` : ''}
             </td>
-            <td class="border-2 border-black px-2 py-2 text-center font-bold">${actualDiscount > 0 ? actualDiscount.toFixed(1) : '-'}</td>
             <td class="border-2 border-black px-2 py-2 text-center font-bold">${finalSubtotal.toFixed(1)}</td>
         `;
         receiptTableBody.appendChild(receiptTr);
     });
 
-    // Update totals for standard print
-    document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
+    // Update totals for standard print (NEW structure with subtotal and discount rows)
+    document.getElementById('print-subtotal').textContent = subtotal.toFixed(2) + '₪';
     document.getElementById('print-total-discount').textContent = totalDiscount.toFixed(2) + '₪';
+    document.getElementById('print-total-price').textContent = total.toFixed(2) + '₪';
 
-    // Update receipt totals with enhanced details
+    // Update receipt totals (UNCHANGED)
     document.getElementById('receipt-subtotal').textContent = subtotal.toFixed(1);
     document.getElementById('receipt-total-discount-amount').textContent = totalDiscount.toFixed(1);
     document.getElementById('receipt-final-amount').textContent = total.toFixed(1);
 
-
-   let customerName = '';
+    let customerName = '';
     let customerPhone = '';
 
     if (isRestaurant) {
@@ -2523,24 +2585,22 @@ function updatePrintAreas() {
     }
 
     // Update print areas with customer info
-    const customerInfo = customerName ? `{{__('messages.Customer')}}: ${customerName}` : '';
-    const phoneInfo = customerPhone ? `{{__('messages.Phone')}}: ${customerPhone}` : '';
-
-    document.getElementById('print-customer2').textContent= customerInfo;
+    const customerInfo = customerName ? `الزبون: ${customerName}` : '';
+    const phoneInfo = customerPhone ? `الهاتف: ${customerPhone}` : '';
 
     document.getElementById('print-customer').textContent = customerInfo;
     document.getElementById('print-customer-phone').textContent = phoneInfo;
 
-   
     // Add user details
-const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
-if (userDetails) {
-    document.getElementById('print-user-details').innerHTML = `Details: ${userDetails.replace(/\n/g, '<br>')}`;
-    document.getElementById('receipt-user-details').innerHTML = userDetails.replace(/\n/g, '<br>');
-} else {
-    document.getElementById('print-user-details').textContent = '';
-    document.getElementById('receipt-user-details').textContent = '';
-}
+    const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
+    if (userDetails) {
+        document.getElementById('print-user-details').innerHTML = `التفاصيل: ${userDetails.replace(/\n/g, '<br>')}`;
+        document.getElementById('receipt-user-details').innerHTML = userDetails.replace(/\n/g, '<br>');
+    } else {
+        document.getElementById('print-user-details').textContent = '';
+        document.getElementById('receipt-user-details').textContent = '';
+    }
+
     // Update bill ID if available
     if (currentBillId) {
         document.getElementById('current-bill-id').textContent = currentBillId;
