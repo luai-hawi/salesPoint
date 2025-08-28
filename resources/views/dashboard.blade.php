@@ -2099,7 +2099,7 @@ function openPrintInNewTab(isReceipt = false) {
         setTimeout(() => {
             printWindow.close();
         }, 1000);
-    }, 500);
+    }, 2000);
 };
         
     } catch (error) {
@@ -2538,7 +2538,7 @@ function updatePrintAreas() {
     document.getElementById('print-customer').textContent = customerInfo;
     document.getElementById('print-customer-phone').textContent = phoneInfo;
 
-    // Add user details
+   
     // Add user details
 const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
 if (userDetails) {
