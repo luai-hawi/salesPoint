@@ -1,0 +1,52 @@
+[33mcd780f7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m phone print form fix14
+[33m5382397[m phone print form fix13
+[33mcee5879[m phone print form fix12
+[33mbfed810[m phone print form fix11
+[33m4331ece[m phone print form fix10
+[33m6da7677[m phone print form fix9
+[33m7b7e728[m phone print form fix8
+[33m5a01b4b[m phone print form fix7
+[33mc9be349[m phone print form fix6
+[33mdba765c[m phone print form fix5
+[33m1a691e5[m phone print form fix4
+[33m9c9fb1a[m phone print form fix3
+[33m5ebed65[m phone print form fix2
+[33mc5957ba[m phone print form fix1
+[33m72c43a7[m fix update bill and print styles with adding categories
+[33mc67d330[m transaltion added3
+[33m043c313[m transaltion added2
+[33mf9e3cdf[m transaltion added
+[33mc52b5c8[m res undo
+[33m6771007[m res v4
+[33mf29fa46[m res v3
+[33mced8c95[m res v2
+[33m832e466[m restaurant adds
+[33m4b93608[m give employees quick access to payments
+[33m72d995c[m fix add out of stock to bill
+[33m055b7d1[m bug fixes 2
+[33me565908[m bug fixes
+[33m1e845fa[m admin dashboard fixes
+[33me90993e[m arabic language, no multi users, more print functions, other enhancments, restaurant add , merchant add
+[33mb6f4888[m getting ready to production3
+[33me3554b5[m getting ready to production2
+[33m24fed35[m getting ready to production
+[33m8d6297a[m compress images
+[33m19b47cf[m HawiTech V2
+[33m723cbbf[m fix total calculations in bills and remove add new bill
+[33m16391a8[m print fix
+[33mb148c21[m batches added!
+[33m9267cbe[m unsaved file
+[33m9af2a3f[m adding customers page
+[33m68b7036[m lag fix
+[33ma154f53[m add quantity fix after search or navigating navigation and enhanced performance
+[33m2ce4e02[m removing js list of products and fix the code, only return important columns of products
+[33m3dc0801[m fix bill unit price
+[33md90ce0b[m fix print and duplicates
+[33m0365fdb[m last version fix
+[33m943b6b1[m dashboard handle duplicates and reverse ordering products
+[33m7e85ee0[m pagination and ajax search
+[33mcf0265f[m delete confimation and print
+[33m4b8dfb3[m total sales and profits
+[33m3322b26[m ready to use
+[33m3c6b415[m readme
+[33mb47123b[m first commit

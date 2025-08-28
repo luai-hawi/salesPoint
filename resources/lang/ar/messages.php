@@ -144,6 +144,7 @@ return [
     'Optional - helps organize products by category.'=> "اختياري - يساعد في تنظيم المنتجات حسب الفئة.",
     'Uncategorized'=> "غير مصنف",
     'Final Total'=> "المجموع النهائي",
+    'Export Data'=> 'تصدير البيانات',
 
   
     "Select Tags for"=> "اختر العلامات لـ",

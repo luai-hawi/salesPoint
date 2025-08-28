@@ -179,6 +179,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
 
         return response()->json($sales);
     });
+    Route::get('/dashboard/export-data', [FinancialDashboardController::class, 'exportData'])->name('dashboard.export-data');
 });
 
 

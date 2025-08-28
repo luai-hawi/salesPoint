@@ -428,6 +428,7 @@ return [
     'Optional - helps organize products by category.' => 'Optional - helps organize products by category.',
     'Uncategorized' => 'Uncategorized',
     'Final Total' => 'Final Total',
+    'Export Data' => 'Export Data',
 
     // Financial Dashboard
     'Period:' => 'Period:',

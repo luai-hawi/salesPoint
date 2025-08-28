@@ -10,8 +10,15 @@ use App\Models\Employee;
 use App\Models\EmployeePayment;
 use App\Models\Expense;
 use App\Models\Product;
+use App\Models\Batch;
+use App\Models\Tag;
+use App\Models\User;
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinancialDashboardController extends Controller
 {
@@ -430,4 +437,213 @@ class FinancialDashboardController extends Controller
             ]
         ];
     }
+    public function exportData()
+{
+    $userId = auth()->id();
+    $spreadsheet = new Spreadsheet();
+    
+    // Remove default sheet and create custom sheets
+    $spreadsheet->removeSheetByIndex(0);
+    
+    // 1. Products Sheet
+    $productsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Products');
+    $spreadsheet->addSheet($productsSheet);
+    
+    $products = Product::where('user_id', $userId)->get();
+    $productsSheet->fromArray([
+        ['ID', 'Name', 'Barcode', 'Quantity', 'Cost Price', 'Selling Price', 'Has Tags', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($products as $product) {
+        $productsSheet->fromArray([
+            [$product->id, $product->name, $product->barcode, $product->quantity, 
+             $product->cost_price, $product->selling_price, $product->has_tags ? 'Yes' : 'No', 
+             $product->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 2. Customers Sheet
+    $customersSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Customers');
+    $spreadsheet->addSheet($customersSheet);
+    
+    $customers = Customer::where('user_id', $userId)->get();
+    $customersSheet->fromArray([
+        ['ID', 'Name', 'Phone', 'Balance', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($customers as $customer) {
+        $customersSheet->fromArray([
+            [$customer->id, $customer->name, $customer->phone, $customer->balance, 
+             $customer->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 3. Bills Sheet
+    $billsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Bills');
+    $spreadsheet->addSheet($billsSheet);
+    
+    $bills = Bill::where('user_id', $userId)->with('customer')->get();
+    $billsSheet->fromArray([
+        ['ID', 'Customer Name', 'Total Price', 'Note', 'Is Damaged', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($bills as $bill) {
+        $billsSheet->fromArray([
+            [$bill->id, $bill->customer->name ?? 'N/A', $bill->total_price, $bill->note, 
+             $bill->is_damaged ? 'Yes' : 'No', $bill->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 4. Bill Products Sheet (Pivot table data)
+    $billProductsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Bill_Products');
+    $spreadsheet->addSheet($billProductsSheet);
+    
+    $billProducts = \DB::table('bill_product')
+        ->join('bills', 'bill_product.bill_id', '=', 'bills.id')
+        ->join('products', 'bill_product.product_id', '=', 'products.id')
+        ->where('bills.user_id', $userId)
+        ->select('bill_product.*', 'products.name as product_name')
+        ->get();
+    
+    $billProductsSheet->fromArray([
+        ['Bill ID', 'Product ID', 'Product Name', 'Quantity', 'Discount', 'Cost Price', 'Selling Price', 'Tags']
+    ]);
+    
+    $row = 2;
+    foreach ($billProducts as $billProduct) {
+        $billProductsSheet->fromArray([
+            [$billProduct->bill_id, $billProduct->product_id, $billProduct->product_name,
+             $billProduct->quantity, $billProduct->discount, $billProduct->cost_price,
+             $billProduct->selling_price, $billProduct->tags]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 5. Customer Payments Sheet
+    $paymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Customer_Payments');
+    $spreadsheet->addSheet($paymentsSheet);
+    
+    $payments = CustomerPayment::where('user_id', $userId)->with('customer')->get();
+    $paymentsSheet->fromArray([
+        ['ID', 'Customer Name', 'Amount', 'Type', 'Note', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($payments as $payment) {
+        $paymentsSheet->fromArray([
+            [$payment->id, $payment->customer->name ?? 'N/A', $payment->amount, 
+             $payment->type, $payment->note, $payment->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 6. Expenses Sheet
+    $expensesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Expenses');
+    $spreadsheet->addSheet($expensesSheet);
+    
+    $expenses = Expense::where('user_id', $userId)->get();
+    $expensesSheet->fromArray([
+        ['ID', 'Title', 'Amount', 'Expense Date', 'Notes', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($expenses as $expense) {
+        $expensesSheet->fromArray([
+            [$expense->id, $expense->title, $expense->amount, $expense->expense_date,
+             $expense->notes, $expense->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 7. Employees Sheet
+    $employeesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employees');
+    $spreadsheet->addSheet($employeesSheet);
+    
+    $employees = Employee::where('shop_owner_id', $userId)->get();
+    $employeesSheet->fromArray([
+        ['ID', 'Name', 'Job Title', 'Monthly Salary', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($employees as $employee) {
+        $employeesSheet->fromArray([
+            [$employee->id, $employee->name, $employee->job_title, $employee->monthly_salary,
+             $employee->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 8. Employee Payments Sheet
+    $empPaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employee_Payments');
+    $spreadsheet->addSheet($empPaymentsSheet);
+    
+    $empPayments = EmployeePayment::whereHas('employee', function($query) use ($userId) {
+        $query->where('shop_owner_id', $userId);
+    })->with('employee')->get();
+    
+    $empPaymentsSheet->fromArray([
+        ['ID', 'Employee Name', 'Amount', 'Payment Date', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($empPayments as $payment) {
+        $empPaymentsSheet->fromArray([
+            [$payment->id, $payment->employee->name ?? 'N/A', $payment->amount,
+             $payment->payment_date, $payment->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 9. Batches Sheet
+    $batchesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Batches');
+    $spreadsheet->addSheet($batchesSheet);
+    
+    $batches = Batch::where('user_id', $userId)->with('product')->get();
+    $batchesSheet->fromArray([
+        ['ID', 'Product Name', 'Quantity', 'Cost Price', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($batches as $batch) {
+        $batchesSheet->fromArray([
+            [$batch->id, $batch->product->name ?? 'N/A', $batch->quantity,
+             $batch->cost_price, $batch->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+    
+    // 10. Tags Sheet
+    $tagsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Tags');
+    $spreadsheet->addSheet($tagsSheet);
+    
+    $tags = Tag::where('user_id', $userId)->get();
+    $tagsSheet->fromArray([
+        ['ID', 'Name', 'Price', 'Created At']
+    ]);
+    
+    $row = 2;
+    foreach ($tags as $tag) {
+        $tagsSheet->fromArray([
+            [$tag->id, $tag->name, $tag->price, $tag->created_at->format('Y-m-d H:i:s')]
+        ], null, 'A' . $row);
+        $row++;
+    }
+
+    $fileName = 'database_export_' . auth()->user()->name . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+    
+    return new StreamedResponse(function() use ($spreadsheet) {
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+    }, 200, [
+        'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        'Cache-Control' => 'max-age=0',
+    ]);
+}
 }
