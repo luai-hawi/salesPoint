@@ -432,8 +432,9 @@
         </tbody>
         <tfoot>
             <tr class="bg-gray-50">
-                <td colspan="3" class="border-2 border-black px-1 py-1 text-right font-bold text-xs">{{ __('messages.Total') }}</td>
-                <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">${{ number_format($bill->total_price, 1) }}</td>
+                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->products->sum('pivot.discount'), 2) }}</td>
+                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->total_price, 2) }}</td>
             </tr>
         </tfoot>
     </table>
@@ -448,7 +449,7 @@
     {{-- Professional Receipt Print --}}
 <div id="receipt-area" class="print-hidden">
     <div class="receipt-content">
-        <!-- Header with Shop Info - Ultra Compact -->
+        <!-- Header with Shop Info -->
         <div class="text-center mb-2">
             <div class="mb-1">
                 <h1 class="text-lg font-bold">{{ $shopName }}</h1>
@@ -458,8 +459,8 @@
             <hr class="border-2 border-black my-1">
         </div>
 
-        <!-- Shop Owner Name Prominently Displayed - Compact -->
-        <div class="text-center mb-1">
+        <!-- Shop Owner Name Prominently Displayed -->
+        <div class="text-center mb-2">
             <div class="text-sm font-bold bg-gray-200 py-1 px-2 rounded">
                 @php
                     $shopOwnerName = '';
@@ -473,8 +474,8 @@
             </div>
         </div>
 
-        <!-- Bill Info Section - Ultra Compact -->
-        <div class="grid grid-cols-2 gap-1 mb-1 text-xs">
+        <!-- Bill Info Section -->
+        <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
             <div>
                 <div class="font-bold">{{__('messages.Date')}}: {{ $bill->created_at->format('d-m-Y') }}</div>
                 <div class="font-bold">{{__('messages.Time')}}: {{ $bill->created_at->format('H:i:s') }}</div>
@@ -487,21 +488,21 @@
             </div>
         </div>
 
-        <!-- Customer Info - Ultra Compact -->
-        <div class="mb-1">
+        <!-- Customer Info -->
+        <div class="mb-2">
             <div class="font-bold text-xs">{{__('messages.Created By')}}: {{ $bill->creator->name }}</div>
             <div class="text-xs">{{ auth()->user()->details ?? "" }}</div>
         </div>
 
         <!-- Products Table -->
         <div class="w-full overflow-x-auto">
-            <table class="w-full border-2 border-black mb-4" style="border-collapse: collapse;">
+            <table class="w-full border-2 border-black mb-2" style="border-collapse: collapse;">
                 <thead>
                     <tr class="bg-gray-200">
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">#</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">اسم الطبق</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">الكمية</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">المجموع</th>
+                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">اسم الطبق</th>
+                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">الكمية</th>
+                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">السعر</th>
+                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">المجموع</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -523,23 +524,28 @@
                             $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
                         @endphp
                         <tr>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ $index + 1 }}</td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">
-                                <div class="text-xs">{{ $product->name }}</div>
+                            <td class="border-2 border-black px-1 py-1 text-center font-bold">
+                                <div>{{ $product->name }}</div>
                                 @if($tagsDisplayArabic)
                                     <div class="text-xs">إضافات: {{ $tagsDisplayArabic }}</div>
                                 @endif
                             </td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ $product->pivot->quantity }}</td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ number_format($finalPrice, 1) }}</td>
+                            <td class="border-2 border-black px-1 py-1 text-center font-bold">{{ $product->pivot->quantity }}</td>
+                            <td class="border-2 border-black px-1 py-1 text-center font-bold">
+                                <div>{{ number_format($basePrice, 1) }}</div>
+                                @if($totalTagPrice > 0)
+                                    <div class="text-xs">+{{ number_format($totalTagPrice, 1) }} إضافات</div>
+                                @endif
+                            </td>
+                            <td class="border-2 border-black px-1 py-1 text-center font-bold">{{ number_format($finalPrice, 1) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
 
-        <!-- Detailed Totals Section - Ultra Compact -->
-        <div class="border-2 border-black mb-1">
+        <!-- Detailed Totals Section -->
+        <div class="border-2 border-black mb-2">
             @php
                 $subtotal = 0;
                 $totalDiscount = 0;
@@ -562,12 +568,10 @@
                 <div class="py-1">{{ number_format($subtotal, 1) }}</div>
             </div>
             <!-- Total Discount -->
-            @if($totalDiscount > 0)
             <div class="grid grid-cols-2 text-center font-bold text-sm border-b-2 border-black">
                 <div class="border-r-2 border-black py-1">{{__('messages.Total discount')}}:</div>
                 <div class="py-1">{{ number_format($totalDiscount, 1) }}</div>
             </div>
-            @endif
             <!-- Final Total -->
             <div class="grid grid-cols-2 text-center font-bold text-base bg-gray-200">
                 <div class="border-r-2 border-black py-1">{{__('messages.Total')}}:</div>
@@ -576,11 +580,11 @@
         </div>
 
         <!-- User Details -->
-        <div class="mt-4 text-center">
+        <div class="mt-2 text-center">
             <div class="text-xs font-bold">{{ auth()->user()->details ?? "" }}</div>
         </div>
 
-        <!-- Footer - Ultra Compact -->
+        <!-- Footer -->
         <div class="text-center mt-2 text-xs font-bold">
             <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
             <hr class="border-2 border-black my-1">
@@ -659,9 +663,9 @@
 .receipt-content {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 20px !important;
-    font-size: 14pt !important;
-    line-height: 1.4 !important;
+    padding: 10px !important;
+    font-size: 12pt !important;
+    line-height: 1.2 !important;
     font-weight: bold !important;
     font-family: Arial, sans-serif !important;
     color: black !important;
@@ -705,7 +709,7 @@
         width: 100% !important;
         height: auto !important;
         max-width: none !important;
-        padding: 20px !important;
+        padding: 10px !important;
         margin: 0 !important;
         box-sizing: border-box !important;
     }
@@ -718,18 +722,16 @@
 
     .print-receipt th, .print-receipt td {
         border: 2px solid black !important;
-        padding: 8px !important;
+        padding: 4px !important;
         font-weight: bold !important;
         word-wrap: break-word !important;
     }
 
     /* Make table columns responsive */
-    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) { width: 8%; } /* # */
-    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 35%; } /* Product name */
-    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 12%; } /* Quantity */
-    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 15%; } /* Price */
-    .print-receipt th:nth-child(5), .print-receipt td:nth-child(5) { width: 15%; } /* Discount */
-    .print-receipt th:nth-child(6), .print-receipt td:nth-child(6) { width: 15%; } /* Total */
+    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) { width: 45%; } /* Product name */
+    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 15%; } /* Quantity */
+    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 20%; } /* Price */
+    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 20%; } /* Total */
 
     .print-receipt .grid {
         display: grid !important;
@@ -764,6 +766,71 @@
     justify-content: space-between;
     font-size: 10pt !important;
     font-weight: bold !important;
+}
+
+/* Thermal paper optimization */
+@media print and (max-width: 104mm) {
+    .print-receipt .receipt-content {
+        font-size: 11pt !important;
+        padding: 8px !important;
+    }
+
+    .print-receipt th, .print-receipt td {
+        padding: 3px !important;
+        font-size: 10pt !important;
+    }
+
+    .print-receipt h1 {
+        font-size: 14pt !important;
+    }
+}
+
+@media print and (max-width: 80mm) {
+    .print-receipt .receipt-content {
+        font-size: 10pt !important;
+        padding: 6px !important;
+    }
+
+    .print-receipt th, .print-receipt td {
+        padding: 2px !important;
+        font-size: 9pt !important;
+    }
+
+    .print-receipt h1 {
+        font-size: 12pt !important;
+    }
+}
+
+@media print and (max-width: 58mm) {
+    .print-receipt .receipt-content {
+        font-size: 9pt !important;
+        padding: 4px !important;
+    }
+
+    .print-receipt th, .print-receipt td {
+        padding: 1px !important;
+        font-size: 8pt !important;
+    }
+
+    .print-receipt h1 {
+        font-size: 11pt !important;
+    }
+
+    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) {
+        width: 50% !important;
+    }
+
+    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) {
+        width: 15% !important;
+    }
+
+    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) {
+        width: 17% !important;
+    }
+
+    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) {
+        width: 18% !important;
+    }
 }
         #print-area {
             display: none;
@@ -1083,621 +1150,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTags();
     updateGrandTotal();
 });
-// Enhanced mobile device detection
-function isMobileDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
-    const isMobileScreen = window.innerWidth <= 768 || window.innerHeight <= 600;
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-    return isMobileUA || (isMobileScreen && isTouchDevice);
-}
-
-// Standard Print Button - Enhanced for mobile
 document.getElementById('print-button').addEventListener('click', () => {
-    if (isMobileDevice()) {
-        // For mobile: Open in new tab
-        openBillPrintInNewTab(false); // false = standard print
-    } else {
-        // For desktop: Use existing method
-        document.body.classList.remove('print-receipt');
-        window.print();
-    }
+    document.body.classList.remove('print-receipt');
+    window.print();
 });
 
-// Receipt Print Button - Enhanced for mobile
+// Receipt print functionality
 document.getElementById('print-receipt-button').addEventListener('click', () => {
-    if (isMobileDevice()) {
-        // For mobile: Use simplified receipt print
-        printBillReceiptForMobile();
-    } else {
-        // For desktop: Use existing method
-        document.body.classList.add('print-receipt');
-        window.print();
-        document.body.classList.remove('print-receipt');
-    }
+    document.body.classList.add('print-receipt');
+    window.print();
+    document.body.classList.remove('print-receipt');
 });
-
-    // Function to open bill print content in new tab
-    function openBillPrintInNewTab(isReceipt = false) {
-        try {
-            let htmlContent;
-
-            if (isReceipt) {
-                // Get receipt content
-                const receiptArea = document.getElementById('receipt-area');
-                if (!receiptArea) {
-                    alert('Receipt template not found');
-                    return;
-                }
-
-                // Temporarily show to get content
-                const originalDisplay = receiptArea.style.display;
-                receiptArea.style.display = 'block';
-                const receiptContent = receiptArea.innerHTML;
-                receiptArea.style.display = originalDisplay;
-
-                htmlContent = generateBillReceiptPageHTML(receiptContent);
-            } else {
-                // Get standard print content
-                const printArea = document.getElementById('print-area');
-                if (!printArea) {
-                    alert('Print template not found');
-                    return;
-                }
-
-                // Temporarily show to get content
-                const originalDisplay = printArea.style.display;
-                printArea.style.display = 'block';
-                const printContent = printArea.innerHTML;
-                printArea.style.display = originalDisplay;
-
-                htmlContent = generateBillStandardPageHTML(printContent);
-            }
-
-            // Open in new tab
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert('Please allow popups for printing');
-                return;
-            }
-
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
-
-            // Auto-print after a short delay
-            printWindow.onload = function() {
-                setTimeout(() => {
-                    printWindow.print();
-                    // Don't auto-close on mobile to avoid issues
-                }, 500);
-            };
-
-        } catch (error) {
-            console.error('Print error:', error);
-            alert('Print failed. Please try again.');
-        }
-    }
-
-    // Simplified mobile receipt print function for bills
-    function printBillReceiptForMobile() {
-        try {
-            // Get receipt content
-            const receiptArea = document.getElementById('receipt-area');
-            if (!receiptArea) {
-                alert('Receipt template not found');
-                return;
-            }
-
-            // Temporarily show to get content
-            const originalDisplay = receiptArea.style.display;
-            receiptArea.style.display = 'block';
-            const receiptContent = receiptArea.innerHTML;
-            receiptArea.style.display = originalDisplay;
-
-            // Generate simplified mobile-friendly receipt HTML
-            const htmlContent = generateBillMobileReceiptHTML(receiptContent);
-
-            // Open in new tab
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert('Please allow popups for printing');
-                return;
-            }
-
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
-
-            // Auto-print after a short delay
-            printWindow.onload = function() {
-                setTimeout(() => {
-                    printWindow.print();
-                    // Don't auto-close on mobile to avoid issues
-                }, 500);
-            };
-
-        } catch (error) {
-            console.error('Mobile receipt print error:', error);
-            alert('Print failed. Please try again.');
-        }
-    }
-
-    // Generate simplified mobile-friendly receipt HTML for bills
-    function generateBillMobileReceiptHTML(content) {
-        return `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head>
-                <title>Receipt - {{ $bill->id }}</title>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    * {
-                        box-sizing: border-box;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    body {
-                        font-family: 'Courier New', monospace;
-                        font-size: 10px;
-                        font-weight: bold;
-                        line-height: 1.1;
-                        color: black;
-                        background: white;
-                        padding: 1mm 1mm 0 1mm; /* Ultra-minimal padding, no bottom */
-                        direction: rtl;
-                        width: 100%; /* Responsive width */
-                        max-width: 98mm; /* Max for 104mm paper with margins */
-                        min-width: 50mm; /* Min for 56mm paper with margins */
-                        margin: 0 auto;
-                        height: auto; /* Ensure no extra height */
-                    }
-
-                    .receipt-container {
-                        width: 100%;
-                        max-width: 96mm;
-                        min-width: 48mm;
-                        margin: 0 auto;
-                    }
-
-                    table {
-                        width: 100% !important;
-                        border-collapse: collapse !important;
-                        margin: 2mm 0 !important;
-                        font-size: 10px !important;
-                    }
-
-                    th, td {
-                        border: 1px solid black !important;
-                        padding: 1mm !important;
-                        text-align: center !important;
-                        font-weight: bold !important;
-                        word-wrap: break-word;
-                        overflow-wrap: break-word;
-                    }
-
-                    h1, h2, h3 {
-                        font-size: 12px !important;
-                        font-weight: bold !important;
-                        margin: 2mm 0 !important;
-                        text-align: center !important;
-                    }
-
-                    .text-center { text-align: center !important; }
-                    .text-left { text-align: left !important; }
-                    .text-right { text-align: right !important; }
-                    .font-bold { font-weight: bold !important; }
-                    .text-sm { font-size: 9px !important; }
-                    .text-xs { font-size: 8px !important; }
-                    .mb-2 { margin-bottom: 1mm !important; }
-                    .mb-4 { margin-bottom: 2mm !important; }
-                    .mb-6 { margin-bottom: 3mm !important; }
-                    .mt-4 { margin-top: 2mm !important; }
-                    .mt-6 { margin-top: 3mm !important; }
-
-                    .grid {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 2mm;
-                        margin: 2mm 0;
-                    }
-
-                    .grid-cols-2 > div {
-                        flex: 1;
-                        min-width: 45%;
-                    }
-
-                    .border-r-2 {
-                        border-right: 1px solid black !important;
-                    }
-
-                    .border-b-2 {
-                        border-bottom: 1px solid black !important;
-                    }
-
-                    hr {
-                        border: 1px solid black;
-                        margin: 2mm 0;
-                    }
-
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 2mm !important;
-                            font-size: 10px !important;
-                        }
-
-                        .receipt-container {
-                            width: 72mm !important; /* Leave 2mm margins on 76mm paper */
-                        }
-
-                        table {
-                            page-break-inside: avoid;
-                            font-size: 9px !important;
-                        }
-
-                        th, td {
-                            padding: 1mm !important;
-                            font-size: 9px !important;
-                        }
-
-                        .no-print {
-                            display: none !important;
-                        }
-
-                        /* Responsive column widths for 4-column table */
-                        th:nth-child(1), td:nth-child(1) { width: 8%; } /* # */
-                        th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name */
-                        th:nth-child(3), td:nth-child(3) { width: 12%; } /* Quantity */
-                        th:nth-child(4), td:nth-child(4) { width: 25%; } /* Total */
-                    }
-
-                    /* Mobile-specific adjustments */
-                    @media (max-width: 768px) {
-                        body {
-                            font-size: 12px;
-                            padding: 3mm;
-                        }
-
-                        table {
-                            font-size: 11px;
-                        }
-
-                        th, td {
-                            padding: 1mm;
-                            font-size: 10px;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="receipt-container">
-                    ${content}
-
-                    <!-- Print button for mobile users -->
-                    <div class="no-print" style="text-align: center; margin-top: 15mm;">
-                        <button onclick="window.print(); return false;"
-                                style="background: #4CAF50; color: white; padding: 12px 24px;
-                                       border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin: 5px;">
-                            🖨️ Print Receipt
-                        </button>
-                        <br><br>
-                        <button onclick="window.close(); return false;"
-                                style="background: #f44336; color: white; padding: 10px 20px;
-                                       border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
-                            ❌ Close
-                        </button>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-    }
-
-    // Generate HTML for bill standard print
-    function generateBillStandardPageHTML(content) {
-        return `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Bill #{{ $bill->id }}</title>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    * {
-                        box-sizing: border-box;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    body {
-                        font-family: Arial, sans-serif;
-                        font-size: 14px;
-                        font-weight: bold;
-                        line-height: 1.4;
-                        color: black;
-                        background: white;
-                        padding: 10mm;
-                    }
-
-                    table {
-                        width: 100% !important;
-                        border-collapse: collapse !important;
-                        margin: 5mm 0 !important;
-                    }
-
-                    th, td {
-                        border: 2px solid black !important;
-                        padding: 3mm !important;
-                        text-align: center !important;
-                        font-weight: bold !important;
-                        font-size: 12px !important;
-                        word-wrap: break-word;
-                        overflow-wrap: break-word;
-                    }
-
-                    h1, h2, h3 {
-                        font-weight: bold !important;
-                        margin: 3mm 0 !important;
-                    }
-
-                    .grid {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 5mm;
-                        margin: 3mm 0;
-                    }
-
-                    .grid-cols-2 > div {
-                        flex: 1;
-                        min-width: 45%;
-                    }
-
-                    .text-center { text-align: center !important; }
-                    .text-left { text-align: left !important; }
-                    .text-right { text-align: right !important; }
-                    .font-semibold, .font-bold { font-weight: bold !important; }
-                    .text-xl { font-size: 18px !important; }
-                    .text-lg { font-size: 16px !important; }
-                    .text-sm { font-size: 12px !important; }
-                    .text-xs { font-size: 10px !important; }
-                    .mb-3 { margin-bottom: 3mm !important; }
-                    .mb-4 { margin-bottom: 4mm !important; }
-
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 5mm !important;
-                            font-size: 12px !important;
-                        }
-
-                        table {
-                            page-break-inside: avoid;
-                            font-size: 11px !important;
-                        }
-
-                        th, td {
-                            padding: 2mm !important;
-                            font-size: 11px !important;
-                        }
-
-                        .no-print {
-                            display: none !important;
-                        }
-                    }
-
-                    /* Mobile adjustments */
-                    @media (max-width: 768px) {
-                        body {
-                            font-size: 16px;
-                            padding: 5mm;
-                        }
-
-                        table {
-                            font-size: 14px;
-                        }
-
-                        th, td {
-                            padding: 2mm;
-                            font-size: 14px;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                ${content}
-
-                <!-- Print button for mobile users -->
-                <div class="no-print" style="text-align: center; margin-top: 10mm;">
-                    <button onclick="window.print(); return false;"
-                            style="background: #2196F3; color: white; padding: 10px 20px;
-                                   border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                        🖨️ Print Bill
-                    </button>
-                    <br><br>
-                    <button onclick="window.close(); return false;"
-                            style="background: #f44336; color: white; padding: 8px 16px;
-                                   border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
-                        ❌ Close
-                    </button>
-                </div>
-            </body>
-            </html>
-        `;
-    }
-
-    // Generate HTML for bill receipt print (thermal paper style)
-    function generateBillReceiptPageHTML(content) {
-        return `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head>
-                <title>Receipt - Bill #{{ $bill->id }}</title>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    * {
-                        box-sizing: border-box;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    body {
-                        font-family: 'Courier New', monospace;
-                        font-size: 12px;
-                        font-weight: bold;
-                        line-height: 1.3;
-                        color: black;
-                        background: white;
-                        direction: rtl;
-                        padding: 5mm;
-                    }
-
-                    .receipt-content {
-                        width: 100%;
-                        max-width: 80mm;
-                        margin: 0 auto;
-                    }
-
-                    table {
-                        width: 100% !important;
-                        border-collapse: collapse !important;
-                        margin: 1mm 0 !important; /* Reduced margin */
-                        font-size: 9px !important;
-                        table-layout: fixed; /* Fixed layout for consistent sizing */
-                    }
-
-                    th, td {
-                        border: 1px solid black !important;
-                        padding: 0.5mm !important; /* Ultra-compact padding */
-                        text-align: center !important;
-                        font-weight: bold !important;
-                        font-size: 8px !important;
-                        word-wrap: break-word;
-                        overflow-wrap: break-word;
-                    }
-
-                    h1, h2, h3 {
-                        font-size: 12px !important;
-                        font-weight: bold !important;
-                        margin: 2mm 0 !important;
-                        text-align: center !important;
-                    }
-
-                    .text-center { text-align: center !important; }
-                    .text-right { text-align: right !important; }
-                    .text-left { text-align: left !important; }
-                    .font-bold { font-weight: bold !important; }
-                    .text-sm { font-size: 10px !important; }
-                    .text-xs { font-size: 8px !important; }
-                    .mb-2 { margin-bottom: 2mm !important; }
-                    .mb-4 { margin-bottom: 4mm !important; }
-                    .mb-6 { margin-bottom: 6mm !important; }
-                    .mt-4 { margin-top: 4mm !important; }
-                    .mt-6 { margin-top: 6mm !important; }
-
-                    .grid {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 2mm;
-                        margin: 2mm 0;
-                    }
-
-                    .grid-cols-2 > div {
-                        flex: 1;
-                        min-width: 45%;
-                    }
-
-                    .border-r-2 {
-                        border-right: 1px solid black !important;
-                    }
-
-                    .border-b-2 {
-                        border-bottom: 1px solid black !important;
-                    }
-
-                    hr {
-                        border: 1px solid black;
-                        margin: 2mm 0;
-                    }
-
-                    /* Print-specific styles for thermal paper */
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 2mm !important;
-                            font-size: 10px !important;
-                        }
-
-                        .receipt-content {
-                            width: 100% !important;
-                            max-width: 94mm !important; /* Leave 2mm margins */
-                            min-width: 46mm !important;
-                        }
-
-                        table {
-                            page-break-inside: avoid;
-                            font-size: 9px !important;
-                        }
-
-                        th, td {
-                            padding: 1mm !important;
-                            font-size: 9px !important;
-                        }
-
-                        .no-print {
-                            display: none !important;
-                        }
-                    }
-
-                    /* Mobile adjustments - Ultra Compact */
-                    @media (max-width: 768px) {
-                        body {
-                            font-size: 12px;
-                            padding: 2mm 2mm 0 2mm;
-                        }
-
-                        .receipt-container {
-                            width: 90%;
-                            max-width: 70mm;
-                        }
-
-                        table {
-                            font-size: 10px;
-                        }
-
-                        th, td {
-                            padding: 1mm;
-                            font-size: 9px;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="receipt-content">
-                    ${content}
-
-                    <!-- Print button for mobile users -->
-                    <div class="no-print" style="text-align: center; margin-top: 10mm;">
-                        <button onclick="window.print(); return false;"
-                                style="background: #4CAF50; color: white; padding: 10px 20px;
-                                       border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                            🖨️ Print Receipt
-                        </button>
-                        <br><br>
-                        <button onclick="window.close(); return false;"
-                                style="background: #f44336; color: white; padding: 8px 16px;
-                                       border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
-                            ❌ Close
-                        </button>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-    }
 
     </script>
 </x-app-layout>
