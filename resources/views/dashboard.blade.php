@@ -430,11 +430,10 @@
     <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
         <thead>
             <tr class="bg-gray-100">
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
+                <th class="border-2 border-black px-1 py-1 font-bold text-center text-xs">#</th>
+                <th class="border-2 border-black px-1 py-1 font-bold text-center text-xs">{{ __('messages.Product') }}</th>
+                <th class="border-2 border-black px-1 py-1 font-bold text-center text-xs">{{ __('messages.Qty') }}</th>
+                <th class="border-2 border-black px-1 py-1 font-bold text-center text-xs">{{ __('messages.Total') }}</th>
             </tr>
         </thead>
         <tbody id="print-products-list"></tbody>
@@ -2325,13 +2324,18 @@ function generateMobileReceiptHTML(content) {
 
                 body {
                     font-family: 'Courier New', monospace;
-                    font-size: 12px;
+                    font-size: 10px;
                     font-weight: bold;
-                    line-height: 1.3;
+                    line-height: 1.2;
                     color: black;
                     background: white;
-                    padding: 3mm;
+                    padding: 1mm 1mm 0 1mm; /* Remove bottom padding */
                     direction: rtl;
+                    width: 100%; /* Responsive width */
+                    max-width: 100mm; /* Max for 104mm paper */
+                    min-width: 52mm; /* Min for 56mm paper */
+                    margin: 0 auto;
+                    height: auto; /* Ensure no extra height */
                 }
 
                 .receipt-container {
@@ -2540,8 +2544,11 @@ function generateStandardPageHTML(content) {
                 @media print {
                     body {
                         margin: 0 !important;
-                        padding: 5mm !important;
-                        font-size: 12px !important;
+                        padding: 0.5mm 0.5mm 0 0.5mm !important; /* Remove bottom padding */
+                        font-size: 8px !important;
+                        width: 100% !important; /* Full width for any paper size */
+                        max-width: 100mm !important; /* Max for 104mm paper */
+                        min-width: 52mm !important; /* Min for 56mm paper */
                     }
 
                     table {

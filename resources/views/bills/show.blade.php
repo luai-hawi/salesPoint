@@ -432,9 +432,8 @@
         </tbody>
         <tfoot>
             <tr class="bg-gray-50">
-                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->products->sum('pivot.discount'), 2) }}</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->total_price, 2) }}</td>
+                <td colspan="3" class="border-2 border-black px-1 py-1 text-right font-bold text-xs">{{ __('messages.Total') }}</td>
+                <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">${{ number_format($bill->total_price, 1) }}</td>
             </tr>
         </tfoot>
     </table>
@@ -502,7 +501,6 @@
                         <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">#</th>
                         <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">اسم الطبق</th>
                         <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">الكمية</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">السعر</th>
                         <th class="border-2 border-black px-1 py-1 text-center font-bold text-xs">المجموع</th>
                     </tr>
                 </thead>
@@ -534,12 +532,11 @@
                             </td>
                             <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ $product->pivot->quantity }}</td>
                             <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">
-                                <div class="text-xs">{{ number_format($basePrice, 1) }}</div>
+                                <div class="text-xs">{{ number_format($finalPrice, 1) }}</div>
                                 @if($totalTagPrice > 0)
-                                    <div class="text-xs">+{{ number_format($totalTagPrice, 1) }}</div>
+                                    <div class="text-xs">({{ number_format($basePrice, 1) }} + {{ number_format($totalTagPrice, 1) }})</div>
                                 @endif
                             </td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold text-xs">{{ number_format($finalPrice, 1) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -1264,7 +1261,9 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         background: white;
                         padding: 1mm 1mm 0 1mm; /* Remove bottom padding */
                         direction: rtl;
-                        width: 74mm;
+                        width: 100%; /* Responsive width */
+                        max-width: 100mm; /* Max for 104mm paper */
+                        min-width: 52mm; /* Min for 56mm paper */
                         margin: 0 auto;
                         height: auto; /* Ensure no extra height */
                     }
@@ -1291,11 +1290,11 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         vertical-align: top;
                     }
 
-                    /* Compact table layout for 76mm paper - removed discount column */
+                    /* Compact table layout for 56mm-104mm paper - 4 columns */
                     th:nth-child(1), td:nth-child(1) { width: 8%; } /* # */
-                    th:nth-child(2), td:nth-child(2) { width: 50%; } /* Product name */
-                    th:nth-child(3), td:nth-child(3) { width: 15%; } /* Quantity */
-                    th:nth-child(4), td:nth-child(4) { width: 27%; } /* Price */
+                    th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name - more space */
+                    th:nth-child(3), td:nth-child(3) { width: 12%; } /* Quantity */
+                    th:nth-child(4), td:nth-child(4) { width: 25%; } /* Total */
 
                     h1, h2, h3 {
                         font-size: 10px !important;
@@ -1358,7 +1357,9 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                             margin: 0 !important;
                             padding: 0.5mm 0.5mm 0 0.5mm !important; /* Remove bottom padding */
                             font-size: 8px !important;
-                            width: 75mm !important;
+                            width: 100% !important; /* Full width for any paper size */
+                            max-width: 100mm !important; /* Max for 104mm paper */
+                            min-width: 52mm !important; /* Min for 56mm paper */
                             height: auto !important; /* No extra height */
                         }
 
@@ -1396,6 +1397,12 @@ document.getElementById('print-receipt-button').addEventListener('click', () => 
                         .receipt-container > *:last-child {
                             margin-bottom: 0 !important;
                         }
+
+                        /* Responsive column widths for different paper sizes */
+                        th:nth-child(1), td:nth-child(1) { width: 8%; } /* # */
+                        th:nth-child(2), td:nth-child(2) { width: 55%; } /* Product name - more space */
+                        th:nth-child(3), td:nth-child(3) { width: 12%; } /* Quantity */
+                        th:nth-child(4), td:nth-child(4) { width: 25%; } /* Price/Total */
                     }
 
                     /* Mobile-specific adjustments */
