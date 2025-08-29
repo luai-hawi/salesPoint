@@ -1788,7 +1788,7 @@
                         
                         body {
                             font-family: 'Arial', 'Courier New', monospace;
-                            font-size: 14px;
+                            font-size: 17px;
                             font-weight: normal;
                             line-height: 1.4;
                             color: black;
@@ -1839,7 +1839,7 @@
                         .col-total { width: 25% !important; }
                         
                         h1, h2, h3 {
-                            font-size: 16px !important;
+                            font-size: 19px !important;
                             font-weight: bold !important;
                             margin: 2mm 0 !important;
                             text-align: center !important;
@@ -1850,9 +1850,9 @@
                         .text-right { text-align: right !important; }
                         .text-left { text-align: left !important; }
                         .font-bold { font-weight: bold !important; }
-                        .text-lg { font-size: 15px !important; font-weight: normal !important; }
-                        .text-sm { font-size: 13px !important; font-weight: normal !important; }
-                        .text-xs { font-size: 11px !important; font-weight: normal !important; }
+                        .text-lg { font-size: 19px !important; font-weight: normal !important; }
+                        .text-sm { font-size: 17px !important; font-weight: normal !important; }
+                        .text-xs { font-size: 14px !important; font-weight: normal !important; }
                         .mb-1 { margin-bottom: 1mm !important; }
                         .mb-2 { margin-bottom: 2mm !important; }
                         .mb-3 { margin-bottom: 3mm !important; }
@@ -1874,13 +1874,13 @@
                             padding: 2mm 3mm;
                             border-bottom: 1px solid black;
                             font-weight: normal;
-                            font-size: 13px;
+                            font-size: 17px;
                         }
                         
                         .totals-row:last-child {
                             border-bottom: none;
                             background-color: #e5e7eb;
-                            font-size: 14px;
+                            font-size: 17px;
                             font-weight: bold;
                         }
                         
@@ -1899,7 +1899,7 @@
                         .info-left, .info-right {
                             flex: 1;
                             min-width: 45%;
-                            font-size: 12px;
+                            font-size: 16px;
                             font-weight: normal;
                         }
                         
@@ -1990,12 +1990,10 @@
                                 <div>المجموع الفرعي:</div>
                                 <div>${data.subtotal.toFixed(1)}</div>
                             </div>
-                            ${data.totalDiscount > 0 ? `
-                                <div class="totals-row">
-                                    <div>إجمالي الخصم:</div>
-                                    <div>${data.totalDiscount.toFixed(1)}</div>
-                                </div>
-                            ` : ''}
+                            <div class="totals-row">
+                                <div>إجمالي الخصم:</div>
+                                <div>${data.totalDiscount.toFixed(1)}</div>
+                            </div>
                             <div class="totals-row">
                                 <div>المجموع:</div>
                                 <div>${data.total.toFixed(1)}</div>
