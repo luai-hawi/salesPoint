@@ -53,7 +53,7 @@
                             </div>
                         </div>
                         <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">${{ number_format($employee->monthly_salary, 2) }}</p>
+                            <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employee->monthly_salary, 2) }}</p>
                             <p class="text-sm text-gray-600">{{ __('employees.Monthly Salary') }}</p>
                         </div>
                     </div>
@@ -67,7 +67,7 @@
                             </svg>
                         </div>
                         <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">${{ number_format($employee->paidThisMonth(), 2) }}</p>
+                            <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employee->paidThisMonth(), 2) }}</p>
                             <p class="text-sm text-gray-600">{{ __('employees.Paid This Month') }}</p>
                         </div>
                     </div>
@@ -81,7 +81,7 @@
                             </svg>
                         </div>
                         <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">${{ number_format($employee->remainingThisMonth(), 2) }}</p>
+                            <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employee->remainingThisMonth(), 2) }}</p>
                             <p class="text-sm text-gray-600">{{ __('employees.Remaining to Pay') }}</p>
                         </div>
                     </div>
@@ -128,7 +128,7 @@
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 text-lg">$</span>
+                                            <span class="text-gray-500 text-lg">₪</span>
                                         </div>
                                         <input type="number" step="0.01" name="amount" id="amount" required 
                                                class="block w-full pl-8 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900"

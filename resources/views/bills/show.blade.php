@@ -78,7 +78,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-600">{{ __('bills.Total Amount') }}</p>
-                            <p class="font-semibold text-gray-900">${{ number_format($bill->total_price, 2) }}</p>
+                            <p class="font-semibold text-gray-900">₪{{ number_format($bill->total_price, 2) }}</p>
                         </div>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
                                                                     [$tagName, $tagPrice] = explode('@', $tagPair);
                                                                 @endphp
                                                                 <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs mr-1 mt-0.5">
-                                                                    {{ $tagName }} (+${{ number_format($tagPrice, 2) }})
+                                                                    {{ $tagName }} (+₪{{ number_format($tagPrice, 2) }})
                                                                 </span>
                                                             @endif
                                                         @endforeach
@@ -204,7 +204,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900 font-medium">
-                                            <div>${{ number_format($product->pivot->selling_price, 2) }}</div>
+                                            <div>₪{{ number_format($product->pivot->selling_price, 2) }}</div>
                                             @if($product->pivot->tags)
                                                 @php
                                                     $tagPairs = explode('&', $product->pivot->tags);
@@ -217,7 +217,7 @@
                                                 @endphp
                                                 @if($totalTagPrice > 0)
                                                     <div class="text-xs text-blue-600">
-                                                        {{ __('bills.Tags Price') }}: +${{ number_format($totalTagPrice, 2) }}
+                                                        {{ __('bills.Tags Price') }}: +₪{{ number_format($totalTagPrice, 2) }}
                                                     </div>
                                                 @endif
                                             @endif
@@ -243,7 +243,7 @@
                                             }
                                             $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
                                         @endphp
-                                        ${{ number_format($finalPrice, 2) }}
+                                        ₪{{ number_format($finalPrice, 2) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <label class="inline-flex items-center">
@@ -306,7 +306,7 @@
                                     class="flex-1 px-8 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
                                 <option value="">{{ __('bills.Choose Product') }}</option>
                                 @foreach($products as $prod)
-                                    <option value="{{ $prod->id }}">{{ $prod->name }} (${{ number_format($prod->selling_price, 2) }})</option>
+                                    <option value="{{ $prod->id }}">{{ $prod->name }} (₪{{ number_format($prod->selling_price, 2) }})</option>
                                 @endforeach
                             </select>
                             <input type="number" id="new_quantity" name="new_quantity" 
@@ -338,7 +338,7 @@
                 
                 <div class="text-right">
                     <p class="text-sm text-gray-600">{{ __('bills.Grand Total') }}</p>
-                    <p class="text-2xl font-bold text-gray-900" id="grand-total">${{ number_format($bill->total_price, 2) }}</p>
+                    <p class="text-2xl font-bold text-gray-900" id="grand-total">₪{{ number_format($bill->total_price, 2) }}</p>
                 </div>
             </div>
     </div>
@@ -409,7 +409,7 @@ function showTagsDialog(product) {
                                 <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
                                 <div class="flex-1">
                                     <div class="font-medium">${tag.name}</div>
-                                    <div class="text-sm text-gray-500">+$${parseFloat(tag.price).toFixed(2)}</div>
+                                    <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
                                 </div>
                             </label>
                         `).join('')}
@@ -477,7 +477,7 @@ function addProductToTable(product, tagsString = '') {
         });
         tagsDisplay = tagPairs.map(tag => {
             const [name, price] = tag.split('@');
-            return `<span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs mr-1">${name} (+$${parseFloat(price).toFixed(2)})</span>`;
+            return `<span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs mr-1">${name} (+₪${parseFloat(price).toFixed(2)})</span>`;
         }).join('');
     }
 
@@ -502,8 +502,8 @@ function addProductToTable(product, tagsString = '') {
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
             <div class="text-sm text-gray-900 font-medium">
-                <div>$${basePrice.toFixed(2)}</div>
-                ${totalTagPrice > 0 ? `<div class="text-xs text-blue-600">Tags: +$${totalTagPrice.toFixed(2)}</div>` : ''}
+                <div>₪${basePrice.toFixed(2)}</div>
+                ${totalTagPrice > 0 ? `<div class="text-xs text-blue-600">Tags: +₪${totalTagPrice.toFixed(2)}</div>` : ''}
             </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
@@ -511,7 +511,7 @@ function addProductToTable(product, tagsString = '') {
                    class="w-20 px-3 py-2 border border-gray-300 rounded-md discount" required>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 total-cell">
-            $${(basePrice + totalTagPrice).toFixed(2)}
+            ₪${(basePrice + totalTagPrice).toFixed(2)}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-center">
             <label class="inline-flex items-center">
@@ -545,13 +545,13 @@ function updateGrandTotal() {
             const discount = parseFloat(discountInput.value) || 0;
             
             const priceCell = row.children[2];
-            const basePriceText = priceCell.querySelector('div').textContent.replace('$', '');
+            const basePriceText = priceCell.querySelector('div').textContent.replace('₪', '');
             const basePrice = parseFloat(basePriceText) || 0;
             
             let tagsPrice = 0;
             const tagsElement = priceCell.querySelector('.text-xs.text-blue-600');
             if (tagsElement) {
-                const match = tagsElement.textContent.match(/\+\$([0-9.]+)/);
+                const match = tagsElement.textContent.match(/\+\₪([0-9.]+)/);
                 if (match) tagsPrice = parseFloat(match[1]) || 0;
             }
             
@@ -560,11 +560,11 @@ function updateGrandTotal() {
             
             const totalCell = row.querySelector('.total-cell');
             if (totalCell) {
-                totalCell.textContent = '$' + lineTotal.toFixed(2);
+                totalCell.textContent = '₪' + lineTotal.toFixed(2);
             }
         }
     });
-    document.getElementById('grand-total').textContent = '$' + total.toFixed(2);
+    document.getElementById('grand-total').textContent = '₪' + total.toFixed(2);
 }
 
 // Add this debug function right before the form submission

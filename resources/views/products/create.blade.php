@@ -199,7 +199,7 @@
                                         min="0"
                                         placeholder="{{ __('messages.Enter cost price') }}"
                                     >
-                                    <span class="absolute left-3 top-3.5 text-gray-400">$</span>
+                                    <span class="absolute left-3 top-3.5 text-gray-400">₪</span>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">{{ __('messages.How much you paid for this product.') }}</p>
                             </div>
@@ -221,7 +221,7 @@
                                         min="0"
                                         placeholder="{{ __('messages.Enter selling price') }}"
                                     >
-                                    <span class="absolute left-3 top-3.5 text-gray-400">$</span>
+                                    <span class="absolute left-3 top-3.5 text-gray-400">₪</span>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">{{ __('messages.Price you\'ll sell this product for.') }}</p>
                             </div>

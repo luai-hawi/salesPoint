@@ -31,7 +31,7 @@
             
             <!-- Your existing today's sales display -->
             <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
-                {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">${{ number_format($totalToday ?? 0, 2) }}</span>
+                {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">₪{{ number_format($totalToday ?? 0, 2) }}</span>
             </div>
         </div>
     </div>
@@ -316,7 +316,7 @@
                             <div class="bg-white bg-opacity-20 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
                                     <span class="text-green-100">{{ __('dashboard.Total Discount:') }}</span>
-                                    <span class="font-bold text-lg">$<span id="total_discount_display">0.00</span></span>
+                                    <span class="font-bold text-lg">₪<span id="total_discount_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_discount" value="0">
                             </div>
@@ -324,7 +324,7 @@
                             <div class="bg-white bg-opacity-30 rounded-lg p-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-green-100">{{ __('dashboard.Total Amount:') }}</span>
-                                    <span class="font-bold text-2xl">$<span id="total_price_display">0.00</span></span>
+                                    <span class="font-bold text-2xl">₪<span id="total_price_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_price" value="0">
                             </div>
@@ -343,7 +343,7 @@
                         <div class="space-y-3">
                             <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                                 <span class="text-sm text-blue-700">{{ __('dashboard.Total Sales:') }}</span>
-                                <span class="font-bold text-blue-800">${{ number_format($totalToday ?? 0, 2) }}</span>
+                                <span class="font-bold text-blue-800">₪{{ number_format($totalToday ?? 0, 2) }}</span>
                             </div>
                             
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">

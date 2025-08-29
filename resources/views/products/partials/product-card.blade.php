@@ -64,11 +64,11 @@
         <div class="grid grid-cols-2 gap-1.5 mb-2">
             <div class="text-center p-1.5 bg-green-50 rounded">
                 <div class="text-xs text-green-600 font-medium">{{__('messages.Selling')}}</div>
-                <div class="text-sm font-bold text-green-700">${{ number_format($product->selling_price, 2) }}</div>
+                <div class="text-sm font-bold text-green-700">₪{{ number_format($product->selling_price, 2) }}</div>
             </div>
             <div class="text-center p-1.5 bg-orange-50 rounded">
                 <div class="text-xs text-orange-600 font-medium">{{__('messages.Cost')}}</div>
-                <div class="text-sm font-semibold text-orange-700">${{ number_format($product->cost_price, 2) }}</div>
+                <div class="text-sm font-semibold text-orange-700">₪{{ number_format($product->cost_price, 2) }}</div>
             </div>
         </div>
 

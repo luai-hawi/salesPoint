@@ -227,11 +227,11 @@
                 // Update row total display
                 const totalCell = row.querySelector('.row-total');
                 if (totalCell) {
-                    totalCell.textContent = '$' + formatPrice(lineTotal);
+                    totalCell.textContent = '₪' + formatPrice(lineTotal);
                 }
             });
             
-            document.getElementById('grand-total').textContent = '$' + formatPrice(total);
+            document.getElementById('grand-total').textContent = '₪' + formatPrice(total);
             document.getElementById('total_price').value = formatPrice(total);
         }
 

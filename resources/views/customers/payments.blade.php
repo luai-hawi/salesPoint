@@ -71,21 +71,21 @@
                     <div class="text-center">
                         @if($customer->balance < 0)
                             <div class="text-3xl font-bold text-red-600 mb-2" id="customer-balance">
-                                ${{ number_format(abs($customer->balance), 2) }}
+                                ₪{{ number_format(abs($customer->balance), 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                                 {{ __('messages.Outstanding Debt') }}
                             </div>
                         @elseif($customer->balance > 0)
                             <div class="text-3xl font-bold text-green-600 mb-2" id="customer-balance">
-                                ${{ number_format($customer->balance, 2) }}
+                                ₪{{ number_format($customer->balance, 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                                 {{ __('messages.Credit Balance') }}
                             </div>
                         @else
                             <div class="text-3xl font-bold text-gray-600 mb-2" id="customer-balance">
-                                $0.00
+                                ₪0.00
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                                 {{ __('messages.Balanced Account') }}
@@ -105,13 +105,13 @@
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">{{ __('messages.Total Paid') }}:</span>
                             <span class="text-sm font-medium text-green-600">
-                                ${{ number_format($payments->where('amount', '>', 0)->sum('amount'), 2) }}
+                                ₪{{ number_format($payments->where('amount', '>', 0)->sum('amount'), 2) }}
                             </span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">{{ __('messages.Total Debt') }}:</span>
                             <span class="text-sm font-medium text-red-600">
-                                ${{ number_format(abs($payments->where('amount', '<', 0)->sum('amount')), 2) }}
+                                ₪{{ number_format(abs($payments->where('amount', '<', 0)->sum('amount')), 2) }}
                             </span>
                         </div>
                     </div>
@@ -163,7 +163,7 @@
                                     {{ __('messages.Amount') }} <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-3 text-gray-500">$</span>
+                                    <span class="absolute left-3 top-3 text-gray-500">₪</span>
                                     <input type="number" 
                                            step="0.01" 
                                            name="amount" 

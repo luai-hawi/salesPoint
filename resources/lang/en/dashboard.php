@@ -48,4 +48,5 @@ return [
     'Multiple Products Found' => 'Multiple Products Found',
     'Multiple products were found with barcode' => 'Multiple products were found with barcode',
     'Please select which product you want to add' => 'Please select which product you want to add',
+    'Open Drawer'=>'Open Drawer',
 ];

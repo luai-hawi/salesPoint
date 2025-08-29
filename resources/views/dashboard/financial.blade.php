@@ -19,7 +19,7 @@
                     {{ __('messages.Period:') }} <span class="font-bold text-blue-600">{{ \Carbon\Carbon::parse($startDate)->format('M d') }} - {{ \Carbon\Carbon::parse($endDate)->format('M d, Y') }}</span>
                 </div>
                 <div class="text-xs sm:text-sm text-gray-600 bg-blue-100 px-3 py-2 rounded-full">
-                    {{ __('messages.Net Income:') }} <span class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($summaryData['netIncome'], 0) }}</span>
+                    {{ __('messages.Net Income:') }} <span class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($summaryData['netIncome'], 0) }}</span>
                 </div>
             </div>
         </div>
@@ -72,7 +72,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💰 {{ __('messages.Revenue') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalRevenue'], 0) }}</p>
+                                <p class="text-xl lg:text-2xl font-bold text-gray-900">₪{{ number_format($summaryData['totalRevenue'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-green-500">💰</div>
                         </div>
@@ -82,7 +82,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈 {{ __('messages.Profit') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalProfit'], 0) }}</p>
+                                <p class="text-xl lg:text-2xl font-bold text-gray-900">₪{{ number_format($summaryData['totalProfit'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-blue-500">📈</div>
                         </div>
@@ -92,7 +92,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💸 {{ __('messages.Expenses') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">${{ number_format($summaryData['totalExpenses'] + $summaryData['totalEmployeePayments'], 0) }}</p>
+                                <p class="text-xl lg:text-2xl font-bold text-gray-900">₪{{ number_format($summaryData['totalExpenses'] + $summaryData['totalEmployeePayments'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-red-500">💸</div>
                         </div>
@@ -103,7 +103,7 @@
                             <div>
                                 <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💎 {{ __('messages.Net Income') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold {{ $summaryData['netIncome'] < 0 ? 'text-red-600' : 'text-gray-900' }}">
-                                    ${{ number_format($summaryData['netIncome'], 0) }}
+                                    ₪{{ number_format($summaryData['netIncome'], 0) }}
                                 </p>
                             </div>
                             <div class="text-2xl lg:text-3xl {{ $summaryData['netIncome'] >= 0 ? 'text-green-500' : 'text-red-500' }}">
@@ -122,7 +122,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                             <h3 class="text-base lg:text-lg font-semibold text-gray-800">📈 {{ __('messages.Daily Revenue Trend') }}</h3>
                             <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                ${{ number_format($revenueData['total'], 0) }} {{ __('messages.Total') }}
+                                ₪{{ number_format($revenueData['total'], 0) }} {{ __('messages.Total') }}
                             </span>
                         </div>
                         <div class="h-64 lg:h-80">
@@ -137,7 +137,7 @@
                                 <h4 class="text-sm font-semibold text-gray-800">💰 {{ __('messages.Revenue Growth') }}</h4>
                                 <span class="text-lg">{{ $growthData['revenue']['growth'] >= 0 ? '📈' : '📉' }}</span>
                             </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['revenue']['current'], 0) }}</p>
+                            <p class="text-lg lg:text-xl font-bold text-gray-900">₪{{ number_format($growthData['revenue']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['revenue']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $growthData['revenue']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['revenue']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
@@ -148,7 +148,7 @@
                                 <h4 class="text-sm font-semibold text-gray-800">💎 {{ __('messages.Profit Growth') }}</h4>
                                 <span class="text-lg">{{ $growthData['profit']['growth'] >= 0 ? '💰' : '💸' }}</span>
                             </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['profit']['current'], 0) }}</p>
+                            <p class="text-lg lg:text-xl font-bold text-gray-900">₪{{ number_format($growthData['profit']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['profit']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $growthData['profit']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['profit']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
@@ -159,7 +159,7 @@
                                 <h4 class="text-sm font-semibold text-gray-800">🎯 {{ __('messages.Expense Control') }}</h4>
                                 <span class="text-lg">{{ $growthData['expenses']['growth'] <= 0 ? '👍' : '⚠️' }}</span>
                             </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">${{ number_format($growthData['expenses']['current'], 0) }}</p>
+                            <p class="text-lg lg:text-xl font-bold text-gray-900">₪{{ number_format($growthData['expenses']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['expenses']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $growthData['expenses']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['expenses']['growth'], 1) }}% {{ __('messages.vs previous') }}
                             </p>
@@ -174,7 +174,7 @@
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">💎 {{ __('messages.Daily Profit') }}</h3>
-                            <span class="text-sm text-gray-600">${{ number_format($profitData['total'], 0) }}</span>
+                            <span class="text-sm text-gray-600">₪{{ number_format($profitData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
                             <canvas id="profitChart"></canvas>
@@ -184,7 +184,7 @@
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">💸 {{ __('messages.Expenses') }}</h3>
-                            <span class="text-sm text-gray-600">${{ number_format($expenseData['total'], 0) }}</span>
+                            <span class="text-sm text-gray-600">₪{{ number_format($expenseData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
                             <canvas id="expenseChart"></canvas>
@@ -195,8 +195,8 @@
                         <div class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-start justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">🤝 {{ __('messages.Customer Payments') }}</h3>
                             <div class="text-xs text-gray-600 mt-1 sm:mt-0 lg:mt-1">
-                                ↗️ ${{ number_format($customerPaymentData['totalReceived'], 0) }} |
-                                ↘️ ${{ number_format($customerPaymentData['totalPaid'], 0) }}
+                                ↗️ ₪{{ number_format($customerPaymentData['totalReceived'], 0) }} |
+                                ↘️ ₪{{ number_format($customerPaymentData['totalPaid'], 0) }}
                             </div>
                         </div>
                         <div class="h-48 lg:h-56">
@@ -221,15 +221,15 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-300">💚 {{ __('messages.Customer Credit') }}</span>
-                                <span class="font-bold text-green-400">${{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
+                                <span class="font-bold text-green-400">₪{{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-300">💔 {{ __('messages.Our Debt') }}</span>
-                                <span class="font-bold text-red-400">${{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
+                                <span class="font-bold text-red-400">₪{{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-300">⚠️ {{ __('messages.Damage Loss') }}</span>
-                                <span class="font-bold text-orange-400">${{ number_format($damagedData['total'], 0) }}</span>
+                                <span class="font-bold text-orange-400">₪{{ number_format($damagedData['total'], 0) }}</span>
                             </div>
                         </div>
                     </div>
@@ -238,7 +238,7 @@
                     <div class="lg:col-span-1 xl:col-span-2 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥 {{ __('messages.Employee Payments') }}</h3>
-                            <span class="text-sm text-gray-600">${{ number_format($employeePaymentData['total'], 0) }}</span>
+                            <span class="text-sm text-gray-600">₪{{ number_format($employeePaymentData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
                             <canvas id="employeePaymentChart"></canvas>
@@ -258,7 +258,7 @@
                             </div>
                             <div class="text-center">
                                 <span class="block text-sm text-gray-600">{{ __('messages.Value:') }}</span>
-                                <span class="block font-semibold text-red-600 text-lg">${{ number_format($damagedData['total'], 0) }}</span>
+                                <span class="block font-semibold text-red-600 text-lg">₪{{ number_format($damagedData['total'], 0) }}</span>
                             </div>
                         </div>
                         <div class="h-32 lg:h-40">
@@ -275,7 +275,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">💚 {{ __('messages.Customers Owing Us') }}</h3>
                             <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
-                                ${{ number_format($customerBalanceData['totalOwing'], 0) }}
+                                ₪{{ number_format($customerBalanceData['totalOwing'], 0) }}
                             </span>
                         </div>
                         <div class="h-56 lg:h-64">
@@ -287,7 +287,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">💔 {{ __('messages.Customers We Owe') }}</h3>
                             <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
-                                ${{ number_format($customerBalanceData['totalOwed'], 0) }}
+                                ₪{{ number_format($customerBalanceData['totalOwed'], 0) }}
                             </span>
                         </div>
                         <div class="h-56 lg:h-64">
@@ -339,10 +339,10 @@
                                     </span>
                                 </td>
                                 <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                                    ${{ number_format($product->total_revenue, 0) }}
+                                    ₪{{ number_format($product->total_revenue, 0) }}
                                 </td>
                                 <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">
-                                    ${{ number_format($product->total_profit, 0) }}
+                                    ₪{{ number_format($product->total_profit, 0) }}
                                 </td>
                             </tr>
                             @endforeach
@@ -452,7 +452,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 11 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -470,7 +470,7 @@
                                 bodyColor: '#ffffff',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'Revenue: $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return 'Revenue: ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }
@@ -510,7 +510,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 10 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -526,7 +526,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'Profit: $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return 'Profit: ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }
@@ -565,7 +565,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return context.label + ': $' + context.parsed.toLocaleString(); }
+                                    label: function(context) { return context.label + ': ₪' + context.parsed.toLocaleString(); }
                                 }
                             }
                         }
@@ -607,7 +607,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 10 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -623,7 +623,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return context.dataset.label + ': $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return context.dataset.label + ': ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }
@@ -664,7 +664,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 10 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -678,7 +678,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'Payment: $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return 'Payment: ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }
@@ -714,7 +714,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 9 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             y: {
@@ -728,7 +728,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'Damage: $' + context.parsed.x.toLocaleString(); }
+                                    label: function(context) { return 'Damage: ₪' + context.parsed.x.toLocaleString(); }
                                 }
                             }
                         }
@@ -763,7 +763,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 11 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -777,7 +777,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'Owes: $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return 'Owes: ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }
@@ -812,7 +812,7 @@
                                 ticks: {
                                     color: '#6b7280',
                                     font: { size: 11 },
-                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
                                 }
                             },
                             x: {
@@ -826,7 +826,7 @@
                                 backgroundColor: 'rgba(17, 24, 39, 0.95)',
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) { return 'We owe: $' + context.parsed.y.toLocaleString(); }
+                                    label: function(context) { return 'We owe: ₪' + context.parsed.y.toLocaleString(); }
                                 }
                             }
                         }

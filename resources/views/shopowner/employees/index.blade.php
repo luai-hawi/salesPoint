@@ -56,7 +56,7 @@
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum('monthly_salary'), 2) }}</p>
+                                <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employees->sum('monthly_salary'), 2) }}</p>
                                 <p class="text-sm text-gray-600">{{ __('employees.Monthly Payroll') }}</p>
                             </div>
                         </div>
@@ -69,7 +69,7 @@
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum(function($emp) { return $emp->paidThisMonth(); }), 2) }}</p>
+                                <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employees->sum(function($emp) { return $emp->paidThisMonth(); }), 2) }}</p>
                                 <p class="text-sm text-gray-600">{{ __('employees.Paid This Month') }}</p>
                             </div>
                         </div>
@@ -82,7 +82,7 @@
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-2xl font-bold text-gray-900">${{ number_format($employees->sum(function($emp) { return $emp->remainingThisMonth(); }), 2) }}</p>
+                                <p class="text-2xl font-bold text-gray-900">₪{{ number_format($employees->sum(function($emp) { return $emp->remainingThisMonth(); }), 2) }}</p>
                                 <p class="text-sm text-gray-600">{{ __('employees.Remaining to Pay') }}</p>
                             </div>
                         </div>
@@ -147,17 +147,17 @@
                                             <div class="text-sm text-gray-900">{{ $employee->job_title }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-semibold text-gray-900">${{ number_format($employee->monthly_salary, 2) }}</div>
+                                            <div class="text-sm font-semibold text-gray-900">₪{{ number_format($employee->monthly_salary, 2) }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-semibold text-green-600">${{ number_format($paid, 2) }}</div>
+                                            <div class="text-sm font-semibold text-green-600">₪{{ number_format($paid, 2) }}</div>
                                             <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
                                                 <div class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: {{ min($percentage, 100) }}%"></div>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-semibold {{ $remaining > 0 ? 'text-orange-600' : 'text-green-600' }}">
-                                                ${{ number_format($remaining, 2) }}
+                                                ₪{{ number_format($remaining, 2) }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">

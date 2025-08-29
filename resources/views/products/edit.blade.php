@@ -96,7 +96,7 @@
                                     <div class="relative">
                                         <input type="number" name="cost_price" value="{{ old('cost_price', $product->cost_price) }}"
                                                class="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors" step="0.01" required>
-                                        <span class="absolute left-3 top-3.5 text-gray-400">$</span>
+                                        <span class="absolute left-3 top-3.5 text-gray-400">₪</span>
                                     </div>
                                 </div>
 
@@ -106,7 +106,7 @@
                                     <div class="relative">
                                         <input type="number" name="selling_price" value="{{ old('selling_price', $product->selling_price) }}"
                                                class="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors" step="0.01" required>
-                                        <span class="absolute left-3 top-3.5 text-gray-400">$</span>
+                                        <span class="absolute left-3 top-3.5 text-gray-400">₪</span>
                                     </div>
                                 </div>
                                 <!-- Has Tags Checkbox -->
@@ -212,7 +212,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Cost Price per Unit') }}</label>
                                 <div class="relative">
                                     <input type="number" id="new-batch-cost" step="0.01" class="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('messages.Enter cost price') }}" min="0">
-                                    <span class="absolute left-3 top-2.5 text-gray-400">$</span>
+                                    <span class="absolute left-3 top-2.5 text-gray-400">₪</span>
                                 </div>
                             </div>
                             
@@ -269,7 +269,7 @@
                                                 <div class="relative">
                                                     <input type="number" step="0.01" class="batch-cost w-24 px-2 py-1 pl-6 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                            value="{{ $batch->cost_price }}" min="0">
-                                                    <span class="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                                                    <span class="absolute left-2 top-1.5 text-gray-400 text-sm">₪</span>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 total-value">

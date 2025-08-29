@@ -74,7 +74,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-green-100 text-sm font-medium">{{ __('bills.Total Sales') }}</p>
-                            <p class="text-2xl font-bold">${{ number_format($totalSales, 2) }}</p>
+                            <p class="text-2xl font-bold">₪{{ number_format($totalSales, 2) }}</p>
                         </div>
                         <div class="bg-green-500 bg-opacity-30 rounded-full p-3">
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -88,7 +88,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-blue-100 text-sm font-medium">{{ __('bills.Total Profit') }}</p>
-                            <p class="text-2xl font-bold">${{ number_format($totalProfit, 2) }}</p>
+                            <p class="text-2xl font-bold">₪{{ number_format($totalProfit, 2) }}</p>
                         </div>
                         <div class="bg-blue-500 bg-opacity-30 rounded-full p-3">
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -159,9 +159,9 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-semibold text-gray-900">${{ number_format($bill->total_price, 2) }}</div>
+                                    <div class="text-sm font-semibold text-gray-900">₪{{ number_format($bill->total_price, 2) }}</div>
                                     <div class="text-sm text-gray-500">
-                                        {{ __('bills.Profit') }}: <span class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">${{ number_format($profit, 2) }}</span>
+                                        {{ __('bills.Profit') }}: <span class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($profit, 2) }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">

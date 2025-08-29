@@ -101,7 +101,7 @@
                                 </label>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span class="text-gray-500 text-lg">$</span>
+                                        <span class="text-gray-500 text-lg">₪</span>
                                     </div>
                                     <input type="number" step="0.01" name="monthly_salary" id="monthly_salary" value="{{ old('monthly_salary') }}" required 
                                            class="block w-full pl-8 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"

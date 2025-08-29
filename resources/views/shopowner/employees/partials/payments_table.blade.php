@@ -79,7 +79,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="text-lg font-bold text-gray-900">
-                                    ${{ number_format($payment->amount, 2) }}
+                                    ₪{{ number_format($payment->amount, 2) }}
                                 </div>
                                 @if($payment->amount >= 1000)
                                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -135,12 +135,12 @@
             <div class="flex items-center space-x-4">
                 <div class="text-sm">
                     <span class="text-gray-600">{{ __('employees.Total on this page') }}:</span>
-                    <span class="font-semibold text-gray-900">${{ number_format($payments->sum('amount'), 2) }}</span>
+                    <span class="font-semibold text-gray-900">₪{{ number_format($payments->sum('amount'), 2) }}</span>
                 </div>
                 @if($payments->total() > $payments->count())
                     <div class="text-sm">
                         <span class="text-gray-600">{{ __('employees.Grand Total') }}:</span>
-                        <span class="font-bold text-green-600">${{ number_format($payments->getCollection()->sum('amount'), 2) }}</span>
+                        <span class="font-bold text-green-600">₪{{ number_format($payments->getCollection()->sum('amount'), 2) }}</span>
                     </div>
                 @endif
             </div>

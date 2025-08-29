@@ -153,7 +153,7 @@
                     <div class="text-center">
                         @if($customer->balance < 0)
                             <div class="text-3xl font-bold text-red-600 mb-2">
-                                ${{ number_format(abs($customer->balance), 2) }}
+                                ₪{{ number_format(abs($customer->balance), 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -163,7 +163,7 @@
                             </div>
                         @elseif($customer->balance > 0)
                             <div class="text-3xl font-bold text-green-600 mb-2">
-                                ${{ number_format($customer->balance, 2) }}
+                                ₪{{ number_format($customer->balance, 2) }}
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -173,7 +173,7 @@
                             </div>
                         @else
                             <div class="text-3xl font-bold text-gray-600 mb-2">
-                                $0.00
+                                ₪0.00
                             </div>
                             <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">

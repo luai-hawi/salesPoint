@@ -117,7 +117,7 @@
                                 </label>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span class="text-gray-500 text-lg">$</span>
+                                        <span class="text-gray-500 text-lg">₪</span>
                                     </div>
                                     <input type="number" step="0.01" name="monthly_salary" id="monthly_salary" value="{{ old('monthly_salary', $employee->monthly_salary) }}" required 
                                            class="block w-full pl-8 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900">
@@ -133,15 +133,15 @@
                         <!-- Summary Cards -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-8 p-6 bg-gray-50 rounded-lg">
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">${{ number_format($employee->monthly_salary, 2) }}</div>
+                                <div class="text-2xl font-bold text-green-600">₪{{ number_format($employee->monthly_salary, 2) }}</div>
                                 <div class="text-sm text-gray-600">{{ __('messages.Monthly Salary') }}</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">${{ number_format($employee->paidThisMonth(), 2) }}</div>
+                                <div class="text-2xl font-bold text-blue-600">₪{{ number_format($employee->paidThisMonth(), 2) }}</div>
                                 <div class="text-sm text-gray-600">{{ __('messages.Paid This Month') }}</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-orange-600">${{ number_format($employee->remainingThisMonth(), 2) }}</div>
+                                <div class="text-2xl font-bold text-orange-600">₪{{ number_format($employee->remainingThisMonth(), 2) }}</div>
                                 <div class="text-sm text-gray-600">{{ __('messages.Remaining') }}</div>
                             </div>
                         </div>
