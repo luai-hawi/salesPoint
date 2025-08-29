@@ -1521,30 +1521,7 @@
                 }, 500);
             };
         }
-
-        // Open receipt print in new tab  
-        function openReceiptPrintTab(data) {
-            const printWindow = window.open('', '_blank', 'width=400,height=600');
-            if (!printWindow) {
-                showNotification('Please allow popups for printing', 'error');
-                return;
-            }
-
-            const receiptHtml = generateReceiptPrintHtml(data);
-            printWindow.document.write(receiptHtml);
-            printWindow.document.close();
-
-            printWindow.onload = function() {
-                setTimeout(() => {
-                    printWindow.print();
-                    printWindow.addEventListener('afterprint', () => {
-                        setTimeout(() => printWindow.close(), 1000);
-                    });
-                }, 500);
-            };
-        }
-
-        // Generate Standard Print HTML
+        // Generate Standard Print HTML - Updated with translations
         function generateStandardPrintHtml(data) {
             const productsHtml = data.products.map(product => {
                 const tagsDisplay = product.tagsString ? product.tagsString.split('&').map(tag => {
@@ -1556,17 +1533,17 @@
                     <tr>
                         <td class="border-2 border-black px-2 py-1 text-center">
                             <div class="font-semibold text-xs">${product.name}</div>
-                            ${tagsDisplay ? `<div class="text-xs text-blue-600">إضافات: ${tagsDisplay}</div>` : ''}
+                            ${tagsDisplay ? `<div class="text-xs text-blue-600">{{ __('messages.Tags') }}: ${tagsDisplay}</div>` : ''}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.qty}</td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             <div>${product.price.toFixed(2)}₪</div>
-                            ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ إضافات</small>` : ''}
+                            ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ {{ __('messages.Tags') }}</small>` : ''}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
                                 <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                <small class="text-xs">${product.discountType === 'per-unit' ? 'لكل وحدة' : 'إجمالي'}</small>
+                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
                             ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
@@ -1578,7 +1555,7 @@
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
                 <head>
-                    <title>فاتورة - ${data.shopName}</title>
+                    <title>{{ __('messages.Invoice') }} - ${data.shopName}</title>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <style>
@@ -1649,26 +1626,26 @@
                     <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
                         <div class="text-right">
                             <div class="font-semibold">${data.shopName}</div>
-                            <div class="font-medium">رقم الفاتورة: #${data.billId}</div>
-                            <div>تم الطباعة بواسطة: ${data.userName}</div>
+                            <div class="font-medium">{{ __('messages.Bill number') }}: #${data.billId}</div>
+                            <div>{{ __('messages.Printed by') }}: ${data.userName}</div>
                             <div>${data.currentDateTime}</div>
                             ${data.userDetails ? `<div class="mt-1">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
                         
                         <div class="text-left">
-                            ${data.customerName ? `<div class="font-semibold">الزبون: ${data.customerName}</div>` : ''}
-                            ${data.customerPhone ? `<div>الهاتف: ${data.customerPhone}</div>` : ''}
+                            ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
+                            ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
                         </div>
                     </div>
                     
                     <table class="w-full border-2 border-black text-xs mb-4">
                         <thead>
                             <tr class="bg-gray-100">
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المنتج</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الكمية</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">سعر الوحدة</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الخصم</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المجموع</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Quantity') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1676,17 +1653,17 @@
                         </tbody>
                         <tfoot>
                             <tr class="bg-gray-50">
-                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع الفرعي</td>
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Subtotal') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.subtotal.toFixed(2)}₪</td>
                             </tr>
                             <tr class="bg-gray-100">
-                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">إجمالي الخصم</td>
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Total Discount') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.totalDiscount.toFixed(2)}₪</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
                             </tr>
                             <tr class="bg-gray-200">
-                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع النهائي</td>
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.total.toFixed(2)}₪</td>
                             </tr>
                         </tfoot>
@@ -1694,259 +1671,295 @@
                     
                     <div class="text-left">
                         <div class="text-xs">HawiTech</div>
-                        <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                        <div class="text-xs">{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
                     </div>
                 </body>
                 </html>
             `;
         }
 
-        // Generate Receipt Print HTML - Optimized for 56-104mm thermal rolls
-        function generateReceiptPrintHtml(data) {
-            const productsHtml = data.products.map(product => {
-                const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
-                    const [name, price] = tag.split('@');
-                    return `${name} (+${parseFloat(price).toFixed(1)})`;
-                }).join(', ') : '';
+        // Open receipt print in new tab  
+        function openReceiptPrintTab(data) {
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            if (!printWindow) {
+                showNotification('Please allow popups for printing', 'error');
+                return;
+            }
 
-                return `
-                    <tr>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">
-                            <div>${product.name}</div>
-                            ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
-                        </td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.qty}</td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">
-                            <div>${product.price.toFixed(1)}</div>
-                            ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
-                        </td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.finalSubtotal.toFixed(1)}</td>
-                    </tr>
-                `;
-            }).join('');
+            const receiptHtml = generateReceiptPrintHtml(data);
+            printWindow.document.write(receiptHtml);
+            printWindow.document.close();
 
-            return `
-                <!DOCTYPE html>
-                <html dir="rtl" lang="ar">
-                <head>
-                    <title>Receipt - ${data.shopName}</title>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <style>
-                        * { box-sizing: border-box; margin: 0; padding: 0; }
-                        
-                        body {
-                            font-family: 'Arial', 'Courier New', monospace;
-                            font-size: 11px;
-                            font-weight: bold;
-                            line-height: 1.3;
-                            color: black;
-                            background: white;
-                            direction: rtl;
-                            margin: 0;
-                            padding: 2mm;
-                            width: 100%;
-                            max-width: 104mm;
-                            min-width: 56mm;
-                        }
-                        
-                        .receipt-container {
-                            width: 100%;
-                            max-width: 100%;
-                            overflow-wrap: break-word;
-                            word-wrap: break-word;
-                        }
-                        
-                        table {
-                            width: 100% !important;
-                            border-collapse: collapse !important;
-                            margin: 1mm 0 !important;
-                            table-layout: fixed !important;
-                        }
-                        
-                        th, td {
-                            border: 1px solid black !important;
-                            padding: 1mm !important;
-                            text-align: center !important;
-                            font-weight: bold !important;
-                            font-size: 10px !important;
-                            word-wrap: break-word !important;
-                            overflow-wrap: break-word !important;
-                            vertical-align: middle !important;
-                            hyphens: auto !important;
-                        }
-                        
-                        /* Column widths for better text fit */
-                        .col-product { width: 40% !important; }
-                        .col-qty { width: 15% !important; }
-                        .col-price { width: 20% !important; }
-                        .col-total { width: 25% !important; }
-                        
-                        h1, h2, h3 {
-                            font-size: 13px !important;
-                            font-weight: bold !important;
-                            margin: 1mm 0 !important;
-                            text-align: center !important;
-                            word-wrap: break-word !important;
-                        }
-                        
-                        .text-center { text-align: center !important; }
-                        .text-right { text-align: right !important; }
-                        .text-left { text-align: left !important; }
-                        .font-bold { font-weight: bold !important; }
-                        .text-lg { font-size: 12px !important; }
-                        .text-sm { font-size: 10px !important; }
-                        .text-xs { font-size: 8px !important; }
-                        .mb-1 { margin-bottom: 1mm !important; }
-                        .mb-2 { margin-bottom: 2mm !important; }
-                        .mb-3 { margin-bottom: 3mm !important; }
-                        .mt-2 { margin-top: 2mm !important; }
-                        .mt-3 { margin-top: 3mm !important; }
-                        .py-1 { padding: 1mm 0 !important; }
-                        .py-2 { padding: 2mm 0 !important; }
-                        .bg-gray-200 { background-color: #e5e7eb !important; }
-                        
-                        .totals-section {
-                            border: 1px solid black;
-                            margin: 2mm 0;
-                        }
-                        
-                        .totals-row {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            padding: 1mm 2mm;
-                            border-bottom: 1px solid black;
-                            font-weight: bold;
-                        }
-                        
-                        .totals-row:last-child {
-                            border-bottom: none;
-                            background-color: #e5e7eb;
-                            font-size: 12px;
-                        }
-                        
-                        hr {
-                            border: 1px solid black;
-                            margin: 2mm 0;
-                        }
-                        
-                        .info-grid {
-                            display: flex;
-                            justify-content: space-between;
-                            margin: 2mm 0;
-                            flex-wrap: wrap;
-                        }
-                        
-                        .info-left, .info-right {
-                            flex: 1;
-                            min-width: 45%;
-                        }
-                        
-                        /* Responsive adjustments for very small widths */
-                        @media (max-width: 60mm) {
-                            body { font-size: 9px; padding: 1mm; }
-                            th, td { font-size: 8px !important; padding: 0.5mm !important; }
-                            h1, h2, h3 { font-size: 11px !important; }
-                            .info-grid { flex-direction: column; }
-                            .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
-                        }
-                        
-                        @media print {
-                            @page { 
-                                margin: 0; 
-                                size: auto;
-                            }
-                            
-                            body {
-                                margin: 0 !important;
-                                padding: 1mm !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="receipt-container">
-                        <!-- Header -->
-                        <div class="text-center mb-3">
-                            <h1>${data.shopName}</h1>
-                            <div class="text-sm font-bold">HawiTech</div>
-                            <div class="text-xs">WhatsApp: +(970) 599647713</div>
-                            <hr>
-                        </div>
-
-                        <!-- Shop Owner Name -->
-                        <div class="text-center mb-2">
-                            <div class="text-lg font-bold bg-gray-200 py-1" style="padding: 1mm; border: 1px solid black;">
-                                ${data.shopOwnerName}
-                            </div>
-                        </div>
-
-                        <!-- Bill Info -->
-                        <div class="info-grid text-xs">
-                            <div class="info-right">
-                                <div class="font-bold">التاريخ: ${data.currentDate}</div>
-                                <div class="font-bold">الوقت: ${data.currentTime}</div>
-                            </div>
-                            <div class="info-left">
-                                <div class="font-bold">رقم الفاتورة: ${data.billId}</div>
-                                ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- Creator Info -->
-                        <div class="mb-2">
-                            <div class="font-bold text-xs">تم إنشاؤها بواسطة: ${data.userName}</div>
-                            ${data.userDetails ? `<div class="text-xs">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
-                        </div>
-
-                        <!-- Products Table -->
-                        <table>
-                            <thead>
-                                <tr class="bg-gray-200">
-                                    <th class="col-product">المنتج</th>
-                                    <th class="col-qty">الكمية</th>
-                                    <th class="col-price">السعر</th>
-                                    <th class="col-total">المجموع</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${productsHtml}
-                            </tbody>
-                        </table>
-
-                        <!-- Totals Section -->
-                        <div class="totals-section">
-                            <div class="totals-row">
-                                <div>المجموع الفرعي:</div>
-                                <div>${data.subtotal.toFixed(1)}</div>
-                            </div>
-                            ${data.totalDiscount > 0 ? `
-                                <div class="totals-row">
-                                    <div>إجمالي الخصم:</div>
-                                    <div>${data.totalDiscount.toFixed(1)}</div>
-                                </div>
-                            ` : ''}
-                            <div class="totals-row">
-                                <div>المجموع:</div>
-                                <div>${data.total.toFixed(1)}</div>
-                            </div>
-                        </div>
-
-                        <!-- Footer -->
-                        <div class="text-center mt-3 text-xs font-bold">
-                            <div class="mb-1">شكراً لك على التعامل معنا!</div>
-                            <hr>
-                            <div>HawiTech</div>
-                            <div>WhatsApp: +(970) 599647713</div>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `;
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.addEventListener('afterprint', () => {
+                        setTimeout(() => printWindow.close(), 1000);
+                    });
+                }, 500);
+            };
         }
+
+        // Generate Receipt Print HTML - Updated with larger text and removed boldness
+function generateReceiptPrintHtml(data) {
+    const productsHtml = data.products.map(product => {
+        const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
+            const [name, price] = tag.split('@');
+            return `${name} (+${parseFloat(price).toFixed(1)})`;
+        }).join(', ') : '';
+
+        return `
+            <tr>
+                <td class="border px-1 py-1 text-center text-sm">
+                    <div>${product.name}</div>
+                    ${tagsDisplayArabic ? `<div class="text-xs">{{__('messages.Tags')}}: ${tagsDisplayArabic}</div>` : ''}
+                </td>
+                <td class="border px-1 py-1 text-center text-sm">${product.qty}</td>
+                <td class="border px-1 py-1 text-center text-sm">
+                    <div>${product.price.toFixed(1)}</div>
+                    ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
+                </td>
+                <td class="border px-1 py-1 text-center text-sm">${product.finalSubtotal.toFixed(1)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <title>Receipt - ${data.shopName}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                
+                body {
+                    font-family: 'Arial', 'Courier New', monospace;
+                    font-size: 14px;
+                    font-weight: normal;
+                    line-height: 1.4;
+                    color: black;
+                    background: white;
+                    direction: rtl;
+                    margin: 0;
+                    padding: 2mm;
+                    width: 100%;
+                    max-width: 104mm;
+                    min-width: 56mm;
+                }
+                
+                .receipt-container {
+                    width: 100%;
+                    max-width: 100%;
+                    overflow-wrap: break-word;
+                    word-wrap: break-word;
+                }
+                
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    margin: 1mm 0 !important;
+                    table-layout: fixed !important;
+                }
+                
+                th, td {
+                    border: 1px solid black !important;
+                    padding: 2mm !important;
+                    text-align: center !important;
+                    font-weight: normal !important;
+                    font-size: 13px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    vertical-align: middle !important;
+                    hyphens: auto !important;
+                }
+                
+                th {
+                    font-weight: bold !important;
+                    background-color: #f5f5f5 !important;
+                }
+                
+                /* Column widths for better text fit */
+                .col-product { width: 40% !important; }
+                .col-qty { width: 15% !important; }
+                .col-price { width: 20% !important; }
+                .col-total { width: 25% !important; }
+                
+                h1, h2, h3 {
+                    font-size: 16px !important;
+                    font-weight: bold !important;
+                    margin: 2mm 0 !important;
+                    text-align: center !important;
+                    word-wrap: break-word !important;
+                }
+                
+                .text-center { text-align: center !important; }
+                .text-right { text-align: right !important; }
+                .text-left { text-align: left !important; }
+                .font-bold { font-weight: bold !important; }
+                .text-lg { font-size: 15px !important; font-weight: normal !important; }
+                .text-sm { font-size: 13px !important; font-weight: normal !important; }
+                .text-xs { font-size: 11px !important; font-weight: normal !important; }
+                .mb-1 { margin-bottom: 1mm !important; }
+                .mb-2 { margin-bottom: 2mm !important; }
+                .mb-3 { margin-bottom: 3mm !important; }
+                .mt-2 { margin-top: 2mm !important; }
+                .mt-3 { margin-top: 3mm !important; }
+                .py-1 { padding: 1mm 0 !important; }
+                .py-2 { padding: 2mm 0 !important; }
+                .bg-gray-200 { background-color: #e5e7eb !important; }
+                
+                .totals-section {
+                    border: 1px solid black;
+                    margin: 2mm 0;
+                }
+                
+                .totals-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 2mm 3mm;
+                    border-bottom: 1px solid black;
+                    font-weight: normal;
+                    font-size: 13px;
+                }
+                
+                .totals-row:last-child {
+                    border-bottom: none;
+                    background-color: #e5e7eb;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                
+                hr {
+                    border: 1px solid black;
+                    margin: 2mm 0;
+                }
+                
+                .info-grid {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 2mm 0;
+                    flex-wrap: wrap;
+                }
+                
+                .info-left, .info-right {
+                    flex: 1;
+                    min-width: 45%;
+                    font-size: 12px;
+                    font-weight: normal;
+                }
+                
+                .info-left .font-bold,
+                .info-right .font-bold {
+                    font-weight: bold;
+                }
+                
+                /* Responsive adjustments for very small widths */
+                @media (max-width: 60mm) {
+                    body { font-size: 12px; padding: 1mm; }
+                    th, td { font-size: 11px !important; padding: 1mm !important; }
+                    h1, h2, h3 { font-size: 14px !important; }
+                    .info-grid { flex-direction: column; }
+                    .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
+                    .totals-row { font-size: 11px; padding: 1.5mm 2mm; }
+                    .totals-row:last-child { font-size: 12px; }
+                }
+                
+                @media print {
+                    @page { 
+                        margin: 0; 
+                        size: auto;
+                    }
+                    
+                    body {
+                        margin: 0 !important;
+                        padding: 1mm !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt-container">
+                <!-- Header -->
+                <div class="text-center mb-3">
+                    <h1>${data.shopName}</h1>
+                    <div class="text-sm">HawiTech</div>
+                    <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                    <hr>
+                </div>
+
+                <!-- Shop Owner Name -->
+                <div class="text-center mb-2">
+                    <div class="text-lg bg-gray-200 py-1" style="padding: 2mm; border: 1px solid black;">
+                        ${data.shopOwnerName}
+                    </div>
+                </div>
+
+                <!-- Bill Info -->
+                <div class="info-grid text-sm">
+                    <div class="info-right">
+                        <div class="font-bold">{{__('messages.Date')}}: ${data.currentDate}</div>
+                        <div class="font-bold">{{__('messages.Time')}}: ${data.currentTime}</div>
+                    </div>
+                    <div class="info-left">
+                        <div class="font-bold">{{__('messages.Bill number')}}: ${data.billId}</div>
+                        ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Creator Info -->
+                <div class="mb-2">
+                    <div class="font-bold text-sm">{{__('messages.Created By')}}: ${data.userName}</div>
+                    ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+
+                <!-- Products Table -->
+                <table>
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="col-product">{{__('messages.Product')}}</th>
+                            <th class="col-qty">{{__('messages.Qty')}}</th>
+                            <th class="col-price">{{__('messages.Unit Price')}}</th>
+                            <th class="col-total">{{__('messages.Total')}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${productsHtml}
+                    </tbody>
+                </table>
+
+                <!-- Totals Section -->
+                <div class="totals-section">
+                    <div class="totals-row">
+                        <div>{{__('messages.Subtotal')}}:</div>
+                        <div>${data.subtotal.toFixed(1)}</div>
+                    </div>
+                    <div class="totals-row">
+                        <div>{{__('messages.Total discount')}}:</div>
+                        <div>${data.totalDiscount.toFixed(1)}</div>
+                    </div>
+                    <div class="totals-row">
+                        <div>{{__('messages.Final Total')}}:</div>
+                        <div>${data.total.toFixed(1)}</div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center mt-3 text-sm">
+                    <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
+                    <hr>
+                    <div>HawiTech</div>
+                    <div>WhatsApp: +(970) 599647713</div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
 
         // Scroll handler
         document.getElementById('product-cards-container').addEventListener('scroll', (e) => {

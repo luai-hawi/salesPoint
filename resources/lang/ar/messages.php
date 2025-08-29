@@ -145,7 +145,8 @@ return [
     'Uncategorized'=> "غير مصنف",
     'Final Total'=> "المجموع النهائي",
     'Export Data'=> 'تصدير البيانات',
-
+    'WhatsApp'=> 'واتساب',
+    
   
     "Select Tags for"=> "اختر العلامات لـ",
 
@@ -682,6 +683,7 @@ return [
     'Add Stock' => 'إضافة مخزون',
     'Adding stock for: ' => 'إضافة مخزون لـ: ',
     'Quantity to Add' => 'الكمية المراد إضافتها',
+    'Per Unit' => 'للوحدة',
 
     // Expenses
     'Expense Management' => 'إدارة المصروفات',

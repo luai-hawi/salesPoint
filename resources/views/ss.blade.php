@@ -1968,7 +1968,7 @@
                         <!-- Bill Info -->
                         <div class="info-grid text-base">
                             <div class="info-right">
-                                <div class="font-bold">{{ __('messages.Date') }}: ${data.currentDate}</div>
+                                <div class="font-bold">{{ __('messages.Dateee') }}: ${data.currentDate}</div>
                                 <div class="font-bold">{{ __('messages.Time') }}: ${data.currentTime}</div>
                             </div>
                             <div class="info-left">
