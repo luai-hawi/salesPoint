@@ -1385,124 +1385,14 @@
         // Standard Print Button
         document.getElementById('print-button').addEventListener('click', () => {
             const printData = collectPrintData();
-            
-            if (printData.products.length === 0) {
-                showNotification('Please add products to the bill first', 'warning');
-                return;
-            }
-            
-            if (isMobileDevice()) {
-                openMobileFriendlyPrint(printData, 'standard');
-            } else {
-                openStandardPrintTab(printData);
-            }
+            openStandardPrintTab(printData);
         });
 
         // Receipt Print Button  
         document.getElementById('print-receipt-button').addEventListener('click', () => {
             const printData = collectPrintData();
-            
-            if (printData.products.length === 0) {
-                showNotification('Please add products to the bill first', 'warning');
-                return;
-            }
-            
-            if (isMobileDevice()) {
-                openMobileFriendlyPrint(printData, 'receipt');
-            } else {
-                openReceiptPrintTab(printData);
-            }
+            openReceiptPrintTab(printData);
         });
-
-        function openMobileFriendlyPrint(data, type) {
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                showNotification('يرجى السماح بالنوافذ المنبثقة للطباعة', 'error');
-                return;
-            }
-
-            const html = generateMobileFriendlyHtml(data, type);
-            printWindow.document.write(html);
-            printWindow.document.close();
-            
-            // Add instructions for mobile users
-            setTimeout(() => {
-                showNotification('استخدم قائمة المتصفح (⋮) ثم "طباعة" أو "حفظ كـ PDF"', 'info');
-            }, 1000);
-        }
-
-        function generateMobileFriendlyHtml(data, type) {
-            // Simplified HTML structure for better mobile compatibility
-            return `<!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-            <title>${data.shopName} - فاتورة</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    margin: 15px; 
-                    font-size: 14px; 
-                    line-height: 1.4; 
-                    direction: rtl; 
-                }
-                .header { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; }
-                .bill-info div { margin: 5px 0; }
-                .products { margin: 15px 0; }
-                .product { border-bottom: 1px solid #ccc; padding: 8px 0; }
-                .product-name { font-weight: bold; }
-                .product-details { color: #666; font-size: 13px; }
-                .totals { border-top: 2px solid black; padding-top: 10px; margin-top: 15px; }
-                .total-row { display: flex; justify-content: space-between; margin: 5px 0; }
-                .final-total { font-size: 16px; font-weight: bold; border-top: 1px solid black; padding-top: 8px; }
-                @media print { 
-                    body { margin: 10px; font-size: 12px; }
-                    @page { margin: 5mm; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h2>${data.shopOwnerName}</h2>
-                <div>${data.shopName}</div>
-                <div>HawiTech - WhatsApp: +(970) 599647713</div>
-            </div>
-            
-            <div class="bill-info">
-                <div><strong>رقم الفاتورة:</strong> ${data.billId}</div>
-                <div><strong>التاريخ والوقت:</strong> ${data.currentDateTime}</div>
-                <div><strong>المستخدم:</strong> ${data.userName}</div>
-                ${data.customerName ? `<div><strong>الزبون:</strong> ${data.customerName}</div>` : ''}
-                ${data.customerPhone ? `<div><strong>الهاتف:</strong> ${data.customerPhone}</div>` : ''}
-            </div>
-
-            <div class="products">
-                <h3>المنتجات:</h3>
-                ${data.products.map(product => `
-                    <div class="product">
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-details">
-                            الكمية: ${product.qty} | السعر: ${product.price.toFixed(1)}₪ | المجموع: ${product.finalSubtotal.toFixed(1)}₪
-                            ${product.actualDiscount > 0 ? ` | خصم: ${product.actualDiscount.toFixed(1)}₪` : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-
-            <div class="totals">
-                <div class="total-row"><span>المجموع الفرعي:</span><span>${data.subtotal.toFixed(1)}₪</span></div>
-                ${data.totalDiscount > 0 ? `<div class="total-row"><span>إجمالي الخصم:</span><span>${data.totalDiscount.toFixed(1)}₪</span></div>` : ''}
-                <div class="total-row final-total"><span>المجموع النهائي:</span><span>${data.total.toFixed(1)}₪</span></div>
-            </div>
-
-            <div style="text-align: center; margin-top: 20px; font-size: 12px;">
-                <p>شكراً لك على التعامل معنا!</p>
-                <p>HawiTech - WhatsApp: +(970) 599647713</p>
-            </div>
-        </body>
-        </html>`;
-        }
 
         // Collect print data from current form
         function collectPrintData() {
@@ -1610,7 +1500,7 @@
             };
         }
 
-        // Open standard print in new tab
+        // Updated print functions with close button
         function openStandardPrintTab(data) {
             const printWindow = window.open('', '_blank', 'width=800,height=600');
             if (!printWindow) {
@@ -1623,16 +1513,41 @@
             printWindow.document.close();
 
             printWindow.onload = function() {
+                // Add close button that won't be printed
+                const closeButton = printWindow.document.createElement('button');
+                closeButton.innerHTML = '✕ Close Window';
+                closeButton.style.cssText = `
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    z-index: 9999;
+                    padding: 8px 16px;
+                    background-color: #dc2626;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: bold;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                `;
+                
+                // Hide button when printing
+                const style = printWindow.document.createElement('style');
+                style.textContent = '@media print { .close-btn { display: none !important; } }';
+                printWindow.document.head.appendChild(style);
+                closeButton.className = 'close-btn';
+                
+                closeButton.onclick = () => printWindow.close();
+                printWindow.document.body.appendChild(closeButton);
+                
+                // Show print dialog
                 setTimeout(() => {
                     printWindow.print();
-                    printWindow.addEventListener('afterprint', () => {
-                        setTimeout(() => printWindow.close(), 1000);
-                    });
                 }, 500);
             };
         }
 
-        // Open receipt print in new tab  
         function openReceiptPrintTab(data) {
             const printWindow = window.open('', '_blank', 'width=400,height=600');
             if (!printWindow) {
@@ -1645,11 +1560,37 @@
             printWindow.document.close();
 
             printWindow.onload = function() {
+                // Add close button that won't be printed
+                const closeButton = printWindow.document.createElement('button');
+                closeButton.innerHTML = '✕ Close';
+                closeButton.style.cssText = `
+                    position: fixed;
+                    top: 5px;
+                    right: 5px;
+                    z-index: 9999;
+                    padding: 4px 8px;
+                    background-color: #dc2626;
+                    color: white;
+                    border: none;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: bold;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                `;
+                
+                // Hide button when printing
+                const style = printWindow.document.createElement('style');
+                style.textContent = '@media print { .close-btn { display: none !important; } }';
+                printWindow.document.head.appendChild(style);
+                closeButton.className = 'close-btn';
+                
+                closeButton.onclick = () => printWindow.close();
+                printWindow.document.body.appendChild(closeButton);
+                
+                // Show print dialog
                 setTimeout(() => {
                     printWindow.print();
-                    printWindow.addEventListener('afterprint', () => {
-                        setTimeout(() => printWindow.close(), 1000);
-                    });
                 }, 500);
             };
         }
@@ -2056,11 +1997,6 @@
                 </body>
                 </html>
             `;
-        }
-        // Mobile device detection
-        function isMobileDevice() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                window.innerWidth <= 768;
         }
 
         // Scroll handler
