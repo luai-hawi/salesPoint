@@ -93,4 +93,5 @@ return [
     'Failed to delete batch. Please try again.' => 'فشل في حذف الدفعة. يرجى المحاولة مرة أخرى.',
     'Print Receipt' => 'طباعة الإيصال',
     'Tags' => 'العلامات',
+    'Tags Price'=>'سعر الاضافة',
 ];

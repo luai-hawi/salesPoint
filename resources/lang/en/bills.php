@@ -92,4 +92,5 @@ return [
     'Failed to delete batch. Please try again.' => 'Failed to delete batch. Please try again.',
     'Print Receipt' => 'Print Receipt',
     'Tags' => 'Tags',
+    'Tags Price'=>'Tags Price',
 ];

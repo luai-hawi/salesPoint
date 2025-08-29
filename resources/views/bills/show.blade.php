@@ -343,505 +343,30 @@
             </div>
     </div>
 
-    {{-- Standard Printable Invoice --}}
-<div id="print-area" class="print-hidden p-4 text-xs">
-    <!-- Shop Owner Name at Top Center -->
-    <div class="text-center mb-3">
-        <div class="text-xl font-bold">
-            @php
-                $shopOwnerName = '';
-                if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-                    $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
-                } elseif (auth()->user()->role !== 'employee') {
-                    $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
-                }
-            @endphp
-            {{ $shopOwnerName }}
-        </div>
-    </div>
-
-    <!-- Header Information Grid -->
-    <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
-        <!-- Left Side Info -->
-        <div class="text-left">
-            <div class="font-semibold">{{ $shopName }}</div>
-            <div class="font-medium">{{ __('messages.Bill ID') }}: #{{ $bill->id }}</div>
-            <div>{{ __('messages.Printed by') }}: {{ auth()->user()->name }}</div>
-            <div>{{ $bill->created_at->format('Y-m-d H:i:s') }}</div>
-            <div class="mt-1">{{ auth()->user()->details ?? "" }}</div>
-        </div>
-        
-        <!-- Right Side Info -->
-        <div class="text-right">
-            <div class="font-semibold">
-                {{ $bill->customer ? __('messages.Customer') . ': ' . $bill->customer->name : '' }}
-            </div>
-            <div>
-                {{ $bill->customer && $bill->customer->phone ? __('messages.Phone') . ': ' . $bill->customer->phone : '' }}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Products Table - Full Width -->
-    <table class="w-full border-2 border-black text-xs mb-4" style="border-collapse: collapse;">
-        <thead>
-            <tr class="bg-gray-100">
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Qty') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
-                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
-            </tr>
-        </thead>
-        <tbody id="print-products-list">
-            @foreach($bill->products as $product)
-                @php
-                    $basePrice = $product->pivot->selling_price;
-                    $tagPairs = explode('&', $product->pivot->tags ?? '');
-                    $totalTagPrice = 0;
-                    $tagsDisplay = '';
-                    
-                    foreach($tagPairs as $tagPair) {
-                        if(str_contains($tagPair, '@')) {
-                            [$name, $tagPrice] = explode('@', $tagPair);
-                            $totalTagPrice += floatval($tagPrice);
-                            $tagsDisplay .= $tagsDisplay ? ', ' . $name . ' (+$' . number_format($tagPrice, 2) . ')' : $name . ' (+$' . number_format($tagPrice, 2) . ')';
-                        }
-                    }
-                    
-                    $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
-                @endphp
-                <tr>
-                    <td class="border-2 border-black px-2 py-1 text-center">
-                        <div class="font-semibold text-xs">{{ $product->name }}</div>
-                        @if($tagsDisplay)
-                            <div class="text-xs text-blue-600">{{__('messages.Tags')}}: {{ $tagsDisplay }}</div>
-                        @endif
-                    </td>
-                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">{{ $product->pivot->quantity }}</td>
-                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">
-                        ${{ number_format($basePrice, 2) }}
-                        @if($totalTagPrice > 0)
-                            <br><small class="text-xs">+${{ number_format($totalTagPrice, 2) }}</small>
-                        @endif
-                    </td>
-                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">${{ number_format($product->pivot->discount ?? 0, 2) }}</td>
-                    <td class="border-2 border-black px-2 py-1 text-center font-semibold">${{ number_format($finalPrice, 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="bg-gray-50">
-                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Totals') }}</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->products->sum('pivot.discount'), 2) }}</td>
-                <td class="border-2 border-black px-2 py-2 text-center font-bold">${{ number_format($bill->total_price, 2) }}</td>
-            </tr>
-        </tfoot>
-    </table>
-    
-    <!-- Footer -->
-    <div class="text-left">
-        <div class="text-xs">HawiTech</div>
-        <div class="text-xs">WhatsApp: +(970) 599647713</div>
-    </div>
-</div>
-
-    {{-- Professional Receipt Print --}}
-<div id="receipt-area" class="print-hidden">
-    <div class="receipt-content">
-        <!-- Header with Shop Info -->
-        <div class="text-center mb-2">
-            <div class="mb-1">
-                <h1 class="text-lg font-bold">{{ $shopName }}</h1>
-                <p class="text-xs font-bold">HawiTech</p>
-                <p class="text-xs">WhatsApp: +(970) 599647713</p>
-            </div>
-            <hr class="border-2 border-black my-1">
-        </div>
-
-        <!-- Shop Owner Name Prominently Displayed -->
-        <div class="text-center mb-2">
-            <div class="text-sm font-bold bg-gray-200 py-1 px-2 rounded">
-                @php
-                    $shopOwnerName = '';
-                    if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-                        $shopOwnerName = auth()->user()->shopOwner->name ?? 'Shop Owner';
-                    } elseif (auth()->user()->role !== 'employee') {
-                        $shopOwnerName = auth()->user()->name ?? 'Shop Owner';
-                    }
-                @endphp
-                {{ $shopOwnerName }}
-            </div>
-        </div>
-
-        <!-- Bill Info Section -->
-        <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
-            <div>
-                <div class="font-bold">{{__('messages.Date')}}: {{ $bill->created_at->format('d-m-Y') }}</div>
-                <div class="font-bold">{{__('messages.Time')}}: {{ $bill->created_at->format('H:i:s') }}</div>
-            </div>
-            <div class="text-right">
-                <div class="font-bold">{{__('messages.Bill number')}}: {{ $bill->id }}</div>
-                <div class="font-bold">
-                    {{ $bill->customer ? $bill->customer->name : '' }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Customer Info -->
-        <div class="mb-2">
-            <div class="font-bold text-xs">{{__('messages.Created By')}}: {{ $bill->creator->name }}</div>
-            <div class="text-xs">{{ auth()->user()->details ?? "" }}</div>
-        </div>
-
-        <!-- Products Table -->
-        <div class="w-full overflow-x-auto">
-            <table class="w-full border-2 border-black mb-2" style="border-collapse: collapse;">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">اسم الطبق</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">الكمية</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">السعر</th>
-                        <th class="border-2 border-black px-1 py-1 text-center font-bold text-sm">المجموع</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($bill->products as $index => $product)
-                        @php
-                            $basePrice = $product->pivot->selling_price;
-                            $tagPairs = explode('&', $product->pivot->tags ?? '');
-                            $totalTagPrice = 0;
-                            $tagsDisplayArabic = '';
-                            
-                            foreach($tagPairs as $tagPair) {
-                                if(str_contains($tagPair, '@')) {
-                                    [$name, $tagPrice] = explode('@', $tagPair);
-                                    $totalTagPrice += floatval($tagPrice);
-                                    $tagsDisplayArabic .= $tagsDisplayArabic ? '، ' . $name . ' (+' . number_format($tagPrice, 1) . ')' : $name . ' (+' . number_format($tagPrice, 1) . ')';
-                                }
-                            }
-                            
-                            $finalPrice = ($basePrice + $totalTagPrice) * $product->pivot->quantity - ($product->pivot->discount ?? 0);
-                        @endphp
-                        <tr>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold">
-                                <div>{{ $product->name }}</div>
-                                @if($tagsDisplayArabic)
-                                    <div class="text-xs">إضافات: {{ $tagsDisplayArabic }}</div>
-                                @endif
-                            </td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold">{{ $product->pivot->quantity }}</td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold">
-                                <div>{{ number_format($basePrice, 1) }}</div>
-                                @if($totalTagPrice > 0)
-                                    <div class="text-xs">+{{ number_format($totalTagPrice, 1) }} إضافات</div>
-                                @endif
-                            </td>
-                            <td class="border-2 border-black px-1 py-1 text-center font-bold">{{ number_format($finalPrice, 1) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Detailed Totals Section -->
-        <div class="border-2 border-black mb-2">
-            @php
-                $subtotal = 0;
-                $totalDiscount = 0;
-                foreach($bill->products as $product) {
-                    $basePrice = $product->pivot->selling_price;
-                    $tagPairs = explode('&', $product->pivot->tags ?? '');
-                    $totalTagPrice = 0;
-                    foreach($tagPairs as $tagPair) {
-                        if(str_contains($tagPair, '@')) {
-                            $totalTagPrice += floatval(explode('@', $tagPair)[1]);
-                        }
-                    }
-                    $subtotal += ($basePrice + $totalTagPrice) * $product->pivot->quantity;
-                    $totalDiscount += $product->pivot->discount ?? 0;
-                }
-            @endphp
-            <!-- Subtotal -->
-            <div class="grid grid-cols-2 text-center font-bold text-sm border-b-2 border-black">
-                <div class="border-r-2 border-black py-1">{{__('messages.Subtotal')}}:</div>
-                <div class="py-1">{{ number_format($subtotal, 1) }}</div>
-            </div>
-            <!-- Total Discount -->
-            <div class="grid grid-cols-2 text-center font-bold text-sm border-b-2 border-black">
-                <div class="border-r-2 border-black py-1">{{__('messages.Total discount')}}:</div>
-                <div class="py-1">{{ number_format($totalDiscount, 1) }}</div>
-            </div>
-            <!-- Final Total -->
-            <div class="grid grid-cols-2 text-center font-bold text-base bg-gray-200">
-                <div class="border-r-2 border-black py-1">{{__('messages.Total')}}:</div>
-                <div class="py-1">{{ number_format($bill->total_price, 1) }}</div>
-            </div>
-        </div>
-
-        <!-- User Details -->
-        <div class="mt-2 text-center">
-            <div class="text-xs font-bold">{{ auth()->user()->details ?? "" }}</div>
-        </div>
-
-        <!-- Footer -->
-        <div class="text-center mt-2 text-xs font-bold">
-            <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
-            <hr class="border-2 border-black my-1">
-            <div class="text-xs">HawiTech</div>
-            <p class="text-xs">WhatsApp: +(970) 599647713</p>
-        </div>
-    </div>
-</div>
     {{-- Enhanced Performance Styles --}}
-    <style>
-        /* Receipt styles for roll paper */
-
-        .receipt-product-row {
-            margin-bottom: 1mm;
-        }
-
-        .receipt-product-name {
-            font-weight: bold;
-        }
-
-        .receipt-product-details {
-            display: flex;
-            justify-content: space-between;
-            font-size: 7pt;
-        }
-
-        /* Standard print styles */
-        @media print {
-            body {
-                margin: 0;
-                padding: 0;
-            }
-
-            body * {
-                visibility: hidden !important;
-                height: 0 !important;
-                overflow: hidden !important;
-            }
-
-            #print-area, #print-area * {
-                visibility: visible !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area {
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                padding: 0.5cm !important;
-                background: white;
-            }
-
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area table {
-                page-break-inside: auto;
-            }
-
-            #print-area tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
-
-            .product-row, .x-block, .py-12, .flex, form {
-                display: none !important;
-            }
-        }
-
-        /* Receipt print styles */
-        /* Professional Receipt Print Styles */
-.receipt-content {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 10px !important;
-    font-size: 12pt !important;
-    line-height: 1.2 !important;
-    font-weight: bold !important;
-    font-family: Arial, sans-serif !important;
-    color: black !important;
-    background: white !important;
-    margin: 0 auto !important;
-}
-
-#receipt-area {
-    display: none;
-    font-family: Arial, sans-serif;
-}
-
+ <style>
 @media print {
-    .print-receipt #print-area {
-        display: none !important;
+    body * {
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
     }
-
-    .print-receipt #receipt-area, .print-receipt #receipt-area * {
+    
+    .print-content, .print-content * {
         visibility: visible !important;
         height: auto !important;
         overflow: visible !important;
     }
-
-    .print-receipt #receipt-area {
-        display: block !important;
+    
+    .print-content {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
-        right: 0 !important;
         width: 100% !important;
-        height: auto !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: white !important;
-        font-size: 14pt !important;
-        font-weight: bold !important;
-    }
-
-    .print-receipt .receipt-content {
-        font-weight: bold !important;
-        width: 100% !important;
-        height: auto !important;
-        max-width: none !important;
-        padding: 10px !important;
-        margin: 0 !important;
-        box-sizing: border-box !important;
-    }
-
-    .print-receipt table {
-        border-collapse: collapse !important;
-        width: 100% !important;
-        table-layout: auto !important;
-    }
-
-    .print-receipt th, .print-receipt td {
-        border: 2px solid black !important;
-        padding: 4px !important;
-        font-weight: bold !important;
-        word-wrap: break-word !important;
-    }
-
-    /* Make table columns responsive */
-    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) { width: 45%; } /* Product name */
-    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) { width: 15%; } /* Quantity */
-    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) { width: 20%; } /* Price */
-    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) { width: 20%; } /* Total */
-
-    .print-receipt .grid {
-        display: grid !important;
-    }
-
-    .print-receipt .grid-cols-2 {
-        grid-template-columns: 1fr 1fr !important;
-        gap: 20px !important;
-    }
-
-    .print-receipt .border-r-2 {
-        border-right: 2px solid black !important;
-    }
-
-    .print-receipt .border-b-2 {
-        border-bottom: 2px solid black !important;
+        background: white;
     }
 }
-
-.receipt-product-row {
-    margin-bottom: 2mm !important;
-    font-weight: bold !important;
-}
-
-.receipt-product-name {
-    font-weight: bold !important;
-    font-size: 11pt !important;
-}
-
-.receipt-product-details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10pt !important;
-    font-weight: bold !important;
-}
-
-/* Thermal paper optimization */
-@media print and (max-width: 104mm) {
-    .print-receipt .receipt-content {
-        font-size: 11pt !important;
-        padding: 8px !important;
-    }
-
-    .print-receipt th, .print-receipt td {
-        padding: 3px !important;
-        font-size: 10pt !important;
-    }
-
-    .print-receipt h1 {
-        font-size: 14pt !important;
-    }
-}
-
-@media print and (max-width: 80mm) {
-    .print-receipt .receipt-content {
-        font-size: 10pt !important;
-        padding: 6px !important;
-    }
-
-    .print-receipt th, .print-receipt td {
-        padding: 2px !important;
-        font-size: 9pt !important;
-    }
-
-    .print-receipt h1 {
-        font-size: 12pt !important;
-    }
-}
-
-@media print and (max-width: 58mm) {
-    .print-receipt .receipt-content {
-        font-size: 9pt !important;
-        padding: 4px !important;
-    }
-
-    .print-receipt th, .print-receipt td {
-        padding: 1px !important;
-        font-size: 8pt !important;
-    }
-
-    .print-receipt h1 {
-        font-size: 11pt !important;
-    }
-
-    .print-receipt th:nth-child(1), .print-receipt td:nth-child(1) {
-        width: 50% !important;
-    }
-
-    .print-receipt th:nth-child(2), .print-receipt td:nth-child(2) {
-        width: 15% !important;
-    }
-
-    .print-receipt th:nth-child(3), .print-receipt td:nth-child(3) {
-        width: 17% !important;
-    }
-
-    .print-receipt th:nth-child(4), .print-receipt td:nth-child(4) {
-        width: 18% !important;
-    }
-}
-        #print-area {
-            display: none;
-        }
-
-        @media print {
-            #print-area {
-                display: block !important;
-            }
-        }
-    </style>
+</style>
 
     <script>
 
@@ -1150,17 +675,600 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTags();
     updateGrandTotal();
 });
+// NEW CLEAN PRINT SYSTEM - Always opens in new tab
+
+// Standard Print Button
 document.getElementById('print-button').addEventListener('click', () => {
-    document.body.classList.remove('print-receipt');
-    window.print();
+    const printData = collectPrintData();
+    openStandardPrintTab(printData);
 });
 
-// Receipt print functionality
+// Receipt Print Button  
 document.getElementById('print-receipt-button').addEventListener('click', () => {
-    document.body.classList.add('print-receipt');
-    window.print();
-    document.body.classList.remove('print-receipt');
+    const printData = collectPrintData();
+    openReceiptPrintTab(printData);
 });
 
+// Collect print data from current bill
+function collectPrintData() {
+    const products = [];
+    let total = 0, totalDiscount = 0, subtotal = 0;
+
+    // Get products from the bill data passed from Laravel
+    @foreach($bill->products as $product)
+        @php
+            $basePrice = $product->pivot->selling_price;
+            $tagPairs = explode('&', $product->pivot->tags ?? '');
+            $totalTagPrice = 0;
+            $tagsString = '';
+            
+            foreach($tagPairs as $tagPair) {
+                if(str_contains($tagPair, '@')) {
+                    [$name, $tagPrice] = explode('@', $tagPair);
+                    $totalTagPrice += floatval($tagPrice);
+                    $tagsString .= $tagsString ? '&' . $tagPair : $tagPair;
+                }
+            }
+            
+            $actualDiscount = $product->pivot->discount ?? 0;
+            $subtotalWithTags = ($basePrice * $product->pivot->quantity) + ($totalTagPrice * $product->pivot->quantity);
+            $finalSubtotal = max(0, $subtotalWithTags - $actualDiscount);
+        @endphp
+        
+        products.push({
+            name: '{{ $product->name }}',
+            qty: {{ $product->pivot->quantity }},
+            price: {{ $basePrice }},
+            tagsTotal: {{ $totalTagPrice }},
+            tagsString: '{{ $tagsString }}',
+            actualDiscount: {{ $actualDiscount }},
+            discountType: 'total',
+            finalSubtotal: {{ $finalSubtotal }}
+        });
+        
+        subtotal += {{ $subtotalWithTags }};
+        total += {{ $finalSubtotal }};
+        totalDiscount += {{ $actualDiscount }};
+    @endforeach
+
+    const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
+    const shopOwnerName = 
+        @if(auth()->user()->role === 'employee' && auth()->user()->shop_owner_id)
+            '{{ auth()->user()->shopOwner->name ?? 'Shop Owner' }}'
+        @else
+            '{{ auth()->user()->name ?? 'Shop Owner' }}'
+        @endif
+    ;
+
+    return {
+        products: products,
+        subtotal: subtotal,
+        totalDiscount: totalDiscount,
+        total: total,
+        customerName: '{{ $bill->customer->name ?? "" }}',
+        customerPhone: '{{ $bill->customer->phone ?? "" }}',
+        userDetails: userDetails,
+        shopName: shopName,
+        shopOwnerName: shopOwnerName,
+        userName: '{{ auth()->user()->name }}',
+        currentDate: new Date('{{ $bill->created_at->format('Y-m-d') }}').toLocaleDateString('en-GB'),
+        currentTime: new Date('{{ $bill->created_at->format('Y-m-d H:i:s') }}').toLocaleTimeString('en-GB', { hour12: false }),
+        currentDateTime: new Date('{{ $bill->created_at->format('Y-m-d H:i:s') }}').toLocaleString('en-GB'),
+        billId: {{ $bill->id }}
+    };
+}
+
+// Updated print functions with close button
+function openStandardPrintTab(data) {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+        alert('Please allow popups for printing');
+        return;
+    }
+
+    const standardHtml = generateStandardPrintHtml(data);
+    printWindow.document.write(standardHtml);
+    printWindow.document.close();
+
+    printWindow.onload = function() {
+        // Add close button that won't be printed
+        const closeButton = printWindow.document.createElement('button');
+        closeButton.innerHTML = '✕ Close Window';
+        closeButton.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            padding: 8px 16px;
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+        
+        // Hide button when printing
+        const style = printWindow.document.createElement('style');
+        style.textContent = '@media print { .close-btn { display: none !important; } }';
+        printWindow.document.head.appendChild(style);
+        closeButton.className = 'close-btn';
+        
+        closeButton.onclick = () => printWindow.close();
+        printWindow.document.body.appendChild(closeButton);
+        
+        // Show print dialog
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    };
+}
+
+function openReceiptPrintTab(data) {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+        alert('Please allow popups for printing');
+        return;
+    }
+
+    const receiptHtml = generateReceiptPrintHtml(data);
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+
+    printWindow.onload = function() {
+        // Add close button that won't be printed
+        const closeButton = printWindow.document.createElement('button');
+        closeButton.innerHTML = '✕ Close';
+        closeButton.style.cssText = `
+            position: fixed;
+            top: 5px;
+            right: 5px;
+            z-index: 9999;
+            padding: 4px 8px;
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        `;
+        
+        // Hide button when printing
+        const style = printWindow.document.createElement('style');
+        style.textContent = '@media print { .close-btn { display: none !important; } }';
+        printWindow.document.head.appendChild(style);
+        closeButton.className = 'close-btn';
+        
+        closeButton.onclick = () => printWindow.close();
+        printWindow.document.body.appendChild(closeButton);
+        
+        // Show print dialog
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    };
+}
+
+// Generate Standard Print HTML - Updated with translations
+function generateStandardPrintHtml(data) {
+    const productsHtml = data.products.map(product => {
+        const tagsDisplay = product.tagsString ? product.tagsString.split('&').map(tag => {
+            const [name, price] = tag.split('@');
+            return `${name} (+${parseFloat(price).toFixed(2)}₪)`;
+        }).join(', ') : '';
+
+        return `
+            <tr>
+                <td class="border-2 border-black px-2 py-1 text-center">
+                    <div class="font-semibold text-xs">${product.name}</div>
+                    ${tagsDisplay ? `<div class="text-xs text-blue-600">{{ __('messages.Tags') }}: ${tagsDisplay}</div>` : ''}
+                </td>
+                <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.qty}</td>
+                <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                    <div>${product.price.toFixed(2)}₪</div>
+                    ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ {{ __('messages.Tags') }}</small>` : ''}
+                </td>
+                <td class="border-2 border-black px-2 py-1 text-center font-semibold">
+                    ${product.actualDiscount > 0 ? `
+                        <div>${product.actualDiscount.toFixed(2)}₪</div>
+                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                    ` : '-'}
+                </td>
+                <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <title>{{ __('messages.Invoice') }} - ${data.shopName}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                
+                body {
+                    font-family: 'Arial', 'Tahoma', sans-serif;
+                    font-size: 16px;
+                    font-weight: bold;
+                    line-height: 1.4;
+                    color: black;
+                    background: white;
+                    margin: 0;
+                    padding: 10mm;
+                    direction: rtl;
+                    text-align: right;
+                }
+                
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    margin: 3mm 0 !important;
+                    direction: rtl;
+                }
+                
+                th, td {
+                    border: 2px solid black !important;
+                    padding: 4mm !important;
+                    text-align: center !important;
+                    font-weight: bold !important;
+                    font-size: 14px !important;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    vertical-align: middle;
+                }
+                
+                .text-center { text-align: center !important; }
+                .text-right { text-align: right !important; }
+                .text-left { text-align: left !important; }
+                .font-bold { font-weight: bold !important; }
+                .text-xl { font-size: 20px !important; }
+                .text-lg { font-size: 18px !important; }
+                .text-sm { font-size: 14px !important; }
+                .text-xs { font-size: 11px !important; line-height: 1.3 !important; }
+                .mb-3 { margin-bottom: 3mm !important; }
+                .mb-4 { margin-bottom: 4mm !important; }
+                
+                .grid { display: flex; flex-wrap: wrap; gap: 4mm; margin: 3mm 0; }
+                .grid-cols-2 > div { flex: 1; min-width: 45%; }
+                
+                tfoot tr { background-color: #f3f4f6 !important; }
+                tfoot .bg-gray-100 { background-color: #e5e7eb !important; }
+                tfoot .bg-gray-200 { background-color: #d1d5db !important; }
+                
+                small { display: block; margin-top: 2px; color: #666; font-size: 10px !important; }
+                
+                @media print {
+                    @page { margin: 5mm; size: A4; }
+                    body { font-size: 16px !important; direction: rtl !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="text-center mb-3">
+                <div class="text-xl font-bold">${data.shopOwnerName}</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
+                <div class="text-right">
+                    <div class="font-semibold">${data.shopName}</div>
+                    <div class="font-medium">{{ __('messages.Bill number') }}: #${data.billId}</div>
+                    <div>{{ __('messages.Printed by') }}: ${data.userName}</div>
+                    <div>${data.currentDateTime}</div>
+                    ${data.userDetails ? `<div class="mt-1">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+                
+                <div class="text-left">
+                    ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
+                    ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
+                </div>
+            </div>
+            
+            <table class="w-full border-2 border-black text-xs mb-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                        <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Quantity') }}</th>
+                        <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                        <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
+                        <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${productsHtml}
+                </tbody>
+                <tfoot>
+                    <tr class="bg-gray-50">
+                        <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Subtotal') }}</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.subtotal.toFixed(2)}₪</td>
+                    </tr>
+                    <tr class="bg-gray-100">
+                        <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Total Discount') }}</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.totalDiscount.toFixed(2)}₪</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
+                    </tr>
+                    <tr class="bg-gray-200">
+                        <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.total.toFixed(2)}₪</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="text-left">
+                <div class="text-xs">HawiTech</div>
+                <div class="text-xs">{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+// Generate Receipt Print HTML - Updated with larger text and removed boldness
+function generateReceiptPrintHtml(data) {
+    const productsHtml = data.products.map(product => {
+        const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
+            const [name, price] = tag.split('@');
+            return `${name} (+${parseFloat(price).toFixed(1)})`;
+        }).join(', ') : '';
+
+        return `
+            <tr>
+                <td class="border px-1 py-1 text-center text-sm">
+                    <div>${product.name}</div>
+                    ${tagsDisplayArabic ? `<div class="text-xs">{{__('messages.Tags')}}: ${tagsDisplayArabic}</div>` : ''}
+                </td>
+                <td class="border px-1 py-1 text-center text-sm">${product.qty}</td>
+                <td class="border px-1 py-1 text-center text-sm">
+                    <div>${product.price.toFixed(1)}</div>
+                    ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
+                </td>
+                <td class="border px-1 py-1 text-center text-sm">${product.finalSubtotal.toFixed(1)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <title>Receipt - ${data.shopName}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                
+                body {
+                    font-family: 'Arial', 'Courier New', monospace;
+                    font-size: 14px;
+                    font-weight: normal;
+                    line-height: 1.4;
+                    color: black;
+                    background: white;
+                    direction: rtl;
+                    margin: 0;
+                    padding: 2mm;
+                    width: 100%;
+                    max-width: 104mm;
+                    min-width: 56mm;
+                }
+                
+                .receipt-container {
+                    width: 100%;
+                    max-width: 100%;
+                    overflow-wrap: break-word;
+                    word-wrap: break-word;
+                }
+                
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    margin: 1mm 0 !important;
+                    table-layout: fixed !important;
+                }
+                
+                th, td {
+                    border: 1px solid black !important;
+                    padding: 2mm !important;
+                    text-align: center !important;
+                    font-weight: normal !important;
+                    font-size: 13px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    vertical-align: middle !important;
+                    hyphens: auto !important;
+                }
+                
+                th {
+                    font-weight: bold !important;
+                    background-color: #f5f5f5 !important;
+                }
+                
+                /* Column widths for better text fit */
+                .col-product { width: 40% !important; }
+                .col-qty { width: 15% !important; }
+                .col-price { width: 20% !important; }
+                .col-total { width: 25% !important; }
+                
+                h1, h2, h3 {
+                    font-size: 16px !important;
+                    font-weight: bold !important;
+                    margin: 2mm 0 !important;
+                    text-align: center !important;
+                    word-wrap: break-word !important;
+                }
+                
+                .text-center { text-align: center !important; }
+                .text-right { text-align: right !important; }
+                .text-left { text-align: left !important; }
+                .font-bold { font-weight: bold !important; }
+                .text-lg { font-size: 15px !important; font-weight: normal !important; }
+                .text-sm { font-size: 13px !important; font-weight: normal !important; }
+                .text-xs { font-size: 11px !important; font-weight: normal !important; }
+                .mb-1 { margin-bottom: 1mm !important; }
+                .mb-2 { margin-bottom: 2mm !important; }
+                .mb-3 { margin-bottom: 3mm !important; }
+                .mt-2 { margin-top: 2mm !important; }
+                .mt-3 { margin-top: 3mm !important; }
+                .py-1 { padding: 1mm 0 !important; }
+                .py-2 { padding: 2mm 0 !important; }
+                .bg-gray-200 { background-color: #e5e7eb !important; }
+                
+                .totals-section {
+                    border: 1px solid black;
+                    margin: 2mm 0;
+                }
+                
+                .totals-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 2mm 3mm;
+                    border-bottom: 1px solid black;
+                    font-weight: normal;
+                    font-size: 13px;
+                }
+                
+                .totals-row:last-child {
+                    border-bottom: none;
+                    background-color: #e5e7eb;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                
+                hr {
+                    border: 1px solid black;
+                    margin: 2mm 0;
+                }
+                
+                .info-grid {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 2mm 0;
+                    flex-wrap: wrap;
+                }
+                
+                .info-left, .info-right {
+                    flex: 1;
+                    min-width: 45%;
+                    font-size: 12px;
+                    font-weight: normal;
+                }
+                
+                .info-left .font-bold,
+                .info-right .font-bold {
+                    font-weight: bold;
+                }
+                
+                /* Responsive adjustments for very small widths */
+                @media (max-width: 60mm) {
+                    body { font-size: 12px; padding: 1mm; }
+                    th, td { font-size: 11px !important; padding: 1mm !important; }
+                    h1, h2, h3 { font-size: 14px !important; }
+                    .info-grid { flex-direction: column; }
+                    .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
+                    .totals-row { font-size: 11px; padding: 1.5mm 2mm; }
+                    .totals-row:last-child { font-size: 12px; }
+                }
+                
+                @media print {
+                    @page { 
+                        margin: 0; 
+                        size: auto;
+                    }
+                    
+                    body {
+                        margin: 0 !important;
+                        padding: 1mm !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt-container">
+                <!-- Header -->
+                <div class="text-center mb-3">
+                    <h1>${data.shopName}</h1>
+                    <div class="text-sm">HawiTech</div>
+                    <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                    <hr>
+                </div>
+
+                <!-- Shop Owner Name -->
+                <div class="text-center mb-2">
+                    <div class="text-lg bg-gray-200 py-1" style="padding: 2mm; border: 1px solid black;">
+                        ${data.shopOwnerName}
+                    </div>
+                </div>
+
+                <!-- Bill Info -->
+                <div class="info-grid text-sm">
+                    <div class="info-right">
+                        <div class="font-bold">{{__('messages.Date')}}: ${data.currentDate}</div>
+                        <div class="font-bold">{{__('messages.Time')}}: ${data.currentTime}</div>
+                    </div>
+                    <div class="info-left">
+                        <div class="font-bold">{{__('messages.Bill number')}}: ${data.billId}</div>
+                        ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Creator Info -->
+                <div class="mb-2">
+                    <div class="font-bold text-sm">{{__('messages.Created By')}}: ${data.userName}</div>
+                    ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+
+                <!-- Products Table -->
+                <table>
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="col-product">{{__('messages.Product')}}</th>
+                            <th class="col-qty">{{__('messages.Qty')}}</th>
+                            <th class="col-price">{{__('messages.Unit Price')}}</th>
+                            <th class="col-total">{{__('messages.Total')}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${productsHtml}
+                    </tbody>
+                </table>
+
+                <!-- Totals Section -->
+                <div class="totals-section">
+                    <div class="totals-row">
+                        <div>{{__('messages.Subtotal')}}:</div>
+                        <div>${data.subtotal.toFixed(1)}</div>
+                    </div>
+                    <div class="totals-row">
+                        <div>{{__('messages.Total discount')}}:</div>
+                        <div>${data.totalDiscount.toFixed(1)}</div>
+                    </div>
+                    <div class="totals-row">
+                        <div>{{__('messages.Final Total')}}:</div>
+                        <div>${data.total.toFixed(1)}</div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center mt-3 text-sm">
+                    <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
+                    <hr>
+                    <div>HawiTech</div>
+                    <div>WhatsApp: +(970) 599647713</div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
     </script>
 </x-app-layout>

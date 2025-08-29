@@ -18,12 +18,18 @@
     <x-slot name="header">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 class="font-bold text-xl sm:text-2xl text-gray-800 leading-tight flex items-center">
-            <svg class="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            {{ $isRestaurant ? __('dashboard.Restaurant Dashboard') : __('dashboard.Point of Sale Dashboard') }}
+            <!-- Your existing header content -->
         </h2>
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <!-- Add this cash drawer button -->
+            <button type="button" id="open-cash-drawer" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                {{ __('dashboard.Open Drawer') }}
+            </button>
+            
+            <!-- Your existing today's sales display -->
             <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
                 {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">${{ number_format($totalToday ?? 0, 2) }}</span>
             </div>
@@ -2121,5 +2127,213 @@
         window.setBillId = function(billId) {
             currentBillId = billId;
         };
+
+
+// Cash Drawer Integration - FIXED VERSION
+class CashDrawerManager {
+    constructor() {
+        this.platform = this.detectPlatform();
+        this.method = this.determineBestMethod();
+        this.escPosCommand = '\x1B\x70\x00\x19\xFA'; // ESC/POS drawer open command
+    }
+    
+    detectPlatform() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isAndroid = /android/.test(userAgent);
+        const isWindows = /windows/.test(userAgent);
+        const isWebView = /wv/.test(userAgent); // Android WebView
+        
+        if (isWebView || (isAndroid && window.Android)) return 'android-webview';
+        if (isAndroid) return 'android-browser';
+        if (isWindows) return 'windows';
+        return 'other';
+    }
+    
+    determineBestMethod() {
+        switch(this.platform) {
+            case 'android-webview':
+                return window.Android ? 'native-bridge' : 'web-fallback';
+            case 'android-browser':
+                return 'web-intent';
+            case 'windows':
+                return navigator.serial ? 'webserial' : 'network-bridge';
+            default:
+                return 'network-bridge';
+        }
+    }
+    
+    async openDrawer() {
+        try {
+            switch(this.method) {
+                case 'native-bridge':
+                    return await this.openViaAndroidBridge();
+                case 'web-intent':
+                    return await this.openViaWebIntent();
+                case 'webserial':
+                    return await this.openViaWebSerial();
+                case 'network-bridge':
+                    return await this.openViaNetworkBridge();
+                default:
+                    return await this.openViaWebFallback();
+            }
+        } catch (error) {
+            console.error('Cash drawer error:', error);
+            throw new Error(`Failed to open cash drawer: ${error.message}`);
+        }
+    }
+    
+    // Android WebView with native bridge
+    async openViaAndroidBridge() {
+        if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
+            window.Android.openCashDrawer();
+            return { success: true, method: 'Android Native Bridge' };
+        }
+        throw new Error('Android bridge not available');
+    }
+    
+    // Android browser with web intent
+    async openViaWebIntent() {
+        const intentUrl = `intent://drawer/open#Intent;scheme=cashpos;package=com.yourapp.pos;end`;
+        window.location.href = intentUrl;
+        return { success: true, method: 'Android Web Intent' };
+    }
+    
+    // Windows/Chrome with WebSerial API
+    async openViaWebSerial() {
+        if (!navigator.serial) {
+            throw new Error('WebSerial not supported');
+        }
+        
+        try {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            
+            const writer = port.writable.getWriter();
+            const data = new TextEncoder().encode(this.escPosCommand);
+            await writer.write(data);
+            writer.releaseLock();
+            await port.close();
+            
+            return { success: true, method: 'WebSerial API' };
+        } catch (error) {
+            throw new Error(`WebSerial failed: ${error.message}`);
+        }
+    }
+    
+    // Network bridge (local service) - Works on both Windows and Android
+    async openViaNetworkBridge() {
+        const endpoints = [
+            'http://localhost:8080/drawer/open',
+            'http://localhost:3000/drawer/open',
+            'http://127.0.0.1:8080/drawer/open'
+        ];
+        
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: 'open_drawer' }),
+                    signal: AbortSignal.timeout(2000)
+                });
+                
+                if (response.ok) {
+                    return { success: true, method: `Network Bridge (${endpoint})` };
+                }
+            } catch (error) {
+                console.log(`Failed to connect to ${endpoint}:`, error.message);
+            }
+        }
+        
+        throw new Error('No network bridge service found. Please install the POS Bridge service.');
+    }
+    
+    // FIXED: Fallback method with proper string escaping
+    async openViaWebFallback() {
+        return new Promise((resolve) => {
+            // Create a hidden print frame
+            const printFrame = document.createElement('iframe');
+            printFrame.style.display = 'none';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = 'none';
+            document.body.appendChild(printFrame);
+            
+            // Create the print content using DOM manipulation instead of template literals
+            const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+            printDoc.open();
+            printDoc.write('<!DOCTYPE html><html><head><title>Print</title></head><body></body></html>');
+            printDoc.close();
+            
+            // Add event listener for the message
+            const messageHandler = (e) => {
+                if (e.data === 'drawer-attempted') {
+                    cleanup();
+                    resolve({ success: true, method: 'Web Fallback (Print Dialog)' });
+                }
+            };
+            
+            const cleanup = () => {
+                if (printFrame && printFrame.parentNode) {
+                    document.body.removeChild(printFrame);
+                }
+                window.removeEventListener('message', messageHandler);
+            };
+            
+            window.addEventListener('message', messageHandler);
+            
+            // Try to trigger print dialog in the iframe
+            printFrame.onload = () => {
+                try {
+                    if (printFrame.contentWindow) {
+                        // Send message back to parent after attempting print
+                        setTimeout(() => {
+                            printFrame.contentWindow.print();
+                            window.postMessage('drawer-attempted', '*');
+                        }, 100);
+                    }
+                } catch (error) {
+                    console.log('Print attempt failed:', error);
+                    window.postMessage('drawer-attempted', '*');
+                }
+            };
+            
+            // Timeout fallback
+            setTimeout(() => {
+                if (printFrame && printFrame.parentNode) {
+                    cleanup();
+                    resolve({ success: true, method: 'Web Fallback (Timeout)' });
+                }
+            }, 3000);
+        });
+    }
+}
+
+// Initialize cash drawer manager
+const drawerManager = new CashDrawerManager();
+
+// Add event listener to the button
+document.getElementById('open-cash-drawer')?.addEventListener('click', async function() {
+    const originalContent = this.innerHTML;
+    
+    this.disabled = true;
+    this.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ __('dashboard.Opening...') }}
+    `;
+    
+    try {
+        const result = await drawerManager.openDrawer();
+        showNotification(`{{ __('dashboard.Cash drawer opened successfully') }} (${result.method})`, 'success');
+    } catch (error) {
+        showNotification(error.message, 'error');
+    } finally {
+        this.disabled = false;
+        this.innerHTML = originalContent;
+    }
+});
     </script>
 </x-app-layout>
