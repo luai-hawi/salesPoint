@@ -1596,6 +1596,7 @@
         }
 
         // Generate Standard Print HTML
+       // Generate Standard Print HTML - Updated with translations
         function generateStandardPrintHtml(data) {
             const productsHtml = data.products.map(product => {
                 const tagsDisplay = product.tagsString ? product.tagsString.split('&').map(tag => {
@@ -1607,17 +1608,17 @@
                     <tr>
                         <td class="border-2 border-black px-2 py-1 text-center">
                             <div class="font-semibold text-xs">${product.name}</div>
-                            ${tagsDisplay ? `<div class="text-xs text-blue-600">إضافات: ${tagsDisplay}</div>` : ''}
+                            ${tagsDisplay ? `<div class="text-xs text-blue-600">{{ __('messages.Additions') }}: ${tagsDisplay}</div>` : ''}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.qty}</td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             <div>${product.price.toFixed(2)}₪</div>
-                            ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ إضافات</small>` : ''}
+                            ${product.tagsTotal > 0 ? `<small class="text-xs">+${product.tagsTotal.toFixed(2)}₪ {{ __('messages.Additions') }}</small>` : ''}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
                                 <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                <small class="text-xs">${product.discountType === 'per-unit' ? 'لكل وحدة' : 'إجمالي'}</small>
+                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
                             ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
@@ -1629,7 +1630,7 @@
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
                 <head>
-                    <title>فاتورة - ${data.shopName}</title>
+                    <title>{{ __('messages.Invoice') }} - ${data.shopName}</title>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <style>
@@ -1700,26 +1701,26 @@
                     <div class="grid grid-cols-2 gap-4 mb-4 text-xs">
                         <div class="text-right">
                             <div class="font-semibold">${data.shopName}</div>
-                            <div class="font-medium">رقم الفاتورة: #${data.billId}</div>
-                            <div>تم الطباعة بواسطة: ${data.userName}</div>
+                            <div class="font-medium">{{ __('messages.Bill Number') }}: #${data.billId}</div>
+                            <div>{{ __('messages.Printed by') }}: ${data.userName}</div>
                             <div>${data.currentDateTime}</div>
                             ${data.userDetails ? `<div class="mt-1">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
                         
                         <div class="text-left">
-                            ${data.customerName ? `<div class="font-semibold">الزبون: ${data.customerName}</div>` : ''}
-                            ${data.customerPhone ? `<div>الهاتف: ${data.customerPhone}</div>` : ''}
+                            ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
+                            ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
                         </div>
                     </div>
                     
                     <table class="w-full border-2 border-black text-xs mb-4">
                         <thead>
                             <tr class="bg-gray-100">
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المنتج</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الكمية</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">سعر الوحدة</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">الخصم</th>
-                                <th class="border-2 border-black px-2 py-2 font-bold text-center">المجموع</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Product') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Quantity') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Unit Price') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Discount') }}</th>
+                                <th class="border-2 border-black px-2 py-2 font-bold text-center">{{ __('messages.Total') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1727,17 +1728,17 @@
                         </tbody>
                         <tfoot>
                             <tr class="bg-gray-50">
-                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع الفرعي</td>
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Subtotal') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.subtotal.toFixed(2)}₪</td>
                             </tr>
                             <tr class="bg-gray-100">
-                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">إجمالي الخصم</td>
+                                <td colspan="3" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Total Discount') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.totalDiscount.toFixed(2)}₪</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">-</td>
                             </tr>
                             <tr class="bg-gray-200">
-                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">المجموع النهائي</td>
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
                                 <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.total.toFixed(2)}₪</td>
                             </tr>
                         </tfoot>
@@ -1745,14 +1746,14 @@
                     
                     <div class="text-left">
                         <div class="text-xs">HawiTech</div>
-                        <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                        <div class="text-xs">{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
                     </div>
                 </body>
                 </html>
             `;
         }
 
-        // Generate Receipt Print HTML - Updated with larger text and removed boldness
+       // Generate Receipt Print HTML - Updated with much larger text and translations
         function generateReceiptPrintHtml(data) {
             const productsHtml = data.products.map(product => {
                 const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
@@ -1762,16 +1763,16 @@
 
                 return `
                     <tr>
-                        <td class="border px-1 py-1 text-center text-sm">
+                        <td class="border px-2 py-2 text-center text-base">
                             <div>${product.name}</div>
-                            ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
+                            ${tagsDisplayArabic ? `<div class="text-sm">{{ __('messages.Additions') }}: ${tagsDisplayArabic}</div>` : ''}
                         </td>
-                        <td class="border px-1 py-1 text-center text-sm">${product.qty}</td>
-                        <td class="border px-1 py-1 text-center text-sm">
+                        <td class="border px-2 py-2 text-center text-base">${product.qty}</td>
+                        <td class="border px-2 py-2 text-center text-base">
                             <div>${product.price.toFixed(1)}</div>
-                            ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
+                            ${product.tagsTotal > 0 ? `<div class="text-sm">+${product.tagsTotal.toFixed(1)}</div>` : ''}
                         </td>
-                        <td class="border px-1 py-1 text-center text-sm">${product.finalSubtotal.toFixed(1)}</td>
+                        <td class="border px-2 py-2 text-center text-base">${product.finalSubtotal.toFixed(1)}</td>
                     </tr>
                 `;
             }).join('');
@@ -1780,7 +1781,7 @@
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
                 <head>
-                    <title>Receipt - ${data.shopName}</title>
+                    <title>{{ __('messages.Receipt') }} - ${data.shopName}</title>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <style>
@@ -1788,14 +1789,14 @@
                         
                         body {
                             font-family: 'Arial', 'Courier New', monospace;
-                            font-size: 17px;
+                            font-size: 18px;
                             font-weight: normal;
-                            line-height: 1.4;
+                            line-height: 1.5;
                             color: black;
                             background: white;
                             direction: rtl;
                             margin: 0;
-                            padding: 2mm;
+                            padding: 3mm;
                             width: 100%;
                             max-width: 104mm;
                             min-width: 56mm;
@@ -1811,16 +1812,16 @@
                         table {
                             width: 100% !important;
                             border-collapse: collapse !important;
-                            margin: 1mm 0 !important;
+                            margin: 2mm 0 !important;
                             table-layout: fixed !important;
                         }
                         
                         th, td {
                             border: 1px solid black !important;
-                            padding: 2mm !important;
+                            padding: 3mm !important;
                             text-align: center !important;
                             font-weight: normal !important;
-                            font-size: 13px !important;
+                            font-size: 16px !important;
                             word-wrap: break-word !important;
                             overflow-wrap: break-word !important;
                             vertical-align: middle !important;
@@ -1830,6 +1831,7 @@
                         th {
                             font-weight: bold !important;
                             background-color: #f5f5f5 !important;
+                            font-size: 17px !important;
                         }
                         
                         /* Column widths for better text fit */
@@ -1839,9 +1841,9 @@
                         .col-total { width: 25% !important; }
                         
                         h1, h2, h3 {
-                            font-size: 19px !important;
+                            font-size: 20px !important;
                             font-weight: bold !important;
-                            margin: 2mm 0 !important;
+                            margin: 3mm 0 !important;
                             text-align: center !important;
                             word-wrap: break-word !important;
                         }
@@ -1850,9 +1852,11 @@
                         .text-right { text-align: right !important; }
                         .text-left { text-align: left !important; }
                         .font-bold { font-weight: bold !important; }
+                        .text-xl { font-size: 22px !important; font-weight: bold !important; }
                         .text-lg { font-size: 19px !important; font-weight: normal !important; }
-                        .text-sm { font-size: 17px !important; font-weight: normal !important; }
-                        .text-xs { font-size: 14px !important; font-weight: normal !important; }
+                        .text-base { font-size: 16px !important; font-weight: normal !important; }
+                        .text-sm { font-size: 14px !important; font-weight: normal !important; }
+                        .text-xs { font-size: 12px !important; font-weight: normal !important; }
                         .mb-1 { margin-bottom: 1mm !important; }
                         .mb-2 { margin-bottom: 2mm !important; }
                         .mb-3 { margin-bottom: 3mm !important; }
@@ -1864,14 +1868,14 @@
                         
                         .totals-section {
                             border: 1px solid black;
-                            margin: 2mm 0;
+                            margin: 3mm 0;
                         }
                         
                         .totals-row {
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
-                            padding: 2mm 3mm;
+                            padding: 3mm 4mm;
                             border-bottom: 1px solid black;
                             font-weight: normal;
                             font-size: 17px;
@@ -1880,26 +1884,26 @@
                         .totals-row:last-child {
                             border-bottom: none;
                             background-color: #e5e7eb;
-                            font-size: 17px;
+                            font-size: 18px;
                             font-weight: bold;
                         }
                         
                         hr {
                             border: 1px solid black;
-                            margin: 2mm 0;
+                            margin: 3mm 0;
                         }
                         
                         .info-grid {
                             display: flex;
                             justify-content: space-between;
-                            margin: 2mm 0;
+                            margin: 3mm 0;
                             flex-wrap: wrap;
                         }
                         
                         .info-left, .info-right {
                             flex: 1;
                             min-width: 45%;
-                            font-size: 16px;
+                            font-size: 15px;
                             font-weight: normal;
                         }
                         
@@ -1908,15 +1912,25 @@
                             font-weight: bold;
                         }
                         
+                        .user-details {
+                            font-size: 16px !important;
+                            line-height: 1.6 !important;
+                            margin-top: 3mm !important;
+                            padding: 2mm;
+                            background-color: #f9f9f9;
+                            border-radius: 3px;
+                        }
+                        
                         /* Responsive adjustments for very small widths */
                         @media (max-width: 60mm) {
-                            body { font-size: 20px; padding: 1mm; }
-                            th, td { font-size: 20px !important; padding: 1mm !important; }
-                            h1, h2, h3 { font-size: 20px !important; }
+                            body { font-size: 16px; padding: 2mm; }
+                            th, td { font-size: 14px !important; padding: 2mm !important; }
+                            h1, h2, h3 { font-size: 18px !important; }
                             .info-grid { flex-direction: column; }
-                            .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
-                            .totals-row { font-size: 20px; padding: 1.5mm 2mm; }
-                            .totals-row:last-child { font-size: 20px; }
+                            .info-left, .info-right { min-width: 100%; margin-bottom: 2mm; }
+                            .totals-row { font-size: 15px; padding: 2mm 3mm; }
+                            .totals-row:last-child { font-size: 16px; }
+                            .user-details { font-size: 14px !important; }
                         }
                         
                         @media print {
@@ -1927,7 +1941,7 @@
                             
                             body {
                                 margin: 0 !important;
-                                padding: 1mm !important;
+                                padding: 2mm !important;
                                 -webkit-print-color-adjust: exact;
                                 print-color-adjust: exact;
                             }
@@ -1939,44 +1953,44 @@
                         <!-- Header -->
                         <div class="text-center mb-3">
                             <h1>${data.shopName}</h1>
-                            <div class="text-sm">HawiTech</div>
-                            <div class="text-xs">WhatsApp: +(970) 599647713</div>
+                            <div class="text-lg font-bold">HawiTech</div>
+                            <div class="text-base">{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
                             <hr>
                         </div>
 
                         <!-- Shop Owner Name -->
                         <div class="text-center mb-2">
-                            <div class="text-lg bg-gray-200 py-1" style="padding: 2mm; border: 1px solid black;">
+                            <div class="text-xl bg-gray-200 py-2" style="padding: 3mm; border: 1px solid black; border-radius: 3px;">
                                 ${data.shopOwnerName}
                             </div>
                         </div>
 
                         <!-- Bill Info -->
-                        <div class="info-grid text-sm">
+                        <div class="info-grid text-base">
                             <div class="info-right">
-                                <div class="font-bold">التاريخ: ${data.currentDate}</div>
-                                <div class="font-bold">الوقت: ${data.currentTime}</div>
+                                <div class="font-bold">{{ __('messages.Date') }}: ${data.currentDate}</div>
+                                <div class="font-bold">{{ __('messages.Time') }}: ${data.currentTime}</div>
                             </div>
                             <div class="info-left">
-                                <div class="font-bold">رقم الفاتورة: ${data.billId}</div>
-                                ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
+                                <div class="font-bold">{{ __('messages.Bill Number') }}: ${data.billId}</div>
+                                ${data.customerName ? `<div class="font-bold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
                             </div>
                         </div>
 
                         <!-- Creator Info -->
-                        <div class="mb-2">
-                            <div class="font-bold text-sm">تم إنشاؤها بواسطة: ${data.userName}</div>
-                            ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                        <div class="mb-3">
+                            <div class="font-bold text-base">{{ __('messages.Created by') }}: ${data.userName}</div>
+                            ${data.userDetails ? `<div class="user-details">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
 
                         <!-- Products Table -->
                         <table>
                             <thead>
                                 <tr class="bg-gray-200">
-                                    <th class="col-product">المنتج</th>
-                                    <th class="col-qty">الكمية</th>
-                                    <th class="col-price">السعر</th>
-                                    <th class="col-total">المجموع</th>
+                                    <th class="col-product">{{ __('messages.Product') }}</th>
+                                    <th class="col-qty">{{ __('messages.Quantity') }}</th>
+                                    <th class="col-price">{{ __('messages.Price') }}</th>
+                                    <th class="col-total">{{ __('messages.Total') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1987,25 +2001,25 @@
                         <!-- Totals Section -->
                         <div class="totals-section">
                             <div class="totals-row">
-                                <div>المجموع الفرعي:</div>
+                                <div>{{ __('messages.Subtotal') }}:</div>
                                 <div>${data.subtotal.toFixed(1)}</div>
                             </div>
                             <div class="totals-row">
-                                <div>إجمالي الخصم:</div>
+                                <div>{{ __('messages.Total Discount') }}:</div>
                                 <div>${data.totalDiscount.toFixed(1)}</div>
                             </div>
                             <div class="totals-row">
-                                <div>المجموع:</div>
+                                <div>{{ __('messages.Final Total') }}:</div>
                                 <div>${data.total.toFixed(1)}</div>
                             </div>
                         </div>
 
                         <!-- Footer -->
-                        <div class="text-center mt-3 text-sm">
-                            <div class="mb-1">شكراً لك على التعامل معنا!</div>
+                        <div class="text-center mt-3 text-base">
+                            <div class="mb-2 font-bold">{{ __('messages.Thank you for your business!') }}</div>
                             <hr>
-                            <div>HawiTech</div>
-                            <div>WhatsApp: +(970) 599647713</div>
+                            <div class="font-bold">HawiTech</div>
+                            <div>{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
                         </div>
                     </div>
                 </body>
