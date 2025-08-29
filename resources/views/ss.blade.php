@@ -1752,7 +1752,7 @@
             `;
         }
 
-        // Generate Receipt Print HTML - Optimized for 56-104mm thermal rolls
+        // Generate Receipt Print HTML - Updated with larger text and removed boldness
         function generateReceiptPrintHtml(data) {
             const productsHtml = data.products.map(product => {
                 const tagsDisplayArabic = product.tagsString ? product.tagsString.split('&').map(tag => {
@@ -1762,16 +1762,16 @@
 
                 return `
                     <tr>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">
+                        <td class="border px-1 py-1 text-center text-sm">
                             <div>${product.name}</div>
                             ${tagsDisplayArabic ? `<div class="text-xs">إضافات: ${tagsDisplayArabic}</div>` : ''}
                         </td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.qty}</td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">
+                        <td class="border px-1 py-1 text-center text-sm">${product.qty}</td>
+                        <td class="border px-1 py-1 text-center text-sm">
                             <div>${product.price.toFixed(1)}</div>
                             ${product.tagsTotal > 0 ? `<div class="text-xs">+${product.tagsTotal.toFixed(1)}</div>` : ''}
                         </td>
-                        <td class="border px-1 py-1 text-center font-bold text-xs">${product.finalSubtotal.toFixed(1)}</td>
+                        <td class="border px-1 py-1 text-center text-sm">${product.finalSubtotal.toFixed(1)}</td>
                     </tr>
                 `;
             }).join('');
@@ -1788,9 +1788,9 @@
                         
                         body {
                             font-family: 'Arial', 'Courier New', monospace;
-                            font-size: 11px;
-                            font-weight: bold;
-                            line-height: 1.3;
+                            font-size: 14px;
+                            font-weight: normal;
+                            line-height: 1.4;
                             color: black;
                             background: white;
                             direction: rtl;
@@ -1817,14 +1817,19 @@
                         
                         th, td {
                             border: 1px solid black !important;
-                            padding: 1mm !important;
+                            padding: 2mm !important;
                             text-align: center !important;
-                            font-weight: bold !important;
-                            font-size: 10px !important;
+                            font-weight: normal !important;
+                            font-size: 13px !important;
                             word-wrap: break-word !important;
                             overflow-wrap: break-word !important;
                             vertical-align: middle !important;
                             hyphens: auto !important;
+                        }
+                        
+                        th {
+                            font-weight: bold !important;
+                            background-color: #f5f5f5 !important;
                         }
                         
                         /* Column widths for better text fit */
@@ -1834,9 +1839,9 @@
                         .col-total { width: 25% !important; }
                         
                         h1, h2, h3 {
-                            font-size: 13px !important;
+                            font-size: 16px !important;
                             font-weight: bold !important;
-                            margin: 1mm 0 !important;
+                            margin: 2mm 0 !important;
                             text-align: center !important;
                             word-wrap: break-word !important;
                         }
@@ -1845,9 +1850,9 @@
                         .text-right { text-align: right !important; }
                         .text-left { text-align: left !important; }
                         .font-bold { font-weight: bold !important; }
-                        .text-lg { font-size: 12px !important; }
-                        .text-sm { font-size: 10px !important; }
-                        .text-xs { font-size: 8px !important; }
+                        .text-lg { font-size: 15px !important; font-weight: normal !important; }
+                        .text-sm { font-size: 13px !important; font-weight: normal !important; }
+                        .text-xs { font-size: 11px !important; font-weight: normal !important; }
                         .mb-1 { margin-bottom: 1mm !important; }
                         .mb-2 { margin-bottom: 2mm !important; }
                         .mb-3 { margin-bottom: 3mm !important; }
@@ -1866,15 +1871,17 @@
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
-                            padding: 1mm 2mm;
+                            padding: 2mm 3mm;
                             border-bottom: 1px solid black;
-                            font-weight: bold;
+                            font-weight: normal;
+                            font-size: 13px;
                         }
                         
                         .totals-row:last-child {
                             border-bottom: none;
                             background-color: #e5e7eb;
-                            font-size: 12px;
+                            font-size: 14px;
+                            font-weight: bold;
                         }
                         
                         hr {
@@ -1892,15 +1899,24 @@
                         .info-left, .info-right {
                             flex: 1;
                             min-width: 45%;
+                            font-size: 12px;
+                            font-weight: normal;
+                        }
+                        
+                        .info-left .font-bold,
+                        .info-right .font-bold {
+                            font-weight: bold;
                         }
                         
                         /* Responsive adjustments for very small widths */
                         @media (max-width: 60mm) {
-                            body { font-size: 9px; padding: 1mm; }
-                            th, td { font-size: 8px !important; padding: 0.5mm !important; }
-                            h1, h2, h3 { font-size: 11px !important; }
+                            body { font-size: 12px; padding: 1mm; }
+                            th, td { font-size: 11px !important; padding: 1mm !important; }
+                            h1, h2, h3 { font-size: 14px !important; }
                             .info-grid { flex-direction: column; }
                             .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
+                            .totals-row { font-size: 11px; padding: 1.5mm 2mm; }
+                            .totals-row:last-child { font-size: 12px; }
                         }
                         
                         @media print {
@@ -1923,20 +1939,20 @@
                         <!-- Header -->
                         <div class="text-center mb-3">
                             <h1>${data.shopName}</h1>
-                            <div class="text-sm font-bold">HawiTech</div>
+                            <div class="text-sm">HawiTech</div>
                             <div class="text-xs">WhatsApp: +(970) 599647713</div>
                             <hr>
                         </div>
 
                         <!-- Shop Owner Name -->
                         <div class="text-center mb-2">
-                            <div class="text-lg font-bold bg-gray-200 py-1" style="padding: 1mm; border: 1px solid black;">
+                            <div class="text-lg bg-gray-200 py-1" style="padding: 2mm; border: 1px solid black;">
                                 ${data.shopOwnerName}
                             </div>
                         </div>
 
                         <!-- Bill Info -->
-                        <div class="info-grid text-xs">
+                        <div class="info-grid text-sm">
                             <div class="info-right">
                                 <div class="font-bold">التاريخ: ${data.currentDate}</div>
                                 <div class="font-bold">الوقت: ${data.currentTime}</div>
@@ -1949,8 +1965,8 @@
 
                         <!-- Creator Info -->
                         <div class="mb-2">
-                            <div class="font-bold text-xs">تم إنشاؤها بواسطة: ${data.userName}</div>
-                            ${data.userDetails ? `<div class="text-xs">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                            <div class="font-bold text-sm">تم إنشاؤها بواسطة: ${data.userName}</div>
+                            ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
 
                         <!-- Products Table -->
@@ -1987,7 +2003,7 @@
                         </div>
 
                         <!-- Footer -->
-                        <div class="text-center mt-3 text-xs font-bold">
+                        <div class="text-center mt-3 text-sm">
                             <div class="mb-1">شكراً لك على التعامل معنا!</div>
                             <hr>
                             <div>HawiTech</div>
