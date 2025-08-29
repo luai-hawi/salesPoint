@@ -1910,13 +1910,13 @@
                         
                         /* Responsive adjustments for very small widths */
                         @media (max-width: 60mm) {
-                            body { font-size: 12px; padding: 1mm; }
-                            th, td { font-size: 11px !important; padding: 1mm !important; }
-                            h1, h2, h3 { font-size: 14px !important; }
+                            body { font-size: 20px; padding: 1mm; }
+                            th, td { font-size: 20px !important; padding: 1mm !important; }
+                            h1, h2, h3 { font-size: 20px !important; }
                             .info-grid { flex-direction: column; }
                             .info-left, .info-right { min-width: 100%; margin-bottom: 1mm; }
-                            .totals-row { font-size: 11px; padding: 1.5mm 2mm; }
-                            .totals-row:last-child { font-size: 12px; }
+                            .totals-row { font-size: 20px; padding: 1.5mm 2mm; }
+                            .totals-row:last-child { font-size: 20px; }
                         }
                         
                         @media print {
