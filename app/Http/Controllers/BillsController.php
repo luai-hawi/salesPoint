@@ -21,41 +21,48 @@ class BillsController extends Controller
             return response()->json($tags);
         }
 
-    public function index(Request $request)
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $date = $request->input('date');
-
-        $baseQuery = Bill::where('user_id', $ownerId)
-            ->with(['products' => function ($q) use ($ownerId) {
-                $q->where('user_id', $ownerId);
-            }, 'customer', 'creator'])
-            ->orderBy('created_at', 'desc');
-
-        if ($date) {
-            $baseQuery->whereDate('created_at', $date);
-        }
-
-        $allBills = (clone $baseQuery)->get();
-
-        $totalSales = $allBills->sum('total_price');
-        $totalProfit = $allBills->sum(function ($bill) {
-            return $bill->products->sum(function ($product) {
-                return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
-            });
-        });
-
-        $bills = $baseQuery->paginate(20);
-
-        return view('bills.index', [
-            'bills' => $bills,
-            'totalSales' => $totalSales,
-            'totalProfit' => $totalProfit,
-            'selectedDate' => $date,
-        ]);
+public function index(Request $request)
+{
+    $user = auth()->user();
+    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    $date = $request->input('date');
+    
+    $baseQuery = Bill::where('user_id', $ownerId)
+        ->with(['products' => function ($q) use ($ownerId) {
+            $q->where('user_id', $ownerId);
+        }, 'customer', 'creator'])
+        ->orderBy('created_at', 'desc');
+    
+    if ($date) {
+        $baseQuery->whereDate('created_at', $date);
     }
-
+        
+    // Use selected date or default to today for money calculations
+    $calculationDate = $date ? $date : today();
+    
+    $calculationBills = Bill::where('user_id', $ownerId)
+        ->with(['products' => function ($q) use ($ownerId) {
+            $q->where('user_id', $ownerId);
+        }])
+        ->whereDate('created_at', $calculationDate)
+        ->get();
+    
+    $totalSales = $calculationBills->sum('total_price');
+    $totalProfit = $calculationBills->sum(function ($bill) {
+        return $bill->products->sum(function ($product) {
+            return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
+        });
+    });
+    
+    $bills = $baseQuery->paginate(20);
+    
+    return view('bills.index', [
+        'bills' => $bills,
+        'totalSales' => $totalSales,
+        'totalProfit' => $totalProfit,
+        'selectedDate' => $date,
+    ]);
+}
     public function create()
     {
         $user = auth()->user();
