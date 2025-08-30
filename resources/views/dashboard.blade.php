@@ -142,15 +142,26 @@
                                     </select>
                                 </div>
 
-                                <!-- Customer Balance Info - Updated to show last bill -->
+                                <!-- Customer Balance Info with Edit Bill Button -->
                                 <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
                                         <span id="current-debt" class="text-sm font-bold text-blue-900">₪0.00</span>
                                     </div>
                                     <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
+                                    
+                                    <!-- Edit Last Bill Button -->
+                                    <div class="mt-3 flex gap-2">
+                                        <button type="button" id="edit-last-bill-btn" class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                            {{ __('dashboard.Edit Last Bill') }}
+                                        </button>
+                                    </div>
                                 </div>
                                 
+                                <!-- Rest of the payment form remains the same -->
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
@@ -574,7 +585,7 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             fetchProducts(true);
-            
+
             if (!isRestaurant) {
                 document.getElementById('barcode_input').focus();
                 setupCustomerSearch();
@@ -582,13 +593,19 @@
                 setupRestaurantCustomerSelectors();
                 loadRecentPayments();
             }
-            
+
             fetchTags();
         });
+
+        // Function for print tab to call when done
+        window.submitBillForm = function() {
+            document.getElementById('create-bill').submit();
+        };
 
         function setupRestaurantCustomerSelectors() {
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
             const paymentAmountInput = document.getElementById('payment_amount');
+            const editLastBillBtn = document.getElementById('edit-last-bill-btn');
             
             if (paymentCustomerSelect) {
                 paymentCustomerSelect.addEventListener('change', function() {
@@ -614,9 +631,20 @@
                         if (lastBillAmount > 0) {
                             currentDebtSpan.className = 'text-sm font-bold text-red-600';
                             billDateInfo.textContent = lastBillId ? `Bill #${lastBillId} - ${lastBillDate || ''}` : 'Recent bill';
+                            
+                            // Show edit button only if there's a valid bill ID
+                            if (lastBillId) {
+                                editLastBillBtn.classList.remove('hidden');
+                                editLastBillBtn.onclick = function() {
+                                    window.location.href = `/bills/${lastBillId}/edit`;
+                                };
+                            } else {
+                                editLastBillBtn.classList.add('hidden');
+                            }
                         } else {
                             currentDebtSpan.className = 'text-sm font-bold text-gray-600';
                             billDateInfo.textContent = 'No recent bills';
+                            editLastBillBtn.classList.add('hidden');
                         }
                         
                         loadRecentPayments();
@@ -626,6 +654,7 @@
                         document.getElementById('payment_customer_id').value = '';
                         customerBalanceInfo.classList.add('hidden');
                         changeCalculator.classList.add('hidden');
+                        editLastBillBtn.classList.add('hidden');
                         loadRecentPayments();
                     }
                 });
@@ -799,9 +828,10 @@
                 const response = await fetch(`/customers/${customerId}/recent-payments`);
                 if (!response.ok) throw new Error('Failed to fetch payments');
                 
-                const payments = await response.json();
+                const data = await response.json(); // This is the full response object
+                const payments = data.payments; // Extract the payments array
                 
-                if (payments.length === 0) {
+                if (!Array.isArray(payments) || payments.length === 0) {
                     document.getElementById('recent-payments').innerHTML = `
                         <div class="p-4 text-center text-gray-500">
                             No recent payments for this customer
@@ -814,8 +844,8 @@
                     <div class="p-3 border-b border-gray-100 last:border-b-0">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
-                                <div class="font-medium text-gray-900">${parseFloat(payment.amount).toFixed(2)}</div>
-                                <div class="text-xs text-gray-500 capitalize">${payment.type}</div>
+                                <div class="font-medium text-gray-900">₪${parseFloat(payment.amount).toFixed(2)}</div>
+                                <div class="text-xs text-gray-500 capitalize">${payment.type || 'payment'}</div>
                                 ${payment.note ? `<div class="text-xs text-gray-600 mt-1">${payment.note}</div>` : ''}
                             </div>
                             <div class="text-right">
@@ -1728,16 +1758,36 @@
                     font-weight: bold;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                 `;
-                
+
                 // Hide button when printing
                 const style = printWindow.document.createElement('style');
                 style.textContent = '@media print { .close-btn { display: none !important; } }';
                 printWindow.document.head.appendChild(style);
                 closeButton.className = 'close-btn';
-                
+
                 closeButton.onclick = () => printWindow.close();
                 printWindow.document.body.appendChild(closeButton);
-                
+
+                // Add script to handle print completion
+                const script = printWindow.document.createElement('script');
+                script.textContent = `
+                    window.addEventListener('afterprint', function() {
+                        if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                            window.opener.submitBillForm();
+                        }
+                        window.close();
+                    });
+
+                    // Fallback: if user closes tab without printing, still submit after 30 seconds
+                    setTimeout(function() {
+                        if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                            window.opener.submitBillForm();
+                        }
+                        window.close();
+                    }, 30000);
+                `;
+                printWindow.document.head.appendChild(script);
+
                 // Show print dialog
                 setTimeout(() => {
                     printWindow.print();
@@ -1775,16 +1825,36 @@
                     font-weight: bold;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
                 `;
-                
+
                 // Hide button when printing
                 const style = printWindow.document.createElement('style');
                 style.textContent = '@media print { .close-btn { display: none !important; } }';
                 printWindow.document.head.appendChild(style);
                 closeButton.className = 'close-btn';
-                
+
                 closeButton.onclick = () => printWindow.close();
                 printWindow.document.body.appendChild(closeButton);
-                
+
+                // Add script to handle print completion
+                const script = printWindow.document.createElement('script');
+                script.textContent = `
+                    window.addEventListener('afterprint', function() {
+                        if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                            window.opener.submitBillForm();
+                        }
+                        window.close();
+                    });
+
+                    // Fallback: if user closes tab without printing, still submit after 30 seconds
+                    setTimeout(function() {
+                        if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                            window.opener.submitBillForm();
+                        }
+                        window.close();
+                    }, 30000);
+                `;
+                printWindow.document.head.appendChild(script);
+
                 // Show print dialog
                 setTimeout(() => {
                     printWindow.print();

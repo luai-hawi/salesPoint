@@ -178,7 +178,7 @@ public function index(Request $request)
             }
 
             $tagsTotal = $this->calculateTagsTotal($tags);
-            $lineTotal = ($sellingPrice * $qty) - $discount + $tagsTotal;
+            $lineTotal = ($sellingPrice * $qty) - $discount + ($tagsTotal*$qty);
 
             $bill->products()->attach($productId, [
                 'quantity' => $qty,

@@ -675,6 +675,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTags();
     updateGrandTotal();
 });
+
+// Function for print tab to call when done
+window.submitBillForm = function() {
+    document.getElementById('form').submit();
+};
 // NEW CLEAN PRINT SYSTEM - Always opens in new tab
 
 // Standard Print Button
@@ -798,7 +803,27 @@ function openStandardPrintTab(data) {
         
         closeButton.onclick = () => printWindow.close();
         printWindow.document.body.appendChild(closeButton);
-        
+
+        // Add script to handle print completion
+        const script = printWindow.document.createElement('script');
+        script.textContent = `
+            window.addEventListener('afterprint', function() {
+                if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                    window.opener.submitBillForm();
+                }
+                window.close();
+            });
+
+            // Fallback: if user closes tab without printing, still submit after 30 seconds
+            setTimeout(function() {
+                if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                    window.opener.submitBillForm();
+                }
+                window.close();
+            }, 30000);
+        `;
+        printWindow.document.head.appendChild(script);
+
         // Show print dialog
         setTimeout(() => {
             printWindow.print();
@@ -845,7 +870,27 @@ function openReceiptPrintTab(data) {
         
         closeButton.onclick = () => printWindow.close();
         printWindow.document.body.appendChild(closeButton);
-        
+
+        // Add script to handle print completion
+        const script = printWindow.document.createElement('script');
+        script.textContent = `
+            window.addEventListener('afterprint', function() {
+                if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                    window.opener.submitBillForm();
+                }
+                window.close();
+            });
+
+            // Fallback: if user closes tab without printing, still submit after 30 seconds
+            setTimeout(function() {
+                if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                    window.opener.submitBillForm();
+                }
+                window.close();
+            }, 30000);
+        `;
+        printWindow.document.head.appendChild(script);
+
         // Show print dialog
         setTimeout(() => {
             printWindow.print();

@@ -63,5 +63,9 @@ return [
     'Total customer credit' => 'Total customer credit',
     'New payment' => 'New payment',
     'Processing...' => 'Processing...',
-    'Customer Debt'=> 'Customer Debt'
+    'Customer Debt'=> 'Customer Debt',
+    'Last Bill Amount'=>'Last Bill Amount',
+    'Last Bill'=>'Last Bill',
+    'Edit Last Bill'=>'Edit Last Bill',
+    'No Recent Bill'=>'No Recent Bill',
 ];

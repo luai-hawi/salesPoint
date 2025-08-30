@@ -63,5 +63,9 @@ return [
     'Total customer credit' => 'إجمالي رصيد العميل',
     'New payment' => 'دفعة جديدة',
     'Processing...' => 'جاري المعالجة...',
-    'Customer Debt' => 'دين العميل'
+    'Customer Debt' => 'دين العميل',
+    'Last Bill Amount' => 'قيمة اخر فاتورة',
+    'Last Bill'=>'اخر فاتورة',
+    'Edit Last Bill'=>'تعديل اخر فاتورة',
+    'No Recent Bill'=>'No Recent Bill',
 ];
