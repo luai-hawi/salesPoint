@@ -204,7 +204,15 @@ public function index(Request $request)
             $bill->customer->update(['balance' => $bill->customer->balance - $total]);
         }
 
-        return redirect()->route('dashboard')->with('success', 'Bill created successfully!');
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Bill created successfully!',
+                'bill' => $bill
+            ]);
+        } else {
+            return redirect()->route('dashboard')->with('success', 'Bill created successfully!');
+        }
     }
 
     public function show(Bill $bill)
@@ -474,7 +482,15 @@ public function update(Request $request, Bill $bill)
     $this->recalculateBillTotal($bill);
     $this->updateCustomerBalance($bill);
 
-    return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
+    if ($request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Bill updated successfully!',
+            'bill' => $bill
+        ]);
+    } else {
+        return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
+    }
 }
 /**
  * Helper method to consume product stock using FIFO (ALLOWS NEGATIVE STOCK)

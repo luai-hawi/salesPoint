@@ -677,9 +677,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Function for print tab to call when done
-window.submitBillForm = function() {
-    addDynamicProductsToForm();  // This function processes the form data
-    document.getElementById('form').submit();  // Then submit the form
+window.submitBillForm = async function() {
+    addDynamicProductsToForm(); // Add dynamic inputs for products
+    const form = document.getElementById('form');
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showNotification('Bill updated successfully!', 'success');
+        } else {
+            const errorData = await response.json();
+            showNotification(errorData.message || 'Failed to update bill', 'error');
+        }
+    } catch (error) {
+        console.error('Update error:', error);
+        showNotification('Failed to update bill', 'error');
+    }
 };
 // NEW CLEAN PRINT SYSTEM - Always opens in new tab
 

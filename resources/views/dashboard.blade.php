@@ -597,8 +597,36 @@
             fetchTags();
         });
 
-        window.submitBillForm = function() {
-            document.getElementById('create-bill').submit();
+        // Function for print tab to call when done
+        window.submitBillForm = async function() {
+            const form = document.getElementById('create-bill');
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showNotification('Bill saved successfully!', 'success');
+                    if (result.bill && result.bill.id) {
+                        currentBillId = result.bill.id;
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showNotification(errorData.message || 'Failed to save bill', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showNotification('Failed to save bill', 'error');
+            }
         };
 
         function setupRestaurantCustomerSelectors() {
