@@ -597,7 +597,6 @@
             fetchTags();
         });
 
-        // Function for print tab to call when done
         window.submitBillForm = function() {
             document.getElementById('create-bill').submit();
         };

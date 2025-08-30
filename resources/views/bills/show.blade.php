@@ -678,7 +678,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Function for print tab to call when done
 window.submitBillForm = function() {
-    document.getElementById('form').submit();
+    addDynamicProductsToForm();  // This function processes the form data
+    document.getElementById('form').submit();  // Then submit the form
 };
 // NEW CLEAN PRINT SYSTEM - Always opens in new tab
 
