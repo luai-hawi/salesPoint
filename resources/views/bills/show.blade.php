@@ -677,6 +677,23 @@ document.querySelector('#products-table').addEventListener('input', (e) => {
     }
 });
 
+// Message listener for print window communication
+window.addEventListener('message', async (event) => {
+    if (event.data.source === 'printWindow') {
+        if (event.data.action === 'saveBill' || event.data.action === 'autoSaveBill') {
+            console.log('Received save request from print window');
+
+            const saved = await saveBillBeforePrint();
+            if (saved) {
+                // Send confirmation back to print window
+                if (window.printWindowRef && !window.printWindowRef.closed) {
+                    window.printWindowRef.postMessage({ action: 'billSaved', success: true }, '*');
+                }
+            }
+        }
+    }
+});
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     fetchTags();
@@ -797,16 +814,105 @@ window.submitBillForm = async function() {
 
     console.log('=== SUBMIT BILL FORM COMPLETED ===');
 };
-// NEW CLEAN PRINT SYSTEM - Always opens in new tab
+// ENHANCED AUTO-SAVE PRINT SYSTEM
+
+// Save bill immediately when print is clicked
+async function saveBillBeforePrint() {
+    console.log('=== SAVING BILL BEFORE PRINT ===');
+
+    // Add dynamic inputs for products
+    addDynamicProductsToForm();
+
+    const form = document.getElementById('form');
+    if (!form) {
+        console.error('Form not found');
+        return false;
+    }
+
+    const formData = new FormData(form);
+
+    // Add the _method field for PUT request
+    formData.append('_method', 'PUT');
+
+    // Get CSRF token safely
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        return false;
+    }
+
+    try {
+        console.log('Sending save request...');
+        const response = await fetch(form.action, {
+            method: 'POST', // Always POST, Laravel handles _method
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Bill updated successfully:', result);
+
+            // Store bill data in sessionStorage as backup
+            const billData = {
+                id: result.bill?.id,
+                products: collectPrintData().products,
+                total: collectPrintData().total,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('lastSavedBill', JSON.stringify(billData));
+
+            showNotification('Bill updated successfully!', 'success');
+            return true;
+        } else {
+            try {
+                const errorData = await response.json();
+                console.error('Update failed:', errorData);
+                showNotification(errorData.message || 'Failed to update bill', 'error');
+                return false;
+            } catch (parseError) {
+                console.error('Failed to parse error response:', parseError);
+                const textResponse = await response.text();
+                console.error('Raw error response:', textResponse);
+                showNotification('Failed to update bill - server error', 'error');
+                return false;
+            }
+        }
+    } catch (error) {
+        console.error('Update error:', error);
+        showNotification('Failed to update bill - network error', 'error');
+        return false;
+    }
+}
 
 // Standard Print Button
-document.getElementById('print-button').addEventListener('click', () => {
+document.getElementById('print-button').addEventListener('click', async () => {
+    // Save bill first
+    const saved = await saveBillBeforePrint();
+    if (!saved) {
+        alert('Failed to save bill. Please try again.');
+        return;
+    }
+
     const printData = collectPrintData();
     openStandardPrintTab(printData);
 });
 
-// Receipt Print Button  
-document.getElementById('print-receipt-button').addEventListener('click', () => {
+// Receipt Print Button
+document.getElementById('print-receipt-button').addEventListener('click', async () => {
+    // Save bill first
+    const saved = await saveBillBeforePrint();
+    if (!saved) {
+        alert('Failed to save bill. Please try again.');
+        return;
+    }
+
     const printData = collectPrintData();
     openReceiptPrintTab(printData);
 });
@@ -880,13 +986,16 @@ function collectPrintData() {
     };
 }
 
-// Updated print functions with close button
+// Enhanced print functions with postMessage communication
 function openStandardPrintTab(data) {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) {
-        alert('Please allow popups for printing');
+        showNotification('Please allow popups for printing', 'error');
         return;
     }
+
+    // Store print window reference for communication
+    window.printWindowRef = printWindow;
 
     const standardHtml = generateStandardPrintHtml(data);
     printWindow.document.write(standardHtml);
@@ -911,29 +1020,44 @@ function openStandardPrintTab(data) {
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         `;
-        
+
         // Hide button when printing
         const style = printWindow.document.createElement('style');
         style.textContent = '@media print { .close-btn { display: none !important; } }';
         printWindow.document.head.appendChild(style);
         closeButton.className = 'close-btn';
-        
+
         closeButton.onclick = () => {
-            // Save the bill before closing
-            if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                window.opener.submitBillForm();
-            } else {
-                console.log('submitBillForm function not found in opener');
+            // Send message to parent window to save
+            if (window.opener) {
+                window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
             }
             printWindow.close();
         };
         printWindow.document.body.appendChild(closeButton);
 
-        // Also save when window is closed by other means (X button, Alt+F4, etc.)
-        printWindow.addEventListener('beforeunload', () => {
-            if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                window.opener.submitBillForm();
+        // Listen for messages from parent
+        window.addEventListener('message', (event) => {
+            if (event.data.action === 'billSaved') {
+                console.log('Bill saved confirmation received');
             }
+        });
+
+        // Periodic auto-save every 30 seconds
+        const autoSaveInterval = setInterval(() => {
+            if (!printWindow.closed && window.opener) {
+                window.opener.postMessage({ action: 'autoSaveBill', source: 'printWindow' }, '*');
+            } else {
+                clearInterval(autoSaveInterval);
+            }
+        }, 30000);
+
+        // Also save when window is closed by other means
+        printWindow.addEventListener('beforeunload', () => {
+            if (window.opener) {
+                window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+            }
+            clearInterval(autoSaveInterval);
         });
 
         // Show print dialog
@@ -946,9 +1070,12 @@ function openStandardPrintTab(data) {
 function openReceiptPrintTab(data) {
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) {
-        alert('Please allow popups for printing');
+        showNotification('Please allow popups for printing', 'error');
         return;
     }
+
+    // Store print window reference for communication
+    window.printWindowRef = printWindow;
 
     const receiptHtml = generateReceiptPrintHtml(data);
     printWindow.document.write(receiptHtml);
@@ -957,7 +1084,7 @@ function openReceiptPrintTab(data) {
     printWindow.onload = function() {
         // Add close button that won't be printed
         const closeButton = printWindow.document.createElement('button');
-        closeButton.innerHTML = '💾 Save & Close';
+        closeButton.innerHTML = '✕ Close & Save Bill';
         closeButton.style.cssText = `
             position: fixed;
             top: 5px;
@@ -973,29 +1100,44 @@ function openReceiptPrintTab(data) {
             font-weight: bold;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         `;
-        
+
         // Hide button when printing
         const style = printWindow.document.createElement('style');
         style.textContent = '@media print { .close-btn { display: none !important; } }';
         printWindow.document.head.appendChild(style);
         closeButton.className = 'close-btn';
-        
+
         closeButton.onclick = () => {
-            // Save the bill before closing
-            if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                window.opener.submitBillForm();
-            } else {
-                console.log('submitBillForm function not found in opener');
+            // Send message to parent window to save
+            if (window.opener) {
+                window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
             }
             printWindow.close();
         };
         printWindow.document.body.appendChild(closeButton);
 
-        // Also save when window is closed by other means (X button, Alt+F4, etc.)
-        printWindow.addEventListener('beforeunload', () => {
-            if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                window.opener.submitBillForm();
+        // Listen for messages from parent
+        window.addEventListener('message', (event) => {
+            if (event.data.action === 'billSaved') {
+                console.log('Bill saved confirmation received');
             }
+        });
+
+        // Periodic auto-save every 30 seconds
+        const autoSaveInterval = setInterval(() => {
+            if (!printWindow.closed && window.opener) {
+                window.opener.postMessage({ action: 'autoSaveBill', source: 'printWindow' }, '*');
+            } else {
+                clearInterval(autoSaveInterval);
+            }
+        }, 30000);
+
+        // Also save when window is closed by other means
+        printWindow.addEventListener('beforeunload', () => {
+            if (window.opener) {
+                window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+            }
+            clearInterval(autoSaveInterval);
         });
 
         // Show print dialog
