@@ -680,7 +680,7 @@ document.querySelector('#products-table').addEventListener('input', (e) => {
 // Message listener for print window communication
 window.addEventListener('message', async (event) => {
     if (event.data.source === 'printWindow') {
-        if (event.data.action === 'saveBill' || event.data.action === 'autoSaveBill') {
+        if (event.data.action === 'saveBill') {
             console.log('Received save request from print window');
 
             const saved = await saveBillBeforePrint();
@@ -1043,16 +1043,7 @@ function openStandardPrintTab(data) {
             }
         });
 
-        // Periodic auto-save every 30 seconds
-        const autoSaveInterval = setInterval(() => {
-            if (!printWindow.closed && window.opener) {
-                window.opener.postMessage({ action: 'autoSaveBill', source: 'printWindow' }, '*');
-            } else {
-                clearInterval(autoSaveInterval);
-            }
-        }, 30000);
-
-        // Also save when window is closed by other means
+        // Save when window is closed by other means
         printWindow.addEventListener('beforeunload', () => {
             if (window.opener) {
                 window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
@@ -1061,7 +1052,6 @@ function openStandardPrintTab(data) {
                     window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
                 }, 100);
             }
-            clearInterval(autoSaveInterval);
         });
 
         // Show print dialog
@@ -1127,16 +1117,7 @@ function openReceiptPrintTab(data) {
             }
         });
 
-        // Periodic auto-save every 30 seconds
-        const autoSaveInterval = setInterval(() => {
-            if (!printWindow.closed && window.opener) {
-                window.opener.postMessage({ action: 'autoSaveBill', source: 'printWindow' }, '*');
-            } else {
-                clearInterval(autoSaveInterval);
-            }
-        }, 30000);
-
-        // Also save when window is closed by other means
+        // Save when window is closed by other means
         printWindow.addEventListener('beforeunload', () => {
             if (window.opener) {
                 window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
@@ -1145,7 +1126,6 @@ function openReceiptPrintTab(data) {
                     window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
                 }, 100);
             }
-            clearInterval(autoSaveInterval);
         });
 
         // Show print dialog
