@@ -570,6 +570,12 @@ function updateGrandTotal() {
 
 // Add this debug function right before the form submission
 function addDynamicProductsToForm() {
+    const form = document.getElementById('form');
+    if (!form) {
+        console.error('Form not found in addDynamicProductsToForm');
+        return;
+    }
+
     // Clear existing dynamic inputs
     form.querySelectorAll('input[name^="dynamic_"]').forEach(input => input.remove());
     
@@ -677,17 +683,73 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGrandTotal();
 });
 
+// Notification system
+function showNotification(message, type = 'info') {
+    let notification = document.querySelector('.notification-toast');
+
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.className = 'notification-toast fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+        document.body.appendChild(notification);
+    }
+
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+
+    notification.className = `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+    notification.textContent = message;
+
+    if (notification.hideTimeout) {
+        clearTimeout(notification.hideTimeout);
+    }
+
+    requestAnimationFrame(() => {
+        notification.classList.remove('translate-x-full');
+    });
+
+    notification.hideTimeout = setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
 // Function for print tab to call when done
 window.submitBillForm = async function() {
     addDynamicProductsToForm(); // Add dynamic inputs for products
     const form = document.getElementById('form');
+    if (!form) {
+        console.error('Form not found');
+        return;
+    }
+
     const formData = new FormData(form);
+
+    // Add the _method field for PUT request
+    formData.append('_method', 'PUT');
+
+    // Get CSRF token safely
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        showNotification('Security token missing. Please refresh the page.', 'error');
+        return;
+    }
 
     try {
         const response = await fetch(form.action, {
-            method: 'POST',
+            method: 'POST', // Always POST, Laravel handles _method
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
@@ -698,12 +760,17 @@ window.submitBillForm = async function() {
             const result = await response.json();
             showNotification('Bill updated successfully!', 'success');
         } else {
-            const errorData = await response.json();
-            showNotification(errorData.message || 'Failed to update bill', 'error');
+            try {
+                const errorData = await response.json();
+                showNotification(errorData.message || 'Failed to update bill', 'error');
+            } catch (parseError) {
+                console.error('Failed to parse error response:', parseError);
+                showNotification('Failed to update bill - server error', 'error');
+            }
         }
     } catch (error) {
         console.error('Update error:', error);
-        showNotification('Failed to update bill', 'error');
+        showNotification('Failed to update bill - network error', 'error');
     }
 };
 // NEW CLEAN PRINT SYSTEM - Always opens in new tab

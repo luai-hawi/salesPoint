@@ -601,13 +601,28 @@
         // Function for print tab to call when done
         window.submitBillForm = async function() {
             const form = document.getElementById('create-bill');
+            if (!form) {
+                console.error('Form not found');
+                return;
+            }
+
             const formData = new FormData(form);
+
+            // Get CSRF token safely
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                showNotification('Security token missing. Please refresh the page.', 'error');
+                return;
+            }
 
             try {
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
@@ -621,12 +636,17 @@
                         currentBillId = result.bill.id;
                     }
                 } else {
-                    const errorData = await response.json();
-                    showNotification(errorData.message || 'Failed to save bill', 'error');
+                    try {
+                        const errorData = await response.json();
+                        showNotification(errorData.message || 'Failed to save bill', 'error');
+                    } catch (parseError) {
+                        console.error('Failed to parse error response:', parseError);
+                        showNotification('Failed to save bill - server error', 'error');
+                    }
                 }
             } catch (error) {
                 console.error('Save error:', error);
-                showNotification('Failed to save bill', 'error');
+                showNotification('Failed to save bill - network error', 'error');
             }
         };
 
