@@ -922,13 +922,19 @@ function openStandardPrintTab(data) {
             // Save the bill before closing
             if (window.opener && typeof window.opener.submitBillForm === 'function') {
                 window.opener.submitBillForm();
+            } else {
+                console.log('submitBillForm function not found in opener');
             }
             printWindow.close();
         };
         printWindow.document.body.appendChild(closeButton);
 
-        // DO NOT save automatically when window is closed by other means
-        // Only save when the "Close & Save" button is clicked
+        // Also save when window is closed by other means (X button, Alt+F4, etc.)
+        printWindow.addEventListener('beforeunload', () => {
+            if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                window.opener.submitBillForm();
+            }
+        });
 
         // Show print dialog
         setTimeout(() => {
@@ -978,13 +984,19 @@ function openReceiptPrintTab(data) {
             // Save the bill before closing
             if (window.opener && typeof window.opener.submitBillForm === 'function') {
                 window.opener.submitBillForm();
+            } else {
+                console.log('submitBillForm function not found in opener');
             }
             printWindow.close();
         };
         printWindow.document.body.appendChild(closeButton);
 
-        // DO NOT save automatically when window is closed by other means
-        // Only save when the "Save & Close" button is clicked
+        // Also save when window is closed by other means (X button, Alt+F4, etc.)
+        printWindow.addEventListener('beforeunload', () => {
+            if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                window.opener.submitBillForm();
+            }
+        });
 
         // Show print dialog
         setTimeout(() => {
