@@ -1056,6 +1056,10 @@ function openStandardPrintTab(data) {
         printWindow.addEventListener('beforeunload', () => {
             if (window.opener) {
                 window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                // Also notify that window is closing
+                setTimeout(() => {
+                    window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
+                }, 100);
             }
             clearInterval(autoSaveInterval);
         });
@@ -1136,6 +1140,10 @@ function openReceiptPrintTab(data) {
         printWindow.addEventListener('beforeunload', () => {
             if (window.opener) {
                 window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                // Also notify that window is closing
+                setTimeout(() => {
+                    window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
+                }, 100);
             }
             clearInterval(autoSaveInterval);
         });

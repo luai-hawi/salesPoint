@@ -589,19 +589,10 @@
                 if (event.data.action === 'saveBill' || event.data.action === 'autoSaveBill') {
                     console.log('Received save request from print window');
 
-                    const saved = await saveBillBeforePrint();
-                    if (saved) {
-                        // Send confirmation back to print window
-                        if (window.printWindowRef && !window.printWindowRef.closed) {
-                            window.printWindowRef.postMessage({ action: 'billSaved', success: true }, '*');
-                        }
-
-                        // For dashboard saves from print windows, redirect after confirmation
-                        if (event.data.action === 'saveBill') {
-                            setTimeout(() => {
-                                window.location.href = '{{ route("dashboard") }}';
-                            }, 1000);
-                        }
+                    // For dashboard, we already saved before opening print window
+                    // Just send confirmation back to print window
+                    if (window.printWindowRef && !window.printWindowRef.closed) {
+                        window.printWindowRef.postMessage({ action: 'billSaved', success: true }, '*');
                     }
                 }
             }
@@ -1749,12 +1740,6 @@
                     }
 
                     showNotification('Bill saved successfully!', 'success');
-
-                    // Redirect to dashboard after successful save
-                    setTimeout(() => {
-                        window.location.href = '{{ route("dashboard") }}';
-                    }, 1500); // Small delay to show the success message
-
                     return true;
                 } else {
                     const errorData = await response.json();
@@ -1780,6 +1765,9 @@
 
             const printData = collectPrintData();
             openStandardPrintTab(printData);
+
+            // Set up redirect after print window closes
+            setupPrintWindowRedirect();
         });
 
         // Receipt Print Button
@@ -1793,7 +1781,36 @@
 
             const printData = collectPrintData();
             openReceiptPrintTab(printData);
+
+            // Set up redirect after print window closes
+            setupPrintWindowRedirect();
         });
+
+        // Function to handle redirect after print window closes
+        function setupPrintWindowRedirect() {
+            // Check if print window is closed every second
+            const checkPrintWindowClosed = setInterval(() => {
+                if (window.printWindowRef && window.printWindowRef.closed) {
+                    clearInterval(checkPrintWindowClosed);
+                    // Redirect to dashboard after print window closes
+                    setTimeout(() => {
+                        window.location.href = '{{ route("dashboard") }}';
+                    }, 500); // Small delay
+                }
+            }, 1000);
+
+            // Also listen for explicit close messages
+            const handlePrintWindowClose = (event) => {
+                if (event.data.source === 'printWindow' && event.data.action === 'windowClosed') {
+                    window.removeEventListener('message', handlePrintWindowClose);
+                    clearInterval(checkPrintWindowClosed);
+                    setTimeout(() => {
+                        window.location.href = '{{ route("dashboard") }}';
+                    }, 500);
+                }
+            };
+            window.addEventListener('message', handlePrintWindowClose);
+        }
 
         // Collect print data from current form
         function collectPrintData() {
@@ -1971,6 +1988,10 @@
                printWindow.addEventListener('beforeunload', () => {
                    if (window.opener) {
                        window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                       // Also notify that window is closing
+                       setTimeout(() => {
+                           window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
+                       }, 100);
                    }
                    clearInterval(autoSaveInterval);
                });
@@ -2051,6 +2072,10 @@
                 printWindow.addEventListener('beforeunload', () => {
                     if (window.opener) {
                         window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                        // Also notify that window is closing
+                        setTimeout(() => {
+                            window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
+                        }, 100);
                     }
                     clearInterval(autoSaveInterval);
                 });
