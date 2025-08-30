@@ -49,8 +49,8 @@ public function index(Request $request)
     
     $totalSales = $calculationBills->sum('total_price');
     $totalProfit = $calculationBills->sum(function ($bill) {
-        return $bill->products->sum(function ($product) {
-            return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
+        return $bill->products->sum(function ($product) use($bill) {
+            return ( $bill->total_price - ($product->pivot->cost_price * $product->pivot->quantity));
         });
     });
     

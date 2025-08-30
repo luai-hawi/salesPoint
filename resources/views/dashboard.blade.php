@@ -101,80 +101,130 @@
                     </div>
                 </div>
 
-                @if($isRestaurant)
-                    <!-- Restaurant Quick Customer Payments Panel -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                            </svg>
-                            <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
-                        </div>
+                
 
-                        <!-- Quick Payment Form -->
-                        <form id="quick-payment-form" class="space-y-4">
-                            @csrf
-                            <input type="hidden" id="payment_customer_id" name="customer_id">
-                            
-                            <!-- Customer Dropdown for Restaurant -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
-                                <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
-                                    <option value="">{{ __('dashboard.Select Customer') }}</option>
-                                    @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" data-name="{{ $customer->name }}" data-phone="{{ $customer->phone }}" data-balance="{{ $customer->balance }}">
-                                            {{ $customer->name }} - {{ $customer->phone }} (Balance: {{ $customer->balance ?? '0.00' }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                    @if($isRestaurant)
+                        <!-- Restaurant Quick Customer Payments Panel -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center mb-4">
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
                             </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
+
+                            <!-- Quick Payment Form -->
+                            <form id="quick-payment-form" class="space-y-4">
+                                @csrf
+                                <input type="hidden" id="payment_customer_id" name="customer_id">
+                                
+                                <!-- Customer Dropdown for Restaurant -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
-                                    <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
-                                    <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                        <option value="cash">{{ __('dashboard.Cash') }}</option>
-                                        <option value="card">{{ __('dashboard.Card') }}</option>
-                                        <option value="transfer">{{ __('dashboard.Transfer') }}</option>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                    <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                                        <option value="">{{ __('dashboard.Select Customer') }}</option>
+                                        @foreach($customers as $customer)
+                                            <option value="{{ $customer->id }}" 
+                                                    data-name="{{ $customer->name }}" 
+                                                    data-phone="{{ $customer->phone }}" 
+                                                    data-balance="{{ $customer->balance }}"
+                                                    data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
+                                                    data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
+                                                    data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
+                                                {{ $customer->name }} - {{ $customer->phone }} 
+                                                @if(($customer->last_bill_amount ?? 0) > 0)
+                                                    ({{ __('dashboard.Last Bill') }}: ₪{{ number_format($customer->last_bill_amount, 2) }})
+                                                @else
+                                                    ({{ __('dashboard.No Recent Bill') }})
+                                                @endif
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
-                                <textarea id="payment_note" name="note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}"></textarea>
-                            </div>
-                            
-                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                {{ __('dashboard.Add Payment') }}
-                            </button>
-                        </form>
-                    </div>
 
-                    <!-- Recent Payments -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="p-4 border-b border-gray-100">
-                            <h4 class="font-medium text-gray-800 flex items-center">
-                                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
-                                {{ __('dashboard.Recent Payments') }}
-                            </h4>
+                                <!-- Customer Balance Info - Updated to show last bill -->
+                                <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
+                                        <span id="current-debt" class="text-sm font-bold text-blue-900">₪0.00</span>
+                                    </div>
+                                    <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
+                                        <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
+                                        <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                            <option value="cash">{{ __('dashboard.Cash') }}</option>
+                                            <option value="card">{{ __('dashboard.Card') }}</option>
+                                            <option value="transfer">{{ __('dashboard.Transfer') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Change Calculator Panel -->
+                                <div id="change-calculator" class="hidden p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-300 rounded-lg">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        {{ __('dashboard.Change Calculator') }}
+                                    </h4>
+                                    
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">{{ __('dashboard.Customer Debt') }}:</span>
+                                            <span id="calc-debt" class="font-medium text-red-600">₪0.00</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">{{ __('dashboard.Payment Amount') }}:</span>
+                                            <span id="calc-payment" class="font-medium text-green-600">₪0.00</span>
+                                        </div>
+                                        <div class="col-span-2 pt-2 border-t border-gray-300">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-semibold text-gray-700">{{ __('dashboard.Result') }}:</span>
+                                                <span id="calc-result" class="font-bold text-lg text-blue-600">₪0.00</span>
+                                            </div>
+                                            <div id="calc-status" class="text-xs text-center mt-1 font-medium text-gray-500"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                    <textarea id="payment_note" name="note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    {{ __('dashboard.Add Payment') }}
+                                </button>
+                            </form>
                         </div>
-                        <div id="recent-payments" class="max-h-96 overflow-y-auto">
-                            <div class="p-4 text-center text-gray-500">
-                                {{ __('dashboard.No recent payments') }}
+
+                        <!-- Recent Payments -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div class="p-4 border-b border-gray-100">
+                                <h4 class="font-medium text-gray-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
+                                    {{ __('dashboard.Recent Payments') }}
+                                </h4>
+                            </div>
+                            <div id="recent-payments" class="max-h-96 overflow-y-auto">
+                                <div class="p-4 text-center text-gray-500">
+                                    {{ __('dashboard.No recent payments') }}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
             </div>
                                 
 
@@ -536,20 +586,119 @@
             fetchTags();
         });
 
-        // Restaurant customer selector functionality
         function setupRestaurantCustomerSelectors() {
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
+            const paymentAmountInput = document.getElementById('payment_amount');
+            
             if (paymentCustomerSelect) {
                 paymentCustomerSelect.addEventListener('change', function() {
                     const selectedOption = this.selectedOptions[0];
+                    const customerBalanceInfo = document.getElementById('customer-balance-info');
+                    const currentDebtSpan = document.getElementById('current-debt');
+                    const billDateInfo = document.getElementById('bill-date-info');
+                    const changeCalculator = document.getElementById('change-calculator');
+                    
                     if (selectedOption && selectedOption.value) {
-                        document.getElementById('payment_customer_id').value = selectedOption.value;
+                        const customerId = selectedOption.value;
+                        const lastBillAmount = parseFloat(selectedOption.dataset.lastBill) || 0;
+                        const lastBillId = selectedOption.dataset.lastBillId;
+                        const lastBillDate = selectedOption.dataset.lastBillDate;
+                        
+                        document.getElementById('payment_customer_id').value = customerId;
+                        
+                        // Show customer bill info
+                        customerBalanceInfo.classList.remove('hidden');
+                        currentDebtSpan.textContent = `₪${lastBillAmount.toFixed(2)}`;
+                        
+                        // Update color and info based on last bill amount
+                        if (lastBillAmount > 0) {
+                            currentDebtSpan.className = 'text-sm font-bold text-red-600';
+                            billDateInfo.textContent = lastBillId ? `Bill #${lastBillId} - ${lastBillDate || ''}` : 'Recent bill';
+                        } else {
+                            currentDebtSpan.className = 'text-sm font-bold text-gray-600';
+                            billDateInfo.textContent = 'No recent bills';
+                        }
+                        
                         loadRecentPayments();
+                        updateChangeCalculator();
+                        
                     } else {
                         document.getElementById('payment_customer_id').value = '';
+                        customerBalanceInfo.classList.add('hidden');
+                        changeCalculator.classList.add('hidden');
                         loadRecentPayments();
                     }
                 });
+            }
+            
+            // Add event listener to payment amount input for change calculation
+            if (paymentAmountInput) {
+                paymentAmountInput.addEventListener('input', updateChangeCalculator);
+            }
+        }
+
+        // Updated change calculator to work with last bill amount only
+        function updateChangeCalculator() {
+            const paymentCustomerSelect = document.getElementById('payment_customer_select');
+            const paymentAmountInput = document.getElementById('payment_amount');
+            const changeCalculator = document.getElementById('change-calculator');
+            
+            if (!paymentCustomerSelect || !paymentAmountInput) return;
+            
+            const selectedOption = paymentCustomerSelect.selectedOptions[0];
+            const paymentAmount = parseFloat(paymentAmountInput.value) || 0;
+            
+            if (selectedOption && selectedOption.value && paymentAmount > 0) {
+                const lastBillAmount = parseFloat(selectedOption.dataset.lastBill) || 0;
+                
+                // Show calculator
+                changeCalculator.classList.remove('hidden');
+                
+                // Update calculator values
+                document.getElementById('calc-debt').textContent = `₪${lastBillAmount.toFixed(2)}`;
+                document.getElementById('calc-payment').textContent = `₪${paymentAmount.toFixed(2)}`;
+                
+                // Calculate result based on last bill only
+                let result = 0;
+                let status = '';
+                let resultClass = 'font-bold text-lg text-blue-600';
+                
+                if (lastBillAmount > 0) {
+                    // Customer has a recent bill
+                    result = paymentAmount - lastBillAmount;
+                    if (result > 0) {
+                        status = '{{ __('dashboard.Return to customer') }}';
+                        resultClass = 'font-bold text-lg text-green-600';
+                    } else if (result < 0) {
+                        status = '{{ __('dashboard.Still owes for this bill') }}';
+                        resultClass = 'font-bold text-lg text-red-600';
+                        result = Math.abs(result);
+                    } else {
+                        status = '{{ __('dashboard.Exact payment for bill') }}';
+                        resultClass = 'font-bold text-lg text-blue-600';
+                    }
+                } else {
+                    // No recent bill - this is just a payment
+                    result = paymentAmount;
+                    status = '{{ __('dashboard.Payment without recent bill') }}';
+                    resultClass = 'font-bold text-lg text-blue-600';
+                }
+                
+                document.getElementById('calc-result').textContent = `₪${result.toFixed(2)}`;
+                document.getElementById('calc-result').className = resultClass;
+                document.getElementById('calc-status').textContent = status;
+                
+            } else {
+                changeCalculator.classList.add('hidden');
+            }
+        }
+
+        // Updated change calculator labels
+        function updateCalculatorLabels() {
+            // Update the calculator labels to reflect last bill instead of total debt
+            const calcDebtLabel = document.querySelector('#change-calculator .text-gray-600');
+            if (calcDebtLabel && calcDebtLabel.textContent.includes('Customer Debt')) {
+                calcDebtLabel.textContent = '{{ __('dashboard.Last Bill Amount') }}:';
             }
         }
 
@@ -564,6 +713,18 @@
             }
 
             const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonContent = submitButton.innerHTML;
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ __('dashboard.Processing...') }}
+            `;
             
             try {
                 const response = await fetch(`/customers/${customerId}/payments`, {
@@ -576,11 +737,37 @@
                 });
 
                 if (response.ok) {
+                    const result = await response.json();
                     showNotification('Payment added successfully!', 'success');
+                    
+                    // Reset form
                     this.reset();
                     document.getElementById('payment_customer_id').value = '';
                     document.getElementById('payment_customer_select').value = '';
+                    document.getElementById('customer-balance-info').classList.add('hidden');
+                    document.getElementById('change-calculator').classList.add('hidden');
+                    
+                    // Reload recent payments
                     loadRecentPayments();
+                    
+                    // Update customer balance in dropdown if still selected
+                    const paymentCustomerSelect = document.getElementById('payment_customer_select');
+                    if (result.new_balance !== undefined) {
+                        Array.from(paymentCustomerSelect.options).forEach(option => {
+                            if (option.value === customerId) {
+                                option.dataset.balance = result.new_balance;
+                                // Update option text to reflect new balance
+                                const parts = option.textContent.split(' (');
+                                const baseText = parts[0];
+                                if (result.new_balance != 0) {
+                                    option.textContent = `${baseText} ({{ __('dashboard.Debt') }}: ₪${Math.abs(result.new_balance).toFixed(2)})`;
+                                } else {
+                                    option.textContent = `${baseText} ({{ __('dashboard.No Debt') }})`;
+                                }
+                            }
+                        });
+                    }
+                    
                 } else {
                     const errorData = await response.json();
                     showNotification(errorData.message || 'Failed to add payment', 'error');
@@ -588,6 +775,10 @@
             } catch (error) {
                 console.error('Payment error:', error);
                 showNotification('Failed to add payment', 'error');
+            } finally {
+                // Restore button
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonContent;
             }
         });
 

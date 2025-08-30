@@ -684,6 +684,7 @@ return [
     'Adding stock for: ' => 'إضافة مخزون لـ: ',
     'Quantity to Add' => 'الكمية المراد إضافتها',
     'Per Unit' => 'للوحدة',
+    
 
     // Expenses
     'Expense Management' => 'إدارة المصروفات',

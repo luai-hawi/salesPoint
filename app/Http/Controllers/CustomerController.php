@@ -141,27 +141,44 @@ class CustomerController extends Controller
         return view('customers.payments', compact('customer', 'payments', 'shopOwner'));
     }
 
-    public function storePayment(Request $request, Customer $customer)
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeCustomer($customer);
+        public function storePayment(Request $request, Customer $customer)
+        {
+            $user = auth()->user();
+            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+            
+            $request->validate([
+                'amount' => 'required|numeric|min:0.01',
+                'note' => 'nullable|string|max:255',
+            ]);
 
-        $validated = $request->validate([
-            'amount' => 'required|numeric|not_in:0',
-            'note' => 'nullable|string|max:255',
-        ]);
+            // Create payment record
+            $payment = $customer->payments()->create([
+                'amount' => $request->amount,
+                'note' => $request->note,
+                'user_id' => $ownerId
+            ]);
 
-        $customer->payments()->create([
-            'amount' => $validated['amount'],
-            'note' => $validated['note'] ?? null,
-            'user_id' => $ownerId,
-        ]);
+            // Update customer balance
+            $customer->balance -= $request->amount;
+            $customer->save();
 
-        $customer->update(['balance' => $customer->balance + $validated['amount']]);
+            if ($request->expectsJson()) {
+                // Get updated last bill data
+                $lastBillData = $customer->getLastBillData($ownerId);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment added successfully',
+                    'payment' => $payment,
+                    'new_balance' => $customer->balance,
+                    'last_bill_amount' => $lastBillData['amount'], // Add last bill data
+                    'last_bill_id' => $lastBillData['bill_id'],
+                    'customer' => $customer
+                ]);
+            }
 
-        return back()->with('success', 'Payment added successfully!');
-    }
+            return redirect()->back()->with('success', 'Payment added successfully');
+        }
 
     public function updatePayment(Request $request, CustomerPayment $customer_payment)
     {
@@ -229,6 +246,10 @@ public function getRecentPayments(Customer $customer)
     $user = auth()->user();
     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
     $this->authorizeCustomer($customer);
+    
+    // Get the last bill data using our model method
+    $lastBillData = $customer->getLastBillData($ownerId);
+    
     // Get the last 10 payments for this customer
     $payments = $customer->payments()
         ->latest()
@@ -245,6 +266,12 @@ public function getRecentPayments(Customer $customer)
             ];
         });
 
-    return response()->json($payments);
+    return response()->json([
+        'payments' => $payments,
+        'last_bill_amount' => $lastBillData['amount'],
+        'last_bill_id' => $lastBillData['bill_id'],
+        'last_bill_date' => $lastBillData['date']
+    ]);
 }
+
 }

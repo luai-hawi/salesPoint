@@ -30,5 +30,34 @@ class Customer extends Model
     {
         return $this->hasMany(CustomerPayment::class);
     }
+    public function getLastBillAmount($userId = null)
+    {
+        $query = $this->bills()->latest('created_at');
+        
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+        
+        $lastBill = $query->first();
+        
+        return $lastBill ? $lastBill->total_price : 0;
+    }
+
+    public function getLastBillData($userId = null)
+    {
+        $query = $this->bills()->latest('created_at');
+        
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+        
+        $lastBill = $query->first();
+        
+        return [
+            'amount' => $lastBill ? $lastBill->total_price : 0,
+            'bill_id' => $lastBill ? $lastBill->id : null,
+            'date' => $lastBill ? $lastBill->created_at->format('M d, Y') : null
+        ];
+    }
 
 }

@@ -35,9 +35,17 @@ Route::get('/dashboard', function () {
     
     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
+    // Get customers with last bill amounts
     $customers = \App\Models\Customer::where('user_id', $ownerId)
         ->orderBy('name')
-        ->get();
+        ->get()
+        ->map(function ($customer) use ($ownerId) {
+            $lastBillData = $customer->getLastBillData($ownerId);
+            $customer->last_bill_amount = $lastBillData['amount'];
+            $customer->last_bill_id = $lastBillData['bill_id'];
+            $customer->last_bill_date = $lastBillData['date'];
+            return $customer;
+        });
 
     $products = \App\Models\Product::where('user_id', $ownerId)
         ->select('id', 'name', 'selling_price', 'cost_price', 'barcode')
