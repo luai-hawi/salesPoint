@@ -801,26 +801,18 @@ function openStandardPrintTab(data) {
         printWindow.document.head.appendChild(style);
         closeButton.className = 'close-btn';
         
-        closeButton.onclick = () => printWindow.close();
+        closeButton.onclick = () => {
+            if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                window.opener.submitBillForm();
+            }
+            printWindow.close();
+        };
         printWindow.document.body.appendChild(closeButton);
 
-        // Add script to handle print completion
+        // Add script to handle print completion (removed auto-submit)
         const script = printWindow.document.createElement('script');
         script.textContent = `
-            window.addEventListener('afterprint', function() {
-                if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                    window.opener.submitBillForm();
-                }
-                window.close();
-            });
-
-            // Fallback: if user closes tab without printing, still submit after 30 seconds
-            setTimeout(function() {
-                if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                    window.opener.submitBillForm();
-                }
-                window.close();
-            }, 30000);
+            // No auto-submit on print or timeout
         `;
         printWindow.document.head.appendChild(script);
 
@@ -868,26 +860,18 @@ function openReceiptPrintTab(data) {
         printWindow.document.head.appendChild(style);
         closeButton.className = 'close-btn';
         
-        closeButton.onclick = () => printWindow.close();
+        closeButton.onclick = () => {
+            if (window.opener && typeof window.opener.submitBillForm === 'function') {
+                window.opener.submitBillForm();
+            }
+            printWindow.close();
+        };
         printWindow.document.body.appendChild(closeButton);
 
-        // Add script to handle print completion
+        // Add script to handle print completion (removed auto-submit)
         const script = printWindow.document.createElement('script');
         script.textContent = `
-            window.addEventListener('afterprint', function() {
-                if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                    window.opener.submitBillForm();
-                }
-                window.close();
-            });
-
-            // Fallback: if user closes tab without printing, still submit after 30 seconds
-            setTimeout(function() {
-                if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                    window.opener.submitBillForm();
-                }
-                window.close();
-            }, 30000);
+            // No auto-submit on print or timeout
         `;
         printWindow.document.head.appendChild(script);
 
