@@ -14,6 +14,7 @@
     }
 @endphp
 <x-app-layout>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Edit Bill Header --}}
 <x-slot name="header">
     <div class="flex items-center justify-between">

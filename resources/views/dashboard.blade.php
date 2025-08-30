@@ -15,6 +15,7 @@
     $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
 @endphp
 <x-app-layout>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <x-slot name="header">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 class="font-bold text-xl sm:text-2xl text-gray-800 leading-tight flex items-center">
