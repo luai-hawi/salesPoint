@@ -723,10 +723,15 @@ function showNotification(message, type = 'info') {
 
 // Function for print tab to call when done
 window.submitBillForm = async function() {
-    addDynamicProductsToForm(); // Add dynamic inputs for products
+    console.log('=== SUBMIT BILL FORM STARTED ===');
+
+    // Add dynamic inputs for products
+    addDynamicProductsToForm();
+
     const form = document.getElementById('form');
     if (!form) {
         console.error('Form not found');
+        showNotification('Form not found. Please refresh the page.', 'error');
         return;
     }
 
@@ -745,7 +750,14 @@ window.submitBillForm = async function() {
         return;
     }
 
+    // Show loading notification
+    showNotification('Saving bill...', 'info');
+
+    console.log('Form action:', form.action);
+    console.log('CSRF token:', csrfToken ? 'Present' : 'Missing');
+
     try {
+        console.log('Sending request...');
         const response = await fetch(form.action, {
             method: 'POST', // Always POST, Laravel handles _method
             headers: {
@@ -756,15 +768,25 @@ window.submitBillForm = async function() {
             body: formData
         });
 
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+
         if (response.ok) {
             const result = await response.json();
+            console.log('Success result:', result);
             showNotification('Bill updated successfully!', 'success');
+            if (result.bill && result.bill.id) {
+                currentBillId = result.bill.id;
+            }
         } else {
             try {
                 const errorData = await response.json();
+                console.error('Error response:', errorData);
                 showNotification(errorData.message || 'Failed to update bill', 'error');
             } catch (parseError) {
                 console.error('Failed to parse error response:', parseError);
+                const textResponse = await response.text();
+                console.error('Raw error response:', textResponse);
                 showNotification('Failed to update bill - server error', 'error');
             }
         }
@@ -772,6 +794,8 @@ window.submitBillForm = async function() {
         console.error('Update error:', error);
         showNotification('Failed to update bill - network error', 'error');
     }
+
+    console.log('=== SUBMIT BILL FORM COMPLETED ===');
 };
 // NEW CLEAN PRINT SYSTEM - Always opens in new tab
 

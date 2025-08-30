@@ -600,9 +600,12 @@
 
         // Function for print tab to call when done
         window.submitBillForm = async function() {
+            console.log('=== DASHBOARD SUBMIT BILL FORM STARTED ===');
+
             const form = document.getElementById('create-bill');
             if (!form) {
                 console.error('Form not found');
+                showNotification('Form not found. Please refresh the page.', 'error');
                 return;
             }
 
@@ -618,7 +621,14 @@
                 return;
             }
 
+            // Show loading notification
+            showNotification('Saving bill...', 'info');
+
+            console.log('Form action:', form.action);
+            console.log('CSRF token:', csrfToken ? 'Present' : 'Missing');
+
             try {
+                console.log('Sending request...');
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -629,8 +639,12 @@
                     body: formData
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Success result:', result);
                     showNotification('Bill saved successfully!', 'success');
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
@@ -638,9 +652,12 @@
                 } else {
                     try {
                         const errorData = await response.json();
+                        console.error('Error response:', errorData);
                         showNotification(errorData.message || 'Failed to save bill', 'error');
                     } catch (parseError) {
                         console.error('Failed to parse error response:', parseError);
+                        const textResponse = await response.text();
+                        console.error('Raw error response:', textResponse);
                         showNotification('Failed to save bill - server error', 'error');
                     }
                 }
@@ -648,6 +665,8 @@
                 console.error('Save error:', error);
                 showNotification('Failed to save bill - network error', 'error');
             }
+
+            console.log('=== DASHBOARD SUBMIT BILL FORM COMPLETED ===');
         };
 
         function setupRestaurantCustomerSelectors() {
