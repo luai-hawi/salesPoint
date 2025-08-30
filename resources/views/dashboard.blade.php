@@ -595,6 +595,13 @@
                         if (window.printWindowRef && !window.printWindowRef.closed) {
                             window.printWindowRef.postMessage({ action: 'billSaved', success: true }, '*');
                         }
+
+                        // For dashboard saves from print windows, redirect after confirmation
+                        if (event.data.action === 'saveBill') {
+                            setTimeout(() => {
+                                window.location.href = '{{ route("dashboard") }}';
+                            }, 1000);
+                        }
                     }
                 }
             }
@@ -1742,6 +1749,12 @@
                     }
 
                     showNotification('Bill saved successfully!', 'success');
+
+                    // Redirect to dashboard after successful save
+                    setTimeout(() => {
+                        window.location.href = '{{ route("dashboard") }}';
+                    }, 1500); // Small delay to show the success message
+
                     return true;
                 } else {
                     const errorData = await response.json();
