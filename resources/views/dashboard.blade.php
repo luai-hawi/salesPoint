@@ -1790,7 +1790,7 @@
             printWindow.onload = function() {
                 // Add close button that won't be printed
                 const closeButton = printWindow.document.createElement('button');
-                closeButton.innerHTML = '✕ Close & Save Bill';
+                closeButton.innerHTML = '💾 Save & Close';
                 closeButton.style.cssText = `
                     position: fixed;
                     top: 10px;
@@ -1821,13 +1821,9 @@
                     printWindow.close();
                 };
                 printWindow.document.body.appendChild(closeButton);
-
-                // Also save when window is closed by other means (X button, Alt+F4, etc.)
-                printWindow.addEventListener('beforeunload', () => {
-                    if (window.opener && typeof window.opener.submitBillForm === 'function') {
-                        window.opener.submitBillForm();
-                    }
-                });
+        
+                // DO NOT save automatically when window is closed by other means
+                // Only save when the "Close & Save" button is clicked
 
                 // Show print dialog
                 setTimeout(() => {
