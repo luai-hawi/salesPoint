@@ -147,7 +147,7 @@ class CustomerController extends Controller
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
             
             $request->validate([
-                'amount' => 'required|numeric|min:0.01',
+                'amount' => 'required|numeric',
                 'note' => 'nullable|string|max:255',
             ]);
 
