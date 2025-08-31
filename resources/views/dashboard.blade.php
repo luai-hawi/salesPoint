@@ -43,204 +43,67 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-none">
                 
-                <!-- Left Panel - Product Search & Selection / Restaurant Quick Payments -->
-            <div class="lg:col-span-5 space-y-4">
-                <!-- Product Search Controls - Shown for all users -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Product Search') }}</h3>
-                    </div>
-                    
-                    <!-- Search Input -->
-                    <div class="relative mb-4">
-                        <input
-                            type="text"
-                            id="product-search"
-                            placeholder="{{ __('dashboard.Search products by name...') }}"
-                            class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-
-                    <!-- Filter Options -->
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
-                            {{ __('dashboard.All Products') }}
-                        </button>
-                        <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
-                            {{ __('dashboard.In Stock Only') }}
-                        </button>
-                        <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
-                            {{ __('dashboard.Out of Stock') }}
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Product Results - Shown for all users -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div class="p-4 border-b border-gray-100">
-                        <h4 class="font-medium text-gray-800 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            <!-- Left Panel - Product Search & Selection ONLY -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- Product Search Controls - Shown for all users -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center mb-4">
+                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            {{ __('dashboard.Available Products') }}
-                        </h4>
-                    </div>
-                    <div id="product-cards-container" class="max-h-96 overflow-y-auto">
-                        <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
-                            <!-- Products will be loaded here -->
+                            <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Product Search') }}</h3>
                         </div>
-                        <div id="loading-indicator" class="hidden p-4 text-center">
-                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                            <p class="text-sm text-gray-500 mt-2">{{ __('dashboard.Loading products...') }}</p>
+                        
+                        <!-- Search Input -->
+                        <div class="relative mb-4">
+                            <input
+                                type="text"
+                                id="product-search"
+                                placeholder="{{ __('dashboard.Search products by name...') }}"
+                                class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Filter Options -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
+                                {{ __('dashboard.All Products') }}
+                            </button>
+                            <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                                {{ __('dashboard.In Stock Only') }}
+                            </button>
+                            <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                                {{ __('dashboard.Out of Stock') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Product Results - Shown for all users -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 border-b border-gray-100">
+                            <h4 class="font-medium text-gray-800 flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                                {{ __('dashboard.Available Products') }}
+                            </h4>
+                        </div>
+                        <div id="product-cards-container" class="max-h-96 overflow-y-auto">
+                            <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
+                                <!-- Products will be loaded here -->
+                            </div>
+                            <div id="loading-indicator" class="hidden p-4 text-center">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                                <p class="text-sm text-gray-500 mt-2">{{ __('dashboard.Loading products...') }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                
-
-                    @if($isRestaurant)
-                        <!-- Restaurant Quick Customer Payments Panel -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div class="flex items-center mb-4">
-                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
-                            </div>
-
-                            <!-- Quick Payment Form -->
-                            <form id="quick-payment-form" class="space-y-4">
-                                @csrf
-                                <input type="hidden" id="payment_customer_id" name="customer_id">
-                                
-                                <!-- Customer Dropdown for Restaurant -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
-                                    <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
-                                        <option value="">{{ __('dashboard.Select Customer') }}</option>
-                                        @foreach($customers as $customer)
-                                            <option value="{{ $customer->id }}" 
-                                                    data-name="{{ $customer->name }}" 
-                                                    data-phone="{{ $customer->phone }}" 
-                                                    data-balance="{{ $customer->balance }}"
-                                                    data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
-                                                    data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
-                                                    data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
-                                                {{ $customer->name }} - {{ $customer->phone }} 
-                                                @if(($customer->last_bill_amount ?? 0) > 0)
-                                                    ({{ __('dashboard.Last Bill') }}: ₪{{ number_format($customer->last_bill_amount, 2) }})
-                                                @else
-                                                    ({{ __('dashboard.No Recent Bill') }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <!-- Customer Balance Info with Edit Bill Button -->
-                                <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
-                                        <span id="current-debt" class="text-sm font-bold text-blue-900">₪0.00</span>
-                                    </div>
-                                    <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
-                                    
-                                    <!-- Edit Last Bill Button -->
-                                    <div class="mt-3 flex gap-2">
-                                        <button type="button" id="edit-last-bill-btn" class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                            {{ __('dashboard.Edit Last Bill') }}
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Rest of the payment form remains the same -->
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
-                                        <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
-                                        <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                            <option value="cash">{{ __('dashboard.Cash') }}</option>
-                                            <option value="card">{{ __('dashboard.Card') }}</option>
-                                            <option value="transfer">{{ __('dashboard.Transfer') }}</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <!-- Change Calculator Panel -->
-                                <div id="change-calculator" class="hidden p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-300 rounded-lg">
-                                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                        </svg>
-                                        {{ __('dashboard.Change Calculator') }}
-                                    </h4>
-                                    
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-gray-600">{{ __('dashboard.Customer Debt') }}:</span>
-                                            <span id="calc-debt" class="font-medium text-red-600">₪0.00</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-gray-600">{{ __('dashboard.Payment Amount') }}:</span>
-                                            <span id="calc-payment" class="font-medium text-green-600">₪0.00</span>
-                                        </div>
-                                        <div class="col-span-2 pt-2 border-t border-gray-300">
-                                            <div class="flex justify-between items-center">
-                                                <span class="font-semibold text-gray-700">{{ __('dashboard.Result') }}:</span>
-                                                <span id="calc-result" class="font-bold text-lg text-blue-600">₪0.00</span>
-                                            </div>
-                                            <div id="calc-status" class="text-xs text-center mt-1 font-medium text-gray-500"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
-                                    <textarea id="payment_note" name="note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}"></textarea>
-                                </div>
-                                
-                                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                    {{ __('dashboard.Add Payment') }}
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- Recent Payments -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                            <div class="p-4 border-b border-gray-100">
-                                <h4 class="font-medium text-gray-800 flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                    </svg>
-                                    {{ __('dashboard.Recent Payments') }}
-                                </h4>
-                            </div>
-                            <div id="recent-payments" class="max-h-96 overflow-y-auto">
-                                <div class="p-4 text-center text-gray-500">
-                                    {{ __('dashboard.No recent payments') }}
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-            </div>
-                                
-
-                <!-- Main Content - Bill Creation -->
+                <!-- Main Content - Bill Creation AND Quick Payments (for Restaurant) -->
                 <div class="lg:col-span-4 space-y-4">
                     @if(!$isRestaurant)
                         <!-- Barcode Scanner (Hidden for Restaurant) -->
@@ -280,7 +143,7 @@
                         <form id="create-bill" method="POST" action="{{ route('bills.store') }}" class="p-6">
                             @csrf
 
-                           <!-- Customer Selection -->
+                        <!-- Customer Selection -->
                             <div class="mb-6">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
                                 @if($isRestaurant)
@@ -361,6 +224,140 @@
                             </div>
                         </form>
                     </div>
+
+                    @if($isRestaurant)
+                        <!-- Restaurant Quick Customer Payments Panel - NOW UNDER BILL FORM -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center mb-4">
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
+                            </div>
+
+                            <!-- Quick Payment Form -->
+                            <form id="quick-payment-form" class="space-y-4">
+                                @csrf
+                                <input type="hidden" id="payment_customer_id" name="customer_id">
+                                
+                                <!-- Customer Dropdown for Restaurant -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                    <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                                        <option value="">{{ __('dashboard.Select Customer') }}</option>
+                                        @foreach($customers as $customer)
+                                            <option value="{{ $customer->id }}" 
+                                                    data-name="{{ $customer->name }}" 
+                                                    data-phone="{{ $customer->phone }}" 
+                                                    data-balance="{{ $customer->balance }}"
+                                                    data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
+                                                    data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
+                                                    data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
+                                                {{ $customer->name }} - {{ $customer->phone }} 
+                                                @if(($customer->last_bill_amount ?? 0) > 0)
+                                                    ({{ __('dashboard.Last Bill') }}: â‚ª{{ number_format($customer->last_bill_amount, 2) }})
+                                                @else
+                                                    ({{ __('dashboard.No Recent Bill') }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Customer Balance Info with Edit Bill Button -->
+                                <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
+                                        <span id="current-debt" class="text-sm font-bold text-blue-900">â‚ª0.00</span>
+                                    </div>
+                                    <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
+                                    
+                                    <!-- Edit Last Bill Button -->
+                                    <div class="mt-3 flex gap-2">
+                                        <button type="button" id="edit-last-bill-btn" class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                            {{ __('dashboard.Edit Last Bill') }}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Rest of the payment form remains the same -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
+                                        <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
+                                        <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                            <option value="cash">{{ __('dashboard.Cash') }}</option>
+                                            <option value="card">{{ __('dashboard.Card') }}</option>
+                                            <option value="transfer">{{ __('dashboard.Transfer') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Change Calculator Panel -->
+                                <div id="change-calculator" class="hidden p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-300 rounded-lg">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        {{ __('dashboard.Change Calculator') }}
+                                    </h4>
+                                    
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">{{ __('dashboard.Customer Debt') }}:</span>
+                                            <span id="calc-debt" class="font-medium text-red-600">â‚ª0.00</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">{{ __('dashboard.Payment Amount') }}:</span>
+                                            <span id="calc-payment" class="font-medium text-green-600">â‚ª0.00</span>
+                                        </div>
+                                        <div class="col-span-2 pt-2 border-t border-gray-300">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-semibold text-gray-700">{{ __('dashboard.Result') }}:</span>
+                                                <span id="calc-result" class="font-bold text-lg text-blue-600">â‚ª0.00</span>
+                                            </div>
+                                            <div id="calc-status" class="text-xs text-center mt-1 font-medium text-gray-500"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                    <textarea id="payment_note" name="note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    {{ __('dashboard.Add Payment') }}
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Recent Payments -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div class="p-4 border-b border-gray-100">
+                                <h4 class="font-medium text-gray-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
+                                    {{ __('dashboard.Recent Payments') }}
+                                </h4>
+                            </div>
+                            <div id="recent-payments" class="max-h-96 overflow-y-auto">
+                                <div class="p-4 text-center text-gray-500">
+                                    {{ __('dashboard.No recent payments') }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Right Panel - Totals & Summary -->
