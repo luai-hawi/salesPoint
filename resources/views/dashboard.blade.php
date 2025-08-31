@@ -688,6 +688,44 @@
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
             const paymentAmountInput = document.getElementById('payment_amount');
             const editLastBillBtn = document.getElementById('edit-last-bill-btn');
+            const billCustomerSelect = document.getElementById('customer_id');
+            
+            // Function to toggle print buttons based on customer selection
+            function togglePrintButtons() {
+                const printButton = document.getElementById('print-button');
+                const printReceiptButton = document.getElementById('print-receipt-button');
+                const hasCustomer = billCustomerSelect && billCustomerSelect.value && billCustomerSelect.value !== '';
+                
+                if (printButton && printReceiptButton) {
+                    if (hasCustomer) {
+                        // Enable buttons
+                        printButton.disabled = false;
+                        printReceiptButton.disabled = false;
+                        printButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                        printReceiptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                        printButton.classList.add('hover:bg-gray-700');
+                        printReceiptButton.classList.add('hover:bg-blue-700');
+                    } else {
+                        // Disable buttons
+                        printButton.disabled = true;
+                        printReceiptButton.disabled = true;
+                        printButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        printReceiptButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        printButton.classList.remove('hover:bg-gray-700');
+                        printReceiptButton.classList.remove('hover:bg-blue-700');
+                    }
+                }
+            }
+            
+            // Add customer selection listener for bill form
+            if (billCustomerSelect) {
+                billCustomerSelect.addEventListener('change', function() {
+                    togglePrintButtons();
+                });
+                
+                // Initial state
+                togglePrintButtons();
+            }
             
             if (paymentCustomerSelect) {
                 paymentCustomerSelect.addEventListener('change', function() {
