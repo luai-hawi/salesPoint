@@ -1756,6 +1756,16 @@
 
         // Standard Print Button
         document.getElementById('print-button').addEventListener('click', async () => {
+            // Check customer selection for restaurant role
+            if (isRestaurant === 'true') {
+                const customerSelect = document.getElementById('customer_id');
+                if (!customerSelect || !customerSelect.value) {
+                    showNotification('Please select a customer before printing', 'warning');
+                    customerSelect.focus();
+                    return;
+                }
+            }
+
             // Save bill first
             const saved = await saveBillBeforePrint();
             if (!saved) {
@@ -1772,6 +1782,16 @@
 
         // Receipt Print Button
         document.getElementById('print-receipt-button').addEventListener('click', async () => {
+            // Check customer selection for restaurant role
+            if (isRestaurant === 'true') {
+                const customerSelect = document.getElementById('customer_id');
+                if (!customerSelect || !customerSelect.value) {
+                    showNotification('Please select a customer before printing', 'warning');
+                    customerSelect.focus();
+                    return;
+                }
+            }
+
             // Save bill first
             const saved = await saveBillBeforePrint();
             if (!saved) {
