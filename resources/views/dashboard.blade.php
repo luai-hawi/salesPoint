@@ -307,7 +307,7 @@
                                         <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                         </svg>
-                                        <input type="hidden" name="customer_id" id="customer_id" value="">
+                                        <input type="hidden" name="customer_id" id="customer_id_hidden" value="">
                                         
                                         <!-- Customer suggestions dropdown -->
                                         <div id="customer_suggestions" class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
@@ -966,7 +966,7 @@
         function setupCustomerSearch() {
             const searchInput = document.getElementById('customer_search');
             const suggestionsDiv = document.getElementById('customer_suggestions');
-            const customerIdInput = document.getElementById('customer_id');
+            const customerIdInput = document.getElementById('customer_id_hidden');
 
             searchInput.addEventListener('input', function() {
                 const query = this.value.trim();
@@ -1021,7 +1021,7 @@
 
         function selectCustomer(customer) {
             document.getElementById('customer_search').value = customer.name;
-            document.getElementById('customer_id').value = customer.id;
+            document.getElementById('customer_id_hidden').value = customer.id;
             document.getElementById('customer_suggestions').classList.add('hidden');
             if (!isRestaurant) {
                 document.getElementById('barcode_input').focus();
