@@ -68,4 +68,6 @@ return [
     'Last Bill'=>'Last Bill',
     'Edit Last Bill'=>'Edit Last Bill',
     'No Recent Bill'=>'No Recent Bill',
+    'Please select a customer before printing' => 'Please select a customer before printing',
+    'Please select a customer before creating the bill' => 'Please select a customer before creating the bill',
 ];

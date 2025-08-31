@@ -67,5 +67,7 @@ return [
     'Last Bill Amount' => 'قيمة اخر فاتورة',
     'Last Bill'=>'اخر فاتورة',
     'Edit Last Bill'=>'تعديل اخر فاتورة',
-    'No Recent Bill'=>'No Recent Bill',
+    'No Recent Bill'=>'لا توجد فاتورة حديثة',
+    'Please select a customer before printing' => 'يرجى اختيار عميل قبل الطباعة',
+    'Please select a customer before creating the bill' => 'يرجى اختيار عميل قبل إنشاء الفاتورة',
 ];

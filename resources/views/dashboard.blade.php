@@ -1695,6 +1695,16 @@
         async function saveBillBeforePrint() {
             console.log('=== SAVING BILL BEFORE PRINT ===');
 
+            // Additional customer check for restaurant role
+            if (isRestaurant === 'true') {
+                const customerSelect = document.getElementById('customer_id');
+                if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
+                    showNotification('{{ __("dashboard.Please select a customer before printing") }}', 'error');
+                    if (customerSelect) customerSelect.focus();
+                    return false;
+                }
+            }
+
             const form = document.getElementById('create-bill');
             if (!form) {
                 console.error('Form not found');
@@ -1759,9 +1769,9 @@
             // Check customer selection for restaurant role
             if (isRestaurant === 'true') {
                 const customerSelect = document.getElementById('customer_id');
-                if (!customerSelect || !customerSelect.value) {
-                    showNotification('Please select a customer before printing', 'warning');
-                    customerSelect.focus();
+                if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
+                    showNotification('{{ __("dashboard.Please select a customer before printing") }}', 'error');
+                    if (customerSelect) customerSelect.focus();
                     return;
                 }
             }
@@ -1785,9 +1795,9 @@
             // Check customer selection for restaurant role
             if (isRestaurant === 'true') {
                 const customerSelect = document.getElementById('customer_id');
-                if (!customerSelect || !customerSelect.value) {
-                    showNotification('Please select a customer before printing', 'warning');
-                    customerSelect.focus();
+                if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
+                    showNotification('Please select a customer before printing', 'error');
+                    if (customerSelect) customerSelect.focus();
                     return;
                 }
             }
@@ -2564,11 +2574,22 @@
                 return;
             }
 
+            // Check customer selection for restaurant role
+            if (isRestaurant === 'true') {
+                const customerSelect = document.getElementById('customer_id');
+                if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
+                    e.preventDefault();
+                    showNotification('{{ __("dashboard.Please select a customer before creating the bill") }}', 'error');
+                    if (customerSelect) customerSelect.focus();
+                    return;
+                }
+            }
+
             let hasError = false;
             rows.forEach(row => {
                 const qty = parseInt(row.querySelector('.quantity')?.value || 0);
                 const max = parseInt(row.querySelector('.quantity')?.max || 999);
-                
+
                 if (qty > max) {
                     hasError = true;
                     showNotification('{{ __('messages.Some products exceed available stock') }}', 'error');
@@ -2587,15 +2608,26 @@
         document.addEventListener('keydown', e => {
             if (e.key === 'F2') {
                 e.preventDefault();
+
+                // Check customer selection for restaurant role before submitting
+                if (isRestaurant === 'true') {
+                    const customerSelect = document.getElementById('customer_id');
+                    if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
+                        showNotification('{{ __("dashboard.Please select a customer before creating the bill") }}', 'error');
+                        if (customerSelect) customerSelect.focus();
+                        return;
+                    }
+                }
+
                 document.getElementById('create-bill').submit();
             }
-            
+
             if (e.key === 'Escape') {
                 if (!document.getElementById('barcode-modal').classList.contains('hidden')) {
                     closeBarcodeModal();
                 }
             }
-            
+
             if (e.key === 'F1' && !isRestaurant) {
                 e.preventDefault();
                 document.getElementById('barcode_input').focus();
