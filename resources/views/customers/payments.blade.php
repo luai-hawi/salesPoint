@@ -310,15 +310,17 @@
     </div>
 
     <script>
-        function getBalance() {
-            const balanceText = document.getElementById('customer-balance').textContent;
-            return parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
-        }
+            let currentBalance = {{ $customer->balance }};
 
-        function setBalance(value) {
-            const balanceElement = document.getElementById('customer-balance');
-            const formattedValue = '$' + Math.abs(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-            balanceElement.textContent = formattedValue;
+            function getBalance() {
+                return currentBalance;
+            }
+
+            function setBalance(value) {
+                currentBalance = value;
+                const balanceElement = document.getElementById('customer-balance');
+                const formattedValue = '₪' + Math.abs(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+                balanceElement.textContent = formattedValue;
             
             // Find the badge element - it's in the same parent container as the balance
             // Looking at the HTML structure: <div class="text-center"> contains both balance and badge
