@@ -159,7 +159,7 @@ class CustomerController extends Controller
             ]);
 
             // Update customer balance
-            $customer->balance -= $request->amount;
+            $customer->balance += $request->amount;
             $customer->save();
 
             if ($request->expectsJson()) {
@@ -218,8 +218,7 @@ class CustomerController extends Controller
     }
 
 
-    public function quickStorePayment(Request $request, Customer $customer)
-{
+public function quickStorePayment(Request $request, Customer $customer) {
     $user = auth()->user();
     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
     $this->authorizeCustomer($customer);
@@ -239,7 +238,12 @@ class CustomerController extends Controller
 
     $customer->update(['balance' => $customer->balance + $validated['amount']]);
 
-    return response()->json(['success' => true, 'message' => 'Payment added successfully!']);
+    // Return the updated balance
+    return response()->json([
+        'success' => true, 
+        'message' => 'Payment added successfully!',
+        'new_balance' => $customer->fresh()->balance
+    ]);
 }
 public function getRecentPayments(Customer $customer)
 {
