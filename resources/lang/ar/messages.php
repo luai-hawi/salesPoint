@@ -684,7 +684,14 @@ return [
     'Adding stock for: ' => 'إضافة مخزون لـ: ',
     'Quantity to Add' => 'الكمية المراد إضافتها',
     'Per Unit' => 'للوحدة',
+    'Close Window' => 'إغلاق النافذة',
+    'Current Customer Balance' => 'الرصيد الحالي للعميل',
+    'Customer has credit' => 'العميل لديه رصيد',
+    'Customer owes money' => 'العميل مدين بمبلغ',
+    'Account is balanced' => 'الحساب متوازن',
+    'Print' => 'طباعة',
     
+        
 
     // Expenses
     'Expense Management' => 'إدارة المصروفات',

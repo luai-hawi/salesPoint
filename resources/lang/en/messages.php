@@ -431,7 +431,14 @@ return [
     'Export Data' => 'Export Data',
     'WhatsApp' => 'WhatsApp',
     'Per Unit' => 'Per Unit',
+    'Close Window' => 'Close Window',
+    'Current Customer Balance' => 'Current Customer Balance',
+    'Customer has credit' => 'Customer has credit',
+    'Customer owes money' => 'Customer owes money',
+    'Account is balanced' => 'Account is balanced',
+    'Print' => 'Print',
     
+        
 
     // Financial Dashboard
     'Period:' => 'Period:',

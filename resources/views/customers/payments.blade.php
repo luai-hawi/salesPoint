@@ -352,290 +352,362 @@
         }
 
         // Print Payment Report Function
-        function printPaymentReport() {
-            const fromDate = document.getElementById('print-from-date').value;
-            const toDate = document.getElementById('print-to-date').value;
+function printPaymentReport() {
+    const fromDate = document.getElementById('print-from-date').value;
+    const toDate = document.getElementById('print-to-date').value;
+    
+    // Filter payments based on date range
+    const allRows = document.querySelectorAll('tbody tr[data-id]');
+    let filteredPayments = [];
+    
+    allRows.forEach(row => {
+        const dateCell = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
+        const paymentDate = new Date(dateCell);
+        
+        const isInRange = (!fromDate || paymentDate >= new Date(fromDate)) && 
+                         (!toDate || paymentDate <= new Date(toDate));
+        
+        if (isInRange) {
+            const paymentId = row.querySelector('td:nth-child(1) .text-sm.font-medium').textContent.trim();
+            const amount = parseFloat(row.querySelector('.edit-amount').value);
+            const note = row.querySelector('.edit-note').value || '{{ __('messages.No note') }}';
+            const dateText = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
+            const timeText = row.querySelector('td:nth-child(4) div:last-child').textContent.trim();
             
-            // Filter payments based on date range
-            const allRows = document.querySelectorAll('tbody tr[data-id]');
-            let filteredPayments = [];
-            
-            allRows.forEach(row => {
-                const dateCell = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
-                const paymentDate = new Date(dateCell);
-                
-                const isInRange = (!fromDate || paymentDate >= new Date(fromDate)) && 
-                                 (!toDate || paymentDate <= new Date(toDate));
-                
-                if (isInRange) {
-                    const paymentId = row.querySelector('td:nth-child(1) .text-sm.font-medium').textContent.trim();
-                    const amount = parseFloat(row.querySelector('.edit-amount').value);
-                    const note = row.querySelector('.edit-note').value || '{{ __('messages.No note') }}';
-                    const dateText = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
-                    const timeText = row.querySelector('td:nth-child(4) div:last-child').textContent.trim();
-                    
-                    filteredPayments.push({
-                        id: paymentId,
-                        amount: amount,
-                        note: note,
-                        date: dateText,
-                        time: timeText
-                    });
-                }
+            filteredPayments.push({
+                id: paymentId,
+                amount: amount,
+                note: note,
+                date: dateText,
+                time: timeText
             });
-            
-            if (filteredPayments.length === 0) {
-                alert('{{ __('messages.No payments found in the selected date range') }}');
-                return;
-            }
-            
-            // Get shop name based on user role
-            const user = @json(auth()->user());
-            const shopOwner = @json(auth()->user()->role === 'employee' ? auth()->user()->shopOwner : null);
-            const shopName = user.role === 'employee' ? (shopOwner ? shopOwner.name : user.name) : user.name;
-            
-            // Calculate totals
-            const totalPayments = filteredPayments.filter(p => p.amount > 0).reduce((sum, p) => sum + p.amount, 0);
-            const totalDebts = Math.abs(filteredPayments.filter(p => p.amount < 0).reduce((sum, p) => sum + p.amount, 0));
-            const netAmount = totalPayments - totalDebts;
-            
-            // Get customer balance from PHP
-            const customerBalance = {{ $customer->balance }};
-            const customerPhone = '{{ $customer->phone ?? '' }}';
-            
-            // Create print content
-            const printContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>{{ __('messages.Payment Report') }} - {{ $customer->name }}</title>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            margin: 20px;
-                            color: #333;
-                        }
-                        .header {
-                            text-align: center;
-                            border-bottom: 2px solid #333;
-                            padding-bottom: 20px;
-                            margin-bottom: 30px;
-                        }
-                        .shop-name {
-                            font-size: 24px;
-                            font-weight: bold;
-                            color: #2563eb;
-                            margin-bottom: 5px;
-                        }
-                        .report-title {
-                            font-size: 20px;
-                            font-weight: bold;
-                            margin-bottom: 10px;
-                        }
-                        .customer-info {
-                            background-color: #f8f9fa;
-                            padding: 15px;
-                            border-radius: 8px;
-                            margin-bottom: 20px;
-                        }
-                        .info-row {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 8px;
-                        }
-                        .info-label {
-                            font-weight: bold;
-                            color: #666;
-                        }
-                        .date-range {
-                            text-align: center;
-                            margin-bottom: 20px;
-                            font-style: italic;
-                            color: #666;
-                        }
-                        table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-bottom: 20px;
-                        }
-                        th, td {
-                            border: 1px solid #ddd;
-                            padding: 12px;
-                            text-align: left;
-                        }
-                        th {
-                            background-color: #f8f9fa;
-                            font-weight: bold;
-                            color: #333;
-                        }
-                        .amount-positive {
-                            color: #059669;
-                            font-weight: bold;
-                        }
-                        .amount-negative {
-                            color: #dc2626;
-                            font-weight: bold;
-                        }
-                        .summary {
-                            background-color: #f8f9fa;
-                            padding: 20px;
-                            border-radius: 8px;
-                            margin-top: 20px;
-                        }
-                        .summary-row {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 10px;
-                            padding: 5px 0;
-                        }
-                        .summary-label {
-                            font-weight: bold;
-                        }
-                        .summary-total {
-                            border-top: 2px solid #333;
-                            margin-top: 10px;
-                            padding-top: 10px;
-                            font-size: 18px;
-                            font-weight: bold;
-                        }
-                        .footer {
-                            text-align: center;
-                            margin-top: 30px;
-                            padding-top: 20px;
-                            border-top: 1px solid #ddd;
-                            color: #666;
-                            font-size: 12px;
-                        }
-                        @media print {
-                            body { margin: 0; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div class="shop-name">${shopName}</div>
-                        <div class="report-title">{{ __('messages.Payment Report') }}</div>
-                    </div>
-                    
-                    <div class="customer-info">
-                        <div class="info-row">
-                            <span class="info-label">{{ __('messages.Customer') }}:</span>
-                            <span>{{ $customer->name }}</span>
-                        </div>
-                        ${customerPhone ? `
-                        <div class="info-row">
-                            <span class="info-label">{{ __('messages.Phone') }}:</span>
-                            <span>${customerPhone}</span>
-                        </div>
-                        ` : ''}
-                        <div class="info-row">
-                            <span class="info-label">{{ __('messages.Current Balance') }}:</span>
-                            <span class="${customerBalance >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                ${Math.abs(customerBalance).toFixed(2)} ${customerBalance >= 0 ? '({{ __('messages.Credit') }})' : '({{ __('messages.Debt') }})'}
-                            </span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">{{ __('messages.Report Generated') }}:</span>
-                            <span>${new Date().toLocaleString()}</span>
-                        </div>
-                    </div>
-                    
-                    ${fromDate || toDate ? `
-                    <div class="date-range">
-                        {{ __('messages.Date Range') }}: 
-                        ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'} 
-                        {{ __('messages.to') }} 
-                        ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                    </div>
-                    ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>{{ __('messages.Payment ID') }}</th>
-                                <th>{{ __('messages.Date') }}</th>
-                                <th>{{ __('messages.Time') }}</th>
-                                <th>{{ __('messages.Amount') }}</th>
-                                <th>{{ __('messages.Note') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filteredPayments.map(payment => `
-                                <tr>
-                                    <td>${payment.id}</td>
-                                    <td>${payment.date}</td>
-                                    <td>${payment.time}</td>
-                                    <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                        ${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
-                                    </td>
-                                    <td>${payment.note}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="summary">
-                        <div class="summary-row">
-                            <span class="summary-label">{{ __('messages.Total Records') }}:</span>
-                            <span>${filteredPayments.length}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">{{ __('messages.Total Payments') }}:</span>
-                            <span class="amount-positive">${totalPayments.toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">{{ __('messages.Total Debts') }}:</span>
-                            <span class="amount-negative">${totalDebts.toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row summary-total">
-                            <span class="summary-label">{{ __('messages.Net Amount') }}:</span>
-                            <span class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                ${Math.abs(netAmount).toFixed(2)} ${netAmount >= 0 ? '({{ __('messages.Credit') }})' : '({{ __('messages.Debt') }})'}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>{{ __('messages.Generated by') }} ${shopName} | {{ __('messages.Date') }}: ${new Date().toLocaleDateString()}</p>
-                    </div>
-                </body>
-                </html>
-            `;
-            
-            // Open print window
-            const printWindow = window.open('', '_blank', 'width=800,height=600');
-            
-            if (!printWindow) {
-                alert('{{ __('messages.Please allow popups for this site to print reports') }}');
-                return;
-            }
-            
-            try {
-                printWindow.document.write(printContent);
-                printWindow.document.close();
-                
-                // Wait for content to load then print
-                setTimeout(() => {
-                    printWindow.focus();
-                    printWindow.print();
-                    
-                    // Close window after print dialog (give user time to print)
-                    setTimeout(() => {
-                        try {
-                            printWindow.close();
-                        } catch (e) {
-                            // User might have already closed it
-                        }
-                    }, 1000);
-                }, 500);
-                
-            } catch (error) {
-                console.error('Print error:', error);
-                alert('{{ __('messages.An error occurred while generating the print report') }}');
-                printWindow.close();
-            }
         }
+    });
+    
+    if (filteredPayments.length === 0) {
+        alert('{{ __('messages.No payments found in the selected date range') }}');
+        return;
+    }
+    
+    // Get shop name based on user role
+    const user = @json(auth()->user());
+    const shopOwner = @json(auth()->user()->role === 'employee' ? auth()->user()->shopOwner : null);
+    const shopName = user.role === 'employee' ? (shopOwner ? shopOwner.name : user.name) : user.name;
+    
+    // Calculate totals
+    const totalPayments = filteredPayments.filter(p => p.amount > 0).reduce((sum, p) => sum + p.amount, 0);
+    const totalDebts = Math.abs(filteredPayments.filter(p => p.amount < 0).reduce((sum, p) => sum + p.amount, 0));
+    const netAmount = totalPayments - totalDebts;
+    
+    // Get customer balance from current state (real-time balance)
+    const customerBalance = getBalance();
+    const customerPhone = '{{ $customer->phone ?? '' }}';
+    
+    // Create print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{{ __('messages.Payment Report') }} - {{ $customer->name }}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    color: #333;
+                }
+                .header {
+                    text-align: center;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .shop-name {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2563eb;
+                    margin-bottom: 5px;
+                }
+                .report-title {
+                    font-size: 20px;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                }
+                .customer-info {
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                }
+                .info-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 8px;
+                }
+                .info-label {
+                    font-weight: bold;
+                    color: #666;
+                }
+                .balance-highlight {
+                    background-color: #fff3cd;
+                    border: 2px solid #ffc107;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                }
+                .balance-title {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #856404;
+                    margin-bottom: 10px;
+                }
+                .balance-amount {
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                .balance-status {
+                    font-size: 14px;
+                    font-style: italic;
+                    color: #666;
+                }
+                .date-range {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    font-style: italic;
+                    color: #666;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 12px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f8f9fa;
+                    font-weight: bold;
+                    color: #333;
+                }
+                .amount-positive {
+                    color: #059669;
+                    font-weight: bold;
+                }
+                .amount-negative {
+                    color: #dc2626;
+                    font-weight: bold;
+                }
+                .summary {
+                    background-color: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-top: 20px;
+                }
+                .summary-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                    padding: 5px 0;
+                }
+                .summary-label {
+                    font-weight: bold;
+                }
+                .summary-total {
+                    border-top: 2px solid #333;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                    color: #666;
+                    font-size: 12px;
+                }
+                .close-button {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #dc2626;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    cursor: pointer;
+                    font-size: 18px;
+                    font-weight: bold;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                    z-index: 1000;
+                }
+                .close-button:hover {
+                    background: #b91c1c;
+                }
+                .print-button {
+                    position: fixed;
+                    top: 20px;
+                    right: 70px;
+                    background: #2563eb;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: bold;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .print-button:hover {
+                    background: #1d4ed8;
+                }
+                @media print {
+                    body { margin: 0; }
+                    .no-print, .close-button, .print-button { 
+                        display: none !important; 
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <button class="print-button no-print" onclick="window.print()" title="{{ __('messages.Print Report') }}">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                    <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+                </svg>
+                {{ __('messages.Print') }}
+            </button>
+            <button class="close-button no-print" onclick="window.close()" title="{{ __('messages.Close Window') }}">&times;</button>
+            
+            <div class="header">
+                <div class="shop-name">${shopName}</div>
+                <div class="report-title">{{ __('messages.Payment Report') }}</div>
+            </div>
+            
+            <div class="customer-info">
+                <div class="info-row">
+                    <span class="info-label">{{ __('messages.Customer') }}:</span>
+                    <span>{{ $customer->name }}</span>
+                </div>
+                ${customerPhone ? `
+                <div class="info-row">
+                    <span class="info-label">{{ __('messages.Phone') }}:</span>
+                    <span>${customerPhone}</span>
+                </div>
+                ` : ''}
+                <div class="info-row">
+                    <span class="info-label">{{ __('messages.Report Generated') }}:</span>
+                    <span>${new Date().toLocaleString()}</span>
+                </div>
+            </div>
+
+            <div class="balance-highlight">
+                <div class="balance-title">{{ __('messages.Current Customer Balance') }}</div>
+                <div class="balance-amount ${customerBalance >= 0 ? 'amount-positive' : 'amount-negative'}">
+                    ₪${Math.abs(customerBalance).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}
+                </div>
+                <div class="balance-status">
+                    ${customerBalance > 0 ? '{{ __('messages.Customer has credit') }}' : 
+                      customerBalance < 0 ? '{{ __('messages.Customer owes money') }}' : 
+                      '{{ __('messages.Account is balanced') }}'}
+                </div>
+            </div>
+            
+            ${fromDate || toDate ? `
+            <div class="date-range">
+                {{ __('messages.Date Range') }}: 
+                ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'} 
+                {{ __('messages.to') }} 
+                ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+            </div>
+            ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ __('messages.Payment ID') }}</th>
+                        <th>{{ __('messages.Date') }}</th>
+                        <th>{{ __('messages.Time') }}</th>
+                        <th>{{ __('messages.Amount') }}</th>
+                        <th>{{ __('messages.Note') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredPayments.map(payment => `
+                        <tr>
+                            <td>${payment.id}</td>
+                            <td>${payment.date}</td>
+                            <td>${payment.time}</td>
+                            <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
+                            </td>
+                            <td>${payment.note}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            <div class="summary">
+                <div class="summary-row">
+                    <span class="summary-label">{{ __('messages.Total Records') }}:</span>
+                    <span>${filteredPayments.length}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">{{ __('messages.Total Payments') }}:</span>
+                    <span class="amount-positive">₪${totalPayments.toFixed(2)}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">{{ __('messages.Total Debts') }}:</span>
+                    <span class="amount-negative">₪${totalDebts.toFixed(2)}</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span class="summary-label">{{ __('messages.Net Amount') }}:</span>
+                    <span class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                        ₪${Math.abs(netAmount).toFixed(2)} ${netAmount >= 0 ? '({{ __('messages.Credit') }})' : '({{ __('messages.Debt') }})'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>{{ __('messages.Generated by') }} ${shopName} | {{ __('messages.Date') }}: ${new Date().toLocaleDateString()}</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    
+    if (!printWindow) {
+        alert('{{ __('messages.Please allow popups for this site to print reports') }}');
+        return;
+    }
+    
+    try {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Wait for content to load then focus and auto-print
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Print error:', error);
+        alert('{{ __('messages.An error occurred while generating the print report') }}');
+        printWindow.close();
+    }
+}
 
         // Set default dates (last 30 days)
         document.addEventListener('DOMContentLoaded', function() {
