@@ -487,6 +487,22 @@ function addProductToTable(product, tagsString = '') {
     tr.setAttribute('data-unique-key', uniqueKey);
     tr.className = 'hover:bg-gray-50';
 
+    // Format prices with commas for display
+    const formattedBasePrice = basePrice.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    const formattedTagsPrice = totalTagPrice.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    const formattedTotalPrice = (basePrice + totalTagPrice).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
     tr.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
@@ -503,8 +519,8 @@ function addProductToTable(product, tagsString = '') {
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
             <div class="text-sm text-gray-900 font-medium">
-                <div>₪${basePrice.toFixed(2)}</div>
-                ${totalTagPrice > 0 ? `<div class="text-xs text-blue-600">Tags: +₪${totalTagPrice.toFixed(2)}</div>` : ''}
+                <div>₪${formattedBasePrice}</div>
+                ${totalTagPrice > 0 ? `<div class="text-xs text-blue-600">Tags: +₪${formattedTagsPrice}</div>` : ''}
             </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
@@ -512,7 +528,7 @@ function addProductToTable(product, tagsString = '') {
                    class="w-20 px-3 py-2 border border-gray-300 rounded-md discount" required>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 total-cell">
-            ₪${(basePrice + totalTagPrice).toFixed(2)}
+            ₪${formattedTotalPrice}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-center">
             <label class="inline-flex items-center">
@@ -526,7 +542,6 @@ function addProductToTable(product, tagsString = '') {
     productsTableBody.appendChild(tr);
     updateGrandTotal();
 }
-
 function addProductRow(product) {
     if (product.has_tags && availableTags.length > 0) {
         showTagsDialog(product);
@@ -546,14 +561,19 @@ function updateGrandTotal() {
             const discount = parseFloat(discountInput.value) || 0;
             
             const priceCell = row.children[2];
-            const basePriceText = priceCell.querySelector('div').textContent.replace('₪', '');
+            const basePriceText = priceCell.querySelector('div').textContent
+                .replace('₪', '')
+                .replace(/,/g, ''); // Remove commas before parsing
             const basePrice = parseFloat(basePriceText) || 0;
             
             let tagsPrice = 0;
             const tagsElement = priceCell.querySelector('.text-xs.text-blue-600');
             if (tagsElement) {
-                const match = tagsElement.textContent.match(/\+\₪([0-9.]+)/);
-                if (match) tagsPrice = parseFloat(match[1]) || 0;
+                const match = tagsElement.textContent.match(/\+₪([0-9.,]+)/);
+                if (match) {
+                    // Remove commas from tags price too
+                    tagsPrice = parseFloat(match[1].replace(/,/g, '')) || 0;
+                }
             }
             
             const lineTotal = Math.max(0, (basePrice + tagsPrice) * qty - discount);
@@ -561,11 +581,20 @@ function updateGrandTotal() {
             
             const totalCell = row.querySelector('.total-cell');
             if (totalCell) {
-                totalCell.textContent = '₪' + lineTotal.toFixed(2);
+                // Format the display with commas
+                totalCell.textContent = '₪' + lineTotal.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
             }
         }
     });
-    document.getElementById('grand-total').textContent = '₪' + total.toFixed(2);
+    
+    // Format the grand total with commas
+    document.getElementById('grand-total').textContent = '₪' + total.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 // Add this debug function right before the form submission
