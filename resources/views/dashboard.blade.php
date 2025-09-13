@@ -2620,22 +2620,6 @@
                 }
             }
 
-            let hasError = false;
-            rows.forEach(row => {
-                const qty = parseInt(row.querySelector('.quantity')?.value || 0);
-                const max = parseInt(row.querySelector('.quantity')?.max || 999);
-
-                if (qty > max) {
-                    hasError = true;
-                    showNotification('{{ __('messages.Some products exceed available stock') }}', 'error');
-                }
-            });
-
-            if (hasError) {
-                e.preventDefault();
-                return;
-            }
-
             showNotification('{{ __('messages.Creating bill...') }}', 'info');
         });
 
