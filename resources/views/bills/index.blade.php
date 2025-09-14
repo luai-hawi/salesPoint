@@ -19,12 +19,12 @@
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                 {{ __('bills.Total Bills') }}: <span class="font-bold text-blue-600">{{ $bills->total() }}</span>
             </div>
-            <a href="{{ route('bills.create') }}" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 flex items-center">
+            <!-- <a href="{{ route('bills.create') }}" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
                 {{ __('messages.New Bill') }}
-            </a>
+            </a> -->
         </div>
     </div>
 </x-slot>

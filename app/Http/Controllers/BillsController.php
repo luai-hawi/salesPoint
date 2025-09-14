@@ -68,28 +68,28 @@ public function index(Request $request)
         'selectedDate' => $date,
     ]);
 }
-    public function create()
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    // public function create()
+    // {
+    //     $user = auth()->user();
+    //     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         
-        $products = Product::where('user_id', $ownerId)->get();
-        $customers = Customer::where('user_id', $ownerId)->get();
+    //     $products = Product::where('user_id', $ownerId)->get();
+    //     $customers = Customer::where('user_id', $ownerId)->get();
         
-        // Prepare products data for JavaScript
-        $productsForJS = $products->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'name' => $p->name,
-                'price' => $p->selling_price,
-                'cost_price' => $p->cost_price,
-                'barcode' => $p->barcode,
-                'quantity' => $p->quantity,
-            ];
-        })->toArray();
+    //     // Prepare products data for JavaScript
+    //     $productsForJS = $products->map(function ($p) {
+    //         return [
+    //             'id' => $p->id,
+    //             'name' => $p->name,
+    //             'price' => $p->selling_price,
+    //             'cost_price' => $p->cost_price,
+    //             'barcode' => $p->barcode,
+    //             'quantity' => $p->quantity,
+    //         ];
+    //     })->toArray();
 
-        return view('bills.create', compact('productsForJS', 'products', 'customers'));
-    }
+    //     return view('bills.create', compact('productsForJS', 'products', 'customers'));
+    // }
 
     public function store(Request $request)
     {
