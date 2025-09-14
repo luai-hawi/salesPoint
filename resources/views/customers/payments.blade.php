@@ -176,6 +176,20 @@
                                     {{ __('messages.Positive for payments, negative for new debt') }}
                                 </p>
                             </div>
+                            <div>
+                                <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ __('messages.Payment Type') }} <span class="text-red-500">*</span>
+                                </label>
+                                <select name="type" 
+                                        id="type"
+                                        class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                        required>
+                                    <option value="cash">{{ __('messages.Cash') }}</option>
+                                    <option value="card">{{ __('messages.Card') }}</option>
+                                    <option value="transfer">{{ __('messages.Transfer') }}</option>
+                                    <option value="check">{{ __('messages.Check') }}</option>
+                                </select>
+                            </div>
                             
                             <div>
                                 <label for="note" class="block text-sm font-medium text-gray-700 mb-2">
@@ -222,6 +236,7 @@
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Payment ID') }}</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Amount') }}</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Type') }}</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Note') }}</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Date') }}</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
@@ -259,6 +274,14 @@
                                                        class="edit-amount w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                        value="{{ $payment->amount }}"
                                                        data-old="{{ $payment->amount }}">
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <select class="edit-type w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                                    <option value="cash" {{ $payment->type == 'cash' ? 'selected' : '' }}>{{ __('messages.Cash') }}</option>
+                                                    <option value="card" {{ $payment->type == 'card' ? 'selected' : '' }}>{{ __('messages.Card') }}</option>
+                                                    <option value="transfer" {{ $payment->type == 'transfer' ? 'selected' : '' }}>{{ __('messages.Transfer') }}</option>
+                                                    <option value="check" {{ $payment->type == 'check' ? 'selected' : '' }}>{{ __('messages.Check') }}</option>
+                                                </select>
                                             </td>
                                             <td class="px-6 py-4">
                                                 <input type="text" 
@@ -746,7 +769,11 @@ function printPaymentReport() {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
                     },
-                    body: JSON.stringify({ amount: newAmount, note })
+                    body: JSON.stringify({ 
+                        amount: newAmount, 
+                        type: row.querySelector('.edit-type').value,  // Add this line
+                        note 
+                    })
                 })
                 .then(res => {
                     if(!res.ok) throw new Error('Network response was not ok');

@@ -148,12 +148,14 @@ class CustomerController extends Controller
             
             $request->validate([
                 'amount' => 'required|numeric',
+                'type' => 'required|string|in:cash,card,transfer,check', // Add this line
                 'note' => 'nullable|string|max:255',
             ]);
 
             // Create payment record
             $payment = $customer->payments()->create([
                 'amount' => $request->amount,
+                'type' => $request->type,    // Add this line
                 'note' => $request->note,
                 'user_id' => $ownerId
             ]);
@@ -191,6 +193,7 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric',
+            'type' => 'required|string|in:cash,card,transfer,check', // Add this line
             'note' => 'nullable|string|max:255',
         ]);
 
@@ -225,13 +228,13 @@ public function quickStorePayment(Request $request, Customer $customer) {
 
     $validated = $request->validate([
         'amount' => 'required|numeric|not_in:0',
-        'type' => 'required|string|in:cash,card,transfer',
+        'type' => 'required|string|in:cash,card,transfer,check', // Add this line
         'note' => 'nullable|string|max:255',
     ]);
 
     $customer->payments()->create([
         'amount' => $validated['amount'],
-        'type' => $validated['type'],
+        'type' => $validated['type'], // Add this line
         'note' => $validated['note'] ?? null,
         'user_id' => $ownerId,
     ]);

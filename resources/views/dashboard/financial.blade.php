@@ -21,16 +21,7 @@
                 <div class="text-xs sm:text-sm text-gray-600 bg-blue-100 px-3 py-2 rounded-full">
                     {{ __('messages.Net Income:') }} <span class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($summaryData['netIncome'], 0) }}</span>
                 </div>
-            </div>
-        </div>
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-4">
-            <h2 class="font-bold text-xl lg:text-2xl text-gray-800 leading-tight flex items-center">
-                <!-- existing header content -->
-            </h2>
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                <!-- existing period and net income divs -->
-                
-                <!-- Add this new export button -->
+                <!-- Export Button -->
                 <a href="{{ route('dashboard.export-data') }}" 
                 class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-200">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,9 +56,9 @@
                 </form>
             </div>
 
-            <!-- Summary Cards - Responsive Grid -->
+            <!-- Enhanced Summary Cards - Including Supplier Data -->
             <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-4">
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
@@ -98,6 +89,28 @@
                         </div>
                     </div>
 
+                    <!-- NEW: Purchases Card -->
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-orange-500 hover:shadow-lg transition duration-300">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">🛒 {{ __('messages.Purchases') }}</p>
+                                <p class="text-xl lg:text-2xl font-bold text-gray-900">₪{{ number_format($summaryData['totalPurchases'], 0) }}</p>
+                            </div>
+                            <div class="text-2xl lg:text-3xl text-orange-500">🛒</div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Supplier Payments Card -->
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-indigo-500 hover:shadow-lg transition duration-300">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">🏢 {{ __('messages.Supplier Payments') }}</p>
+                                <p class="text-xl lg:text-2xl font-bold text-gray-900">₪{{ number_format($summaryData['totalSupplierPayments'], 0) }}</p>
+                            </div>
+                            <div class="text-2xl lg:text-3xl text-indigo-500">🏢</div>
+                        </div>
+                    </div>
+
                     <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
                             <div>
@@ -114,7 +127,84 @@
                 </div>
             </div>
 
-            <!-- Main Chart + Growth Stats Row - Responsive -->
+            <!-- NEW: Store Value Section -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="bg-gradient-to-br from-blue-600 to-purple-700 p-4 lg:p-6 rounded-lg shadow-lg text-white">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+                        <h3 class="text-lg lg:text-xl font-bold flex items-center mb-2 lg:mb-0">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2-2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v16zM8 9h8M8 13h8"></path>
+                            </svg>
+                            {{ __('messages.Store Inventory Value') }}
+                        </h3>
+                        <div class="text-sm bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                            {{ __('messages.Current Stock Analysis') }}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">💰 {{ __('messages.Cost Value') }}</h4>
+                                <span class="text-xl">📦</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">₪{{ number_format($storeValueData['totalCostValue'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Total investment') }}</p>
+                        </div>
+
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">💎 {{ __('messages.Selling Value') }}</h4>
+                                <span class="text-xl">💰</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">₪{{ number_format($storeValueData['totalSellingValue'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Potential revenue') }}</p>
+                        </div>
+
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">🎯 {{ __('messages.Potential Profit') }}</h4>
+                                <span class="text-xl">📈</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold text-yellow-200">₪{{ number_format($storeValueData['potentialProfit'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.If all sold') }}</p>
+                        </div>
+
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">📊 {{ __('messages.Total Items') }}</h4>
+                                <span class="text-xl">🔢</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">{{ number_format($storeValueData['totalItems']) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Units in stock') }}</p>
+                        </div>
+
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">🛍️ {{ __('messages.Products') }}</h4>
+                                <span class="text-xl">📋</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">{{ number_format($storeValueData['totalProducts']) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Different products') }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Profit Margin Indicator -->
+                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="text-sm opacity-90">
+                            {{ __('messages.Profit Margin:') }} 
+                            <span class="font-bold text-yellow-200">
+                                {{ $storeValueData['totalCostValue'] > 0 ? number_format(($storeValueData['potentialProfit'] / $storeValueData['totalCostValue']) * 100, 1) : 0 }}%
+                            </span>
+                        </div>
+                        <div class="text-xs opacity-75">
+                            {{ __('messages.Based on current inventory at cost vs selling prices') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Growth Stats - Including Purchase Growth -->
             <div class="w-full mb-4 lg:mb-6">
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
                     <!-- Revenue Chart - Full Width on Mobile -->
@@ -130,8 +220,8 @@
                         </div>
                     </div>
 
-                    <!-- Growth Stats - Responsive Stack -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3 lg:gap-4">
+                    <!-- Enhanced Growth Stats - Responsive Stack -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 lg:gap-4">
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
                                 <h4 class="text-sm font-semibold text-gray-800">💰 {{ __('messages.Revenue Growth') }}</h4>
@@ -154,10 +244,22 @@
                             </p>
                         </div>
 
+                        <!-- NEW: Purchase Growth -->
+                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold text-gray-800">🛒 {{ __('messages.Purchase Growth') }}</h4>
+                                <span class="text-lg">{{ $growthData['purchases']['growth'] >= 0 ? '📈' : '📉' }}</span>
+                            </div>
+                            <p class="text-lg lg:text-xl font-bold text-gray-900">₪{{ number_format($growthData['purchases']['current'], 0) }}</p>
+                            <p class="text-sm {{ $growthData['purchases']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ $growthData['purchases']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['purchases']['growth'], 1) }}% {{ __('messages.vs previous') }}
+                            </p>
+                        </div>
+
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
                                 <h4 class="text-sm font-semibold text-gray-800">🎯 {{ __('messages.Expense Control') }}</h4>
-                                <span class="text-lg">{{ $growthData['expenses']['growth'] <= 0 ? '👍' : '⚠️' }}</span>
+                                <span class="text-lg">{{ $growthData['expenses']['growth'] <= 0 ? '🏆' : '⚠️' }}</span>
                             </div>
                             <p class="text-lg lg:text-xl font-bold text-gray-900">₪{{ number_format($growthData['expenses']['current'], 0) }}</p>
                             <p class="text-sm {{ $growthData['expenses']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
@@ -168,9 +270,9 @@
                 </div>
             </div>
 
-            <!-- Three Medium Charts Row - Responsive -->
+            <!-- Enhanced Charts Row - Including Supplier Charts -->
             <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">💎 {{ __('messages.Daily Profit') }}</h3>
@@ -191,6 +293,33 @@
                         </div>
                     </div>
 
+                    <!-- NEW: Daily Purchases Chart -->
+                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🛒 {{ __('messages.Daily Purchases') }}</h3>
+                            <span class="text-sm text-gray-600">₪{{ number_format($purchaseData['total'], 0) }}</span>
+                        </div>
+                        <div class="h-48 lg:h-56">
+                            <canvas id="purchaseChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Supplier Payments Chart -->
+                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢 {{ __('messages.Supplier Payments') }}</h3>
+                            <span class="text-sm text-gray-600">₪{{ number_format($supplierPaymentData['total'], 0) }}</span>
+                        </div>
+                        <div class="h-48 lg:h-56">
+                            <canvas id="supplierPaymentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer and Employee Payment Charts -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-start justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">🤝 {{ __('messages.Customer Payments') }}</h3>
@@ -203,13 +332,23 @@
                             <canvas id="customerPaymentChart"></canvas>
                         </div>
                     </div>
+
+                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥 {{ __('messages.Employee Payments') }}</h3>
+                            <span class="text-sm text-gray-600">₪{{ number_format($employeePaymentData['total'], 0) }}</span>
+                        </div>
+                        <div class="h-48 lg:h-56">
+                            <canvas id="employeePaymentChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Mixed Layout Row - Responsive -->
+            <!-- Enhanced Balance Overview - Including Supplier Balances -->
             <div class="w-full mb-4 lg:mb-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-                    <!-- Quick Stats -->
+                    <!-- Enhanced Quick Stats -->
                     <div class="lg:col-span-1 xl:col-span-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 lg:p-5 rounded-lg shadow-md text-white">
                         <h3 class="text-sm lg:text-md font-semibold mb-4">📊 {{ __('messages.Quick Stats') }}</h3>
                         <div class="space-y-3">
@@ -227,6 +366,11 @@
                                 <span class="text-sm text-gray-300">💔 {{ __('messages.Our Debt') }}</span>
                                 <span class="font-bold text-red-400">₪{{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
                             </div>
+                            <!-- NEW: Supplier debt stats -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-300">🏢 {{ __('messages.Supplier Debt') }}</span>
+                                <span class="font-bold text-orange-400">₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}</span>
+                            </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-300">⚠️ {{ __('messages.Damage Loss') }}</span>
                                 <span class="font-bold text-orange-400">₪{{ number_format($damagedData['total'], 0) }}</span>
@@ -234,19 +378,8 @@
                         </div>
                     </div>
 
-                    <!-- Employee Payments -->
-                    <div class="lg:col-span-1 xl:col-span-2 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥 {{ __('messages.Employee Payments') }}</h3>
-                            <span class="text-sm text-gray-600">₪{{ number_format($employeePaymentData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="employeePaymentChart"></canvas>
-                        </div>
-                    </div>
-
                     <!-- Damaged Products -->
-                    <div class="lg:col-span-2 xl:col-span-1 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                    <div class="lg:col-span-1 xl:col-span-1 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">⚠️ {{ __('messages.Damaged Items') }}</h3>
                             <span class="text-lg">📦</span>
@@ -263,6 +396,31 @@
                         </div>
                         <div class="h-32 lg:h-40">
                             <canvas id="damagedChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Supplier Balance Summary -->
+                    <div class="lg:col-span-2 xl:col-span-2 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢 {{ __('messages.Supplier Balance Overview') }}</h3>
+                            <div class="flex gap-2">
+                                <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
+                                    {{ __('messages.We Owe:') }} ₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}
+                                </span>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                                    {{ __('messages.They Owe:') }} ₪{{ number_format($supplierBalanceData['totalOwed'], 0) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="h-40 lg:h-48">
+                                <h4 class="text-sm font-medium text-gray-600 mb-2">{{ __('messages.We Owe Suppliers') }}</h4>
+                                <canvas id="supplierOwingChart"></canvas>
+                            </div>
+                            <div class="h-40 lg:h-48">
+                                <h4 class="text-sm font-medium text-gray-600 mb-2">{{ __('messages.Suppliers Owe Us') }}</h4>
+                                <canvas id="supplierOwedChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -297,67 +455,119 @@
                 </div>
             </div>
 
-            <!-- Top Products Table - Full Width Responsive -->
-            <div class="w-full bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏆 {{ __('messages.Top Performing Products') }}</h3>
-                        <span class="text-sm text-gray-600">{{ __('messages.Performance Ranking') }}</span>
+            <!-- Enhanced Tables Section -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+                    <!-- Top Products Table -->
+                    <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏆 {{ __('messages.Top Performing Products') }}</h3>
+                                <span class="text-sm text-gray-600">{{ __('messages.Performance Ranking') }}</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-80">
+                            <table class="min-w-full">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Rank')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Product')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Qty Sold')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Profit')}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100">
+                                    @foreach($topProducts as $index => $product)
+                                    <tr class="hover:bg-gray-50 transition duration-150">
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
+                                            @if($index == 0)
+                                                <span class="text-lg">🥇</span>
+                                            @elseif($index == 1)
+                                                <span class="text-lg">🥈</span>
+                                            @elseif($index == 2)
+                                                <span class="text-lg">🥉</span>
+                                            @else
+                                                <span class="text-sm text-gray-600 font-medium">{{ $index + 1 }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3">
+                                            <div class="text-sm font-medium text-gray-900 truncate max-w-xs">{{ $product->name }}</div>
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                {{ number_format($product->total_quantity) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                            ₪{{ number_format($product->total_profit, 0) }}
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Rank')}}</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Product')}}</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Qty Sold')}}</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Revenue')}}</th>
-                                <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Profit')}}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-100">
-                            @foreach($topProducts as $index => $product)
-                            <tr class="hover:bg-gray-50 transition duration-150">
-                                <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                    @if($index == 0)
-                                        <span class="text-lg">🥇</span>
-                                    @elseif($index == 1)
-                                        <span class="text-lg">🥈</span>
-                                    @elseif($index == 2)
-                                        <span class="text-lg">🥉</span>
-                                    @else
-                                        <span class="text-sm text-gray-600 font-medium">{{ $index + 1 }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-3 lg:px-4 py-3">
-                                    <div class="text-sm font-medium text-gray-900 truncate max-w-xs">{{ $product->name }}</div>
-                                </td>
-                                <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ number_format($product->total_quantity) }}
-                                    </span>
-                                </td>
-                                <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                                    ₪{{ number_format($product->total_revenue, 0) }}
-                                </td>
-                                <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">
-                                    ₪{{ number_format($product->total_profit, 0) }}
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+
+                    <!-- NEW: Top Suppliers Table -->
+                    <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢 {{ __('messages.Top Suppliers') }}</h3>
+                                <span class="text-sm text-gray-600">{{ __('messages.Purchase Volume') }}</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-80">
+                            <table class="min-w-full">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Rank')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Supplier')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Bills')}}</th>
+                                        <th class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{__('messages.Total')}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100">
+                                    @foreach($topSuppliers as $index => $supplier)
+                                    <tr class="hover:bg-gray-50 transition duration-150">
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
+                                            @if($index == 0)
+                                                <span class="text-lg">🥇</span>
+                                            @elseif($index == 1)
+                                                <span class="text-lg">🥈</span>
+                                            @elseif($index == 2)
+                                                <span class="text-lg">🥉</span>
+                                            @else
+                                                <span class="text-sm text-gray-600 font-medium">{{ $index + 1 }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3">
+                                            <div class="text-sm font-medium text-gray-900 truncate max-w-xs">{{ $supplier->name }}</div>
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                {{ number_format($supplier->total_bills) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                                            ₪{{ number_format($supplier->total_purchases, 0) }}
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-   @push('scripts')
+    @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
+        
         window.addEventListener('load', function() {
-            console.log('=== CREATING ALL CHARTS ===');
+            console.log('=== CREATING ALL CHARTS (INCLUDING SUPPLIER CHARTS) ===');
 
             // Check if Chart.js is loaded
             if (typeof Chart === 'undefined') {
@@ -409,6 +619,27 @@
                 data: {!! json_encode($customerBalanceData['topOwed']['data'] ?? []) !!}
             };
 
+            // NEW: Supplier data
+            const purchaseData = {
+                labels: {!! json_encode($purchaseData['labels'] ?? []) !!},
+                data: {!! json_encode($purchaseData['data'] ?? []) !!}
+            };
+
+            const supplierPaymentData = {
+                labels: {!! json_encode($supplierPaymentData['labels'] ?? []) !!},
+                data: {!! json_encode($supplierPaymentData['data'] ?? []) !!}
+            };
+
+            const supplierOwingData = {
+                labels: {!! json_encode($supplierBalanceData['topOwing']['labels'] ?? []) !!},
+                data: {!! json_encode($supplierBalanceData['topOwing']['data'] ?? []) !!}
+            };
+
+            const supplierOwedData = {
+                labels: {!! json_encode($supplierBalanceData['topOwed']['labels'] ?? []) !!},
+                data: {!! json_encode($supplierBalanceData['topOwed']['data'] ?? []) !!}
+            };
+
             // Helper function to destroy existing chart
             function destroyExistingChart(canvasId) {
                 const canvas = document.getElementById(canvasId);
@@ -427,7 +658,7 @@
                 new Chart(revenueCanvas, {
                     type: 'line',
                     data: {
-                        labels: revenueData.labels.length > 0 ? revenueData.labels : ['messages.No Data'],
+                        labels: revenueData.labels.length > 0 ? revenueData.labels : ['No Data'],
                         datasets: [{
                             label: '{{__('messages.Revenue')}}',
                             data: revenueData.data.length > 0 ? revenueData.data : [0],
@@ -574,7 +805,112 @@
                 console.log('✅ Expense chart created');
             }
 
-            // 4. CUSTOMER PAYMENT CHART (Bar Chart)
+            // NEW: 4. PURCHASE CHART (Line Chart)
+            const purchaseCanvas = destroyExistingChart('purchaseChart');
+            if (purchaseCanvas) {
+                new Chart(purchaseCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: purchaseData.labels.length > 0 ? purchaseData.labels : ['No Data'],
+                        datasets: [{
+                            label: '{{__('messages.Purchases')}}',
+                            data: purchaseData.data.length > 0 ? purchaseData.data : [0],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#f97316',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(156, 163, 175, 0.2)' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 10 },
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { usePointStyle: true, padding: 15, color: '#374151', font: { size: 11 } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) { return 'Purchases: ₪' + context.parsed.y.toLocaleString(); }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Purchase chart created');
+            }
+
+            // NEW: 5. SUPPLIER PAYMENT CHART (Bar Chart)
+            const supplierPaymentCanvas = destroyExistingChart('supplierPaymentChart');
+            if (supplierPaymentCanvas) {
+                new Chart(supplierPaymentCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: supplierPaymentData.labels.length > 0 ? supplierPaymentData.labels : ['No Data'],
+                        datasets: [{
+                            label: '{{__('messages.Supplier Payments')}}',
+                            data: supplierPaymentData.data.length > 0 ? supplierPaymentData.data : [0],
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                            borderColor: '#6366f1',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(156, 163, 175, 0.2)' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 10 },
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) { return 'Payment: ₪' + context.parsed.y.toLocaleString(); }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Supplier Payment chart created');
+            }
+
+            // 6. CUSTOMER PAYMENT CHART (Bar Chart)
             const customerPaymentCanvas = destroyExistingChart('customerPaymentChart');
             if (customerPaymentCanvas) {
                 new Chart(customerPaymentCanvas, {
@@ -632,7 +968,7 @@
                 console.log('✅ Customer Payment chart created');
             }
 
-            // 5. EMPLOYEE PAYMENT CHART (Bar Chart)
+            // 7. EMPLOYEE PAYMENT CHART (Bar Chart)
             const employeePaymentCanvas = destroyExistingChart('employeePaymentChart');
             if (employeePaymentCanvas) {
                 new Chart(employeePaymentCanvas, {
@@ -687,7 +1023,7 @@
                 console.log('✅ Employee Payment chart created');
             }
 
-            // 6. DAMAGED PRODUCTS CHART (Horizontal Bar Chart)
+            // 8. DAMAGED PRODUCTS CHART (Horizontal Bar Chart)
             const damagedCanvas = destroyExistingChart('damagedChart');
             if (damagedCanvas && damagedData.labels.length > 0) {
                 new Chart(damagedCanvas, {
@@ -737,7 +1073,105 @@
                 console.log('✅ Damaged Products chart created');
             }
 
-            // 7. CUSTOMER OWING CHART (Bar Chart)
+            // NEW: 9. SUPPLIER OWING CHART (Bar Chart)
+            const supplierOwingCanvas = destroyExistingChart('supplierOwingChart');
+            if (supplierOwingCanvas) {
+                new Chart(supplierOwingCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: supplierOwingData.labels.length > 0 ? supplierOwingData.labels : ['No Data'],
+                        datasets: [{
+                            label: 'Amount We Owe',
+                            data: supplierOwingData.data.length > 0 ? supplierOwingData.data : [0],
+                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(156, 163, 175, 0.2)' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 10 },
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) { return 'We owe: ₪' + context.parsed.y.toLocaleString(); }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Supplier Owing chart created');
+            }
+
+            // NEW: 10. SUPPLIER OWED CHART (Bar Chart)
+            const supplierOwedCanvas = destroyExistingChart('supplierOwedChart');
+            if (supplierOwedCanvas) {
+                new Chart(supplierOwedCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: supplierOwedData.labels.length > 0 ? supplierOwedData.labels : ['No Data'],
+                        datasets: [{
+                            label: 'Amount They Owe',
+                            data: supplierOwedData.data.length > 0 ? supplierOwedData.data : [0],
+                            backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                            borderColor: '#22c55e',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(156, 163, 175, 0.2)' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 10 },
+                                    callback: function(value) { return '₪' + value.toLocaleString(); }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) { return 'They owe: ₪' + context.parsed.y.toLocaleString(); }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Supplier Owed chart created');
+            }
+
+            // 11. CUSTOMER OWING CHART (Bar Chart)
             const customerOwingCanvas = destroyExistingChart('customerOwingChart');
             if (customerOwingCanvas) {
                 new Chart(customerOwingCanvas, {
@@ -786,7 +1220,7 @@
                 console.log('✅ Customer Owing chart created');
             }
 
-            // 8. CUSTOMER OWED CHART (Bar Chart)
+            // 12. CUSTOMER OWED CHART (Bar Chart)
             const customerOwedCanvas = destroyExistingChart('customerOwedChart');
             if (customerOwedCanvas) {
                 new Chart(customerOwedCanvas, {
@@ -835,7 +1269,7 @@
                 console.log('✅ Customer Owed chart created');
             }
 
-            console.log('🎉 ALL CHARTS CREATED SUCCESSFULLY!');
+            console.log('🎉 ALL CHARTS CREATED SUCCESSFULLY (INCLUDING SUPPLIER CHARTS)!');
         });
     </script>
     @endpush

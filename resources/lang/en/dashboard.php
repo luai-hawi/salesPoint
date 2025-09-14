@@ -70,4 +70,6 @@ return [
     'No Recent Bill'=>'No Recent Bill',
     'Please select a customer before printing' => 'Please select a customer before printing',
     'Please select a customer before creating the bill' => 'Please select a customer before creating the bill',
+    'Check' => 'Check',
+    'Transfer' => 'Transfer',
 ];

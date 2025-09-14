@@ -17,6 +17,8 @@ use App\Http\Controllers\ShopOwner\DashboardController;
 use App\Http\Controllers\FinancialDashboardController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\TagsController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\PurchaseBillController;
 
 
 
@@ -485,6 +487,26 @@ Route::get('/api/categories', function () {
     
     return response()->json($categories);
 })->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant']);
+
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant'])
+    ->group(function () {
+
+        // Suppliers
+        Route::resource('suppliers', SupplierController::class);
+        Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
+        Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
+        Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
+
+        
+        // Purchase Bills
+        Route::resource('purchase-bills', PurchaseBillController::class);
+        Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
+        Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
+        
+        // API endpoints for AJAX calls
+        Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');
+        Route::get('/api/purchase-bills/search', [PurchaseBillController::class, 'search'])->name('api.purchase-bills.search');
+    });
 
 // ------------------- LANGUAGE ROUTES -------------------
 require __DIR__.'/language.php';

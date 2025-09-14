@@ -273,7 +273,7 @@
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 total-value">
-                                                ${{ number_format($batch->quantity * $batch->cost_price, 2) }}
+                                                ₪{{ number_format($batch->quantity * $batch->cost_price, 2) }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {{ $batch->created_at->format('M d, Y') }}
