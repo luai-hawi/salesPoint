@@ -197,7 +197,7 @@ public function index(Request $request)
         if ($bill->customer_id && $total > 0) {
             $bill->customer->payments()->create([
                 'amount' => -1 * $total,
-                'type' => 'payment',
+                'type' => 'cash',
                 'note' => "Bill #{$bill->id} created as debt",
                 'user_id' => $ownerId,
             ]);
