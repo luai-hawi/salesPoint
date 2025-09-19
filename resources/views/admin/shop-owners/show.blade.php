@@ -63,6 +63,9 @@
                                 <div class="ml-4">
                                     <h4 class="text-xl font-bold text-gray-900">{{ $shopOwner->name }}</h4>
                                     <p class="text-gray-600">{{ $shopOwner->email }}</p>
+                                    @if($shopOwner->phone_number)
+                                        <p class="text-gray-600">{{ $shopOwner->phone_number }}</p>
+                                    @endif
                                 </div>
                             </div>
                             

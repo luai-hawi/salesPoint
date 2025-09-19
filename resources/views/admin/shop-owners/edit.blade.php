@@ -55,13 +55,27 @@
                     <!-- Email -->
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Email Address') }}</label>
-                        <input type="email" 
-                               name="email" 
-                               id="email" 
-                               value="{{ old('email', $shopOwner->email) }}" 
+                        <input type="email"
+                               name="email"
+                               id="email"
+                               value="{{ old('email', $shopOwner->email) }}"
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
-                        @error('email') 
+                        @error('email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Phone Number -->
+                    <div>
+                        <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Phone Number') }}</label>
+                        <input type="text"
+                               name="phone_number"
+                               id="phone_number"
+                               value="{{ old('phone_number', $shopOwner->phone_number) }}"
+                               class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                               placeholder="{{ __('messages.Enter phone number') }}">
+                        @error('phone_number')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>

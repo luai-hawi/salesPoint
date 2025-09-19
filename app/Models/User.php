@@ -26,6 +26,7 @@ class User extends Authenticatable
         'shop_owner_id',
         'session_id',
         'details', // Added details field
+        'phone_number',
     ];
 
 

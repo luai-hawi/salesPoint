@@ -46,6 +46,7 @@ class ShopOwnerController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'required|in:shop_owner,admin,restaurant,merchant',
+            'phone_number' => 'nullable|string|max:20',
         ]);
 
         try {
@@ -134,6 +135,7 @@ class ShopOwnerController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($shopOwner->id)],
             'password' => 'nullable|string|min:8',
             'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
+            'phone_number' => 'nullable|string|max:20',
         ]);
 
         try {
@@ -257,6 +259,7 @@ class ShopOwnerController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'shop_owner_id' => 'required|exists:users,id',
+            'phone_number' => 'nullable|string|max:20',
         ]);
 
         // Verify the shop_owner_id belongs to an actual shop owner
@@ -330,6 +333,7 @@ class ShopOwnerController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($employee->id)],
             'password' => 'nullable|string|min:8',
             'shop_owner_id' => 'required|exists:users,id',
+            'phone_number' => 'nullable|string|max:20',
         ]);
 
         // Verify the shop_owner_id belongs to an actual shop owner
