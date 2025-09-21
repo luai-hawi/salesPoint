@@ -27,6 +27,8 @@ class User extends Authenticatable
         'session_id',
         'details', // Added details field
         'phone_number',
+        'subscription_paid',
+        'subscription_cost',
     ];
 
 

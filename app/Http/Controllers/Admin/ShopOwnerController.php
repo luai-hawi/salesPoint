@@ -47,6 +47,7 @@ class ShopOwnerController extends Controller
             'password' => 'required|string|min:8',
             'role' => 'required|in:shop_owner,admin,restaurant,merchant',
             'phone_number' => 'nullable|string|max:20',
+            'subscription_cost' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -136,6 +137,7 @@ class ShopOwnerController extends Controller
             'password' => 'nullable|string|min:8',
             'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
             'phone_number' => 'nullable|string|max:20',
+            'subscription_cost' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -216,6 +218,22 @@ class ShopOwnerController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to update status. Please try again.']);
+        }
+    }
+
+    /**
+     * Mark subscription as paid for a user.
+     */
+    public function markPaid(User $shopOwner)
+    {
+        try {
+            $shopOwner->update(['subscription_paid' => true]);
+
+            return redirect()->back()
+                ->with('success', 'Subscription marked as paid successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to mark subscription as paid. Please try again.']);
         }
     }
 

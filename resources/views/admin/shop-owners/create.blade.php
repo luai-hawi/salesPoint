@@ -74,6 +74,22 @@
                         @enderror
                     </div>
 
+                    <!-- Subscription Cost -->
+                    <div>
+                        <label for="subscription_cost" class="block text-sm font-medium text-gray-700 mb-2">Subscription Cost ($)</label>
+                        <input type="number"
+                               name="subscription_cost"
+                               id="subscription_cost"
+                               value="{{ old('subscription_cost') }}"
+                               step="0.01"
+                               min="0"
+                               class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                               placeholder="Enter subscription cost">
+                        @error('subscription_cost')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Password -->
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Password') }}</label>
