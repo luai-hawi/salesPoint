@@ -2679,7 +2679,9 @@ class CashDrawerManager {
         const isAndroid = /android/.test(userAgent);
         const isWindows = /windows/.test(userAgent);
         const isWebView = /wv/.test(userAgent); // Android WebView
-        
+        const isSunmi = /sunmi/i.test(userAgent);
+
+        if (isSunmi) return 'sunmi';
         if (isWebView || (isAndroid && window.Android)) return 'android-webview';
         if (isAndroid) return 'android-browser';
         if (isWindows) return 'windows';
@@ -2688,6 +2690,8 @@ class CashDrawerManager {
     
     determineBestMethod() {
         switch(this.platform) {
+            case 'sunmi':
+                return 'sunmi-sdk';
             case 'android-webview':
                 return window.Android ? 'native-bridge' : 'web-fallback';
             case 'android-browser':
@@ -2702,6 +2706,8 @@ class CashDrawerManager {
     async openDrawer() {
         try {
             switch(this.method) {
+                case 'sunmi-sdk':
+                    return await this.openViaSunmiSDK();
                 case 'native-bridge':
                     return await this.openViaAndroidBridge();
                 case 'web-intent':
@@ -2719,6 +2725,16 @@ class CashDrawerManager {
         }
     }
     
+    // Sunmi SDK for Sunmi POS devices
+    async openViaSunmiSDK() {
+        if (typeof window.sunmiPrinter !== 'undefined' && window.sunmiPrinter.sendRAWData) {
+            const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]); // ESC/POS drawer open command
+            window.sunmiPrinter.sendRAWData(command);
+            return { success: true, method: 'Sunmi SDK' };
+        }
+        throw new Error('Sunmi printer API not available');
+    }
+
     // Android WebView with native bridge
     async openViaAndroidBridge() {
         if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
