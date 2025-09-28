@@ -2693,9 +2693,9 @@ class CashDrawerManager {
             case 'sunmi':
                 return 'sunmi-sdk';
             case 'android-webview':
-                return window.Android ? 'native-bridge' : 'web-fallback';
+                return window.Android ? 'native-bridge' : 'network-bridge';
             case 'android-browser':
-                return 'web-intent';
+                return 'network-bridge';
             case 'windows':
                 return navigator.serial ? 'webserial' : 'network-bridge';
             default:
