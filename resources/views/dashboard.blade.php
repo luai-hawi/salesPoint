@@ -2691,11 +2691,9 @@ class CashDrawerManager {
     determineBestMethod() {
         switch(this.platform) {
             case 'sunmi':
-                return 'sunmi-sdk';
             case 'android-webview':
-                return window.Android ? 'native-bridge' : 'network-bridge';
             case 'android-browser':
-                return 'network-bridge';
+                return 'sunmi-sdk';
             case 'windows':
                 return navigator.serial ? 'webserial' : 'network-bridge';
             default:
@@ -2725,14 +2723,17 @@ class CashDrawerManager {
         }
     }
     
-    // Sunmi SDK for Sunmi POS devices
+    // Sunmi SDK for Sunmi POS devices and Android bridge fallback
     async openViaSunmiSDK() {
         if (typeof window.sunmiPrinter !== 'undefined' && window.sunmiPrinter.sendRAWData) {
             const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]); // ESC/POS drawer open command
             window.sunmiPrinter.sendRAWData(command);
             return { success: true, method: 'Sunmi SDK' };
+        } else if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
+            window.Android.openCashDrawer();
+            return { success: true, method: 'Android Native Bridge' };
         }
-        throw new Error('Sunmi printer API not available');
+        throw new Error('Neither Sunmi nor Android bridge API available');
     }
 
     // Android WebView with native bridge
