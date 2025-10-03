@@ -147,6 +147,8 @@ public function index(Request $request)
 
             // Update product quantity
             $product->quantity -= $qty;
+            // Update last sale date when product is sold
+            $product->last_sale_date = now();
             $product->save();
 
             // Handle batch consumption (FIFO)
@@ -219,12 +221,14 @@ public function index(Request $request)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         if ($bill->user_id !== $ownerId) {
             abort(403, 'Unauthorized');
         }
 
-        $products = Product::where('user_id', $ownerId)->get();
+        $products = Product::where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->get();
         $bill->load(['products', 'customer', 'creator']);
 
         return view('bills.show', compact('bill', 'products'));
@@ -790,12 +794,14 @@ private function updateCustomerBalance($bill)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         if ($bill->user_id !== $ownerId) {
             abort(403, 'Unauthorized');
         }
-        
-        $products = Product::where('user_id', $ownerId)->get();
+
+        $products = Product::where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->get();
         $customers = Customer::where('user_id', $ownerId)->get();
         
         // Prepare products data for JavaScript

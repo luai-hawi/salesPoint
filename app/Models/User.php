@@ -29,6 +29,8 @@ class User extends Authenticatable
         'phone_number',
         'subscription_paid',
         'subscription_cost',
+        'product_warning_period',
+        'product_deactivation_period',
     ];
 
 

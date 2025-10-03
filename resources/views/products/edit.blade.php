@@ -70,10 +70,18 @@
 
                                 <!-- Barcode -->
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Product Code / Barcode') }}</label>
-                                    <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}"
-                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors">
-                                </div>
+                                     <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Product Code / Barcode') }}</label>
+                                     <div class="flex">
+                                         <input type="text" name="barcode" id="barcode" value="{{ old('barcode', $product->barcode) }}"
+                                                class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors">
+                                         <button type="button" id="generate-barcode" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center">
+                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                             </svg>
+                                             {{ __('messages.Generate') }}
+                                         </button>
+                                     </div>
+                                 </div>
 
                                 <!-- Current Quantity (Read-only) -->
                                 <div>
@@ -644,6 +652,14 @@ document.getElementById("pictures").addEventListener("change", async function (e
             }
         });
 
+        loadCategoryAutoComplete();
+
+        // Generate barcode
+        document.getElementById('generate-barcode').addEventListener('click', function() {
+            const barcode = '150702' + {{ $product->id }};
+            document.getElementById('barcode').value = barcode;
+        });
+
         // Add this to your existing JavaScript in create.blade.php and edit.blade.php
 
 // Fetch existing categories for autocomplete
@@ -666,9 +682,5 @@ async function loadCategoryAutoComplete() {
     }
 }
 
-// Load categories when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    loadCategoryAutoComplete();
-});
     </script>
 </x-app-layout>

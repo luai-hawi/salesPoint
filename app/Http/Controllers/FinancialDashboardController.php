@@ -134,7 +134,7 @@ class FinancialDashboardController extends Controller
         ->sum('amount');
         
         $netIncome = $totalProfit - $totalExpenses - $totalEmployeePayments;
-        
+
         return [
             'totalRevenue' => $totalRevenue,
             'totalProfit' => $totalProfit,
@@ -622,77 +622,179 @@ class FinancialDashboardController extends Controller
         ];
     }
     
+    public function printComprehensiveReport(Request $request)
+    {
+        $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
+        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+
+        $userId = auth()->id();
+        $shopOwnerId = auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : $userId;
+
+        // Get all data for the comprehensive report
+        $data = [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+            'generated_by' => auth()->user()->name,
+        ];
+
+        // 1. Sales Bills (Selling Bills)
+        $data['sales_bills'] = Bill::where('user_id', $shopOwnerId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('is_damaged', false)
+            ->with(['products', 'customer', 'creator'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 2. Purchase Bills
+        $data['purchase_bills'] = PurchaseBill::where('user_id', $shopOwnerId)
+            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->with(['supplier', 'products', 'creator'])
+            ->orderBy('purchase_date', 'desc')
+            ->get();
+
+        // 3. Damaged Bills
+        $data['damaged_bills'] = Bill::where('user_id', $shopOwnerId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('is_damaged', true)
+            ->with(['products', 'customer', 'creator'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 4. Expenses
+        $data['expenses'] = Expense::where('user_id', $shopOwnerId)
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->orderBy('expense_date', 'desc')
+            ->get();
+
+        // 5. Customer Payments
+        $data['customer_payments'] = CustomerPayment::where('user_id', $shopOwnerId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->with('customer')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 6. Supplier Payments
+        $data['supplier_payments'] = SupplierPayment::whereHas('supplier', function($q) use ($shopOwnerId) {
+            $q->where('user_id', $shopOwnerId);
+        })
+        ->whereBetween('payment_date', [$startDate, $endDate])
+        ->with('supplier')
+        ->orderBy('payment_date', 'desc')
+        ->get();
+
+        // 7. Employee Payments
+        $data['employee_payments'] = EmployeePayment::whereHas('employee', function($q) use ($shopOwnerId) {
+            $q->where('shop_owner_id', $shopOwnerId);
+        })
+        ->whereBetween('payment_date', [$startDate, $endDate])
+        ->with('employee')
+        ->orderBy('payment_date', 'desc')
+        ->get();
+
+        // Calculate summary statistics
+        $data['summary'] = [
+            'total_sales' => $data['sales_bills']->sum('total_price'),
+            'total_purchases' => $data['purchase_bills']->sum('total_amount'),
+            'total_expenses' => $data['expenses']->sum('amount'),
+            'total_customer_payments' => $data['customer_payments']->sum('amount'),
+            'total_supplier_payments' => $data['supplier_payments']->sum('amount'),
+            'total_employee_payments' => $data['employee_payments']->sum('amount'),
+            'total_damaged_loss' => $data['damaged_bills']->sum('total_price'),
+        ];
+
+        // Calculate profit exactly as shown in financial dashboard (gross profit from sales)
+        $financialDashboardProfit = $data['sales_bills']->sum(function ($bill) {
+            return $bill->products->sum(function ($product) {
+                return (($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity) - $product->pivot->discount;
+            });
+        });
+
+        // Calculate profit/loss
+        $totalRevenue = $data['summary']['total_sales'];
+        $totalCosts = $data['summary']['total_purchases'] + $data['summary']['total_expenses'] + $data['summary']['total_employee_payments'] + $data['summary']['total_damaged_loss'];
+        $netCashFlow = $data['summary']['total_customer_payments'] - $data['summary']['total_supplier_payments'];
+
+        $data['summary']['total_revenue'] = $totalRevenue;
+        $data['summary']['total_costs'] = $totalCosts;
+        $data['summary']['net_profit'] = $totalRevenue - $totalCosts;
+        $data['summary']['net_cash_flow'] = $netCashFlow;
+        $data['summary']['financial_dashboard_profit'] = $financialDashboardProfit;
+
+        return view('dashboard.comprehensive-report', $data);
+    }
+
     public function exportData()
     {
         $userId = auth()->id();
         // For employees, get the shop owner ID
         $shopOwnerId = auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : $userId;
-        
+
         $spreadsheet = new Spreadsheet();
-        
+
         // Remove default sheet and create custom sheets
         $spreadsheet->removeSheetByIndex(0);
-        
+
         // 1. Products Sheet (Updated with category)
         $productsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Products');
         $spreadsheet->addSheet($productsSheet);
-        
+
         $products = Product::where('user_id', $shopOwnerId)->get();
         $productsSheet->fromArray([
             ['ID', 'Name', 'Category', 'Barcode', 'Quantity', 'Cost Price', 'Selling Price', 'Has Tags', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($products as $product) {
             $productsSheet->fromArray([
-                [$product->id, $product->name, $product->category, $product->barcode, $product->quantity, 
-                $product->cost_price, $product->selling_price, $product->has_tags ? 'Yes' : 'No', 
+                [$product->id, $product->name, $product->category, $product->barcode, $product->quantity,
+                $product->cost_price, $product->selling_price, $product->has_tags ? 'Yes' : 'No',
                 $product->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 2. Customers Sheet
         $customersSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Customers');
         $spreadsheet->addSheet($customersSheet);
-        
+
         $customers = Customer::where('user_id', $shopOwnerId)->get();
         $customersSheet->fromArray([
             ['ID', 'Name', 'Phone', 'Balance', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($customers as $customer) {
             $customersSheet->fromArray([
-                [$customer->id, $customer->name, $customer->phone, $customer->balance, 
+                [$customer->id, $customer->name, $customer->phone, $customer->balance,
                 $customer->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 3. Bills Sheet (Updated with created_by)
         $billsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Bills');
         $spreadsheet->addSheet($billsSheet);
-        
+
         $bills = Bill::where('user_id', $shopOwnerId)->with('customer')->get();
         $billsSheet->fromArray([
             ['ID', 'Customer Name', 'Total Price', 'Note', 'Is Damaged', 'Created By', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($bills as $bill) {
             $billsSheet->fromArray([
-                [$bill->id, $bill->customer->name ?? 'N/A', $bill->total_price, $bill->note, 
+                [$bill->id, $bill->customer->name ?? 'N/A', $bill->total_price, $bill->note,
                 $bill->is_damaged ? 'Yes' : 'No', $bill->created_by,
                 $bill->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 4. Bill Products Sheet (NEW - with tags)
         $billProductsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Bill Products');
         $spreadsheet->addSheet($billProductsSheet);
-        
+
         $billProducts = DB::table('bill_product')
             ->join('bills', 'bill_product.bill_id', '=', 'bills.id')
             ->join('products', 'bill_product.product_id', '=', 'products.id')
@@ -703,128 +805,128 @@ class FinancialDashboardController extends Controller
                 'products.name as product_name'
             )
             ->get();
-        
+
         $billProductsSheet->fromArray([
             ['Bill ID', 'Product Name', 'Quantity', 'Cost Price', 'Selling Price', 'Discount', 'Tags', 'Bill Date']
         ]);
-        
+
         $row = 2;
         foreach ($billProducts as $billProduct) {
             $billProductsSheet->fromArray([
-                [$billProduct->bill_id, $billProduct->product_name, $billProduct->quantity, 
+                [$billProduct->bill_id, $billProduct->product_name, $billProduct->quantity,
                 $billProduct->cost_price, $billProduct->selling_price, $billProduct->discount,
                 $billProduct->tags ?? 'N/A', Carbon::parse($billProduct->bill_date)->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 5. Customer Payments Sheet (Updated with new type column)
         $customerPaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Customer Payments');
         $spreadsheet->addSheet($customerPaymentsSheet);
-        
+
         $customerPayments = CustomerPayment::where('user_id', $shopOwnerId)->with('customer')->get();
         $customerPaymentsSheet->fromArray([
             ['ID', 'Customer Name', 'Amount', 'Payment Type', 'Note', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($customerPayments as $payment) {
             $customerPaymentsSheet->fromArray([
-                [$payment->id, $payment->customer->name ?? 'N/A', $payment->amount, 
+                [$payment->id, $payment->customer->name ?? 'N/A', $payment->amount,
                 ucfirst($payment->type), $payment->note, $payment->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 6. Expenses Sheet
         $expensesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Expenses');
         $spreadsheet->addSheet($expensesSheet);
-        
+
         $expenses = Expense::where('user_id', $shopOwnerId)->get();
         $expensesSheet->fromArray([
             ['ID', 'Title', 'Amount', 'Expense Date', 'Notes', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($expenses as $expense) {
             $expensesSheet->fromArray([
-                [$expense->id, $expense->title, $expense->amount, 
+                [$expense->id, $expense->title, $expense->amount,
                 $expense->expense_date, $expense->notes, $expense->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 7. Employees Sheet
         $employeesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employees');
         $spreadsheet->addSheet($employeesSheet);
-        
+
         $employees = Employee::where('shop_owner_id', $shopOwnerId)->get();
         $employeesSheet->fromArray([
             ['ID', 'Name', 'Job Title', 'Monthly Salary', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($employees as $employee) {
             $employeesSheet->fromArray([
-                [$employee->id, $employee->name, $employee->job_title, 
+                [$employee->id, $employee->name, $employee->job_title,
                 $employee->monthly_salary, $employee->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 8. Employee Payments Sheet (NEW)
         $employeePaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employee Payments');
         $spreadsheet->addSheet($employeePaymentsSheet);
-        
+
         $employeePayments = EmployeePayment::whereHas('employee', function($q) use ($shopOwnerId) {
             $q->where('shop_owner_id', $shopOwnerId);
         })->with('employee')->get();
-        
+
         $employeePaymentsSheet->fromArray([
             ['ID', 'Employee Name', 'Amount', 'Payment Date', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($employeePayments as $payment) {
             $employeePaymentsSheet->fromArray([
-                [$payment->id, $payment->employee->name ?? 'N/A', $payment->amount, 
+                [$payment->id, $payment->employee->name ?? 'N/A', $payment->amount,
                 $payment->payment_date, $payment->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 9. Batches Sheet (NEW)
         $batchesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Batches');
         $spreadsheet->addSheet($batchesSheet);
-        
+
         $batches = DB::table('batches')
             ->join('products', 'batches.product_id', '=', 'products.id')
             ->where('products.user_id', $shopOwnerId)
             ->select('batches.*', 'products.name as product_name')
             ->get();
-        
+
         $batchesSheet->fromArray([
             ['ID', 'Product Name', 'Quantity', 'Cost Price', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($batches as $batch) {
             $batchesSheet->fromArray([
-                [$batch->id, $batch->product_name, $batch->quantity, 
+                [$batch->id, $batch->product_name, $batch->quantity,
                 $batch->cost_price, $batch->created_at]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 10. Tags Sheet (NEW)
         $tagsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Tags');
         $spreadsheet->addSheet($tagsSheet);
-        
+
         $tags = Tag::where('user_id', $shopOwnerId)->get();
         $tagsSheet->fromArray([
             ['ID', 'Name', 'Price', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($tags as $tag) {
             $tagsSheet->fromArray([
@@ -832,49 +934,49 @@ class FinancialDashboardController extends Controller
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 11. Suppliers Sheet (NEW)
         $suppliersSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Suppliers');
         $spreadsheet->addSheet($suppliersSheet);
-        
+
         $suppliers = Supplier::where('user_id', $shopOwnerId)->get();
         $suppliersSheet->fromArray([
             ['ID', 'Name', 'Phone', 'Email', 'Address', 'Balance', 'Notes', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($suppliers as $supplier) {
             $suppliersSheet->fromArray([
-                [$supplier->id, $supplier->name, $supplier->phone, $supplier->email, 
-                $supplier->address, $supplier->balance, $supplier->notes, 
+                [$supplier->id, $supplier->name, $supplier->phone, $supplier->email,
+                $supplier->address, $supplier->balance, $supplier->notes,
                 $supplier->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 12. Purchase Bills Sheet (NEW)
         $purchaseBillsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Purchase Bills');
         $spreadsheet->addSheet($purchaseBillsSheet);
-        
+
         $purchaseBills = PurchaseBill::where('user_id', $shopOwnerId)->with('supplier')->get();
         $purchaseBillsSheet->fromArray([
             ['ID', 'Supplier Name', 'Total Amount', 'Reference Number', 'Purchase Date', 'Notes', 'Created By', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($purchaseBills as $bill) {
             $purchaseBillsSheet->fromArray([
-                [$bill->id, $bill->supplier->name ?? 'N/A', $bill->total_amount, 
-                $bill->reference_number, $bill->purchase_date, $bill->notes, 
+                [$bill->id, $bill->supplier->name ?? 'N/A', $bill->total_amount,
+                $bill->reference_number, $bill->purchase_date, $bill->notes,
                 $bill->created_by, $bill->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 13. Purchase Bill Products Sheet (NEW)
         $purchaseProductsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Purchase Bill Products');
         $spreadsheet->addSheet($purchaseProductsSheet);
-        
+
         $purchaseProducts = DB::table('purchase_bill_product')
             ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
             ->join('products', 'purchase_bill_product.product_id', '=', 'products.id')
@@ -885,44 +987,44 @@ class FinancialDashboardController extends Controller
                 'products.name as product_name'
             )
             ->get();
-        
+
         $purchaseProductsSheet->fromArray([
             ['Purchase Bill ID', 'Product Name', 'Quantity', 'Unit Cost', 'Total Cost', 'Purchase Date']
         ]);
-        
+
         $row = 2;
         foreach ($purchaseProducts as $product) {
             $purchaseProductsSheet->fromArray([
-                [$product->purchase_bill_id, $product->product_name, $product->quantity, 
+                [$product->purchase_bill_id, $product->product_name, $product->quantity,
                 $product->unit_cost, $product->total_cost, $product->purchase_date]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         // 14. Supplier Payments Sheet (NEW)
         $supplierPaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Supplier Payments');
         $spreadsheet->addSheet($supplierPaymentsSheet);
-        
+
         $supplierPayments = SupplierPayment::whereHas('supplier', function($q) use ($shopOwnerId) {
             $q->where('user_id', $shopOwnerId);
         })->with('supplier')->get();
-        
+
         $supplierPaymentsSheet->fromArray([
             ['ID', 'Supplier Name', 'Amount', 'Payment Type', 'Payment Date', 'Note', 'Created At']
         ]);
-        
+
         $row = 2;
         foreach ($supplierPayments as $payment) {
             $supplierPaymentsSheet->fromArray([
-                [$payment->id, $payment->supplier->name ?? 'N/A', $payment->amount, 
-                ucfirst($payment->type), $payment->payment_date, $payment->note, 
+                [$payment->id, $payment->supplier->name ?? 'N/A', $payment->amount,
+                ucfirst($payment->type), $payment->payment_date, $payment->note,
                 $payment->created_at->format('Y-m-d H:i:s')]
             ], null, 'A' . $row);
             $row++;
         }
-        
+
         $fileName = 'complete_database_export_' . auth()->user()->name . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        
+
         return new StreamedResponse(function() use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');

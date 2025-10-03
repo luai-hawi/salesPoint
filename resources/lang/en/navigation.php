@@ -45,6 +45,7 @@ return [
     // Inventory Section
     'Inventory' => 'Inventory',
     'Products' => 'Products',
+    'Out of Stock' => 'Out of Stock',
     'Tags' => 'Tags',
     
     // Suppliers Section
@@ -59,7 +60,8 @@ return [
     'Employees' => 'Employees',
     'Expenses' => 'Expenses',
     'Financial Dashboard' => 'Financial Dashboard',
-    
+    'Settings' => 'Settings',
+
     // User Profile & Language
     'Profile' => 'Profile',
     'Language' => 'Language',

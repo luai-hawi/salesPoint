@@ -41,6 +41,50 @@
     <!-- Enhanced Layout with Full Screen Width -->
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="w-full px-4 sm:px-6 lg:px-8">
+
+            <!-- Warning Notification for Out-of-Stock Products -->
+            @if($warningProducts->count() > 0)
+                <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h3 class="text-sm font-medium text-yellow-800">
+                                {{ __('messages.Out of Stock Products Warning') }}
+                            </h3>
+                            <div class="mt-2 text-sm text-yellow-700">
+                                <p>{{ __('messages.You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.', ['count' => $warningProducts->count(), 'months' => $warningMonths, 'remaining' => $deactivationMonths - $warningMonths]) }}</p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    @foreach($warningProducts as $product)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ $product->name }} ({{ $product->months_since_sale }} {{ __('messages.months') }})
+                                        </span>
+                                    @endforeach
+                                </div>
+                                <div class="mt-3">
+                                    <a href="{{ route('products.out-of-stock') }}" class="text-sm font-medium text-yellow-800 hover:text-yellow-900">
+                                        {{ __('messages.Manage Out of Stock Products') }} →
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ml-auto pl-3">
+                            <div class="-mx-1.5 -my-1.5">
+                                <button type="button" class="inline-flex bg-yellow-50 rounded-md p-1.5 text-yellow-500 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'">
+                                    <span class="sr-only">{{ __('messages.Dismiss') }}</span>
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-none">
                 
             <!-- Left Panel - Product Search & Selection ONLY -->
@@ -2689,13 +2733,15 @@ class CashDrawerManager {
     }
     
     determineBestMethod() {
+        if (navigator.serial) return 'webserial';
+        if (navigator.usb) return 'webusb';
         switch(this.platform) {
             case 'sunmi':
             case 'android-webview':
             case 'android-browser':
                 return 'sunmi-sdk';
             case 'windows':
-                return navigator.serial ? 'webserial' : 'network-bridge';
+                return 'network-bridge';
             default:
                 return 'network-bridge';
         }
@@ -2712,6 +2758,8 @@ class CashDrawerManager {
                     return await this.openViaWebIntent();
                 case 'webserial':
                     return await this.openViaWebSerial();
+                case 'webusb':
+                    return await this.openViaWebUSB();
                 case 'network-bridge':
                     return await this.openViaNetworkBridge();
                 default:
@@ -2757,23 +2805,51 @@ class CashDrawerManager {
         if (!navigator.serial) {
             throw new Error('WebSerial not supported');
         }
-        
+
         try {
             const port = await navigator.serial.requestPort();
             await port.open({ baudRate: 9600 });
-            
+
             const writer = port.writable.getWriter();
             const data = new TextEncoder().encode(this.escPosCommand);
             await writer.write(data);
             writer.releaseLock();
             await port.close();
-            
+
             return { success: true, method: 'WebSerial API' };
         } catch (error) {
             throw new Error(`WebSerial failed: ${error.message}`);
         }
     }
-    
+
+    // WebUSB for USB connected printers/drawers
+    async openViaWebUSB() {
+        if (!navigator.usb) {
+            throw new Error('WebUSB not supported');
+        }
+
+        try {
+            // Request device - user will select
+            const device = await navigator.usb.requestDevice({ filters: [] });
+
+            await device.open();
+            await device.selectConfiguration(1);
+            await device.claimInterface(0);
+
+            // ESC/POS drawer open command
+            const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]);
+
+            // Send to endpoint 1 (bulk out, common for printers)
+            await device.transferOut(1, command);
+
+            await device.close();
+
+            return { success: true, method: 'WebUSB' };
+        } catch (error) {
+            throw new Error(`WebUSB failed: ${error.message}`);
+        }
+    }
+
     // Network bridge (local service) - Works on both Windows and Android
     async openViaNetworkBridge() {
         const endpoints = [

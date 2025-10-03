@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\TagsController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseBillController;
+use App\Http\Controllers\SettingsController;
 
 
 
@@ -50,6 +51,7 @@ Route::get('/dashboard', function () {
         });
 
     $products = \App\Models\Product::where('user_id', $ownerId)
+        ->where('is_active', true)
         ->select('id', 'name', 'selling_price', 'cost_price', 'barcode')
         ->get();
 
@@ -57,7 +59,20 @@ Route::get('/dashboard', function () {
         ->whereDate('created_at', Carbon::today())
         ->sum('total_price');
 
-    return view('dashboard', compact('products', 'totalToday', 'customers'));
+    // Get products approaching deactivation (using user's configured periods)
+    $warningMonths = $user->product_warning_period ?? 4; // Use user's setting or default to 4
+    $deactivationMonths = $user->product_deactivation_period ?? 6; // Use user's setting or default to 6
+    $warningProducts = \App\Models\Product::where('user_id', $ownerId)
+        ->where('quantity', 0)
+        ->where('is_active', true)
+        ->whereNotNull('last_sale_date')
+        ->where('last_sale_date', '<=', now()->subMonths($warningMonths))
+        ->where('last_sale_date', '>', now()->subMonths($deactivationMonths))
+        ->orderBy('last_sale_date', 'asc')
+        ->take(5) // Show top 5
+        ->get();
+
+    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths'));
 })->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 
@@ -115,6 +130,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
         Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
 
+        // Settings
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
+
         Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
         Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
 
@@ -124,10 +143,31 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         // Products
         Route::resource('products', ProductsController::class)->except(['show']);
         Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+        Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
         Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
         Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
         Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
         Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
+        Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
+        Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
+        Route::get('/products/next-id', [ProductsController::class, 'getNextProductId'])->name('products.next-id');
+
+        // Temporary debug route
+        Route::get('/debug-products', function() {
+            $user = auth()->user();
+            if (!$user) return 'Not logged in';
+
+            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+            $products = \App\Models\Product::where('user_id', $ownerId)
+                ->where('quantity', 0)
+                ->where('is_active', true)
+                ->whereNotNull('last_sale_date')
+                ->where('last_sale_date', '<=', now()->subMonths(4))
+                ->get();
+
+            return view('debug', compact('user', 'ownerId', 'products'));
+        });
 
         // Enhanced Bills Routes
         Route::resource('bills', BillsController::class);
@@ -181,6 +221,9 @@ Route::prefix('shopowner')
 Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
+
+    Route::get('/dashboard/financial/print-report', [FinancialDashboardController::class, 'printComprehensiveReport'])
+        ->name('dashboard.financial.print-report');
 
     Route::get('/sales-data', function () {
         $sales = \App\Models\Bill::selectRaw('MONTH(created_at) as month, SUM(total_price) as total')

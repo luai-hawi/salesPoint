@@ -27,6 +27,10 @@ class ProductsController extends Controller
             });
         }
 
+        if ($request->query('low_stock')) {
+            $query->where('quantity', '<=', 5);
+        }
+
         $products = $query->paginate(20)->appends($request->query());
 
         if ($request->ajax()) {
@@ -146,28 +150,50 @@ class ProductsController extends Controller
         return response()->json(['success' => true, 'new_quantity' => $product->quantity]);
     }
 
+    public function toggleActive(Product $product)
+    {
+        $this->authorizeProduct($product);
+
+        $wasActive = $product->is_active;
+        $product->is_active = !$product->is_active;
+
+        // Delete product images when deactivating to free storage
+        if ($wasActive && !$product->is_active) {
+            $this->deleteProductImages($product);
+            // Clear the pictures field to remove references to deleted images
+            $product->pictures = null;
+        }
+
+        $product->save();
+
+        $status = $product->is_active ? 'activated' : 'deactivated';
+
+        return redirect()->route('products.index')->with('success', "Product {$status} successfully.");
+    }
+
     public function destroy(Product $product)
     {
         $this->authorizeProduct($product);
-        
+
         // Delete associated images before deleting the product
         $this->deleteProductImages($product);
-        
+
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
     }
 
    // Enhanced search for all products with quantity ordering
-    public function searchAllProducts(Request $request)
+   public function searchAllProducts(Request $request)
 {
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $search = $request->query('search', '');
-    $page = $request->query('page', 1);
+   $user = auth()->user();
+   $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+   $search = $request->query('search', '');
+   $page = $request->query('page', 1);
 
-    $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags')
-        ->where('user_id', $ownerId);
+   $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
+       ->where('user_id', $ownerId)
+       ->where('is_active', true);
 
     if ($search) {
         $query->where(function($q) use ($search) {
@@ -206,6 +232,7 @@ class ProductsController extends Controller
             // Find all products with this barcode
             $products = Product::where('barcode', $barcode)
                 ->where('user_id', $ownerId)
+                ->where('is_active', true)
                 ->get();
 
             if ($products->count() === 1) {
@@ -225,6 +252,7 @@ class ProductsController extends Controller
         } elseif ($productId) {
             $product = Product::where('id', $productId)
                 ->where('user_id', $ownerId)
+                ->where('is_active', true)
                 ->first();
             return response()->json($product);
         }
@@ -309,23 +337,161 @@ class ProductsController extends Controller
     }
 
     /**
+     * Display out-of-stock products page with deactivation warnings
+     */
+    public function outOfStock(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+        // Get the owner user for settings (shop owner has the settings)
+        $owner = $user->role === 'employee' ? \App\Models\User::find($user->shop_owner_id) : $user;
+
+        // Get configurable periods (use owner's settings or defaults)
+        $warningMonths = $request->get('warning_months', $owner->product_warning_period ?? 4);
+        $deactivationMonths = $request->get('deactivation_months', $owner->product_deactivation_period ?? 6);
+
+        // Calculate cutoff dates
+        $warningCutoff = now()->subMonths($warningMonths);
+        $deactivationCutoff = now()->subMonths($deactivationMonths);
+
+        // Get out-of-stock products (quantity = 0) that haven't been sold recently
+        $query = Product::where('user_id', $ownerId)
+            ->where('quantity', 0)
+            ->where('is_active', true)
+            ->whereNotNull('last_sale_date')
+            ->where('last_sale_date', '<=', $warningCutoff);
+
+        // Filter by deactivation status
+        if ($request->has('filter')) {
+            switch ($request->filter) {
+                case 'warning':
+                    $query->where('last_sale_date', '<=', $warningCutoff)
+                          ->where('last_sale_date', '>', $deactivationCutoff);
+                    break;
+                case 'deactivation':
+                    $query->where('last_sale_date', '<=', $deactivationCutoff);
+                    break;
+            }
+        }
+
+        // Handle bulk actions
+        if ($request->has('action') && $request->has('product_ids')) {
+            \Log::info('Bulk action request', [
+                'action' => $request->action,
+                'product_ids' => $request->product_ids,
+                'user_id' => $ownerId
+            ]);
+
+            switch ($request->action) {
+                case 'extend':
+                    $extendMonths = (int) $request->get('extend_months', $deactivationMonths);
+                    $extendUntil = now()->addMonths($extendMonths);
+                    $updated = Product::whereIn('id', $request->product_ids)
+                        ->where('user_id', $ownerId)
+                        ->update(['extended_until' => $extendUntil]);
+
+                    \Log::info('Extend action completed', ['updated_count' => $updated]);
+                    return redirect()->back()->with('success', 'Selected products extended successfully.');
+                    break;
+                case 'deactivate':
+                    $deactivatedCount = $this->deactivateProducts($request->product_ids, $ownerId);
+                    return redirect()->back()->with('success', $deactivatedCount . ' products deactivated successfully.');
+                    break;
+            }
+        } else {
+            if ($request->has('action')) {
+                return redirect()->back()->with('error', 'No products selected for the action.');
+            }
+        }
+
+        $products = $query->orderBy('last_sale_date', 'asc')->paginate(20);
+
+        // Add status information to each product
+        foreach ($products as $product) {
+            $product->days_since_sale = now()->diffInDays($product->last_sale_date);
+            $product->months_since_sale = now()->diffInMonths($product->last_sale_date);
+
+            if ($product->extended_until && $product->extended_until->isFuture()) {
+                $product->status = 'extended';
+                $product->status_color = 'blue';
+            } elseif ($product->last_sale_date <= $deactivationCutoff) {
+                $product->status = 'deactivation';
+                $product->status_color = 'red';
+            } else {
+                $product->status = 'warning';
+                $product->status_color = 'yellow';
+            }
+        }
+
+        return view('products.out-of-stock', compact('products', 'warningMonths', 'deactivationMonths'));
+    }
+
+    /**
+     * Get the next auto-increment product ID
+     */
+    public function getNextProductId()
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+        $maxId = \DB::table('products')->max('id') ?? 0;
+        $nextId = $maxId + 1;
+
+        return response()->json(['next_id' => $nextId]);
+    }
+
+    /**
      * Delete all images associated with a product
      */
     private function deleteProductImages(Product $product)
     {
         if ($product->pictures) {
-            $pictures = json_decode($product->pictures, true);
-            
-            if (is_array($pictures)) {
-                foreach ($pictures as $picture) {
-                    // Delete from public disk
-                    if (Storage::disk('public')->exists($picture)) {
-                        Storage::disk('public')->delete($picture);
+            try {
+                $pictures = json_decode($product->pictures, true);
+
+                if (is_array($pictures)) {
+                    foreach ($pictures as $picture) {
+                        // Delete from public disk
+                        if (Storage::disk('public')->exists($picture)) {
+                            Storage::disk('public')->delete($picture);
+                        }
                     }
                 }
+            } catch (\Exception $e) {
+                \Log::warning('Invalid pictures json for product', [
+                    'id' => $product->id,
+                    'pictures' => $product->pictures,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
     }
 
-    
+    /**
+     * Deactivate multiple products (set is_active = false)
+     */
+    private function deactivateProducts($productIds, $ownerId)
+    {
+        $count = 0;
+        foreach ($productIds as $productId) {
+            $product = Product::where('id', $productId)
+                ->where('user_id', $ownerId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($product) {
+                $product->is_active = false;
+                // Delete product images when deactivating to free storage
+                $this->deleteProductImages($product);
+                // Clear the pictures field to remove references to deleted images
+                $product->pictures = null;
+                $product->save();
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+
 }

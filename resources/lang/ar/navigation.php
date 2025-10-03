@@ -44,6 +44,7 @@ return [
     // Inventory Section
     'Inventory' => 'المخزون',
     'Products' => 'المنتجات',
+    'Out of Stock' => 'المنتجات النافدة',
     'Tags' => 'العلامات',
     
     // Suppliers Section
@@ -58,7 +59,8 @@ return [
     'Employees' => 'الموظفين',
     'Expenses' => 'المصروفات',
     'Financial Dashboard' => 'لوحة التحكم المالية',
-    
+    'Settings' => 'الإعدادات',
+
     // User Profile & Language
     'Profile' => 'الملف الشخصي',
     'Language' => 'اللغة',

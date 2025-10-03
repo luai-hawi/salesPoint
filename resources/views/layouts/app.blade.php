@@ -194,14 +194,14 @@
         [dir="rtl"] .w-4 + *,
         [dir="rtl"] .w-5 + *,
         [dir="rtl"] .w-8 + * {
-            margin-right: 0 !important;
+            margin-right: 0.5rem;
             margin-left: 0.5rem !important;
         }
         
         /* Specific icon spacing classes */
         [dir="rtl"] .icon-spacing {
             margin-left: 0.75rem !important;
-            margin-right: 0 !important;
+            margin-right: 0;
         }
         
         /* =========================

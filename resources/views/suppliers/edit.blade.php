@@ -166,7 +166,7 @@
                                     <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg" data-payment-id="{{ $payment->id }}">
                                         <div>
                                             <div class="font-medium text-gray-900">₪{{ number_format(abs($payment->amount), 2) }}</div>
-                                            <div class="text-sm text-gray-500 capitalize">{{ $payment->type }} • {{ $payment->payment_date->format('M d, Y') }}</div>
+                                            <div class="text-sm text-gray-500 capitalize">{{ $payment->type }} • {{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</div>
                                             @if($payment->note)
                                                 <div class="text-xs text-gray-400">{{ $payment->note }}</div>
                                             @endif

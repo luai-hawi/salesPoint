@@ -118,18 +118,26 @@
                                 <label for="barcode" class="block text-sm font-semibold text-gray-700 mb-2">
                                     {{ __('messages.Product Code / Barcode') }}
                                 </label>
-                                <div class="relative">
-                                    <input 
-                                        type="text" 
-                                        name="barcode" 
-                                        id="barcode" 
-                                        class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
-                                        value="{{ old('barcode') }}"
-                                        placeholder="{{ __('messages.Optional barcode or product code...') }}"
-                                    >
-                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
-                                    </svg>
+                                <div class="flex">
+                                    <div class="relative flex-1">
+                                        <input
+                                            type="text"
+                                            name="barcode"
+                                            id="barcode"
+                                            class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
+                                            value="{{ old('barcode') }}"
+                                            placeholder="{{ __('messages.Optional barcode or product code...') }}"
+                                        >
+                                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                                        </svg>
+                                    </div>
+                                    <button type="button" id="generate-barcode" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                        {{ __('messages.Generate') }}
+                                    </button>
                                 </div>
                                 @error('barcode')
                                     <p class="text-red-500 text-xs mt-1 flex items-center">
@@ -394,12 +402,28 @@ async function loadCategoryAutoComplete() {
 }
 
         // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {  
+        document.addEventListener('DOMContentLoaded', function() {
                 loadCategoryAutoComplete();
-           
-            // Profit margin calculation             
-            document.getElementById('cost_price').addEventListener('input', calculateProfitMargin);             
-            document.getElementById('selling_price').addEventListener('input', calculateProfitMargin);             
+
+            // Profit margin calculation
+            document.getElementById('cost_price').addEventListener('input', calculateProfitMargin);
+            document.getElementById('selling_price').addEventListener('input', calculateProfitMargin);
+
+            // Generate barcode
+            document.getElementById('generate-barcode').addEventListener('click', async function() {
+                try {
+                    const response = await fetch('/products/next-id');
+                    if (response.ok) {
+                        const data = await response.json();
+                        const barcode = '150702' + data.next_id;
+                        document.getElementById('barcode').value = barcode;
+                    } else {
+                        console.error('Failed to fetch next product ID');
+                    }
+                } catch (error) {
+                    console.error('Error generating barcode:', error);
+                }
+            });
             
             // Prevent Enter key submission - Use keydown instead of keypress
             const inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
