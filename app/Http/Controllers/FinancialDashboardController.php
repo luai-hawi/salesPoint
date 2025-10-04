@@ -462,7 +462,9 @@ class FinancialDashboardController extends Controller
                     $existingIndex = $products->search(function($item) use ($product) {
                         return $item['name'] === $product->name;
                     });
-                    $products[$existingIndex]['value'] += $productLoss;
+                    $existingItem = $products->get($existingIndex);
+                    $existingItem['value'] += $productLoss;
+                    $products->put($existingIndex, $existingItem);
                 } else {
                     // Add new product to collection
                     $products->push([
