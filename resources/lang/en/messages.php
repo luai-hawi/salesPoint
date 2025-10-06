@@ -742,6 +742,7 @@ return [
     'Available Products' => 'Available Products',
     'Loading products...' => 'Loading products...',
     'No products found' => 'No products found',
+    'No categories found' => 'No categories found',
     'Error loading products' => 'Error loading products',
     'Search failed' => 'Search failed',
     'Uncategorized' => 'Uncategorized',

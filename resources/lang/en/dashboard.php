@@ -72,4 +72,9 @@ return [
     'Please select a customer before creating the bill' => 'Please select a customer before creating the bill',
     'Check' => 'Check',
     'Transfer' => 'Transfer',
+    'Browse by Category' => 'Browse by Category',
+    'Back to Categories' => 'Back to Categories',
+    'Show All Products' => 'Show All Products',
+    'Click to view products' => 'Click to view products',
+    'No categories found' => 'No categories found',
 ];

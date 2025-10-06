@@ -189,6 +189,7 @@ class ProductsController extends Controller
    $user = auth()->user();
    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
    $search = $request->query('search', '');
+   $category = $request->query('category', '');
    $page = $request->query('page', 1);
 
    $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
@@ -201,6 +202,18 @@ class ProductsController extends Controller
               ->orWhere('barcode', 'like', "%{$search}%")
               ->orWhere('category', 'like', "%{$search}%");
         });
+    }
+
+    // Filter by specific category if provided
+    if ($category) {
+        if ($category === 'Uncategorized') {
+            $query->where(function($q) {
+                $q->whereNull('category')
+                  ->orWhere('category', '');
+            });
+        } else {
+            $query->where('category', $category);
+        }
     }
 
     // Order by category first (null categories at end), then by quantity status, then by name

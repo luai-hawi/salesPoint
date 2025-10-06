@@ -996,6 +996,7 @@ return [
     'Available Products' => 'المنتجات المتاحة',
     'Loading products...' => 'جاري تحميل المنتجات...',
     'No products found' => 'لم يتم العثور على منتجات',
+    'No categories found' => 'لم يتم العثور على فئات',
     'Error loading products' => 'خطأ في تحميل المنتجات',
     'Search failed' => 'فشل البحث',
     'Uncategorized' => 'غير مصنف',

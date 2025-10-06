@@ -520,15 +520,35 @@ Route::get('/quick-compress-images', function () {
 Route::get('/api/categories', function () {
     $user = auth()->user();
     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    
-    $categories = \App\Models\Product::where('user_id', $ownerId)
+
+    $search = request('search', '');
+
+    $query = \App\Models\Product::where('user_id', $ownerId)
         ->whereNotNull('category')
         ->where('category', '!=', '')
-        ->distinct()
-        ->pluck('category')
+        ->distinct();
+
+    if ($search) {
+        $query->where('category', 'like', "%{$search}%");
+    }
+
+    $categories = $query->pluck('category')
         ->sort()
         ->values();
-    
+
+    // Check if there are uncategorized products
+    $hasUncategorized = \App\Models\Product::where('user_id', $ownerId)
+        ->where(function($q) {
+            $q->whereNull('category')
+              ->orWhere('category', '');
+        })
+        ->exists();
+
+    // Add "Uncategorized" if there are uncategorized products and it matches the search (or no search)
+    if ($hasUncategorized && (!$search || stripos('Uncategorized', $search) !== false)) {
+        $categories = collect(['Uncategorized'])->merge($categories);
+    }
+
     return response()->json($categories);
 })->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant']);
 

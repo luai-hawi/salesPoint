@@ -122,6 +122,16 @@
                             <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
                                 {{ __('dashboard.Out of Stock') }}
                             </button>
+                            <button id="toggle-category-mode" class="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition-colors">
+                                {{ __('dashboard.Browse by Category') }}
+                            </button>
+                        </div>
+
+                        <!-- Back to Categories Button -->
+                        <div id="back-to-categories" class="hidden mb-4">
+                            <button class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                ← {{ __('dashboard.Back to Categories') }}
+                            </button>
                         </div>
                     </div>
 
@@ -299,7 +309,7 @@
                                                     data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
                                                 {{ $customer->name }} - {{ $customer->phone }} 
                                                 @if(($customer->last_bill_amount ?? 0) > 0)
-                                                    ({{ __('dashboard.Last Bill') }}: â‚ª{{ number_format($customer->last_bill_amount, 2) }})
+                                                    ({{ __('dashboard.Last Bill') }}: ₪{{ number_format($customer->last_bill_amount, 2) }})
                                                 @else
                                                     ({{ __('dashboard.No Recent Bill') }})
                                                 @endif
@@ -312,7 +322,7 @@
                                 <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
-                                        <span id="current-debt" class="text-sm font-bold text-blue-900">â‚ª0.00</span>
+                                        <span id="current-debt" class="text-sm font-bold text-blue-900">₪0.00</span>
                                     </div>
                                     <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
                                     
@@ -616,6 +626,11 @@
         const shopName = '{{ $shopName }}';
         let currentBillId = null;
 
+        // Translations for dynamic content
+        const translations = {
+            'Uncategorized': '{{ __('messages.Uncategorized') }}'
+        };
+
         // State management
         let currentFilter = 'all';
         let debounceTimeout = null;
@@ -623,6 +638,8 @@
         let hasMore = true;
         let isLoading = false;
         let searchTerm = '';
+        let browseByCategory = false;
+        let currentCategory = null;
 
         // Message listener for print window communication
         window.addEventListener('message', async (event) => {
@@ -1041,6 +1058,25 @@
             }
         }
 
+        // Fetch categories
+        async function fetchCategories(search = '') {
+            try {
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+
+                const response = await fetch(`/api/categories?${params}`);
+                if (response.ok) {
+                    const categories = await response.json();
+                    renderCategories(categories);
+                } else {
+                    renderCategories([]);
+                }
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+                renderCategories([]);
+            }
+        }
+
         // Customer search functionality
         function setupCustomerSearch() {
             const searchInput = document.getElementById('customer_search');
@@ -1195,27 +1231,60 @@
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
-                
+
                 currentFilter = e.target.id.replace('filter-', '');
                 searchTerm = document.getElementById('product-search').value.trim();
                 fetchProducts(true);
             });
         });
 
+        // Category mode toggle
+        document.getElementById('toggle-category-mode').addEventListener('click', () => {
+            browseByCategory = !browseByCategory;
+            currentCategory = null;
+            showBackButton(false);
+            const btn = document.getElementById('toggle-category-mode');
+            btn.textContent = browseByCategory ? '{{ __("dashboard.Show All Products") }}' : '{{ __("dashboard.Browse by Category") }}';
+            // Clear search when toggling modes
+            searchTerm = '';
+            document.getElementById('product-search').value = '';
+
+            if (browseByCategory) {
+                fetchCategories();
+            } else {
+                fetchProducts(true);
+            }
+        });
+
+        // Back to categories button
+        document.getElementById('back-to-categories').querySelector('button').addEventListener('click', () => {
+            currentCategory = null;
+            fetchCategories();
+            showBackButton(false);
+        });
+
         // Enhanced product search with debouncing
         document.getElementById('product-search').addEventListener('input', function () {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
-                searchTerm = this.value.trim();
+                const searchValue = this.value.trim();
                 currentPage = 1;
                 hasMore = true;
-                fetchProducts(true);
+
+                if (browseByCategory && !currentCategory) {
+                    // When browsing by category and no category selected, search categories
+                    fetchCategories(searchValue);
+                } else {
+                    // Normal product search
+                    searchTerm = searchValue;
+                    fetchProducts(true);
+                }
             }, 300);
         });
 
         // Product fetching
-        function fetchProducts(reset = false) {
-            if (isLoading || !hasMore) return;
+        function fetchProducts(reset = false, category = null) {
+            if (isLoading) return;
             isLoading = true;
 
             if (reset) {
@@ -1232,6 +1301,7 @@
                 filter: currentFilter,
                 per_page: 12
             });
+            if (category) params.append('category', category);
 
             fetch(`/products/searchAll?${params}`)
                 .then(response => {
@@ -1240,23 +1310,32 @@
                 })
                 .then(data => {
                     const products = data.data || [];
-                    
+
                     if (products.length === 0 && currentPage === 1) {
-                        document.getElementById('product-results').innerHTML = 
-                            '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
+                        if (browseByCategory && !category) {
+                            renderCategories([]);
+                        } else {
+                            document.getElementById('product-results').innerHTML =
+                                '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
+                        }
                         hasMore = false;
                         return;
                     }
 
-                    const filteredProducts = filterProducts(products);
-                    renderProducts(filteredProducts);
+                    if (browseByCategory && !category) {
+                        const categories = [...new Set(products.map(p => p.category).filter(c => c))];
+                        renderCategories(categories);
+                    } else {
+                        const filteredProducts = filterProducts(products);
+                        renderProducts(filteredProducts, !reset, category);
+                    }
 
                     hasMore = data.current_page < data.last_page;
                     currentPage++;
                 })
                 .catch(error => {
                     if (currentPage === 1) {
-                        document.getElementById('product-results').innerHTML = 
+                        document.getElementById('product-results').innerHTML =
                             '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
                     }
                     console.error(error);
@@ -1337,7 +1416,7 @@
         }
 
         // Render products with category grouping
-        function renderProducts(products) {
+        function renderProducts(products, append = false, currentCategory = null) {
             const groupedProducts = {};
             let uncategorizedProducts = [];
 
@@ -1354,9 +1433,16 @@
             });
 
             const container = document.getElementById('product-results');
-            
+
+            if (!append) {
+                container.innerHTML = '';
+            }
+
+            // If viewing a specific category, don't add category headers
+            const showHeaders = !currentCategory;
+
             Object.keys(groupedProducts).sort().forEach(category => {
-                if (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0) {
+                if (showHeaders && (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0)) {
                     const categoryHeader = document.createElement('div');
                     categoryHeader.className = 'col-span-full mb-2 mt-4 first:mt-0';
                     categoryHeader.innerHTML = `
@@ -1378,7 +1464,7 @@
             });
 
             if (uncategorizedProducts.length > 0) {
-                if (Object.keys(groupedProducts).length > 0) {
+                if (showHeaders && Object.keys(groupedProducts).length > 0) {
                     const uncategorizedHeader = document.createElement('div');
                     uncategorizedHeader.className = 'col-span-full mb-2 mt-4';
                     uncategorizedHeader.innerHTML = `
@@ -1397,6 +1483,45 @@
                     const card = createProductCard(product);
                     container.appendChild(card);
                 });
+            }
+        }
+
+        // Render categories for browsing
+        function renderCategories(categories) {
+            const container = document.getElementById('product-results');
+            container.innerHTML = '';
+
+            if (categories.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">{{ __("messages.No categories found") }}</p>';
+                return;
+            }
+
+            categories.forEach(cat => {
+                const displayName = translations[cat] || cat;
+                const card = document.createElement('div');
+                card.className = 'bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 p-8 rounded-xl cursor-pointer text-center border border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105';
+
+                card.innerHTML = `
+                    <div class="text-xl font-bold text-blue-800">${displayName}</div>
+                `;
+                card.onclick = () => {
+                    currentCategory = cat;
+                    searchTerm = ''; // Clear search when selecting category
+                    document.getElementById('product-search').value = '';
+                    fetchProducts(true, cat);
+                    showBackButton(true);
+                };
+                container.appendChild(card);
+            });
+        }
+
+        // Show/hide back button
+        function showBackButton(show) {
+            const backBtn = document.getElementById('back-to-categories');
+            if (show) {
+                backBtn.classList.remove('hidden');
+            } else {
+                backBtn.classList.add('hidden');
             }
         }
 
@@ -2009,6 +2134,8 @@
                 @endif
             ;
 
+            const notes = document.getElementById('note').value.trim();
+
             return {
                 products: products,
                 subtotal: subtotal,
@@ -2016,6 +2143,7 @@
                 total: total,
                 customerName: customerName,
                 customerPhone: customerPhone,
+                notes: notes,
                 userDetails: userDetails,
                 shopName: shopName,
                 shopOwnerName: shopOwnerName,
@@ -2290,6 +2418,7 @@
                         <div class="text-left">
                             ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
                             ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
+                            ${data.notes ? `<div>{{ __('messages.Notes') }}: ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
                     </div>
                     
@@ -2548,6 +2677,7 @@
                         <div class="mb-2">
                             <div class="font-bold text-sm">{{__('messages.Created By')}}: ${data.userName}</div>
                             ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                            ${data.notes ? `<div class="text-sm"><strong>{{__('messages.Notes')}}:</strong> ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
 
                         <!-- Products Table -->
@@ -2600,9 +2730,10 @@
             const scrollTop = container.scrollTop;
             const scrollHeight = container.scrollHeight;
             const clientHeight = container.clientHeight;
-            
+
             if (scrollTop + clientHeight >= scrollHeight - 100) {
-                fetchProducts();
+                // Pass current category if in category browsing mode
+                fetchProducts(false, browseByCategory ? currentCategory : null);
             }
         });
 

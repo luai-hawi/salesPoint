@@ -72,4 +72,9 @@ return [
     'Please select a customer before creating the bill' => 'يرجى اختيار عميل قبل إنشاء الفاتورة',
     'Check' => 'شيك',
     'Transfer' => 'تحويل',
+    'Browse by Category' => 'تصفح حسب الفئة',
+    'Back to Categories' => 'العودة إلى الفئات',
+    'Show All Products' => 'عرض جميع المنتجات',
+    'Click to view products' => 'انقر لعرض المنتجات',
+    'No categories found' => 'لم يتم العثور على فئات',
 ];
