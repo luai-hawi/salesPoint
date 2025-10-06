@@ -77,4 +77,9 @@ return [
     'Show All Products' => 'عرض جميع المنتجات',
     'Click to view products' => 'انقر لعرض المنتجات',
     'No categories found' => 'لم يتم العثور على فئات',
+    'No Customer Selected' => 'لم يتم اختيار عميل',
+    'You are about to proceed without selecting a customer. Are you sure you want to continue?' => 'أنت على وشك المتابعة دون اختيار عميل. هل أنت متأكد من أنك تريد المتابعة؟',
+    'Don\'t show this message again' => 'لا تظهر هذه الرسالة مرة أخرى',
+    'Continue' => 'متابعة',
+    'Cancel' => 'إلغاء',
 ];

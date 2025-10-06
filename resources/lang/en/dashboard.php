@@ -77,4 +77,9 @@ return [
     'Show All Products' => 'Show All Products',
     'Click to view products' => 'Click to view products',
     'No categories found' => 'No categories found',
+    'No Customer Selected' => 'No Customer Selected',
+    'You are about to proceed without selecting a customer. Are you sure you want to continue?' => 'You are about to proceed without selecting a customer. Are you sure you want to continue?',
+    'Don\'t show this message again' => 'Don\'t show this message again',
+    'Continue' => 'Continue',
+    'Cancel' => 'Cancel',
 ];

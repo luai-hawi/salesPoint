@@ -202,7 +202,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
                                 @if($isRestaurant)
                                     <!-- Restaurant: Dropdown selector -->
-                                    <select name="customer_id" id="customer_id" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                    <select name="customer_id" id="customer_id" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">{{ __('dashboard.Select Customer') }}</option>
                                         @foreach($customers as $customer)
                                             <option value="{{ $customer->id }}">
@@ -542,6 +542,7 @@
         </div>
     </div>
 
+
     <!-- Optimized Styles -->
     <style>
         /* Core styles only - removed duplicate and unused styles */
@@ -640,6 +641,8 @@
         let searchTerm = '';
         let browseByCategory = false;
         let currentCategory = null;
+        let pendingAction = null;
+        let isProcessingNoCustomerAction = false;
 
         // Message listener for print window communication
         window.addEventListener('message', async (event) => {
@@ -657,19 +660,17 @@
         });
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchProducts(true);
+        fetchProducts(true);
 
-            if (!isRestaurant) {
-                document.getElementById('barcode_input').focus();
-                setupCustomerSearch();
-            } else {
-                setupRestaurantCustomerSelectors();
-                loadRecentPayments();
-            }
+        if (!isRestaurant) {
+            document.getElementById('barcode_input').focus();
+            setupCustomerSearch();
+        } else {
+            setupRestaurantCustomerSelectors();
+            loadRecentPayments();
+        }
 
-            fetchTags();
-        });
+        fetchTags();
 
         // Function for print tab to call when done
         window.submitBillForm = async function() {
@@ -752,26 +753,15 @@
             function togglePrintButtons() {
                 const printButton = document.getElementById('print-button');
                 const printReceiptButton = document.getElementById('print-receipt-button');
-                const hasCustomer = billCustomerSelect && billCustomerSelect.value && billCustomerSelect.value !== '';
-                
+
                 if (printButton && printReceiptButton) {
-                    if (hasCustomer) {
-                        // Enable buttons
-                        printButton.disabled = false;
-                        printReceiptButton.disabled = false;
-                        printButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                        printReceiptButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                        printButton.classList.add('hover:bg-gray-700');
-                        printReceiptButton.classList.add('hover:bg-blue-700');
-                    } else {
-                        // Disable buttons
-                        printButton.disabled = true;
-                        printReceiptButton.disabled = true;
-                        printButton.classList.add('opacity-50', 'cursor-not-allowed');
-                        printReceiptButton.classList.add('opacity-50', 'cursor-not-allowed');
-                        printButton.classList.remove('hover:bg-gray-700');
-                        printReceiptButton.classList.remove('hover:bg-blue-700');
-                    }
+                    // Always enable buttons
+                    printButton.disabled = false;
+                    printReceiptButton.disabled = false;
+                    printButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    printReceiptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    printButton.classList.add('hover:bg-gray-700');
+                    printReceiptButton.classList.add('hover:bg-blue-700');
                 }
             }
             
@@ -843,6 +833,90 @@
                 paymentAmountInput.addEventListener('input', updateChangeCalculator);
             }
         }
+
+        // Function to check if no customer warning should be shown
+        function shouldShowNoCustomerWarning() {
+            const cookie = document.cookie.split(';').find(c => c.trim().startsWith('hide_no_customer_warning_v2='));
+            return !cookie || cookie.split('=')[1] !== 'true';
+        }
+
+        // Function to show no customer modal
+        function showNoCustomerModal(action) {
+            if (!shouldShowNoCustomerWarning()) {
+                action();
+                return;
+            }
+            pendingAction = action;
+
+            const modal = document.createElement('div');
+            modal.id = 'no-customer-modal';
+            modal.className = 'fixed inset-0 z-50 overflow-y-auto';
+            modal.innerHTML = `
+                <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true"></div>
+
+                    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                        {{ __('dashboard.No Customer Selected') }}
+                                    </h3>
+                                    <div class="mt-2">
+                                        <p class="text-sm text-gray-500">
+                                            {{__('dashboard.You are about to proceed without selecting a customer. Are you sure you want to continue?')}}
+                                        </p>
+                                    </div>
+                                    <div class="mt-4">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="dont-show-again" class="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="text-sm text-gray-700">{{ __('dashboard.Don\'t show this message again') }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button type="button" id="continue-without-customer" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                {{__('dashboard.Continue')}}
+                            </button>
+                            <button type="button" id="cancel-no-customer" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                {{__('dashboard.Cancel')}}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            document.getElementById('continue-without-customer').addEventListener('click', () => {
+                if (document.getElementById('dont-show-again').checked) {
+                    document.cookie = "hide_no_customer_warning_v2=true; path=/; max-age=31536000";
+                }
+                document.body.removeChild(modal);
+                if (pendingAction) {
+                    pendingAction();
+                    pendingAction = null;
+                }
+            });
+
+            document.getElementById('cancel-no-customer').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                pendingAction = null;
+            });
+
+            modal.querySelector('.modal-overlay').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                pendingAction = null;
+            });
+        }
+
 
         // Updated change calculator to work with last bill amount only
         function updateChangeCalculator() {
@@ -1225,6 +1299,7 @@
 
         document.getElementById('close-modal')?.addEventListener('click', closeBarcodeModal);
         document.querySelector('.modal-overlay')?.addEventListener('click', closeBarcodeModal);
+
 
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -1899,16 +1974,6 @@
         async function saveBillBeforePrint() {
             console.log('=== SAVING BILL BEFORE PRINT ===');
 
-            // Additional customer check for restaurant role
-            if (isRestaurant === 'true') {
-                const customerSelect = document.getElementById('customer_id');
-                if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                    showNotification('{{ __("dashboard.Please select a customer before printing") }}', 'error');
-                    if (customerSelect) customerSelect.focus();
-                    return false;
-                }
-            }
-
             const form = document.getElementById('create-bill');
             if (!form) {
                 console.error('Form not found');
@@ -1971,11 +2036,23 @@
         // Standard Print Button
         document.getElementById('print-button').addEventListener('click', async () => {
             // Check customer selection for restaurant role
-            if (isRestaurant === 'true') {
+            if (isRestaurant) { 
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                    showNotification('{{ __("dashboard.Please select a customer before printing") }}', 'error');
-                    if (customerSelect) customerSelect.focus();
+                    showNoCustomerModal(async () => {
+                        // Save bill first
+                        const saved = await saveBillBeforePrint();
+                        if (!saved) {
+                            alert('Failed to save bill. Please try again.');
+                            return;
+                        }
+
+                        const printData = collectPrintData();
+                        openStandardPrintTab(printData);
+
+                        // Set up redirect after print window closes
+                        setupPrintWindowRedirect();
+                    });
                     return;
                 }
             }
@@ -1997,11 +2074,23 @@
         // Receipt Print Button
         document.getElementById('print-receipt-button').addEventListener('click', async () => {
             // Check customer selection for restaurant role
-            if (isRestaurant === 'true') {
+            if (isRestaurant) { 
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                    showNotification('Please select a customer before printing', 'error');
-                    if (customerSelect) customerSelect.focus();
+                    showNoCustomerModal(async () => {
+                        // Save bill first
+                        const saved = await saveBillBeforePrint();
+                        if (!saved) {
+                            alert('Failed to save bill. Please try again.');
+                            return;
+                        }
+
+                        const printData = collectPrintData();
+                        openReceiptPrintTab(printData);
+
+                        // Set up redirect after print window closes
+                        setupPrintWindowRedirect();
+                    });
                     return;
                 }
             }
@@ -2777,6 +2866,11 @@
 
         // Form validation
         document.getElementById('create-bill').addEventListener('submit', (e) => {
+            if (isProcessingNoCustomerAction) {
+                isProcessingNoCustomerAction = false;
+                return;
+            }
+
             const rows = document.querySelectorAll('.product-row');
             if (rows.length === 0) {
                 e.preventDefault();
@@ -2785,12 +2879,14 @@
             }
 
             // Check customer selection for restaurant role
-            if (isRestaurant === 'true') {
+            if (isRestaurant) { 
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
                     e.preventDefault();
-                    showNotification('{{ __("dashboard.Please select a customer before creating the bill") }}', 'error');
-                    if (customerSelect) customerSelect.focus();
+                    showNoCustomerModal(() => {
+                        isProcessingNoCustomerAction = true;
+                        document.getElementById('create-bill').submit();
+                    });
                     return;
                 }
             }
@@ -2804,11 +2900,13 @@
                 e.preventDefault();
 
                 // Check customer selection for restaurant role before submitting
-                if (isRestaurant === 'true') {
+                if (isRestaurant) { 
                     const customerSelect = document.getElementById('customer_id');
                     if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                        showNotification('{{ __("dashboard.Please select a customer before creating the bill") }}', 'error');
-                        if (customerSelect) customerSelect.focus();
+                        showNoCustomerModal(() => {
+                            isProcessingNoCustomerAction = true;
+                            document.getElementById('create-bill').submit();
+                        });
                         return;
                     }
                 }
