@@ -143,6 +143,73 @@
                         <p class="text-xs text-gray-500 mt-2">{{ __('messages.employee_since') }}: {{ $employee->created_at->format('M j, Y') }}</p>
                     </div>
 
+                    <!-- Permissions -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{__('messages.Employee Permissions')}}</label>
+                        <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                            <p class="text-sm text-gray-600 mb-3">{{__('messages.Select the permissions this employee should have')}}:</p>
+
+                            @php
+                                $employeePermissions = $employee->getPermissions();
+                            @endphp
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_products" {{ in_array('manage_products', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Products')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_bills" {{ in_array('manage_bills', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Bills')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_customers" {{ in_array('manage_customers', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Customers')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_suppliers" {{ in_array('manage_suppliers', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Suppliers')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_purchase_bills" {{ in_array('manage_purchase_bills', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Purchase Bills')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_settings" {{ in_array('manage_settings', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Settings')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_tags" {{ in_array('manage_tags', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Tags')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="view_financial" {{ in_array('view_financial', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.View Financial Reports')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_employees" {{ in_array('manage_employees', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Employees')}}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="manage_expenses" {{ in_array('manage_expenses', $employeePermissions) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">{{__('messages.Manage Expenses')}}</span>
+                                </label>
+                            </div>
+                        </div>
+                        @error('permissions')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                         <a href="{{ route('admin.employees.index') }}" 

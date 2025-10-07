@@ -126,13 +126,17 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
     ->group(function () {
 
         // Tags Management
-        Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
-        Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
-        Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_tags'])->group(function () {
+            Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
+            Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
+            Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
+        });
 
         // Settings
-        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-        Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_settings'])->group(function () {
+            Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+            Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
+        });
 
         Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
         Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
@@ -141,16 +145,18 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         Route::post('customers/{customer}/quick-payments', [CustomerController::class, 'quickStorePayment'])->name('customers.quick-payments.store');
 
         // Products
-        Route::resource('products', ProductsController::class)->except(['show']);
-        Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
-        Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
-        Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
-        Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
-        Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
-        Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
-        Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
-        Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
-        Route::get('/products/next-id', [ProductsController::class, 'getNextProductId'])->name('products.next-id');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_products'])->group(function () {
+            Route::resource('products', ProductsController::class)->except(['show']);
+            Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+            Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
+            Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
+            Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
+            Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
+            Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
+            Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
+            Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
+            Route::get('/products/next-id', [ProductsController::class, 'getNextProductId'])->name('products.next-id');
+        });
 
         // Temporary debug route
         Route::get('/debug-products', function() {
@@ -170,17 +176,21 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         });
 
         // Enhanced Bills Routes
-        Route::resource('bills', BillsController::class);
-        Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
-        Route::get('/bills/search-api', [BillsController::class, 'search'])->name('bills.search');
-        Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
-        Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_bills'])->group(function () {
+            Route::resource('bills', BillsController::class);
+            Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
+            Route::get('/bills/search-api', [BillsController::class, 'search'])->name('bills.search');
+            Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
+            Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
+        });
 
         // Customers & Payments
-        Route::resource('customers', CustomerController::class);
-        Route::get('customers/{customer}/payments', [CustomerController::class, 'showPayments'])->name('customers.payments');
-        Route::post('customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
-        Route::put('payments/{customer_payment}', [CustomerController::class, 'updatePayment'])->name('payments.update');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_customers'])->group(function () {
+            Route::resource('customers', CustomerController::class);
+            Route::get('customers/{customer}/payments', [CustomerController::class, 'showPayments'])->name('customers.payments');
+            Route::post('customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
+            Route::put('payments/{customer_payment}', [CustomerController::class, 'updatePayment'])->name('payments.update');
+        });
 
         // Batches
         Route::post('/batches', [BatchController::class, 'store']);
@@ -206,19 +216,23 @@ Route::prefix('shopowner')
     ->as('shopowner.')
     ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])
     ->group(function () {
-        Route::resource('employees', EmployeeController::class);
-        Route::get('employees/{employee}/payments', [EmployeeController::class, 'payments'])->name('employees.payments');
-        Route::post('employees/{employee}/payments', [EmployeeController::class, 'storePayment'])->name('employees.storePayment');
-        Route::delete('employees/payment/{payment}', [EmployeeController::class, 'destroyPayment'])->name('employees.destroyPayment');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees'])->group(function () {
+            Route::resource('employees', EmployeeController::class);
+            Route::get('employees/{employee}/payments', [EmployeeController::class, 'payments'])->name('employees.payments');
+            Route::post('employees/{employee}/payments', [EmployeeController::class, 'storePayment'])->name('employees.storePayment');
+            Route::delete('employees/payment/{payment}', [EmployeeController::class, 'destroyPayment'])->name('employees.destroyPayment');
+        });
 
         // Expenses
-        Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
-        Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
-        Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_expenses'])->group(function () {
+            Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+            Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+            Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        });
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
 
@@ -556,16 +570,20 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
     ->group(function () {
 
         // Suppliers
-        Route::resource('suppliers', SupplierController::class);
-        Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
-        Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
-        Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_suppliers'])->group(function () {
+            Route::resource('suppliers', SupplierController::class);
+            Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
+            Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
+            Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
+        });
 
-        
+
         // Purchase Bills
-        Route::resource('purchase-bills', PurchaseBillController::class);
-        Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
-        Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_purchase_bills'])->group(function () {
+            Route::resource('purchase-bills', PurchaseBillController::class);
+            Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
+            Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
+        });
         
         // API endpoints for AJAX calls
         Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');

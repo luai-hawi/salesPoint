@@ -111,6 +111,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Employee') }}</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Phone') }}</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Shop Owner') }}</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Permissions') }}</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Contact') }}</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Joined') }}</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
@@ -149,6 +150,39 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
+                                        @php
+                                            $permissions = $employee->getPermissions();
+                                            $permissionLabels = [
+                                                'manage_products' => __('messages.Manage Products'),
+                                                'manage_bills' => __('messages.Manage Bills'),
+                                                'manage_customers' => __('messages.Manage Customers'),
+                                                'manage_suppliers' => __('messages.Manage Suppliers'),
+                                                'manage_purchase_bills' => __('messages.Manage Purchase Bills'),
+                                                'manage_settings' => __('messages.Manage Settings'),
+                                                'manage_tags' => __('messages.Manage Tags'),
+                                                'view_financial' => __('messages.View Financial'),
+                                                'manage_employees' => __('messages.Manage Employees'),
+                                                'manage_expenses' => __('messages.Manage Expenses'),
+                                            ];
+                                        @endphp
+                                        @if(count($permissions) > 0)
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach(array_slice($permissions, 0, 3) as $permission)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        {{ $permissionLabels[$permission] ?? $permission }}
+                                                    </span>
+                                                @endforeach
+                                                @if(count($permissions) > 3)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                        +{{ count($permissions) - 3 }} more
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span class="text-sm text-gray-400">{{ __('messages.No permissions') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ $employee->email }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -183,7 +217,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="7" class="px-6 py-12 text-center">
                                         <div class="text-gray-500">
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>

@@ -53,6 +53,7 @@
                                 {{ __('navigation.Dashboard') }}
                             </x-nav-link>
 
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
                             <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')"
                                 class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('products.index') ? 'bg-green-100 text-green-700 border-green-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +61,9 @@
                                 </svg>
                                 {{ __('navigation.Products') }}
                             </x-nav-link>
+                            @endif
 
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
                             <x-nav-link :href="route('products.out-of-stock')" :active="request()->routeIs('products.out-of-stock')"
                                 class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('products.out-of-stock') ? 'bg-orange-100 text-orange-700 border-orange-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +91,9 @@
                                     </span>
                                 @endif
                             </x-nav-link>
+                            @endif
 
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_bills'))
                             <x-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')"
                                 class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('bills.index') ? 'bg-purple-100 text-purple-700 border-purple-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +101,9 @@
                                 </svg>
                                 {{ __('navigation.Bills') }}
                             </x-nav-link>
+                            @endif
                             
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_customers'))
                             <x-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')"
                                 class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('customers.index') ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,6 +111,7 @@
                                 </svg>
                                 {{ __('navigation.Customers') }}
                             </x-nav-link>
+                            @endif
 
                             <!-- More Menu for Additional Items -->
                             <div class="relative" x-data="{ moreOpen: false }">
@@ -128,11 +136,12 @@
                                     x-transition:leave-end="opacity-0 transform scale-95"
                                     class="absolute z-50 right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
                                     
+                                    @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_tags'))
                                     <!-- Products Section -->
                                     <div class="px-4 py-2">
                                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ __('navigation.Tags') }}</h3>
-                                        
-                                        <a href="{{ route('tags.index') }}" 
+
+                                        <a href="{{ route('tags.index') }}"
                                             class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('tags.*') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                             <svg class="w-4 h-4 mr-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
@@ -140,49 +149,62 @@
                                             {{ __('navigation.Tags') }}
                                         </a>
                                     </div>
+                                    @endif
 
                                     @if(auth()->user()->role !== 'admin')
+                                        @if((auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_suppliers')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills')))
                                         <!-- Suppliers Section -->
                                         <div class="px-4 py-2 border-t border-gray-100">
                                             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ __('navigation.Suppliers') }}</h3>
-                                            <a href="{{ route('suppliers.index') }}" 
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_suppliers'))
+                                            <a href="{{ route('suppliers.index') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('suppliers.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2m2 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11"></path>
                                                 </svg>
                                                 {{ __('navigation.Manage Suppliers') }}
                                             </a>
-                                            
-                                            <a href="{{ route('purchase-bills.index') }}" 
+                                            @endif
+
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills'))
+                                            <a href="{{ route('purchase-bills.index') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('purchase-bills.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                                 </svg>
                                                 {{ __('navigation.Purchase Bills') }}
                                             </a>
+                                            @endif
                                         </div>
+                                        @endif
                                     @endif
 
                                     @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
+                                        @if((auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_settings')))
                                         <!-- Management Section -->
                                         <div class="px-4 py-2 border-t border-gray-100">
                                             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ __('navigation.Management') }}</h3>
-                                            <a href="{{ route('shopowner.employees.index') }}" 
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees'))
+                                            <a href="{{ route('shopowner.employees.index') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('shopowner.employees.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                                 </svg>
                                                 {{ __('navigation.Employees') }}
                                             </a>
-                                            
-                                            <a href="{{ route('shopowner.expenses.index') }}" 
+                                            @endif
+
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses'))
+                                            <a href="{{ route('shopowner.expenses.index') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('shopowner.expenses.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                                 </svg>
                                                 {{ __('navigation.Expenses') }}
                                             </a>
-                                            
+                                            @endif
+
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial'))
                                             <a href="{{ route('dashboard.financial') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('dashboard.financial') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +212,9 @@
                                                 </svg>
                                                 {{ __('navigation.Financial Dashboard') }}
                                             </a>
+                                            @endif
 
+                                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_settings'))
                                             <a href="{{ route('settings.index') }}"
                                                 class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('settings.*') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                 <svg class="w-4 h-4 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +223,9 @@
                                                 </svg>
                                                 {{ __('navigation.Settings') }}
                                             </a>
+                                            @endif
                                         </div>
+                                        @endif
                                     @endif
                                 </div>
                             </div>
@@ -328,55 +354,69 @@
                     {{ __('navigation.Dashboard') }}
                 </x-responsive-nav-link>
                 
+                @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
                 <x-responsive-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                     </svg>
                     {{ __('navigation.Products') }}
                 </x-responsive-nav-link>
-                
+                @endif
+
+                @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_bills'))
                 <x-responsive-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     {{ __('navigation.Bills') }}
                 </x-responsive-nav-link>
-                
+                @endif
+
+                @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_customers'))
                 <x-responsive-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                     </svg>
                     {{ __('navigation.Customers') }}
                 </x-responsive-nav-link>
-                
+                @endif
+
+                @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_tags'))
                 <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')" class="flex items-center">
                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                     </svg>
                     {{ __('navigation.Tags') }}
                 </x-responsive-nav-link>
+                @endif
                 
                 @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
+                    @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees'))
                     <x-responsive-nav-link :href="route('shopowner.employees.index')" :active="request()->routeIs('shopowner.employees.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
                         {{ __('navigation.Employees') }}
                     </x-responsive-nav-link>
-                    
+                    @endif
+
+                    @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses'))
                     <x-responsive-nav-link :href="route('shopowner.expenses.index')" :active="request()->routeIs('shopowner.expenses.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
                         {{ __('navigation.Expenses') }}
                     </x-responsive-nav-link>
-                    
+                    @endif
+
                     @if(auth()->user()->role !== 'admin')
+                        @if((auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_suppliers')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills')))
                         <!-- Mobile Suppliers Menu -->
                         <div class="space-y-1">
                             <div class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg mt-2">
                                 {{ __('navigation.Suppliers') }}
                             </div>
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_suppliers'))
                             <x-responsive-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.index')" class="flex items-center ml-4">
                                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2m2 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11"></path>
@@ -389,6 +429,8 @@
                                 </svg>
                                 {{ __('navigation.Add Supplier') }}
                             </x-responsive-nav-link>
+                            @endif
+                            @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills'))
                             <x-responsive-nav-link :href="route('purchase-bills.index')" :active="request()->routeIs('purchase-bills.index')" class="flex items-center ml-4">
                                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -401,15 +443,19 @@
                                 </svg>
                                 {{ __('navigation.New Purchase Bill') }}
                             </x-responsive-nav-link>
+                            @endif
                         </div>
+                        @endif
                     @endif
-                    
+
+                    @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial'))
                     <x-responsive-nav-link :href="route('dashboard.financial')" :active="request()->routeIs('dashboard.financial')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                         {{ __('navigation.Financial Dashboard') }}
                     </x-responsive-nav-link>
+                    @endif
                 @endif
             @endif
         </div>

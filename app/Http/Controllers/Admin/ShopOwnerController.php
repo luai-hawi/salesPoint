@@ -278,6 +278,8 @@ class ShopOwnerController extends Controller
             'password' => 'required|string|min:8',
             'shop_owner_id' => 'required|exists:users,id',
             'phone_number' => 'nullable|string|max:20',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|in:manage_products,manage_bills,manage_customers,manage_suppliers,manage_purchase_bills,manage_settings,manage_tags,view_financial,manage_employees,manage_expenses',
         ]);
 
         // Verify the shop_owner_id belongs to an actual shop owner
@@ -298,7 +300,12 @@ class ShopOwnerController extends Controller
             $validated['role'] = 'employee';
 
             $employee = User::create($validated);
-            
+
+            // Set permissions if provided
+            if (isset($validated['permissions'])) {
+                $employee->setPermissions($validated['permissions']);
+            }
+
             DB::commit();
             
             // Redirect based on where we came from
@@ -345,13 +352,15 @@ class ShopOwnerController extends Controller
         if ($employee->role !== 'employee') {
             abort(404);
         }
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($employee->id)],
             'password' => 'nullable|string|min:8',
             'shop_owner_id' => 'required|exists:users,id',
             'phone_number' => 'nullable|string|max:20',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|in:manage_products,manage_bills,manage_customers,manage_suppliers,manage_purchase_bills,manage_settings,manage_tags,view_financial,manage_employees,manage_expenses',
         ]);
 
         // Verify the shop_owner_id belongs to an actual shop owner
@@ -375,7 +384,16 @@ class ShopOwnerController extends Controller
             }
 
             $employee->update($validated);
-            
+
+            // Update permissions
+            if (isset($validated['permissions'])) {
+                $employee->setPermissions($validated['permissions']);
+            } else {
+                // If no permissions sent, clear them
+                $employee->permissions = null;
+                $employee->save();
+            }
+
             DB::commit();
             
             return redirect()->route('admin.employees.index')

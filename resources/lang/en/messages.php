@@ -1519,4 +1519,20 @@ return [
     'Note' => 'Note',
     'Regular Sales' => 'Regular Sales',
     'Losses & Damages' => 'Losses & Damages',
+
+    // Employee Permissions
+    'Employee Permissions' => 'Employee Permissions',
+    'Select the permissions this employee should have' => 'Select the permissions this employee should have',
+    'Manage Products' => 'Manage Products',
+    'Manage Bills' => 'Manage Bills',
+    'Manage Customers' => 'Manage Customers',
+    'Manage Suppliers' => 'Manage Suppliers',
+    'Manage Purchase Bills' => 'Manage Purchase Bills',
+    'Manage Settings' => 'Manage Settings',
+    'Manage Tags' => 'Manage Tags',
+    'View Financial Reports' => 'View Financial Reports',
+    'Manage Employees' => 'Manage Employees',
+    'Manage Expenses' => 'Manage Expenses',
+    'Permissions' => 'Permissions',
+    'No permissions' => 'No permissions',
 ];

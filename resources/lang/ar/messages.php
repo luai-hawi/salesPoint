@@ -1641,4 +1641,20 @@ return [
     'Note' => 'ملاحظة',
     'Regular Sales' => 'المبيعات العادية',
     'Losses & Damages' => 'الخسائر والأضرار',
+
+    // Employee Permissions
+    'Employee Permissions' => 'صلاحيات الموظف',
+    'Select the permissions this employee should have' => 'اختر الصلاحيات التي يجب أن يحصل عليها هذا الموظف',
+    'Manage Products' => 'إدارة المنتجات',
+    'Manage Bills' => 'إدارة الفواتير',
+    'Manage Customers' => 'إدارة العملاء',
+    'Manage Suppliers' => 'إدارة الموردين',
+    'Manage Purchase Bills' => 'إدارة فواتير الشراء',
+    'Manage Settings' => 'إدارة الإعدادات',
+    'Manage Tags' => 'إدارة العلامات',
+    'View Financial Reports' => 'عرض التقارير المالية',
+    'Manage Employees' => 'إدارة الموظفين',
+    'Manage Expenses' => 'إدارة المصروفات',
+    'Permissions' => 'الصلاحيات',
+    'No permissions' => 'لا توجد صلاحيات',
 ];

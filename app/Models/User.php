@@ -31,6 +31,7 @@ class User extends Authenticatable
         'subscription_cost',
         'product_warning_period',
         'product_deactivation_period',
+        'permissions',
     ];
 
 
@@ -93,5 +94,44 @@ class User extends Authenticatable
 
     public function shopOwner() {
         return $this->belongsTo(User::class, 'shop_owner_id');
+    }
+
+    /**
+     * Check if user has a specific permission
+     */
+    public function hasPermission($permission)
+    {
+        // Admins and shop owners have all permissions
+        if (in_array($this->role, ['admin', 'shop_owner', 'restaurant', 'merchant'])) {
+            return true;
+        }
+
+        // For employees, check permissions array
+        if ($this->role === 'employee' && $this->permissions) {
+            $permissions = json_decode($this->permissions, true);
+            return is_array($permissions) && in_array($permission, $permissions);
+        }
+
+        return false;
+    }
+
+    /**
+     * Get user's permissions as array
+     */
+    public function getPermissions()
+    {
+        if ($this->permissions) {
+            return json_decode($this->permissions, true) ?? [];
+        }
+        return [];
+    }
+
+    /**
+     * Set user's permissions
+     */
+    public function setPermissions(array $permissions)
+    {
+        $this->permissions = json_encode(array_unique($permissions));
+        $this->save();
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, ...$roles)
+    public function handle(Request $request, Closure $next, ...$params)
     {
         $user = Auth::user();
 
@@ -16,13 +16,41 @@ class RoleMiddleware
             abort(403, 'Unauthorized');
         }
 
-        // Handle "shop_owner,employee" passed as one string
-        if (count($roles) === 1 && str_contains($roles[0], ',')) {
-            $roles = explode(',', $roles[0]);
+        $roles = [];
+        $permissions = [];
+
+        foreach ($params as $param) {
+            // Handle comma-separated values
+            if (str_contains($param, ',')) {
+                $parts = explode(',', $param);
+                foreach ($parts as $part) {
+                    if (in_array($part, ['admin', 'shop_owner', 'employee', 'restaurant', 'merchant'])) {
+                        $roles[] = $part;
+                    } else {
+                        $permissions[] = $part;
+                    }
+                }
+            } else {
+                if (in_array($param, ['admin', 'shop_owner', 'employee', 'restaurant', 'merchant'])) {
+                    $roles[] = $param;
+                } else {
+                    $permissions[] = $param;
+                }
+            }
         }
 
-        if (!in_array($user->role, $roles, true)) {
+        // Check roles
+        if (!empty($roles) && !in_array($user->role, $roles, true)) {
             abort(403, 'Unauthorized');
+        }
+
+        // Check permissions for employees
+        if ($user->role === 'employee' && !empty($permissions)) {
+            foreach ($permissions as $permission) {
+                if (!$user->hasPermission($permission)) {
+                    abort(403, 'Unauthorized - Missing permission: ' . $permission);
+                }
+            }
         }
 
         return $next($request);
