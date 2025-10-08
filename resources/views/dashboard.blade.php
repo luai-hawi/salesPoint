@@ -2260,14 +2260,41 @@
            printWindow.document.close();
 
            printWindow.onload = function() {
-               // Add close button that won't be printed
-               const closeButton = printWindow.document.createElement('button');
-               closeButton.innerHTML = '💾 Save & Close';
-               closeButton.style.cssText = `
+               // Create button container
+               const buttonContainer = printWindow.document.createElement('div');
+               buttonContainer.style.cssText = `
                    position: fixed;
                    top: 10px;
                    right: 10px;
                    z-index: 9999;
+                   display: flex;
+                   flex-direction: column;
+                   gap: 5px;
+               `;
+
+               // Add print button
+               const printButton = printWindow.document.createElement('button');
+               printButton.innerHTML = '🖨️ Print';
+               printButton.style.cssText = `
+                   padding: 8px 16px;
+                   background-color: #2563eb;
+                   color: white;
+                   border: none;
+                   border-radius: 4px;
+                   cursor: pointer;
+                   font-size: 14px;
+                   font-weight: bold;
+                   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+               `;
+
+               printButton.onclick = () => {
+                   printWindow.print();
+               };
+
+               // Add close button that won't be printed
+               const closeButton = printWindow.document.createElement('button');
+               closeButton.innerHTML = '💾 Save & Close';
+               closeButton.style.cssText = `
                    padding: 8px 16px;
                    background-color: #dc2626;
                    color: white;
@@ -2279,10 +2306,11 @@
                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                `;
 
-               // Hide button when printing
+               // Hide buttons when printing
                const style = printWindow.document.createElement('style');
-               style.textContent = '@media print { .close-btn { display: none !important; } }';
+               style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
                printWindow.document.head.appendChild(style);
+               printButton.className = 'print-btn';
                closeButton.className = 'close-btn';
 
                closeButton.onclick = () => {
@@ -2292,7 +2320,11 @@
                    }
                    printWindow.close();
                };
-               printWindow.document.body.appendChild(closeButton);
+
+               // Append buttons to container
+               buttonContainer.appendChild(printButton);
+               buttonContainer.appendChild(closeButton);
+               printWindow.document.body.appendChild(buttonContainer);
 
                // Listen for messages from parent
                window.addEventListener('message', (event) => {
@@ -2300,7 +2332,7 @@
                        console.log('Bill saved confirmation received');
                    }
                });
-       
+
                // Save when window is closed by other means
                printWindow.addEventListener('beforeunload', () => {
                    if (window.opener) {
@@ -2334,14 +2366,41 @@
             printWindow.document.close();
 
             printWindow.onload = function() {
-                // Add close button that won't be printed
-                const closeButton = printWindow.document.createElement('button');
-                closeButton.innerHTML = '✕ Close & Save Bill';
-                closeButton.style.cssText = `
+                // Create button container
+                const buttonContainer = printWindow.document.createElement('div');
+                buttonContainer.style.cssText = `
                     position: fixed;
                     top: 5px;
                     right: 5px;
                     z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 3px;
+                `;
+
+                // Add print button
+                const printButton = printWindow.document.createElement('button');
+                printButton.innerHTML = '🖨️ Print';
+                printButton.style.cssText = `
+                    padding: 4px 8px;
+                    background-color: #2563eb;
+                    color: white;
+                    border: none;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: bold;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                `;
+
+                printButton.onclick = () => {
+                    printWindow.print();
+                };
+
+                // Add close button that won't be printed
+                const closeButton = printWindow.document.createElement('button');
+                closeButton.innerHTML = '✕ Close & Save Bill';
+                closeButton.style.cssText = `
                     padding: 4px 8px;
                     background-color: #dc2626;
                     color: white;
@@ -2353,10 +2412,11 @@
                     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
                 `;
 
-                // Hide button when printing
+                // Hide buttons when printing
                 const style = printWindow.document.createElement('style');
-                style.textContent = '@media print { .close-btn { display: none !important; } }';
+                style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
                 printWindow.document.head.appendChild(style);
+                printButton.className = 'print-btn';
                 closeButton.className = 'close-btn';
 
                 closeButton.onclick = () => {
@@ -2366,7 +2426,11 @@
                     }
                     printWindow.close();
                 };
-                printWindow.document.body.appendChild(closeButton);
+
+                // Append buttons to container
+                buttonContainer.appendChild(printButton);
+                buttonContainer.appendChild(closeButton);
+                printWindow.document.body.appendChild(buttonContainer);
 
                 // Listen for messages from parent
                 window.addEventListener('message', (event) => {
@@ -2374,7 +2438,7 @@
                         console.log('Bill saved confirmation received');
                     }
                 });
-        
+
                 // Save when window is closed by other means
                 printWindow.addEventListener('beforeunload', () => {
                     if (window.opener) {

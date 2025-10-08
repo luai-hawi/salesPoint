@@ -958,7 +958,7 @@ function collectPrintData() {
             $tagPairs = explode('&', $product->pivot->tags ?? '');
             $totalTagPrice = 0;
             $tagsString = '';
-            
+
             foreach($tagPairs as $tagPair) {
                 if(str_contains($tagPair, '@')) {
                     [$name, $tagPrice] = explode('@', $tagPair);
@@ -966,12 +966,12 @@ function collectPrintData() {
                     $tagsString .= $tagsString ? '&' . $tagPair : $tagPair;
                 }
             }
-            
+
             $actualDiscount = $product->pivot->discount ?? 0;
             $subtotalWithTags = ($basePrice * $product->pivot->quantity) + ($totalTagPrice * $product->pivot->quantity);
             $finalSubtotal = max(0, $subtotalWithTags - $actualDiscount);
         @endphp
-        
+
         products.push({
             name: '{{ $product->name }}',
             qty: {{ $product->pivot->quantity }},
@@ -982,20 +982,22 @@ function collectPrintData() {
             discountType: 'total',
             finalSubtotal: {{ $finalSubtotal }}
         });
-        
+
         subtotal += {{ $subtotalWithTags }};
         total += {{ $finalSubtotal }};
         totalDiscount += {{ $actualDiscount }};
     @endforeach
 
     const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
-    const shopOwnerName = 
+    const shopOwnerName =
         @if(auth()->user()->role === 'employee' && auth()->user()->shop_owner_id)
             '{{ auth()->user()->shopOwner->name ?? 'Shop Owner' }}'
         @else
             '{{ auth()->user()->name ?? 'Shop Owner' }}'
         @endif
     ;
+
+    const notes = document.getElementById('note').value.trim();
 
     return {
         products: products,
@@ -1004,6 +1006,7 @@ function collectPrintData() {
         total: total,
         customerName: '{{ $bill->customer->name ?? "" }}',
         customerPhone: '{{ $bill->customer->phone ?? "" }}',
+        notes: notes,
         userDetails: userDetails,
         shopName: shopName,
         shopOwnerName: shopOwnerName,
@@ -1031,14 +1034,41 @@ function openStandardPrintTab(data) {
     printWindow.document.close();
 
     printWindow.onload = function() {
-        // Add close button that won't be printed
-        const closeButton = printWindow.document.createElement('button');
-        closeButton.innerHTML = '💾 Save & Close';
-        closeButton.style.cssText = `
+        // Create button container
+        const buttonContainer = printWindow.document.createElement('div');
+        buttonContainer.style.cssText = `
             position: fixed;
             top: 10px;
             right: 10px;
             z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        `;
+
+        // Add print button
+        const printButton = printWindow.document.createElement('button');
+        printButton.innerHTML = '🖨️ Print';
+        printButton.style.cssText = `
+            padding: 8px 16px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+
+        printButton.onclick = () => {
+            printWindow.print();
+        };
+
+        // Add close button that won't be printed
+        const closeButton = printWindow.document.createElement('button');
+        closeButton.innerHTML = '💾 Save & Close';
+        closeButton.style.cssText = `
             padding: 8px 16px;
             background-color: #dc2626;
             color: white;
@@ -1050,10 +1080,11 @@ function openStandardPrintTab(data) {
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         `;
 
-        // Hide button when printing
+        // Hide buttons when printing
         const style = printWindow.document.createElement('style');
-        style.textContent = '@media print { .close-btn { display: none !important; } }';
+        style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
         printWindow.document.head.appendChild(style);
+        printButton.className = 'print-btn';
         closeButton.className = 'close-btn';
 
         closeButton.onclick = () => {
@@ -1063,7 +1094,11 @@ function openStandardPrintTab(data) {
             }
             printWindow.close();
         };
-        printWindow.document.body.appendChild(closeButton);
+
+        // Append buttons to container
+        buttonContainer.appendChild(printButton);
+        buttonContainer.appendChild(closeButton);
+        printWindow.document.body.appendChild(buttonContainer);
 
         // Listen for messages from parent
         window.addEventListener('message', (event) => {
@@ -1105,14 +1140,41 @@ function openReceiptPrintTab(data) {
     printWindow.document.close();
 
     printWindow.onload = function() {
-        // Add close button that won't be printed
-        const closeButton = printWindow.document.createElement('button');
-        closeButton.innerHTML = '✕ Close & Save Bill';
-        closeButton.style.cssText = `
+        // Create button container
+        const buttonContainer = printWindow.document.createElement('div');
+        buttonContainer.style.cssText = `
             position: fixed;
             top: 5px;
             right: 5px;
             z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        `;
+
+        // Add print button
+        const printButton = printWindow.document.createElement('button');
+        printButton.innerHTML = '🖨️ Print';
+        printButton.style.cssText = `
+            padding: 4px 8px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        `;
+
+        printButton.onclick = () => {
+            printWindow.print();
+        };
+
+        // Add close button that won't be printed
+        const closeButton = printWindow.document.createElement('button');
+        closeButton.innerHTML = '✕ Close & Save Bill';
+        closeButton.style.cssText = `
             padding: 4px 8px;
             background-color: #dc2626;
             color: white;
@@ -1124,10 +1186,11 @@ function openReceiptPrintTab(data) {
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         `;
 
-        // Hide button when printing
+        // Hide buttons when printing
         const style = printWindow.document.createElement('style');
-        style.textContent = '@media print { .close-btn { display: none !important; } }';
+        style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
         printWindow.document.head.appendChild(style);
+        printButton.className = 'print-btn';
         closeButton.className = 'close-btn';
 
         closeButton.onclick = () => {
@@ -1137,7 +1200,11 @@ function openReceiptPrintTab(data) {
             }
             printWindow.close();
         };
-        printWindow.document.body.appendChild(closeButton);
+
+        // Append buttons to container
+        buttonContainer.appendChild(printButton);
+        buttonContainer.appendChild(closeButton);
+        printWindow.document.body.appendChild(buttonContainer);
 
         // Listen for messages from parent
         window.addEventListener('message', (event) => {
@@ -1278,6 +1345,7 @@ function generateStandardPrintHtml(data) {
                 <div class="text-left">
                     ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
                     ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
+                    ${data.notes ? `<div>{{ __('messages.Notes') }}: ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                 </div>
             </div>
             
@@ -1536,6 +1604,7 @@ function generateReceiptPrintHtml(data) {
                 <div class="mb-2">
                     <div class="font-bold text-sm">{{__('messages.Created By')}}: ${data.userName}</div>
                     ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
+                    ${data.notes ? `<div class="text-sm"><strong>{{__('messages.Notes')}}:</strong> ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                 </div>
 
                 <!-- Products Table -->
