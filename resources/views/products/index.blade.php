@@ -734,12 +734,17 @@
         });
 
         // Update quantity functionality
-        document.addEventListener('input', function(e) {
+        document.addEventListener('change', function(e) {
             if (e.target.classList.contains('order-quantity')) {
                 const productId = e.target.dataset.productId;
                 const newQuantity = parseInt(e.target.value);
                 updateOrderQuantity(productId, newQuantity);
-            } else if (e.target.classList.contains('order-notes')) {
+            }
+        });
+
+        // Update notes functionality
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('order-notes')) {
                 const productId = e.target.dataset.productId;
                 const newNotes = e.target.value;
                 updateOrderNotes(productId, newNotes);
