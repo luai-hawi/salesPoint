@@ -2885,8 +2885,10 @@
             const clientHeight = container.clientHeight;
 
             if (scrollTop + clientHeight >= scrollHeight - 100) {
-                // Pass current category if in category browsing mode
-                fetchProducts(false, browseByCategory ? currentCategory : null);
+                // Only load more when not browsing categories or when viewing products in a specific category
+                if (!browseByCategory || currentCategory) {
+                    fetchProducts(false, currentCategory);
+                }
             }
         });
 
