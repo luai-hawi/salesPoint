@@ -211,10 +211,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         })->name('payments.destroy');
     });
 
-// ------------------- SHOP OWNER SPECIFIC ROUTES -------------------
+// ------------------- SHOP OWNER AND EMPLOYEE SPECIFIC ROUTES -------------------
 Route::prefix('shopowner')
     ->as('shopowner.')
-    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant'])
+    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
     ->group(function () {
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees'])->group(function () {
             Route::resource('employees', EmployeeController::class);
@@ -232,7 +232,7 @@ Route::prefix('shopowner')
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
 
