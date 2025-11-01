@@ -179,7 +179,7 @@
                                         @endif
                                     @endif
 
-                                    @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
+                                    @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant' || Auth::user()->role === 'employee')
                                         @if((auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial')) || (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_settings')))
                                         <!-- Management Section -->
                                         <div class="px-4 py-2 border-t border-gray-100">
@@ -390,7 +390,7 @@
                 </x-responsive-nav-link>
                 @endif
                 
-                @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant')
+                @if(Auth::user()->role === 'shop_owner' || Auth::user()->role === 'restaurant' || Auth::user()->role === 'merchant' || Auth::user()->role === 'employee')
                     @if(auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees'))
                     <x-responsive-nav-link :href="route('shopowner.employees.index')" :active="request()->routeIs('shopowner.employees.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
