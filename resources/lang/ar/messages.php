@@ -8,6 +8,7 @@ return [
     | Based on the provided views
     */
     'month' => 'شهر',
+    'Loss Value' => 'قيمة الخسارة',
     'ID' => 'الرقم',
     'Enter selling price' => 'أدخل سعر البيع',
     'Enter cost price' => 'أدخل سعر التكلفة',
@@ -95,9 +96,9 @@ return [
     'No payments found in the selected date range' => 'لم يتم العثور على مدفوعات في المدى الزمني المحدد',
     'Please allow popups for this site to print reports' => 'يرجى السماح بالنوافذ المنبثقة لهذا الموقع لطباعة التقارير',
     'An error occurred while generating the print report' => 'حدث خطأ أثناء إنشاء تقرير الطباعة',
-    "Shop"=> "المتجر",
-    "Tags Price"=> "سعر العلامات",
-    "Add to Bill"=> "أضف إلى الفاتورة",
+    "Shop" => "المتجر",
+    "Tags Price" => "سعر العلامات",
+    "Add to Bill" => "أضف إلى الفاتورة",
     // Tags Management
     "Tags Management" => "إدارة العلامات",
     "Add New Tag" => "إضافة علامة جديدة",
@@ -122,7 +123,7 @@ return [
     'Thank you for your business!' => 'شكراً لكم على تعاملكم معنا!',
     'Please come again' => 'تمام بشراءاتكم',
     'Date' => 'التاريخ',
-    'Time' => 'الوقت', 
+    'Time' => 'الوقت',
     'Total Discount' => 'إجمالي الخصم',
     'Unknown' => 'غير معروف',
     'Manual Print Required' => 'مطلوب طباعة يدوية',
@@ -137,19 +138,19 @@ return [
     'Subtotal' => 'المجموع الفرعي',
     'Toatal discount' => 'إجمالي الخصم',
     'Total' => 'المجموع',
-    'Select Tags for'=> "اختر العلامات لـ",
-    'This product with the same tags is already in the bill'=> "هذا المنتج بنفس العلامات موجود بالفعل في الفاتورة",
-    'Tags'=> "العلامات",
-    'Total discount'=> "إجمالي الخصم",
-    'Enter product category (optional)...'=> "أدخل فئة المنتج (اختياري)...",
-    'Optional - helps organize products by category.'=> "اختياري - يساعد في تنظيم المنتجات حسب الفئة.",
-    'Uncategorized'=> "غير مصنف",
-    'Final Total'=> "المجموع النهائي",
-    'Export Data'=> 'تصدير البيانات',
-    'WhatsApp'=> 'واتساب',
-    
-  
-    "Select Tags for"=> "اختر العلامات لـ",
+    'Select Tags for' => "اختر العلامات لـ",
+    'This product with the same tags is already in the bill' => "هذا المنتج بنفس العلامات موجود بالفعل في الفاتورة",
+    'Tags' => "العلامات",
+    'Total discount' => "إجمالي الخصم",
+    'Enter product category (optional)...' => "أدخل فئة المنتج (اختياري)...",
+    'Optional - helps organize products by category.' => "اختياري - يساعد في تنظيم المنتجات حسب الفئة.",
+    'Uncategorized' => "غير مصنف",
+    'Final Total' => "المجموع النهائي",
+    'Export Data' => 'تصدير البيانات',
+    'WhatsApp' => 'واتساب',
+
+
+    "Select Tags for" => "اختر العلامات لـ",
 
     // Print Forms Arabic Translation Keys:
     'Bill ID' => 'رقم الفاتورة',
@@ -163,7 +164,7 @@ return [
     'Thank you for your business!' => 'شكراً لك على تعاملك معنا!',
     'Unknown' => 'غير معروف',
     'Customer' => 'العميل',
-    
+
     // Session Management
     'another_session_active' => 'يوجد جلسة أخرى نشطة لهذا الحساب. تم إنهاء جلستك السابقة.',
     'session_warning' => 'إشعار الجلسة:',
@@ -172,28 +173,28 @@ return [
     'login_elsewhere' => 'تم تسجيل خروجك لأنك سجلت الدخول من جهاز آخر.',
     'session_terminated' => 'تم إنهاء جلستك السابقة بسبب تسجيل دخول جديد.',
 
-      // Header Section
+    // Header Section
     'shop_title' => 'متجر :name',
     'edit_shop_owner' => 'تعديل صاحب المتجر',
-    
+
     // Shop Owner Details Section
     'shop_owner_details' => 'تفاصيل صاحب المتجر',
     'status' => 'الحالة',
     'member_since' => 'عضو منذ',
     'total_employees' => 'إجمالي الموظفين',
-    
+
     // Role Status
     'role_shop_owner' => 'صاحب المتجر',
     'role_disabled' => 'معطل',
     'role_admin' => 'مدير',
     'role_employee' => 'موظف',
-    
+
     // Performance Statistics
     'total_sales' => 'إجمالي المبيعات',
     'this_month' => 'هذا الشهر',
     'products' => 'المنتجات',
     'customers' => 'العملاء',
-    
+
     // Employees Section
     'employees_management' => 'إدارة الموظفين',
     'add_employee' => 'إضافة موظف',
@@ -204,7 +205,7 @@ return [
     'enter_email_address' => 'أدخل عنوان البريد الإلكتروني',
     'enter_password' => 'أدخل كلمة المرور',
     'cancel' => 'إلغاء',
-    
+
     // Employees Table
     'employee' => 'الموظف',
     'contact' => 'جهة الاتصال',
@@ -213,12 +214,12 @@ return [
     'employee_id' => 'المعرف',
     'edit' => 'تعديل',
     'remove' => 'إزالة',
-    
+
     // Empty State
     'no_employees_yet' => 'لا يوجد موظفين بعد',
     'add_employees_help_text' => 'إضافة موظفين لمساعدة في إدارة هذا المتجر',
     'add_first_employee' => 'إضافة أول موظف',
-    
+
     // Action Buttons
     'disable_shop' => 'تعطيل المتجر',
     'enable_shop' => 'تفعيل المتجر',
@@ -226,13 +227,13 @@ return [
     'enable' => 'تفعيل',
     'view_all_employees' => 'عرض جميع الموظفين',
     'delete_shop_owner' => 'حذف صاحب المتجر',
-    
+
     // Confirmation Messages
     'confirm_delete_employee' => 'هل أنت متأكد من أنك تريد حذف هذا الموظف؟',
     'confirm_toggle_status' => 'هل أنت متأكد من أنك تريد :action صاحب المتجر هذا؟',
     'confirm_delete_shop_owner' => 'هل أنت متأكد من أنك تريد حذف صاحب المتجر هذا نهائياً مع جميع البيانات المرتبطة به؟ لا يمكن التراجع عن هذا الإجراء.',
     'confirm_delete_employee_permanent' => 'هل أنت متأكد من أنك تريد حذف هذا الموظف نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
-    
+
     // Employee Edit Page
     'edit_employee_title' => 'تعديل الموظف: :name',
     'edit_employee_information' => 'تعديل معلومات الموظف',
@@ -267,7 +268,7 @@ return [
     'Analytics' => 'التحليلات',
     'Profile' => 'الملف الشخصي',
     'Log Out' => 'تسجيل الخروج',
-    
+
     // Bills
     'Create New Bill' => 'إنشاء فاتورة جديدة',
     'Edit Bill' => 'تعديل الفاتورة',
@@ -758,7 +759,7 @@ return [
     'No suppliers found' => 'لم يتم العثور على موردين',
     'Add Your First Supplier' => 'أضف أول مورد لك',
     'Are you sure you want to delete this supplier?' => 'هل أنت متأكد من رغبتك في حذف هذا المورد؟',
-    
+
     // Purchase Bills
     'Purchase Bills' => 'فواتير الشراء',
     'Create Purchase Bill' => 'إنشاء فاتورة شراء',
@@ -800,7 +801,7 @@ return [
     'Products' => 'المنتجات',
     'Total Amount:' => 'إجمالي المبلغ:',
     'Delete Bill' => 'حذف الفاتورة',
-    
+
     // Recent Activity
     'Recent Purchase Bills' => 'فواتير الشراء الحديثة',
     'Recent Payments' => 'المدفوعات الحديثة',
@@ -809,7 +810,7 @@ return [
     'View all purchase bills →' => 'عرض جميع فواتير الشراء ←',
     'Ref:' => 'مرجع:',
     'Failed to add payment' => 'فشل في إضافة الدفعة',
-     // جديد: مفاتيح لوحة التحكم المالية المفقودة
+    // جديد: مفاتيح لوحة التحكم المالية المفقودة
     'Store Inventory Value' => 'قيمة مخزون المتجر',
     'Current Stock Analysis' => 'تحليل المخزون الحالي',
     'Cost Value' => 'قيمة التكلفة',
@@ -824,7 +825,7 @@ return [
     'Different products' => 'منتجات مختلفة',
     'Profit Margin:' => 'هامش الربح:',
     'Based on current inventory at cost vs selling prices' => 'بناءً على المخزون الحالي بالتكلفة مقابل أسعار البيع',
-    
+
     // جديد: مفاتيح متعلقة بالمشتريات
     'Purchases' => 'المشتريات',
     'Purchase Growth' => 'نمو المشتريات',
@@ -840,7 +841,7 @@ return [
     'Purchase Volume' => 'حجم المشتريات',
     'Supplier' => 'المورد',
     'Bills' => 'الفواتير',
-    
+
     // جديد: مصطلحات مالية إضافية
     'Store Value' => 'قيمة المتجر',
     'Inventory Analysis' => 'تحليل المخزون',
@@ -849,7 +850,7 @@ return [
     'Potential Returns' => 'العوائد المحتملة',
     'Margin Analysis' => 'تحليل الهامش',
     'Performance Metrics' => 'مقاييس الأداء',
-    
+
     // جديد: عناصر محسنة للوحة التحكم
     'Financial Overview' => 'النظرة العامة المالية',
     'Business Metrics' => 'مقاييس الأعمال',
@@ -859,7 +860,7 @@ return [
     'Asset Turnover' => 'معدل دوران الأصول',
     'Return on Investment' => 'العائد على الاستثمار',
     'Break-even Analysis' => 'تحليل نقطة التعادل',
-    
+
     // جديد: التحليل المقارن
     'Period Comparison' => 'مقارنة الفترات',
     'Growth Metrics' => 'مقاييس النمو',
@@ -867,7 +868,7 @@ return [
     'Performance Indicators' => 'مؤشرات الأداء',
     'Variance Analysis' => 'تحليل التباين',
     'Budget vs Actual' => 'الميزانية مقابل الفعلي',
-    
+
     // جديد: تسميات مخططات إضافية
     'Daily Trends' => 'الاتجاهات اليومية',
     'Monthly Summary' => 'الملخص الشهري',
@@ -875,7 +876,7 @@ return [
     'Annual Performance' => 'الأداء السنوي',
     'Historical Data' => 'البيانات التاريخية',
     'Forecasting' => 'التنبؤ',
-    
+
     // جديد: إدارة المخزون
     'Stock Levels' => 'مستويات المخزون',
     'Reorder Points' => 'نقاط إعادة الطلب',
@@ -885,7 +886,7 @@ return [
     'Dead Stock' => 'المخزون الميت',
     'Fast Moving Items' => 'العناصر سريعة الحركة',
     'Slow Moving Items' => 'العناصر بطيئة الحركة',
-    
+
     // جديد: تسميات محسنة للوظائف الموجودة
     'Current Period' => 'الفترة الحالية',
     'Previous Period' => 'الفترة السابقة',
@@ -893,7 +894,7 @@ return [
     'Quarter to Date' => 'من بداية الربع',
     'Month to Date' => 'من بداية الشهر',
     'Week to Date' => 'من بداية الأسبوع',
-    
+
     // جديد: الحالة والتنبيهات
     'Healthy' => 'صحي',
     'Warning' => 'تحذير',
@@ -902,7 +903,7 @@ return [
     'Declining' => 'في تراجع',
     'Stable' => 'مستقر',
     'Volatile' => 'متذبذب',
-    
+
     // جديد: عناصر العمل
     'Action Required' => 'إجراء مطلوب',
     'Review Needed' => 'مراجعة مطلوبة',
@@ -910,8 +911,8 @@ return [
     'Optimize' => 'تحسين',
     'Investigate' => 'تحقيق',
     'Follow Up' => 'متابعة',
-    
-     // مفاتيح التنقل
+
+    // مفاتيح التنقل
     'Admin Dashboard' => 'لوحة تحكم المدير',
     'Dashboard' => 'لوحة التحكم',
     'Shop Owners' => 'أصحاب المتاجر',
@@ -942,7 +943,7 @@ return [
     'Arabic' => 'العربية',
     'EN' => 'EN',
     'AR' => 'AR',
-    
+
     // مفاتيح التنقل الإضافية
     'Point of Sale Dashboard' => 'لوحة تحكم نقطة البيع',
     'Customer Management' => 'إدارة العملاء',
@@ -965,7 +966,7 @@ return [
     'Favorites' => 'المفضلة',
     'Recent' => 'الأحدث',
     'History' => 'التاريخ',
-    
+
     // تسميات الأدوار المخصصة للمستخدمين
     'Super Admin' => 'مدير عام',
     'Manager' => 'مدير',
@@ -977,7 +978,7 @@ return [
     'Limited Access' => 'وصول محدود',
     'Full Access' => 'وصول كامل',
     'Read Only' => 'للقراءة فقط',
-    
+
     // فئات القائمة
     'Main Menu' => 'القائمة الرئيسية',
     'Sales' => 'المبيعات',
@@ -1018,7 +1019,7 @@ return [
     // === DASHBOARD FEATURES ===
     'Product Search' => 'البحث عن المنتجات',
     'Quick Scanner' => 'الماسح السريع',
-    
+
     // === PRINT FUNCTIONALITY ===
     'Invoice' => 'فاتورة',
     'Bill number' => 'رقم الفاتورة',
@@ -1133,7 +1134,7 @@ return [
     'Failed to delete payment' => 'فشل في حذف الدفعة',
     'Processing...' => 'جاري المعالجة...',
     'Payment deleted successfully' => 'تم حذف الدفعة بنجاح',
-        
+
 
     // Expenses
     'Expense Management' => 'إدارة المصروفات',
