@@ -31,7 +31,8 @@ class FinancialDashboardController extends Controller
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
 
-        $userId = auth()->id();
+        $user = auth()->user();
+        $userId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         // For employees, get the shop owner ID
         $shopOwnerId = auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : $userId;
 
