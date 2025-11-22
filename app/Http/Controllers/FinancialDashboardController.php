@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -29,65 +30,77 @@ class FinancialDashboardController extends Controller
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
-        
+
         $userId = auth()->id();
         // For employees, get the shop owner ID
         $shopOwnerId = auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : $userId;
-        
+
         // Summary Data - Updated to include purchases and supplier payments
         $summaryData = $this->getSummaryData($startDate, $endDate, $shopOwnerId);
-        
+
         // Store Value Data - NEW
         $storeValueData = $this->getStoreValueData($shopOwnerId);
-        
+
         // Revenue Data
         $revenueData = $this->getRevenueData($startDate, $endDate, $userId);
-        
+
         // Profit Data
         $profitData = $this->getProfitData($startDate, $endDate, $userId);
-        
+
         // Expense Data
         $expenseData = $this->getExpenseData($startDate, $endDate, $userId);
-        
+
         // Customer Payment Data
         $customerPaymentData = $this->getCustomerPaymentData($startDate, $endDate, $userId);
-        
+
         // Employee Payment Data
         $employeePaymentData = $this->getEmployeePaymentData($startDate, $endDate, $shopOwnerId);
-        
+
         // Damaged Products Data
         $damagedData = $this->getDamagedData($startDate, $endDate, $userId);
-        
+
         // Customer Balance Data
         $customerBalanceData = $this->getCustomerBalanceData($userId);
-        
+
         // NEW: Purchase Data
         $purchaseData = $this->getPurchaseData($startDate, $endDate, $shopOwnerId);
-        
+
         // NEW: Supplier Payment Data
         $supplierPaymentData = $this->getSupplierPaymentData($startDate, $endDate, $shopOwnerId);
-        
+
         // NEW: Supplier Balance Data
         $supplierBalanceData = $this->getSupplierBalanceData($shopOwnerId);
-        
+
         // Top Products
         $topProducts = $this->getTopProducts($startDate, $endDate, $userId);
-        
+
         // NEW: Top Suppliers
         $topSuppliers = $this->getTopSuppliers($startDate, $endDate, $shopOwnerId);
-        
+
         // Growth Data - Updated to include purchases
         $growthData = $this->getGrowthData($startDate, $endDate, $shopOwnerId);
-        
+
         return view('dashboard.financial', compact(
-            'summaryData', 'storeValueData', 'revenueData', 'profitData', 'expenseData',
-            'customerPaymentData', 'employeePaymentData', 'damagedData',
-            'customerBalanceData', 'purchaseData', 'supplierPaymentData', 
-            'supplierBalanceData', 'topProducts', 'topSuppliers', 'growthData',
-            'startDate', 'endDate'
+            'summaryData',
+            'storeValueData',
+            'revenueData',
+            'profitData',
+            'expenseData',
+            'customerPaymentData',
+            'employeePaymentData',
+            'damagedData',
+            'customerBalanceData',
+            'purchaseData',
+            'supplierPaymentData',
+            'supplierBalanceData',
+            'topProducts',
+            'topSuppliers',
+            'growthData',
+            'startDate',
+            'endDate'
         ));
     }
-    
+
     private function getSummaryData($startDate, $endDate, $userId)
     {
         // Calculate total revenue
@@ -95,7 +108,7 @@ class FinancialDashboardController extends Controller
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('is_damaged', false)
             ->sum('total_price');
-        
+
         // Calculate total profit
         $totalProfit = Bill::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -107,32 +120,32 @@ class FinancialDashboardController extends Controller
                     return (($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity) - $product->pivot->discount;
                 });
             });
-        
+
         // Calculate total expenses
         $totalExpenses = Expense::where('user_id', $userId)
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->sum('amount');
-        
+
         // Calculate total employee payments
-        $totalEmployeePayments = EmployeePayment::whereHas('employee', function($q) use ($userId) {
+        $totalEmployeePayments = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->sum('amount');
-        
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->sum('amount');
+
         // NEW: Calculate total purchases
         $totalPurchases = PurchaseBill::where('created_by', $userId)
             ->whereBetween('purchase_date', [$startDate, $endDate])
             ->sum('total_amount');
-        
+
         // NEW: Calculate total supplier payments
-        $totalSupplierPayments = SupplierPayment::whereHas('supplier', function($q) use ($userId) {
+        $totalSupplierPayments = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->where('amount', '>', 0) // Only outgoing payments
-        ->sum('amount');
-        
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where('amount', '>', 0) // Only outgoing payments
+            ->sum('amount');
+
         $netIncome = $totalProfit - $totalExpenses - $totalEmployeePayments;
 
         return [
@@ -145,27 +158,27 @@ class FinancialDashboardController extends Controller
             'netIncome' => $netIncome
         ];
     }
-    
+
     // NEW: Store Value Data
     private function getStoreValueData($userId)
     {
         $products = Product::where('user_id', $userId)
             ->where('quantity', '>', 0) // Only positive quantity
             ->get();
-        
-        $totalCostValue = $products->sum(function($product) {
+
+        $totalCostValue = $products->sum(function ($product) {
             return $product->quantity * $product->cost_price;
         });
-        
-        $totalSellingValue = $products->sum(function($product) {
+
+        $totalSellingValue = $products->sum(function ($product) {
             return $product->quantity * $product->selling_price;
         });
-        
+
         $totalItems = $products->sum('quantity');
         $totalProducts = $products->count();
-        
+
         $potentialProfit = $totalSellingValue - $totalCostValue;
-        
+
         return [
             'totalCostValue' => $totalCostValue,
             'totalSellingValue' => $totalSellingValue,
@@ -174,7 +187,7 @@ class FinancialDashboardController extends Controller
             'totalProducts' => $totalProducts
         ];
     }
-    
+
     // NEW: Purchase Data
     private function getPurchaseData($startDate, $endDate, $userId)
     {
@@ -184,70 +197,70 @@ class FinancialDashboardController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         $labels = [];
         $data = [];
         $total = 0;
-        
+
         foreach ($purchases as $purchase) {
             $labels[] = Carbon::parse($purchase->date)->format('M d');
             $data[] = $purchase->total;
             $total += $purchase->total;
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
             'total' => $total
         ];
     }
-    
+
     // NEW: Supplier Payment Data
     private function getSupplierPaymentData($startDate, $endDate, $userId)
     {
-        $payments = SupplierPayment::whereHas('supplier', function($q) use ($userId) {
+        $payments = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->where('amount', '>', 0) // Only outgoing payments
-        ->selectRaw('DATE(payment_date) as date, SUM(amount) as total')
-        ->groupBy('date')
-        ->orderBy('date')
-        ->get();
-        
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where('amount', '>', 0) // Only outgoing payments
+            ->selectRaw('DATE(payment_date) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
         $labels = [];
         $data = [];
         $total = 0;
-        
+
         foreach ($payments as $payment) {
             $labels[] = Carbon::parse($payment->date)->format('M d');
             $data[] = $payment->total;
             $total += $payment->total;
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
             'total' => $total
         ];
     }
-    
+
     // NEW: Supplier Balance Data
     private function getSupplierBalanceData($userId)
     {
         $suppliers = Supplier::where('user_id', $userId)->get();
-        
+
         $totalOwing = $suppliers->where('balance', '>', 0)->sum('balance'); // We owe them
         $totalOwed = abs($suppliers->where('balance', '<', 0)->sum('balance')); // They owe us
-        
+
         $topOwing = $suppliers->where('balance', '>', 0)
             ->sortByDesc('balance')
             ->take(10);
-        
+
         $topOwed = $suppliers->where('balance', '<', 0)
             ->sortBy('balance')
             ->take(10);
-        
+
         return [
             'totalOwing' => $totalOwing,
             'totalOwed' => $totalOwed,
@@ -257,13 +270,13 @@ class FinancialDashboardController extends Controller
             ],
             'topOwed' => [
                 'labels' => $topOwed->pluck('name')->toArray(),
-                'data' => $topOwed->map(function($supplier) {
+                'data' => $topOwed->map(function ($supplier) {
                     return abs($supplier->balance);
                 })->toArray()
             ]
         ];
     }
-    
+
     // NEW: Top Suppliers
     private function getTopSuppliers($startDate, $endDate, $userId)
     {
@@ -281,7 +294,7 @@ class FinancialDashboardController extends Controller
             ->limit(10)
             ->get();
     }
-    
+
     private function getRevenueData($startDate, $endDate, $userId)
     {
         $bills = Bill::where('user_id', $userId)
@@ -291,24 +304,24 @@ class FinancialDashboardController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         $labels = [];
         $data = [];
         $total = 0;
-        
+
         foreach ($bills as $bill) {
             $labels[] = Carbon::parse($bill->date)->format('M d');
             $data[] = $bill->total;
             $total += $bill->total;
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
             'total' => $total
         ];
     }
-    
+
     private function getProfitData($startDate, $endDate, $userId)
     {
         $bills = Bill::where('user_id', $userId)
@@ -316,46 +329,46 @@ class FinancialDashboardController extends Controller
             ->where('is_damaged', false)
             ->with('products')
             ->get()
-            ->groupBy(function($bill) {
+            ->groupBy(function ($bill) {
                 return $bill->created_at->format('Y-m-d');
             });
-        
+
         $labels = [];
         $data = [];
         $total = 0;
-        
+
         foreach ($bills as $date => $dayBills) {
             $dayProfit = $dayBills->sum(function ($bill) {
                 return $bill->products->sum(function ($product) {
                     return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
                 });
             });
-            
+
             $labels[] = Carbon::parse($date)->format('M d');
             $data[] = $dayProfit;
             $total += $dayProfit;
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
             'total' => $total
         ];
     }
-    
+
     private function getExpenseData($startDate, $endDate, $userId)
     {
         $expenses = Expense::where('user_id', $userId)
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->get();
-        
+
         $total = $expenses->sum('amount');
-        
+
         // Group by title for categories
-        $categories = $expenses->groupBy('title')->map(function($group) {
+        $categories = $expenses->groupBy('title')->map(function ($group) {
             return $group->sum('amount');
         });
-        
+
         return [
             'total' => $total,
             'categories' => [
@@ -364,7 +377,7 @@ class FinancialDashboardController extends Controller
             ]
         ];
     }
-    
+
     private function getCustomerPaymentData($startDate, $endDate, $userId)
     {
         $payments = CustomerPayment::where('user_id', $userId)
@@ -372,35 +385,35 @@ class FinancialDashboardController extends Controller
             ->selectRaw('DATE(created_at) as date, amount')
             ->orderBy('created_at')
             ->get();
-        
+
         // Group payments by date and separate positive/negative amounts
         $groupedPayments = $payments->groupBy('date');
-        
+
         $dates = $groupedPayments->keys()->sort()->values();
-        $labels = $dates->map(function($date) {
+        $labels = $dates->map(function ($date) {
             return Carbon::parse($date)->format('M d');
         })->toArray();
-        
+
         $received = []; // Positive amounts (customer paid us)
         $paid = [];     // Negative amounts (we owe customer)
         $totalReceived = 0;
         $totalPaid = 0;
-        
+
         foreach ($dates as $date) {
             $dayPayments = $groupedPayments->get($date);
-            
+
             // Sum positive amounts (customer paid us)
             $receivedAmount = $dayPayments->where('amount', '>', 0)->sum('amount');
-            
+
             // Sum negative amounts (we owe customer) - convert to positive for display
             $paidAmount = abs($dayPayments->where('amount', '<', 0)->sum('amount'));
-            
+
             $received[] = $receivedAmount;
             $paid[] = $paidAmount;
             $totalReceived += $receivedAmount;
             $totalPaid += $paidAmount;
         }
-        
+
         return [
             'labels' => $labels,
             'received' => $received,
@@ -409,23 +422,23 @@ class FinancialDashboardController extends Controller
             'totalPaid' => $totalPaid
         ];
     }
-    
+
     private function getEmployeePaymentData($startDate, $endDate, $userId)
     {
-        $payments = EmployeePayment::whereHas('employee', function($q) use ($userId) {
+        $payments = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->with('employee')
-        ->get();
-        
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->with('employee')
+            ->get();
+
         $total = $payments->sum('amount');
-        
+
         // Group by employee
-        $byEmployee = $payments->groupBy('employee.name')->map(function($group) {
+        $byEmployee = $payments->groupBy('employee.name')->map(function ($group) {
             return $group->sum('amount');
         });
-        
+
         return [
             'total' => $total,
             'byEmployee' => [
@@ -434,7 +447,7 @@ class FinancialDashboardController extends Controller
             ]
         ];
     }
-    
+
     private function getDamagedData($startDate, $endDate, $userId)
     {
         $damagedBills = Bill::where('user_id', $userId)
@@ -442,24 +455,24 @@ class FinancialDashboardController extends Controller
             ->where('is_damaged', true)
             ->with('products')
             ->get();
-        
+
         $count = 0;
         // Calculate total loss based on cost price (since selling price is 0 due to 100% discount)
         $totalLoss = 0;
         $products = collect();
-        
+
         foreach ($damagedBills as $bill) {
             foreach ($bill->products as $product) {
                 // Calculate loss for this product (cost_price * quantity)
                 $productLoss = $product->pivot->cost_price * $product->pivot->quantity;
                 $totalLoss += $productLoss;
-                $count+= $product->pivot->quantity;
-                
+                $count += $product->pivot->quantity;
+
                 // Group by product name for the chart
                 $existing = $products->where('name', $product->name)->first();
                 if ($existing) {
                     // Add to existing product's loss value
-                    $existingIndex = $products->search(function($item) use ($product) {
+                    $existingIndex = $products->search(function ($item) use ($product) {
                         return $item['name'] === $product->name;
                     });
                     $existingItem = $products->get($existingIndex);
@@ -474,10 +487,10 @@ class FinancialDashboardController extends Controller
                 }
             }
         }
-        
+
         // Sort by loss value (highest first) and take top 10
         $products = $products->sortByDesc('value')->take(10);
-        
+
         return [
             'total' => $totalLoss,  // Total loss based on cost prices
             'count' => $count,
@@ -487,22 +500,22 @@ class FinancialDashboardController extends Controller
             ]
         ];
     }
-    
+
     private function getCustomerBalanceData($userId)
     {
         $customers = Customer::where('user_id', $userId)->get();
-        
+
         $totalOwing = abs($customers->where('balance', '<', 0)->sum('balance'));
         $totalOwed = $customers->where('balance', '>', 0)->sum('balance');
-        
+
         $topOwing = $customers->where('balance', '<', 0)
             ->sortBy('balance')
             ->take(10);
-        
+
         $topOwed = $customers->where('balance', '>', 0)
             ->sortByDesc('balance')
             ->take(10);
-        
+
         return [
             'totalOwing' => $totalOwing,
             'totalOwed' => $totalOwed,
@@ -512,13 +525,13 @@ class FinancialDashboardController extends Controller
             ],
             'topOwed' => [
                 'labels' => $topOwed->pluck('name')->toArray(),
-                'data' => $topOwed->map(function($customer) {
+                'data' => $topOwed->map(function ($customer) {
                     return abs($customer->balance);
                 })->toArray()
             ]
         ];
     }
-    
+
     private function getTopProducts($startDate, $endDate, $userId)
     {
         return DB::table('bills')
@@ -538,22 +551,22 @@ class FinancialDashboardController extends Controller
             ->limit(10)
             ->get();
     }
-    
+
     private function getGrowthData($startDate, $endDate, $userId)
     {
         $currentStart = Carbon::parse($startDate);
         $currentEnd = Carbon::parse($endDate);
         $daysDiff = $currentStart->diffInDays($currentEnd);
-        
+
         $previousStart = $currentStart->copy()->subDays($daysDiff + 1);
         $previousEnd = $currentStart->copy()->subDay();
-        
+
         // Current period data
         $currentRevenue = Bill::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('is_damaged', false)
             ->sum('total_price');
-        
+
         $currentProfit = Bill::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('is_damaged', false)
@@ -564,22 +577,22 @@ class FinancialDashboardController extends Controller
                     return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
                 });
             });
-        
+
         $currentExpenses = Expense::where('user_id', $userId)
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->sum('amount');
-            
+
         // NEW: Current purchases
         $currentPurchases = PurchaseBill::where('created_by', $userId)
             ->whereBetween('purchase_date', [$startDate, $endDate])
             ->sum('total_amount');
-        
+
         // Previous period data
         $previousRevenue = Bill::where('user_id', $userId)
             ->whereBetween('created_at', [$previousStart, $previousEnd])
             ->where('is_damaged', false)
             ->sum('total_price');
-        
+
         $previousProfit = Bill::where('user_id', $userId)
             ->whereBetween('created_at', [$previousStart, $previousEnd])
             ->where('is_damaged', false)
@@ -590,16 +603,16 @@ class FinancialDashboardController extends Controller
                     return ($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity;
                 });
             });
-        
+
         $previousExpenses = Expense::where('user_id', $userId)
             ->whereBetween('expense_date', [$previousStart, $previousEnd])
             ->sum('amount');
-            
+
         // NEW: Previous purchases
         $previousPurchases = PurchaseBill::where('created_by', $userId)
             ->whereBetween('purchase_date', [$previousStart, $previousEnd])
             ->sum('total_amount');
-        
+
         return [
             'revenue' => [
                 'current' => $currentRevenue,
@@ -623,7 +636,7 @@ class FinancialDashboardController extends Controller
             ]
         ];
     }
-    
+
     public function printComprehensiveReport(Request $request)
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
@@ -677,22 +690,22 @@ class FinancialDashboardController extends Controller
             ->get();
 
         // 6. Supplier Payments
-        $data['supplier_payments'] = SupplierPayment::whereHas('supplier', function($q) use ($shopOwnerId) {
+        $data['supplier_payments'] = SupplierPayment::whereHas('supplier', function ($q) use ($shopOwnerId) {
             $q->where('user_id', $shopOwnerId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->with('supplier')
-        ->orderBy('payment_date', 'desc')
-        ->get();
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->with('supplier')
+            ->orderBy('payment_date', 'desc')
+            ->get();
 
         // 7. Employee Payments
-        $data['employee_payments'] = EmployeePayment::whereHas('employee', function($q) use ($shopOwnerId) {
+        $data['employee_payments'] = EmployeePayment::whereHas('employee', function ($q) use ($shopOwnerId) {
             $q->where('shop_owner_id', $shopOwnerId);
         })
-        ->whereBetween('payment_date', [$startDate, $endDate])
-        ->with('employee')
-        ->orderBy('payment_date', 'desc')
-        ->get();
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->with('employee')
+            ->orderBy('payment_date', 'desc')
+            ->get();
 
         // Calculate summary statistics
         $data['summary'] = [
@@ -702,7 +715,11 @@ class FinancialDashboardController extends Controller
             'total_customer_payments' => $data['customer_payments']->sum('amount'),
             'total_supplier_payments' => $data['supplier_payments']->sum('amount'),
             'total_employee_payments' => $data['employee_payments']->sum('amount'),
-            'total_damaged_loss' => $data['damaged_bills']->sum('total_price'),
+            'total_damaged_loss' => $data['damaged_bills']->sum(function ($bill) {
+                return $bill->products->sum(function ($product) {
+                    return $product->pivot->cost_price * $product->pivot->quantity;
+                });
+            }),
         ];
 
         // Calculate profit exactly as shown in financial dashboard (gross profit from sales)
@@ -749,9 +766,17 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($products as $product) {
             $productsSheet->fromArray([
-                [$product->id, $product->name, $product->category, $product->barcode, $product->quantity,
-                $product->cost_price, $product->selling_price, $product->has_tags ? 'Yes' : 'No',
-                $product->created_at->format('Y-m-d H:i:s')]
+                [
+                    $product->id,
+                    $product->name,
+                    $product->category,
+                    $product->barcode,
+                    $product->quantity,
+                    $product->cost_price,
+                    $product->selling_price,
+                    $product->has_tags ? 'Yes' : 'No',
+                    $product->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -768,8 +793,13 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($customers as $customer) {
             $customersSheet->fromArray([
-                [$customer->id, $customer->name, $customer->phone, $customer->balance,
-                $customer->created_at->format('Y-m-d H:i:s')]
+                [
+                    $customer->id,
+                    $customer->name,
+                    $customer->phone,
+                    $customer->balance,
+                    $customer->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -786,9 +816,15 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($bills as $bill) {
             $billsSheet->fromArray([
-                [$bill->id, $bill->customer->name ?? 'N/A', $bill->total_price, $bill->note,
-                $bill->is_damaged ? 'Yes' : 'No', $bill->created_by,
-                $bill->created_at->format('Y-m-d H:i:s')]
+                [
+                    $bill->id,
+                    $bill->customer->name ?? 'N/A',
+                    $bill->total_price,
+                    $bill->note,
+                    $bill->is_damaged ? 'Yes' : 'No',
+                    $bill->created_by,
+                    $bill->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -815,9 +851,16 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($billProducts as $billProduct) {
             $billProductsSheet->fromArray([
-                [$billProduct->bill_id, $billProduct->product_name, $billProduct->quantity,
-                $billProduct->cost_price, $billProduct->selling_price, $billProduct->discount,
-                $billProduct->tags ?? 'N/A', Carbon::parse($billProduct->bill_date)->format('Y-m-d H:i:s')]
+                [
+                    $billProduct->bill_id,
+                    $billProduct->product_name,
+                    $billProduct->quantity,
+                    $billProduct->cost_price,
+                    $billProduct->selling_price,
+                    $billProduct->discount,
+                    $billProduct->tags ?? 'N/A',
+                    Carbon::parse($billProduct->bill_date)->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -834,8 +877,14 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($customerPayments as $payment) {
             $customerPaymentsSheet->fromArray([
-                [$payment->id, $payment->customer->name ?? 'N/A', $payment->amount,
-                ucfirst($payment->type), $payment->note, $payment->created_at->format('Y-m-d H:i:s')]
+                [
+                    $payment->id,
+                    $payment->customer->name ?? 'N/A',
+                    $payment->amount,
+                    ucfirst($payment->type),
+                    $payment->note,
+                    $payment->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -852,8 +901,14 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($expenses as $expense) {
             $expensesSheet->fromArray([
-                [$expense->id, $expense->title, $expense->amount,
-                $expense->expense_date, $expense->notes, $expense->created_at->format('Y-m-d H:i:s')]
+                [
+                    $expense->id,
+                    $expense->title,
+                    $expense->amount,
+                    $expense->expense_date,
+                    $expense->notes,
+                    $expense->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -870,8 +925,13 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($employees as $employee) {
             $employeesSheet->fromArray([
-                [$employee->id, $employee->name, $employee->job_title,
-                $employee->monthly_salary, $employee->created_at->format('Y-m-d H:i:s')]
+                [
+                    $employee->id,
+                    $employee->name,
+                    $employee->job_title,
+                    $employee->monthly_salary,
+                    $employee->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -880,7 +940,7 @@ class FinancialDashboardController extends Controller
         $employeePaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employee Payments');
         $spreadsheet->addSheet($employeePaymentsSheet);
 
-        $employeePayments = EmployeePayment::whereHas('employee', function($q) use ($shopOwnerId) {
+        $employeePayments = EmployeePayment::whereHas('employee', function ($q) use ($shopOwnerId) {
             $q->where('shop_owner_id', $shopOwnerId);
         })->with('employee')->get();
 
@@ -891,8 +951,13 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($employeePayments as $payment) {
             $employeePaymentsSheet->fromArray([
-                [$payment->id, $payment->employee->name ?? 'N/A', $payment->amount,
-                $payment->payment_date, $payment->created_at->format('Y-m-d H:i:s')]
+                [
+                    $payment->id,
+                    $payment->employee->name ?? 'N/A',
+                    $payment->amount,
+                    $payment->payment_date,
+                    $payment->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -914,8 +979,13 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($batches as $batch) {
             $batchesSheet->fromArray([
-                [$batch->id, $batch->product_name, $batch->quantity,
-                $batch->cost_price, $batch->created_at]
+                [
+                    $batch->id,
+                    $batch->product_name,
+                    $batch->quantity,
+                    $batch->cost_price,
+                    $batch->created_at
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -949,9 +1019,16 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($suppliers as $supplier) {
             $suppliersSheet->fromArray([
-                [$supplier->id, $supplier->name, $supplier->phone, $supplier->email,
-                $supplier->address, $supplier->balance, $supplier->notes,
-                $supplier->created_at->format('Y-m-d H:i:s')]
+                [
+                    $supplier->id,
+                    $supplier->name,
+                    $supplier->phone,
+                    $supplier->email,
+                    $supplier->address,
+                    $supplier->balance,
+                    $supplier->notes,
+                    $supplier->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -968,9 +1045,16 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($purchaseBills as $bill) {
             $purchaseBillsSheet->fromArray([
-                [$bill->id, $bill->supplier->name ?? 'N/A', $bill->total_amount,
-                $bill->reference_number, $bill->purchase_date, $bill->notes,
-                $bill->created_by, $bill->created_at->format('Y-m-d H:i:s')]
+                [
+                    $bill->id,
+                    $bill->supplier->name ?? 'N/A',
+                    $bill->total_amount,
+                    $bill->reference_number,
+                    $bill->purchase_date,
+                    $bill->notes,
+                    $bill->created_by,
+                    $bill->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -997,8 +1081,14 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($purchaseProducts as $product) {
             $purchaseProductsSheet->fromArray([
-                [$product->purchase_bill_id, $product->product_name, $product->quantity,
-                $product->unit_cost, $product->total_cost, $product->purchase_date]
+                [
+                    $product->purchase_bill_id,
+                    $product->product_name,
+                    $product->quantity,
+                    $product->unit_cost,
+                    $product->total_cost,
+                    $product->purchase_date
+                ]
             ], null, 'A' . $row);
             $row++;
         }
@@ -1007,7 +1097,7 @@ class FinancialDashboardController extends Controller
         $supplierPaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Supplier Payments');
         $spreadsheet->addSheet($supplierPaymentsSheet);
 
-        $supplierPayments = SupplierPayment::whereHas('supplier', function($q) use ($shopOwnerId) {
+        $supplierPayments = SupplierPayment::whereHas('supplier', function ($q) use ($shopOwnerId) {
             $q->where('user_id', $shopOwnerId);
         })->with('supplier')->get();
 
@@ -1018,16 +1108,22 @@ class FinancialDashboardController extends Controller
         $row = 2;
         foreach ($supplierPayments as $payment) {
             $supplierPaymentsSheet->fromArray([
-                [$payment->id, $payment->supplier->name ?? 'N/A', $payment->amount,
-                ucfirst($payment->type), $payment->payment_date, $payment->note,
-                $payment->created_at->format('Y-m-d H:i:s')]
+                [
+                    $payment->id,
+                    $payment->supplier->name ?? 'N/A',
+                    $payment->amount,
+                    ucfirst($payment->type),
+                    $payment->payment_date,
+                    $payment->note,
+                    $payment->created_at->format('Y-m-d H:i:s')
+                ]
             ], null, 'A' . $row);
             $row++;
         }
 
         $fileName = 'complete_database_export_' . auth()->user()->name . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
 
-        return new StreamedResponse(function() use ($spreadsheet) {
+        return new StreamedResponse(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
         }, 200, [
