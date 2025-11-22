@@ -1,0 +1,30 @@
+<?php
+
+return [
+    // Expense Management Page
+    'Expense Management' => 'إدارة المصروفات',
+    'Total Expenses' => 'إجمالي المصروفات',
+    'Filter Expenses' => 'تصفية المصروفات',
+    'From Date' => 'من تاريخ',
+    'To Date' => 'إلى تاريخ',
+    'Filter' => 'تصفية',
+    'Clear' => 'مسح',
+    'Add New Expense' => 'إضافة مصروف جديد',
+    'Record a new business expense' => 'تسجيل مصروف جديد للمتجر',
+    'Title' => 'العنوان',
+    'e.g., Office supplies, Marketing campaign' => 'مثال: مستلزمات مكتبية، حملة تسويقية',
+    'Amount' => 'المبلغ',
+    'Date' => 'التاريخ',
+    'Notes' => 'ملاحظات',
+    'Additional details about this expense...' => 'تفاصيل إضافية حول هذا المصروف...',
+    'Add Expense' => 'إضافة مصروف',
+    'Recent Expenses' => 'أحدث المصروفات',
+    'No expenses found' => 'لم يتم العثور على مصروفات',
+    'Start by adding your first expense above.' => 'ابدأ بإضافة أول مصروف لك أعلاه.',
+    'Large Payment' => 'دفعة كبيرة',
+    'Delete' => 'حذف',
+    'Are you sure you want to delete this expense?' => 'هل أنت متأكد من حذف هذا المصروف؟',
+    'From' => 'من',
+    'To' => 'إلى',
+    'No notes' => 'لا توجد ملاحظات',
+];

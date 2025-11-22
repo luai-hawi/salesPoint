@@ -1,0 +1,30 @@
+<?php
+
+return [
+    // Expense Management Page
+    'Expense Management' => 'Expense Management',
+    'Total Expenses' => 'Total Expenses',
+    'Filter Expenses' => 'Filter Expenses',
+    'From Date' => 'From Date',
+    'To Date' => 'To Date',
+    'Filter' => 'Filter',
+    'Clear' => 'Clear',
+    'Add New Expense' => 'Add New Expense',
+    'Record a new business expense' => 'Record a new business expense',
+    'Title' => 'Title',
+    'e.g., Office supplies, Marketing campaign' => 'e.g., Office supplies, Marketing campaign',
+    'Amount' => 'Amount',
+    'Date' => 'Date',
+    'Notes' => 'Notes',
+    'Additional details about this expense...' => 'Additional details about this expense...',
+    'Add Expense' => 'Add Expense',
+    'Recent Expenses' => 'Recent Expenses',
+    'No expenses found' => 'No expenses found',
+    'Start by adding your first expense above.' => 'Start by adding your first expense above.',
+    'Large Payment' => 'Large Payment',
+    'Delete' => 'Delete',
+    'Are you sure you want to delete this expense?' => 'Are you sure you want to delete this expense?',
+    'From' => 'From',
+    'To' => 'To',
+    'No notes' => 'No notes',
+];
