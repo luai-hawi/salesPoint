@@ -172,8 +172,7 @@
                                     <td class="px-4 py-3">
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
-                                                ({{ $product->pivot->quantity }}×)
-                                            </div>
+                                                ({{ $product->pivot->quantity }}×)</div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-positive">
@@ -231,13 +230,11 @@
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
                                                 ({{ $product->pivot->quantity }}× @
-                                                ₪{{ number_format($product->pivot->unit_cost, 2) }})
-                                            </div>
+                                                ₪{{ number_format($product->pivot->unit_cost, 2) }})</div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-negative">
-                                        ₪{{ number_format($bill->products->sum(function ($product) {return $product->pivot->unit_cost * $product->pivot->quantity;}),2) }}
-                                    </td>
+                                        ₪{{ number_format($bill->total_amount, 2) }}</td>
                                     <td class="px-4 py-3">{{ $bill->creator->name ?? 'N/A' }}</td>
                                 </tr>
                             @endforeach
@@ -286,12 +283,17 @@
                                     <td class="px-4 py-3">
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
-                                                ({{ $product->pivot->quantity }}×)
-                                            </div>
+                                                ({{ $product->pivot->quantity }}×)</div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-negative">
-                                        ₪{{ number_format($bill->total_price, 2) }}</td>
+                                        ₪{{ number_format(
+                                            $bill->products->sum(function ($product) {
+                                                return $product->pivot->cost_price * $product->pivot->quantity;
+                                            }),
+                                            2,
+                                        ) }}
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
