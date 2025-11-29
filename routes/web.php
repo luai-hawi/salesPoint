@@ -26,16 +26,19 @@ use App\Http\Controllers\SettingsController;
 use App\Models\Product;
 
 Route::redirect('/', '/dashboard', 301);
+Route::get('/portfolio', function () {
+    return view('portfolio');
+})->name('portfolio');
 
 // ------------------- DASHBOARD WITH ROLE-BASED REDIRECT -------------------
 Route::get('/dashboard', function () {
     $user = auth()->user();
-    
+
     // Redirect admins to admin dashboard
     if ($user->role === 'admin') {
         return redirect()->route('admin.dashboard');
     }
-    
+
     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
     // Get customers with last bill amounts
@@ -73,23 +76,23 @@ Route::get('/dashboard', function () {
         ->get();
 
     return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths'));
-})->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,admin,restaurant,merchant'])
+})->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 
 
 
 // Admin Routes (protected by auth and admin middleware)
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin'])->prefix('admin')->name('admin.')->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-    
+
     // Shop Owners Management
     Route::resource('shop-owners', ShopOwnerController::class)->except(['show']);
     Route::get('shop-owners/{shopOwner}', [ShopOwnerController::class, 'show'])->name('shop-owners.show');
     Route::post('shop-owners/{shopOwner}/toggle-status', [ShopOwnerController::class, 'toggleStatus'])->name('shop-owners.toggle-status');
     Route::post('shop-owners/{shopOwner}/mark-paid', [ShopOwnerController::class, 'markPaid'])->name('shop-owners.mark-paid');
-    
+
     // Employee Management Routes
     Route::prefix('employees')->name('employees.')->group(function () {
         Route::get('/', [ShopOwnerController::class, 'allEmployees'])->name('index');
@@ -99,7 +102,6 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin'])
         Route::put('/{employee}', [ShopOwnerController::class, 'updateEmployee'])->name('update');
         Route::delete('/{employee}', [ShopOwnerController::class, 'destroyEmployee'])->name('destroy');
     });
-     
 });
 
 // Additional middleware for admin role
@@ -111,7 +113,7 @@ Route::middleware(['auth'])->group(function () {
 
 //-------------------ROUTES FOR ADMIN, EMPLOYEE, SHOP OWNER-------------------
 // These routes are accessible to admin, shop owner, and employee roles
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin,shop_owner,employee,restaurant,merchant'])
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
         // Profile
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -122,18 +124,18 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':admin,sh
 
 
 // ------------------- SHOP OWNER AND EMPLOYEE ROUTES -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant'])
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
     ->group(function () {
 
         // Tags Management
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_tags'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_tags'])->group(function () {
             Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
             Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
             Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
         });
 
         // Settings
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_settings'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_settings'])->group(function () {
             Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
             Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
         });
@@ -145,7 +147,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         Route::post('customers/{customer}/quick-payments', [CustomerController::class, 'quickStorePayment'])->name('customers.quick-payments.store');
 
         // Products
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_products'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_products'])->group(function () {
             Route::resource('products', ProductsController::class)->except(['show']);
             Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
             Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
@@ -159,7 +161,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         });
 
         // Temporary debug route
-        Route::get('/debug-products', function() {
+        Route::get('/debug-products', function () {
             $user = auth()->user();
             if (!$user) return 'Not logged in';
 
@@ -176,7 +178,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         });
 
         // Enhanced Bills Routes
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_bills'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_bills'])->group(function () {
             Route::resource('bills', BillsController::class);
             Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
             Route::get('/bills/search-api', [BillsController::class, 'search'])->name('bills.search');
@@ -185,7 +187,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
         });
 
         // Customers & Payments
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_customers'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_customers'])->group(function () {
             Route::resource('customers', CustomerController::class);
             Route::get('customers/{customer}/payments', [CustomerController::class, 'showPayments'])->name('customers.payments');
             Route::post('customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
@@ -258,16 +260,16 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
 // Batch Image Compression Route with Progress Tracking
 Route::get('/compress-and-cleanup-images', function () {
     set_time_limit(300); // Set 5 minutes timeout
-    
+
     $batchSize = request('batch', 10); // Process 10 images at a time
     $step = request('step', 'start'); // start, compress, cleanup, complete
     $offset = request('offset', 0);
-    
+
     if ($step === 'start') {
         // Return the main page with JavaScript for batch processing
         return view('admin.image-compression');
     }
-    
+
     $results = [
         'compressed' => 0,
         'deleted' => 0,
@@ -276,16 +278,16 @@ Route::get('/compress-and-cleanup-images', function () {
         'hasMore' => false,
         'nextOffset' => $offset
     ];
-    
+
     // Helper function to compress image using GD
-    $compressImage = function($source, $destination, $quality = 75, $maxWidth = 800) {
+    $compressImage = function ($source, $destination, $quality = 75, $maxWidth = 800) {
         $info = getimagesize($source);
         if ($info === false) {
             return false;
         }
-        
+
         $mime = $info['mime'];
-        
+
         switch ($mime) {
             case 'image/jpeg':
                 $image = imagecreatefromjpeg($source);
@@ -299,15 +301,15 @@ Route::get('/compress-and-cleanup-images', function () {
             default:
                 return false;
         }
-        
+
         if (!$image) {
             return false;
         }
-        
+
         // Get original dimensions
         $originalWidth = imagesx($image);
         $originalHeight = imagesy($image);
-        
+
         // Calculate new dimensions
         if ($originalWidth > $maxWidth) {
             $newWidth = $maxWidth;
@@ -316,20 +318,20 @@ Route::get('/compress-and-cleanup-images', function () {
             $newWidth = $originalWidth;
             $newHeight = $originalHeight;
         }
-        
+
         // Create new image
         $newImage = imagecreatetruecolor($newWidth, $newHeight);
-        
+
         // Preserve transparency for PNG and GIF
         if ($mime == 'image/png' || $mime == 'image/gif') {
             imagecolortransparent($newImage, imagecolorallocatealpha($newImage, 0, 0, 0, 127));
             imagealphablending($newImage, false);
             imagesavealpha($newImage, true);
         }
-        
+
         // Resize image
         imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
-        
+
         // Save compressed image
         $result = false;
         switch ($mime) {
@@ -344,13 +346,13 @@ Route::get('/compress-and-cleanup-images', function () {
                 $result = imagegif($newImage, $destination);
                 break;
         }
-        
+
         imagedestroy($image);
         imagedestroy($newImage);
-        
+
         return $result;
     };
-    
+
     try {
         if ($step === 'compress') {
             // Get products with images in batches
@@ -359,16 +361,16 @@ Route::get('/compress-and-cleanup-images', function () {
                 ->skip($offset)
                 ->take($batchSize)
                 ->get();
-            
+
             $processedCount = 0;
-            
+
             foreach ($products as $product) {
                 $pictures = json_decode($product->pictures, true);
-                
+
                 if (is_array($pictures)) {
                     foreach ($pictures as $picture) {
                         $fullPath = storage_path('app/public/' . $picture);
-                        
+
                         if (file_exists($fullPath)) {
                             try {
                                 $imageInfo = getimagesize($fullPath);
@@ -387,51 +389,50 @@ Route::get('/compress-and-cleanup-images', function () {
                 }
                 $processedCount++;
             }
-            
+
             // Check if there are more products to process
             $totalProducts = \App\Models\Product::whereNotNull('pictures')
                 ->where('pictures', '!=', '')
                 ->count();
-            
+
             $results['hasMore'] = ($offset + $batchSize) < $totalProducts;
             $results['nextOffset'] = $offset + $batchSize;
             $results['progress'] = min(100, round((($offset + $processedCount) / $totalProducts) * 100));
-            
         } elseif ($step === 'cleanup') {
             // Collect all used images
             $usedImages = [];
             $products = \App\Models\Product::whereNotNull('pictures')
                 ->where('pictures', '!=', '')
                 ->get();
-            
+
             foreach ($products as $product) {
                 $pictures = json_decode($product->pictures, true);
                 if (is_array($pictures)) {
                     $usedImages = array_merge($usedImages, $pictures);
                 }
             }
-            
+
             // Find and delete unused images
             $productsDirectory = storage_path('app/public/products');
-            
+
             if (is_dir($productsDirectory)) {
                 $allFiles = [];
                 $iterator = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($productsDirectory, \RecursiveDirectoryIterator::SKIP_DOTS)
                 );
-                
+
                 foreach ($iterator as $file) {
                     if ($file->isFile() && in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'gif'])) {
                         $relativePath = 'products/' . $iterator->getSubPathName();
                         $allFiles[] = $relativePath;
                     }
                 }
-                
+
                 $unusedImages = array_diff($allFiles, $usedImages);
-                
+
                 foreach ($unusedImages as $unusedImage) {
                     $fullPath = storage_path('app/public/' . $unusedImage);
-                    
+
                     if (file_exists($fullPath)) {
                         try {
                             unlink($fullPath);
@@ -442,11 +443,11 @@ Route::get('/compress-and-cleanup-images', function () {
                         }
                     }
                 }
-                
+
                 // Clean up empty directories
-                $removeEmptyDirs = function($dir) use (&$removeEmptyDirs) {
+                $removeEmptyDirs = function ($dir) use (&$removeEmptyDirs) {
                     if (!is_dir($dir)) return false;
-                    
+
                     $files = array_diff(scandir($dir), ['.', '..']);
                     foreach ($files as $file) {
                         $fullPath = $dir . DIRECTORY_SEPARATOR . $file;
@@ -454,46 +455,44 @@ Route::get('/compress-and-cleanup-images', function () {
                             $removeEmptyDirs($fullPath);
                         }
                     }
-                    
+
                     $files = array_diff(scandir($dir), ['.', '..']);
                     if (empty($files) && $dir !== storage_path('app/public/products')) {
                         rmdir($dir);
                     }
-                    
+
                     return true;
                 };
-                
+
                 $removeEmptyDirs($productsDirectory);
             }
         }
-        
     } catch (\Exception $e) {
         $results['errors'][] = "General error: " . $e->getMessage();
     }
-    
+
     return response()->json($results);
-    
 })->name('compress.cleanup.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
 
 // Simple route for quick compression (smaller batches)
 Route::get('/quick-compress-images', function () {
     set_time_limit(60); // 1 minute timeout
-    
+
     $results = ['compressed' => 0, 'errors' => []];
-    
+
     // Process only first 5 products to avoid timeout
     $products = \App\Models\Product::whereNotNull('pictures')
         ->where('pictures', '!=', '')
         ->take(5)
         ->get();
-    
+
     foreach ($products as $product) {
         $pictures = json_decode($product->pictures, true);
-        
+
         if (is_array($pictures)) {
             foreach ($pictures as $picture) {
                 $fullPath = storage_path('app/public/' . $picture);
-                
+
                 if (file_exists($fullPath)) {
                     try {
                         $imageInfo = getimagesize($fullPath);
@@ -525,7 +524,7 @@ Route::get('/quick-compress-images', function () {
             }
         }
     }
-    
+
     return response()->json($results);
 })->name('quick.compress.images')->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin']);
 
@@ -552,9 +551,9 @@ Route::get('/api/categories', function () {
 
     // Check if there are uncategorized products
     $hasUncategorized = \App\Models\Product::where('user_id', $ownerId)
-        ->where(function($q) {
+        ->where(function ($q) {
             $q->whereNull('category')
-              ->orWhere('category', '');
+                ->orWhere('category', '');
         })
         ->exists();
 
@@ -564,13 +563,13 @@ Route::get('/api/categories', function () {
     }
 
     return response()->json($categories);
-})->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant']);
+})->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant']);
 
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_owner,employee,restaurant,merchant'])
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
     ->group(function () {
 
         // Suppliers
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_suppliers'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_suppliers'])->group(function () {
             Route::resource('suppliers', SupplierController::class);
             Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
             Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
@@ -579,19 +578,19 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class.':shop_own
 
 
         // Purchase Bills
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class.':manage_purchase_bills'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_purchase_bills'])->group(function () {
             Route::resource('purchase-bills', PurchaseBillController::class);
             Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
             Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
         });
-        
+
         // API endpoints for AJAX calls
         Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');
         Route::get('/api/purchase-bills/search', [PurchaseBillController::class, 'search'])->name('api.purchase-bills.search');
     });
 
 // ------------------- LANGUAGE ROUTES -------------------
-require __DIR__.'/language.php';
+require __DIR__ . '/language.php';
 
 // ------------------- AUTH ROUTES -------------------
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
