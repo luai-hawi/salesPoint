@@ -21,9 +21,9 @@ class ProductsController extends Controller
             $search = strtolower($search);
             $query->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
-                  ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"])
-                  ->orWhere('cost_price', 'like', "%{$search}%")
-                  ->orWhere('selling_price', 'like', "%{$search}%");
+                    ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"])
+                    ->orWhere('cost_price', 'like', "%{$search}%")
+                    ->orWhere('selling_price', 'like', "%{$search}%");
             });
         }
 
@@ -45,51 +45,61 @@ class ProductsController extends Controller
         return view('products.create');
     }
 
-     public function store(Request $request)
-{
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'category' => 'nullable|string|max:255', // Add category validation
-        'barcode' => 'nullable|string|max:255',
-        'pictures' => 'nullable|array',
-        'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
-        'cost_price' => 'required|numeric',
-        'selling_price' => 'required|numeric',
-        'has_tags' => 'boolean',
-    ]);
+    public function store(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:255', // Add category validation
+            'barcode' => 'nullable|string|max:255',
+            'pictures' => 'nullable|array',
+            'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'cost_price' => 'required|numeric',
+            'selling_price' => 'required|numeric',
+            'has_tags' => 'boolean',
+        ]);
 
-    $product = new Product();
-    $product->name = $request->name;
-    $product->category = $request->category; // Add category
-    $product->barcode = $request->barcode;
-    $product->quantity = $request->quantity;
-    $product->cost_price = round($request->cost_price, 2);
-    $product->selling_price = $request->selling_price;
-    $product->user_id = $ownerId;
-    $product->has_tags = $request->has('has_tags');
-
-    if ($request->hasFile('pictures')) {
-        $pictures = [];
-        foreach ($request->file('pictures') as $picture) {
-            $pictures[] = $picture->store('products', 'public');
+        // Check image limit
+        if ($request->hasFile('pictures')) {
+            $owner = \App\Models\User::find($ownerId);
+            $currentImages = $this->countTotalImages($ownerId);
+            $newImagesCount = count($request->file('pictures'));
+            if ($currentImages + $newImagesCount > $owner->image_limit) {
+                return back()->withErrors(['pictures' => 'Image limit exceeded. You can upload a maximum of ' . $owner->image_limit . ' images total.'])->withInput();
+            }
         }
-        $product->pictures = json_encode($pictures);
+
+        $product = new Product();
+        $product->name = $request->name;
+        $product->category = $request->category; // Add category
+        $product->barcode = $request->barcode;
+        $product->quantity = $request->quantity;
+        $product->cost_price = round($request->cost_price, 2);
+        $product->selling_price = $request->selling_price;
+        $product->user_id = $ownerId;
+        $product->has_tags = $request->has('has_tags');
+
+        if ($request->hasFile('pictures')) {
+            $pictures = [];
+            foreach ($request->file('pictures') as $picture) {
+                $pictures[] = $picture->store('products', 'public');
+            }
+            $product->pictures = json_encode($pictures);
+        }
+
+        $product->save();
+
+        // create initial batch for this product
+        $batch = new Batch();
+        $batch->product_id = $product->id;
+        $batch->quantity = $request->quantity;
+        $batch->cost_price = $request->cost_price;
+        $batch->user_id = $ownerId;
+        $batch->save();
+
+        return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
-
-    $product->save();
-
-    // create initial batch for this product
-    $batch = new Batch();
-    $batch->product_id = $product->id;
-    $batch->quantity = $request->quantity;
-    $batch->cost_price = $request->cost_price;
-    $batch->user_id = $ownerId;
-    $batch->save();
-
-    return redirect()->route('products.index')->with('success', 'Product created successfully.');
-}
 
 
     public function edit(Product $product)
@@ -98,47 +108,58 @@ class ProductsController extends Controller
         return view('products.edit', compact('product'));
     }
 
-     public function update(Request $request, Product $product)
-{
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $this->authorizeProduct($product);
+    public function update(Request $request, Product $product)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizeProduct($product);
 
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'category' => 'nullable|string|max:255', // Add category validation
-        'barcode' => 'nullable|string|max:255',
-        'pictures' => 'nullable|array',
-        'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
-        'cost_price' => 'required|numeric',
-        'selling_price' => 'required|numeric',
-        'has_tags' => 'boolean',
-    ]);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:255', // Add category validation
+            'barcode' => 'nullable|string|max:255',
+            'pictures' => 'nullable|array',
+            'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'cost_price' => 'required|numeric',
+            'selling_price' => 'required|numeric',
+            'has_tags' => 'boolean',
+        ]);
 
-    $product->name = $request->name;
-    $product->category = $request->category; // Add category
-    $product->barcode = $request->barcode;
-    $product->cost_price = round($request->cost_price, 2);
-    $product->selling_price = $request->selling_price;
-    $product->has_tags = $request->has('has_tags');
-
-    // Handle image updates
-    if ($request->hasFile('pictures')) {
-        // Delete old images if they exist
-        $this->deleteProductImages($product);
-        
-        // Upload new images
-        $pictures = [];
-        foreach ($request->file('pictures') as $picture) {
-            $pictures[] = $picture->store('products', 'public');
+        // Check image limit for updates
+        if ($request->hasFile('pictures')) {
+            $owner = \App\Models\User::find($ownerId);
+            $currentImages = $this->countTotalImages($ownerId);
+            $oldImagesCount = $product->pictures ? count(json_decode($product->pictures, true) ?? []) : 0;
+            $newImagesCount = count($request->file('pictures'));
+            if ($currentImages - $oldImagesCount + $newImagesCount > $owner->image_limit) {
+                return back()->withErrors(['pictures' => 'Image limit exceeded. You can upload a maximum of ' . $owner->image_limit . ' images total.'])->withInput();
+            }
         }
-        $product->pictures = json_encode($pictures);
+
+        $product->name = $request->name;
+        $product->category = $request->category; // Add category
+        $product->barcode = $request->barcode;
+        $product->cost_price = round($request->cost_price, 2);
+        $product->selling_price = $request->selling_price;
+        $product->has_tags = $request->has('has_tags');
+
+        // Handle image updates
+        if ($request->hasFile('pictures')) {
+            // Delete old images if they exist
+            $this->deleteProductImages($product);
+
+            // Upload new images
+            $pictures = [];
+            foreach ($request->file('pictures') as $picture) {
+                $pictures[] = $picture->store('products', 'public');
+            }
+            $product->pictures = json_encode($pictures);
+        }
+
+        $product->save();
+
+        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
-
-    $product->save();
-
-    return redirect()->route('products.index')->with('success', 'Product updated successfully.');
-}
 
     public function addQuantity(Request $request, Product $product)
     {
@@ -183,49 +204,49 @@ class ProductsController extends Controller
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
     }
 
-   // Enhanced search for all products with quantity ordering
-   public function searchAllProducts(Request $request)
-{
-   $user = auth()->user();
-   $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-   $search = $request->query('search', '');
-   $category = $request->query('category', '');
-   $page = $request->query('page', 1);
+    // Enhanced search for all products with quantity ordering
+    public function searchAllProducts(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $search = $request->query('search', '');
+        $category = $request->query('category', '');
+        $page = $request->query('page', 1);
 
-   $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
-       ->where('user_id', $ownerId)
-       ->where('is_active', true);
+        $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
+            ->where('user_id', $ownerId)
+            ->where('is_active', true);
 
-    if ($search) {
-        $query->where(function($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('barcode', 'like', "%{$search}%")
-              ->orWhere('category', 'like', "%{$search}%");
-        });
-    }
-
-    // Filter by specific category if provided
-    if ($category) {
-        if ($category === 'Uncategorized') {
-            $query->where(function($q) {
-                $q->whereNull('category')
-                  ->orWhere('category', '');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
             });
-        } else {
-            $query->where('category', $category);
         }
+
+        // Filter by specific category if provided
+        if ($category) {
+            if ($category === 'Uncategorized') {
+                $query->where(function ($q) {
+                    $q->whereNull('category')
+                        ->orWhere('category', '');
+                });
+            } else {
+                $query->where('category', $category);
+            }
+        }
+
+        // Order by category first (null categories at end), then by quantity status, then by name
+        // Products with quantity > 0 first, then by name
+        $products = $query->orderByRaw('CASE WHEN category IS NULL OR category = "" THEN 1 ELSE 0 END')
+            ->orderBy('category')
+            ->orderByRaw('CASE WHEN quantity > 0 THEN 0 ELSE 1 END')
+            ->orderBy('name')
+            ->paginate(20);
+
+        return response()->json($products);
     }
-
-    // Order by category first (null categories at end), then by quantity status, then by name
-    // Products with quantity > 0 first, then by name
-    $products = $query->orderByRaw('CASE WHEN category IS NULL OR category = "" THEN 1 ELSE 0 END')
-                     ->orderBy('category')
-                     ->orderByRaw('CASE WHEN quantity > 0 THEN 0 ELSE 1 END')
-                     ->orderBy('name')
-                     ->paginate(20);
-
-    return response()->json($products);
-}
 
 
     // Keep the old method for backward compatibility but enhance it
@@ -277,21 +298,21 @@ class ProductsController extends Controller
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $products = Product::where('user_id', $ownerId)
             ->orderBy('name')
             ->get();
 
         $filename = 'products_export_' . date('Y-m-d_H-i-s') . '.csv';
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
-        $callback = function() use ($products) {
+        $callback = function () use ($products) {
             $file = fopen('php://output', 'w');
-            
+
             // Add CSV headers
             fputcsv($file, [
                 'ID',
@@ -310,13 +331,13 @@ class ProductsController extends Controller
 
             // Add product data
             foreach ($products as $product) {
-                $profitMargin = $product->selling_price > 0 ? 
+                $profitMargin = $product->selling_price > 0 ?
                     (($product->selling_price - $product->cost_price) / $product->selling_price) * 100 : 0;
-                    
+
                 $profitPerUnit = $product->selling_price - $product->cost_price;
                 $totalInventoryValue = $product->quantity * $product->cost_price;
                 $totalPotentialRevenue = $product->quantity * $product->selling_price;
-                
+
                 fputcsv($file, [
                     $product->id,
                     $product->name,
@@ -332,7 +353,7 @@ class ProductsController extends Controller
                     $product->updated_at->format('Y-m-d H:i:s')
                 ]);
             }
-            
+
             fclose($file);
         };
 
@@ -380,7 +401,7 @@ class ProductsController extends Controller
             switch ($request->filter) {
                 case 'warning':
                     $query->where('last_sale_date', '<=', $warningCutoff)
-                          ->where('last_sale_date', '>', $deactivationCutoff);
+                        ->where('last_sale_date', '>', $deactivationCutoff);
                     break;
                 case 'deactivation':
                     $query->where('last_sale_date', '<=', $deactivationCutoff);
@@ -506,5 +527,21 @@ class ProductsController extends Controller
         return $count;
     }
 
+    /**
+     * Count total images for a user
+     */
+    private function countTotalImages($ownerId)
+    {
+        $totalImages = 0;
+        $products = Product::where('user_id', $ownerId)->whereNotNull('pictures')->get();
 
+        foreach ($products as $product) {
+            $pictures = json_decode($product->pictures, true);
+            if (is_array($pictures)) {
+                $totalImages += count($pictures);
+            }
+        }
+
+        return $totalImages;
+    }
 }

@@ -32,6 +32,7 @@ class User extends Authenticatable
         'product_warning_period',
         'product_deactivation_period',
         'permissions',
+        'image_limit',
     ];
 
 

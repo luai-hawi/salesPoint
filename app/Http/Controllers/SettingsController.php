@@ -34,4 +34,18 @@ class SettingsController extends Controller
 
         return back()->with('success', __('messages.Product deactivation settings updated successfully.'));
     }
+
+    public function updateImageLimit(Request $request)
+    {
+        $request->validate([
+            'image_limit' => 'required|integer|min:0|max:10000',
+        ]);
+
+        $user = Auth::user();
+        $user->update([
+            'image_limit' => $request->image_limit,
+        ]);
+
+        return back()->with('success', __('messages.Image limit updated successfully.'));
+    }
 }

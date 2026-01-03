@@ -62,6 +62,10 @@ Route::get('/dashboard', function () {
         ->whereDate('created_at', Carbon::today())
         ->sum('total_price');
 
+    $billsCount = \App\Models\Bill::where('user_id', $ownerId)
+        ->whereDate('created_at', Carbon::today())
+        ->count();
+
     // Get products approaching deactivation (using user's configured periods)
     $warningMonths = $user->product_warning_period ?? 4; // Use user's setting or default to 4
     $deactivationMonths = $user->product_deactivation_period ?? 6; // Use user's setting or default to 6
@@ -75,7 +79,7 @@ Route::get('/dashboard', function () {
         ->take(5) // Show top 5
         ->get();
 
-    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths'));
+    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths', 'billsCount'));
 })->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 
@@ -138,6 +142,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_settings'])->group(function () {
             Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
             Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
+            Route::post('/settings/image-limit', [SettingsController::class, 'updateImageLimit'])->name('settings.update-image-limit');
         });
 
         Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
@@ -573,6 +578,8 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
             Route::resource('suppliers', SupplierController::class);
             Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
             Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
+            Route::get('/suppliers/{supplier}/more-payments', [SupplierController::class, 'getMorePayments'])->name('suppliers.more-payments');
+            Route::get('/suppliers/{supplier}/print-report', [SupplierController::class, 'printSupplierReport'])->name('suppliers.print-report');
             Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
         });
 

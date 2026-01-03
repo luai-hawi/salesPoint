@@ -4,51 +4,62 @@
     if (in_array($sessionLocale, ['en', 'ar'])) {
         app()->setLocale($sessionLocale);
     }
-    
+
     // Get shop name based on user role
     $shopName = __('messages.Shop'); // Default fallback
     if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id) {
-        $shopName = auth()->user()-> shopOwner->name ?? 'Shop';
+        $shopName = auth()->user()->shopOwner->name ?? 'Shop';
     } elseif (auth()->user()->role !== 'employee') {
         $shopName = auth()->user()->name ?? 'Shop';
     }
-    $isRestaurant = auth()->user()->role === 'restaurant' || (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id && auth()->user()->shopOwner->role === 'restaurant');
+    $isRestaurant =
+        auth()->user()->role === 'restaurant' ||
+        (auth()->user()->role === 'employee' &&
+            auth()->user()->shop_owner_id &&
+            auth()->user()->shopOwner->role === 'restaurant');
 @endphp
 <x-app-layout>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <x-slot name="header">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 class="font-bold text-xl sm:text-2xl text-gray-800 leading-tight flex items-center">
-            <!-- Your existing header content -->
-        </h2>
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-            <!-- Add this cash drawer button -->
-            <button type="button" id="open-cash-drawer" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                </svg>
-                {{ __('dashboard.Open Drawer') }}
-            </button>
-            
-            <!-- Your existing today's sales display -->
-            <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
-                {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">₪{{ number_format($totalToday ?? 0, 2) }}</span>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h2 class="font-bold text-xl sm:text-2xl text-gray-800 leading-tight flex items-center">
+                <!-- Your existing header content -->
+            </h2>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                <!-- Add this cash drawer button -->
+                <button type="button" id="open-cash-drawer"
+                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
+                    </svg>
+                    {{ __('dashboard.Open Drawer') }}
+                </button>
+
+                <!-- Your existing today's sales display -->
+                <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
+                    {{ __('dashboard.Today\'s Sales') }}: <span
+                        class="font-bold text-green-600">₪{{ number_format($totalToday ?? 0, 2) }}</span>
+                </div>
             </div>
         </div>
-    </div>
-</x-slot>
+    </x-slot>
 
     <!-- Enhanced Layout with Full Screen Width -->
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="w-full px-4 sm:px-6 lg:px-8">
 
             <!-- Warning Notification for Out-of-Stock Products -->
-            @if($warningProducts->count() > 0)
+            @if ($warningProducts->count() > 0)
                 <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                     <div class="flex items-start">
                         <div class="flex-shrink-0">
-                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                                </path>
                             </svg>
                         </div>
                         <div class="ml-3 flex-1">
@@ -56,16 +67,20 @@
                                 {{ __('messages.Out of Stock Products Warning') }}
                             </h3>
                             <div class="mt-2 text-sm text-yellow-700">
-                                <p>{{ __('messages.You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.', ['count' => $warningProducts->count(), 'months' => $warningMonths, 'remaining' => $deactivationMonths - $warningMonths]) }}</p>
+                                <p>{{ __('messages.You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.', ['count' => $warningProducts->count(), 'months' => $warningMonths, 'remaining' => $deactivationMonths - $warningMonths]) }}
+                                </p>
                                 <div class="mt-3 flex flex-wrap gap-2">
-                                    @foreach($warningProducts as $product)
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            {{ $product->name }} ({{ $product->months_since_sale }} {{ __('messages.months') }})
+                                    @foreach ($warningProducts as $product)
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ $product->name }} ({{ $product->months_since_sale }}
+                                            {{ __('messages.months') }})
                                         </span>
                                     @endforeach
                                 </div>
                                 <div class="mt-3">
-                                    <a href="{{ route('products.out-of-stock') }}" class="text-sm font-medium text-yellow-800 hover:text-yellow-900">
+                                    <a href="{{ route('products.out-of-stock') }}"
+                                        class="text-sm font-medium text-yellow-800 hover:text-yellow-900">
                                         {{ __('messages.Manage Out of Stock Products') }} →
                                     </a>
                                 </div>
@@ -73,10 +88,13 @@
                         </div>
                         <div class="ml-auto pl-3">
                             <div class="-mx-1.5 -my-1.5">
-                                <button type="button" class="inline-flex bg-yellow-50 rounded-md p-1.5 text-yellow-500 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'">
+                                <button type="button"
+                                    class="inline-flex bg-yellow-50 rounded-md p-1.5 text-yellow-500 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600"
+                                    onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'">
                                     <span class="sr-only">{{ __('messages.Dismiss') }}</span>
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </button>
                             </div>
@@ -85,51 +103,57 @@
                 </div>
             @endif
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-none">
-                
-            <!-- Left Panel - Product Search & Selection ONLY -->
-                <div class="lg:col-span-5 space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none">
+
+                <!-- Left Panel - Product Search & Selection ONLY -->
+                <div class="lg:col-span-4 space-y-4">
                     <!-- Product Search Controls - Shown for all users -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center mb-4">
-                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
                             <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Product Search') }}</h3>
                         </div>
-                        
+
                         <!-- Search Input -->
                         <div class="relative mb-4">
-                            <input
-                                type="text"
-                                id="product-search"
+                            <input type="text" id="product-search"
                                 placeholder="{{ __('dashboard.Search products by name...') }}"
-                                class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                            />
-                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
                         </div>
 
                         <!-- Filter Options -->
                         <div class="flex flex-wrap gap-2 mb-4">
-                            <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
+                            <button id="filter-all"
+                                class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
                                 {{ __('dashboard.All Products') }}
                             </button>
-                            <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                            <button id="filter-in-stock"
+                                class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
                                 {{ __('dashboard.In Stock Only') }}
                             </button>
-                            <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                            <button id="filter-out-of-stock"
+                                class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
                                 {{ __('dashboard.Out of Stock') }}
                             </button>
-                            <button id="toggle-category-mode" class="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition-colors">
+                            <button id="toggle-category-mode"
+                                class="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition-colors">
                                 {{ __('dashboard.Browse by Category') }}
                             </button>
                         </div>
 
                         <!-- Back to Categories Button -->
                         <div id="back-to-categories" class="hidden mb-4">
-                            <button class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                            <button
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
                                 ← {{ __('dashboard.Back to Categories') }}
                             </button>
                         </div>
@@ -139,18 +163,22 @@
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-100">
                             <h4 class="font-medium text-gray-800 flex items-center">
-                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                 </svg>
                                 {{ __('dashboard.Available Products') }}
                             </h4>
                         </div>
                         <div id="product-cards-container" class="max-h-96 overflow-y-auto">
-                            <div id="product-results" class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
+                            <div id="product-results"
+                                class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
                                 <!-- Products will be loaded here -->
                             </div>
                             <div id="loading-indicator" class="hidden p-4 text-center">
-                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto">
+                                </div>
                                 <p class="text-sm text-gray-500 mt-2">{{ __('dashboard.Loading products...') }}</p>
                             </div>
                         </div>
@@ -158,158 +186,192 @@
                 </div>
 
                 <!-- Main Content - Bill Creation AND Quick Payments (for Restaurant) -->
-                <div class="lg:col-span-4 space-y-4">
-                    @if(!$isRestaurant)
-                        <!-- Barcode Scanner (Hidden for Restaurant) -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div class="flex items-center mb-4">
-                                <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
-                                </svg>
-                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Scanner') }}</h3>
-                            </div>
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    id="barcode_input"
-                                    placeholder="{{ __('dashboard.Scan or enter barcode...') }}"
-                                    class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
-                                    autocomplete="off"
-                                />
-                                <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    @endif
+                <div class="lg:col-span-6 space-y-4">
 
                     <!-- Bill Form -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-6 border-b border-gray-100">
                             <h3 class="text-lg font-semibold text-gray-800 flex items-center">
-                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                                 {{ __('dashboard.Create New Bill') }}
                             </h3>
                         </div>
-                        
+
                         <form id="create-bill" method="POST" action="{{ route('bills.store') }}" class="p-6">
                             @csrf
 
-                        <!-- Customer Selection -->
+                            <!-- Customer, Note, and Damaged in one row -->
                             <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
-                                @if($isRestaurant)
-                                    <!-- Restaurant: Dropdown selector -->
-                                    <select name="customer_id" id="customer_id" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="">{{ __('dashboard.Select Customer') }}</option>
-                                        @foreach($customers as $customer)
-                                            <option value="{{ $customer->id }}">
-                                                {{ $customer->name }} - {{ $customer->phone }} (Balance: {{ $customer->balance ?? '0.00' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <!-- Regular: Search input -->
-                                    <div class="relative">
-                                        <input 
-                                            type="text" 
-                                            id="customer_search" 
-                                            name="customer_search"
-                                            placeholder="{{ __('dashboard.Search customer by name or enter new customer...') }}"
-                                            class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                            autocomplete="off"
-                                        />
-                                        <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                        </svg>
-                                        <input type="hidden" name="customer_id" id="customer_id_hidden" value="">
-                                        
-                                        <!-- Customer suggestions dropdown -->
-                                        <div id="customer_suggestions" class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
-                                            <!-- Suggestions will be populated here -->
+                                <div class="flex justify-between items-start">
+                                    <!-- Customer Selection -->
+                                    <div>
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                        @if ($isRestaurant)
+                                            <!-- Restaurant: Dropdown selector -->
+                                            <select name="customer_id" id="customer_id"
+                                                class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <option value="">{{ __('dashboard.Select Customer') }}</option>
+                                                @foreach ($customers as $customer)
+                                                    <option value="{{ $customer->id }}">
+                                                        {{ $customer->name }} - {{ $customer->phone }} (Balance:
+                                                        {{ $customer->balance ?? '0.00' }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <!-- Regular: Search input -->
+                                            <div class="relative">
+                                                <input type="text" id="customer_search" name="customer_search"
+                                                    placeholder="{{ __('dashboard.Search customer by name or enter new customer...') }}"
+                                                    class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    autocomplete="off" />
+                                                <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z">
+                                                    </path>
+                                                </svg>
+                                                <input type="hidden" name="customer_id" id="customer_id_hidden"
+                                                    value="">
+
+                                                <!-- Customer suggestions dropdown -->
+                                                <div id="customer_suggestions"
+                                                    class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                                                    <!-- Suggestions will be populated here -->
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <!-- Note -->
+                                    <div>
+                                        <label for="note"
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                        <textarea name="note" id="note" rows="2"
+                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                            placeholder="{{ __('dashboard.Add any notes for this bill...') }}"></textarea>
+                                    </div>
+
+                                    <!-- Damaged Toggle -->
+                                    <div>
+                                        <label for="is_damaged"
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Damaged Bill') }}</label>
+                                        <div class="flex items-center">
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" name="is_damaged" id="is_damaged">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                            <span
+                                                class="ml-2 text-sm text-gray-600">{{ __('dashboard.100% discount') }}</span>
                                         </div>
                                     </div>
-                                @endif
-                            </div>
-
-                            <!-- Note -->
-                            <div class="mb-6">
-                                <label for="note" class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
-                                <textarea name="note" id="note" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="{{ __('dashboard.Add any notes for this bill...') }}"></textarea>
-                            </div>
-
-                            <!-- Damaged Checkbox -->
-                            <div class="mb-6 flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <input type="checkbox" name="is_damaged" id="is_damaged" class="mr-2 h-4 w-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500">
-                                <label for="is_damaged" class="ml-2 text-sm text-amber-800 font-medium">{{ __('dashboard.Mark as Damaged Bill (100% discount)') }}</label>
+                                </div>
                             </div>
 
                             <!-- Products List -->
-                            <div id="products-list" class="space-y-2 mb-6 max-h-96 overflow-y-auto">
-                                <!-- Products will be added here dynamically -->
+                            <div class="products-table-container mb-6">
+                                <table class="products-table">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ __('messages.Product') }}</th>
+                                            <th>{{ __('messages.Quantity') }}</th>
+                                            <th>{{ __('messages.Unit Price') }}</th>
+                                            <th>{{ __('messages.Discount') }}</th>
+                                            <th>{{ __('messages.Total') }}</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="products-list">
+                                        <!-- Products will be added here dynamically -->
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- Action Buttons -->
                             <div class="flex gap-3">
-                                <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                <button type="submit"
+                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7"></path>
                                     </svg>
                                     {{ __('dashboard.Create Bill (F2)') }}
                                 </button>
-                                
-                                <button type="button" id="clear-all" class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+
+                                <button type="button" id="clear-all"
+                                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                        </path>
                                     </svg>
                                 </button>
-                                <button type="button" id="print-button" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <button type="button" id="print-button"
+                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                        </path>
                                     </svg>
                                 </button>
-                                <button type="button" id="print-receipt-button" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <button type="button" id="print-receipt-button"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
                                     </svg>
                                 </button>
                             </div>
                         </form>
                     </div>
 
-                    @if($isRestaurant)
+                    @if ($isRestaurant)
                         <!-- Restaurant Quick Customer Payments Panel - NOW UNDER BILL FORM -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <div class="flex items-center mb-4">
-                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
+                                    </path>
                                 </svg>
-                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Customer Payments') }}</h3>
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    {{ __('dashboard.Quick Customer Payments') }}</h3>
                             </div>
 
                             <!-- Quick Payment Form -->
                             <form id="quick-payment-form" class="space-y-4">
                                 @csrf
                                 <input type="hidden" id="payment_customer_id" name="customer_id">
-                                
+
                                 <!-- Customer Dropdown for Restaurant -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
-                                    <select id="payment_customer_select" name="customer_select" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                                    <label
+                                        class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
+                                    <select id="payment_customer_select" name="customer_select"
+                                        class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        required>
                                         <option value="">{{ __('dashboard.Select Customer') }}</option>
-                                        @foreach($customers as $customer)
-                                            <option value="{{ $customer->id }}" 
-                                                    data-name="{{ $customer->name }}" 
-                                                    data-phone="{{ $customer->phone }}" 
-                                                    data-balance="{{ $customer->balance }}"
-                                                    data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
-                                                    data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
-                                                    data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
-                                                {{ $customer->name }} - {{ $customer->phone }} 
-                                                @if(($customer->last_bill_amount ?? 0) > 0)
-                                                    ({{ __('dashboard.Last Bill') }}: ₪{{ number_format($customer->last_bill_amount, 2) }})
+                                        @foreach ($customers as $customer)
+                                            <option value="{{ $customer->id }}" data-name="{{ $customer->name }}"
+                                                data-phone="{{ $customer->phone }}"
+                                                data-balance="{{ $customer->balance }}"
+                                                data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
+                                                data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
+                                                data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
+                                                {{ $customer->name }} - {{ $customer->phone }}
+                                                @if (($customer->last_bill_amount ?? 0) > 0)
+                                                    ({{ __('dashboard.Last Bill') }}:
+                                                    ₪{{ number_format($customer->last_bill_amount, 2) }})
                                                 @else
                                                     ({{ __('dashboard.No Recent Bill') }})
                                                 @endif
@@ -319,33 +381,45 @@
                                 </div>
 
                                 <!-- Customer Balance Info with Edit Bill Button -->
-                                <div id="customer-balance-info" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div id="customer-balance-info"
+                                    class="hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="flex justify-between items-center">
-                                        <span class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
+                                        <span
+                                            class="text-sm font-medium text-blue-800">{{ __('dashboard.Last Bill Amount') }}:</span>
                                         <span id="current-debt" class="text-sm font-bold text-blue-900">₪0.00</span>
                                     </div>
                                     <div class="text-xs text-blue-600 mt-1" id="bill-date-info"></div>
-                                    
+
                                     <!-- Edit Last Bill Button -->
                                     <div class="mt-3 flex gap-2">
-                                        <button type="button" id="edit-last-bill-btn" class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        <button type="button" id="edit-last-bill-btn"
+                                            class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                </path>
                                             </svg>
                                             {{ __('dashboard.Edit Last Bill') }}
                                         </button>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Rest of the payment form remains the same -->
                                 <div class="grid grid-cols-3 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
-                                        <input type="number" id="payment_amount" name="amount" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" required>
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Amount') }}</label>
+                                        <input type="number" id="payment_amount" name="amount" step="0.01"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="0.00" required>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
-                                        <select id="payment_type" name="type" class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Type') }}</label>
+                                        <select id="payment_type" name="type"
+                                            class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            required>
                                             <option value="cash">{{ __('dashboard.Cash') }}</option>
                                             <option value="card">{{ __('dashboard.Card') }}</option>
                                             <option value="transfer">{{ __('dashboard.Transfer') }}</option>
@@ -353,20 +427,27 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
-                                        <input type="text" id="payment_note" name="note" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="{{ __('dashboard.Payment note...') }}">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
+                                        <input type="text" id="payment_note" name="note"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="{{ __('dashboard.Payment note...') }}">
                                     </div>
                                 </div>
-                                
+
                                 <!-- Change Calculator Panel -->
-                                <div id="change-calculator" class="hidden p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-300 rounded-lg">
+                                <div id="change-calculator"
+                                    class="hidden p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-dashed border-green-300 rounded-lg">
                                     <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                            </path>
                                         </svg>
                                         {{ __('dashboard.Change Calculator') }}
                                     </h4>
-                                    
+
                                     <div class="grid grid-cols-2 gap-3 text-sm">
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">{{ __('dashboard.Customer Debt') }}:</span>
@@ -378,17 +459,23 @@
                                         </div>
                                         <div class="col-span-2 pt-2 border-t border-gray-300">
                                             <div class="flex justify-between items-center">
-                                                <span class="font-semibold text-gray-700">{{ __('dashboard.Result') }}:</span>
-                                                <span id="calc-result" class="font-bold text-lg text-blue-600">â‚ª0.00</span>
+                                                <span
+                                                    class="font-semibold text-gray-700">{{ __('dashboard.Result') }}:</span>
+                                                <span id="calc-result"
+                                                    class="font-bold text-lg text-blue-600">â‚ª0.00</span>
                                             </div>
-                                            <div id="calc-status" class="text-xs text-center mt-1 font-medium text-gray-500"></div>
+                                            <div id="calc-status"
+                                                class="text-xs text-center mt-1 font-medium text-gray-500"></div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+
+                                <button type="submit"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
                                     {{ __('dashboard.Add Payment') }}
                                 </button>
@@ -399,8 +486,11 @@
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                             <div class="p-4 border-b border-gray-100">
                                 <h4 class="font-medium text-gray-800 flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                        </path>
                                     </svg>
                                     {{ __('dashboard.Recent Payments') }}
                                 </h4>
@@ -415,29 +505,60 @@
                 </div>
 
                 <!-- Right Panel - Totals & Summary -->
-                <div class="lg:col-span-3 space-y-4">
+                <div class="lg:col-span-2 space-y-4">
+                    @if (!$isRestaurant)
+                        <!-- Barcode Scanner -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                            <div class="flex items-center mb-4">
+                                <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
+                                    </path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-800">{{ __('dashboard.Quick Scanner') }}
+                                </h3>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="barcode_input"
+                                    placeholder="{{ __('dashboard.Scan or enter barcode...') }}"
+                                    class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
+                                    autocomplete="off" />
+                                <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
+                                    </path>
+                                </svg>
+                            </div>
+                        </div>
+                    @endif
                     <!-- Bill Summary -->
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm text-white p-6">
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm text-white p-4">
                         <h3 class="text-lg font-semibold mb-4 flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                </path>
                             </svg>
                             {{ __('dashboard.Bill Summary') }}
                         </h3>
-                        
+
                         <div class="space-y-3">
                             <div class="bg-white bg-opacity-20 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
                                     <span class="text-green-100">{{ __('dashboard.Total Discount:') }}</span>
-                                    <span class="font-bold text-lg">₪<span id="total_discount_display">0.00</span></span>
+                                    <span class="font-bold text-lg">₪<span
+                                            id="total_discount_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_discount" value="0">
                             </div>
-                            
+
                             <div class="bg-white bg-opacity-30 rounded-lg p-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-green-100">{{ __('dashboard.Total Amount:') }}</span>
-                                    <span class="font-bold text-2xl">₪<span id="total_price_display">0.00</span></span>
+                                    <span class="font-bold text-2xl">₪<span
+                                            id="total_price_display">0.00</span></span>
                                 </div>
                                 <input type="hidden" id="total_price" value="0">
                             </div>
@@ -445,56 +566,69 @@
                     </div>
 
                     <!-- Today's Sales -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                             </svg>
                             {{ __('dashboard.Today\'s Performance') }}
                         </h3>
-                        
+
                         <div class="space-y-3">
                             <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                                 <span class="text-sm text-blue-700">{{ __('dashboard.Total Sales:') }}</span>
                                 <span class="font-bold text-blue-800">₪{{ number_format($totalToday ?? 0, 2) }}</span>
                             </div>
-                            
+
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="text-sm text-gray-700">{{ __('dashboard.Bills Created:') }}</span>
-                                <span class="font-bold text-gray-800" id="bills_count">-</span>
+                                <span class="font-bold text-gray-800" id="bills_count">{{ $billsCount }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Quick Actions -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                             </svg>
                             {{ __('dashboard.Quick Actions') }}
                         </h3>
-                        
+
                         <div class="space-y-2">
-                            <a href="{{ route('bills.index') }}" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
+                            <a href="{{ route('bills.index') }}"
+                                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                                 {{ __('dashboard.View All Bills') }}
                             </a>
-                            
-                            @if(!$isRestaurant)
-                            <a href="{{ route('products.index') }}" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                </svg>
-                                {{ __('dashboard.Manage Products') }}
-                            </a>
+
+                            @if (!$isRestaurant)
+                                <a href="{{ route('products.index') }}"
+                                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                    </svg>
+                                    {{ __('dashboard.Manage Products') }}
+                                </a>
                             @endif
-                            
-                            <a href="{{ route('customers.index') }}" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
+
+                            <a href="{{ route('customers.index') }}"
+                                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
+                                    </path>
                                 </svg>
                                 {{ __('dashboard.Manage Customers') }}
                             </a>
@@ -508,14 +642,20 @@
     <!-- Barcode Duplicate Selection Modal -->
     <div id="barcode-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true"></div>
-            
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true">
+            </div>
+
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
-                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        <div
+                            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                                </path>
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
@@ -524,7 +664,9 @@
                             </h3>
                             <div class="mt-2">
                                 <p class="text-sm text-gray-500">
-                                    {{__('messages.Multiple products were found with barcode')}} "<span id="duplicate-barcode"></span>". {{__('messages.Please select which product you want to add')}}:
+                                    {{ __('messages.Multiple products were found with barcode') }} "<span
+                                        id="duplicate-barcode"></span>".
+                                    {{ __('messages.Please select which product you want to add') }}:
                                 </p>
                             </div>
                             <div id="duplicate-products" class="mt-4 space-y-2">
@@ -534,8 +676,9 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" id="close-modal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        {{__('messages.Cancel')}}
+                    <button type="button" id="close-modal"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        {{ __('messages.Cancel') }}
                     </button>
                 </div>
             </div>
@@ -551,8 +694,14 @@
             cursor: pointer;
             border-bottom: 1px solid #e5e7eb;
         }
-        .customer-suggestion-item:hover { background-color: #f3f4f6; }
-        .customer-suggestion-item:last-child { border-bottom: none; }
+
+        .customer-suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .customer-suggestion-item:last-child {
+            border-bottom: none;
+        }
 
         .discount-toggle {
             display: flex;
@@ -560,6 +709,7 @@
             border-radius: 6px;
             padding: 2px;
         }
+
         .discount-toggle button {
             flex: 1;
             padding: 4px 8px;
@@ -568,6 +718,7 @@
             font-weight: 500;
             transition: all 0.2s;
         }
+
         .discount-toggle button.active {
             background-color: white;
             color: #1f2937;
@@ -588,10 +739,12 @@
         .product-card {
             transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
         }
+
         .product-card:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
+
         .product-card.out-of-stock {
             opacity: 0.7;
         }
@@ -599,9 +752,17 @@
         .product-row {
             animation: slideIn 0.2s ease-out;
         }
+
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Mobile optimizations */
@@ -610,6 +771,145 @@
                 transform: none;
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             }
+        }
+
+        /* Compact layout improvements */
+        .compact-right-panel {
+            max-width: 280px;
+        }
+
+        .compact-card {
+            padding: 12px !important;
+        }
+
+        .compact-card h3 {
+            font-size: 14px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .compact-card .text-sm {
+            font-size: 12px !important;
+        }
+
+        .inline-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.toggle-slider {
+            background-color: #f59e0b;
+        }
+
+        input:checked+.toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .products-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .products-table thead {
+            position: sticky;
+            top: 0;
+            background-color: #f9fafb;
+            z-index: 10;
+        }
+
+        .products-table th {
+            padding: 8px 6px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 11px;
+        }
+
+        .products-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: center;
+        }
+
+        .products-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .products-table input[type="number"] {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .product-name-cell {
+            text-align: right !important;
+            min-width: 200px;
+            word-wrap: break-word;
+        }
+
+        .remove-btn-small {
+            padding: 4px;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-btn-small:hover {
+            background-color: #dc2626;
         }
     </style>
 
@@ -653,7 +953,10 @@
                     // For dashboard, we already saved before opening print window
                     // Just send confirmation back to print window
                     if (window.printWindowRef && !window.printWindowRef.closed) {
-                        window.printWindowRef.postMessage({ action: 'billSaved', success: true }, '*');
+                        window.printWindowRef.postMessage({
+                            action: 'billSaved',
+                            success: true
+                        }, '*');
                     }
                 }
             }
@@ -748,7 +1051,7 @@
             const paymentAmountInput = document.getElementById('payment_amount');
             const editLastBillBtn = document.getElementById('edit-last-bill-btn');
             const billCustomerSelect = document.getElementById('customer_id');
-            
+
             // Function to toggle print buttons based on customer selection
             function togglePrintButtons() {
                 const printButton = document.getElementById('print-button');
@@ -764,17 +1067,17 @@
                     printReceiptButton.classList.add('hover:bg-blue-700');
                 }
             }
-            
+
             // Add customer selection listener for bill form
             if (billCustomerSelect) {
                 billCustomerSelect.addEventListener('change', function() {
                     togglePrintButtons();
                 });
-                
+
                 // Initial state
                 togglePrintButtons();
             }
-            
+
             if (paymentCustomerSelect) {
                 paymentCustomerSelect.addEventListener('change', function() {
                     const selectedOption = this.selectedOptions[0];
@@ -782,24 +1085,25 @@
                     const currentDebtSpan = document.getElementById('current-debt');
                     const billDateInfo = document.getElementById('bill-date-info');
                     const changeCalculator = document.getElementById('change-calculator');
-                    
+
                     if (selectedOption && selectedOption.value) {
                         const customerId = selectedOption.value;
                         const lastBillAmount = parseFloat(selectedOption.dataset.lastBill) || 0;
                         const lastBillId = selectedOption.dataset.lastBillId;
                         const lastBillDate = selectedOption.dataset.lastBillDate;
-                        
+
                         document.getElementById('payment_customer_id').value = customerId;
-                        
+
                         // Show customer bill info
                         customerBalanceInfo.classList.remove('hidden');
                         currentDebtSpan.textContent = `₪${lastBillAmount.toFixed(2)}`;
-                        
+
                         // Update color and info based on last bill amount
                         if (lastBillAmount > 0) {
                             currentDebtSpan.className = 'text-sm font-bold text-red-600';
-                            billDateInfo.textContent = lastBillId ? `Bill #${lastBillId} - ${lastBillDate || ''}` : 'Recent bill';
-                            
+                            billDateInfo.textContent = lastBillId ? `Bill #${lastBillId} - ${lastBillDate || ''}` :
+                                'Recent bill';
+
                             // Show edit button only if there's a valid bill ID
                             if (lastBillId) {
                                 editLastBillBtn.classList.remove('hidden');
@@ -814,10 +1118,10 @@
                             billDateInfo.textContent = 'No recent bills';
                             editLastBillBtn.classList.add('hidden');
                         }
-                        
+
                         loadRecentPayments();
                         updateChangeCalculator();
-                        
+
                     } else {
                         document.getElementById('payment_customer_id').value = '';
                         customerBalanceInfo.classList.add('hidden');
@@ -827,7 +1131,7 @@
                     }
                 });
             }
-            
+
             // Add event listener to payment amount input for change calculation
             if (paymentAmountInput) {
                 paymentAmountInput.addEventListener('input', updateChangeCalculator);
@@ -869,7 +1173,7 @@
                                     </h3>
                                     <div class="mt-2">
                                         <p class="text-sm text-gray-500">
-                                            {{__('dashboard.You are about to proceed without selecting a customer. Are you sure you want to continue?')}}
+                                            {{ __('dashboard.You are about to proceed without selecting a customer. Are you sure you want to continue?') }}
                                         </p>
                                     </div>
                                     <div class="mt-4">
@@ -883,10 +1187,10 @@
                         </div>
                         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                             <button type="button" id="continue-without-customer" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                                {{__('dashboard.Continue')}}
+                                {{ __('dashboard.Continue') }}
                             </button>
                             <button type="button" id="cancel-no-customer" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                                {{__('dashboard.Cancel')}}
+                                {{ __('dashboard.Cancel') }}
                             </button>
                         </div>
                     </div>
@@ -923,27 +1227,27 @@
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
             const paymentAmountInput = document.getElementById('payment_amount');
             const changeCalculator = document.getElementById('change-calculator');
-            
+
             if (!paymentCustomerSelect || !paymentAmountInput) return;
-            
+
             const selectedOption = paymentCustomerSelect.selectedOptions[0];
             const paymentAmount = parseFloat(paymentAmountInput.value) || 0;
-            
+
             if (selectedOption && selectedOption.value && paymentAmount > 0) {
                 const lastBillAmount = parseFloat(selectedOption.dataset.lastBill) || 0;
-                
+
                 // Show calculator
                 changeCalculator.classList.remove('hidden');
-                
+
                 // Update calculator values
                 document.getElementById('calc-debt').textContent = `₪${lastBillAmount.toFixed(2)}`;
                 document.getElementById('calc-payment').textContent = `₪${paymentAmount.toFixed(2)}`;
-                
+
                 // Calculate result based on last bill only
                 let result = 0;
                 let status = '';
                 let resultClass = 'font-bold text-lg text-blue-600';
-                
+
                 if (lastBillAmount > 0) {
                     // Customer has a recent bill
                     result = paymentAmount - lastBillAmount;
@@ -964,11 +1268,11 @@
                     status = '{{ __('dashboard.Payment without recent bill') }}';
                     resultClass = 'font-bold text-lg text-blue-600';
                 }
-                
+
                 document.getElementById('calc-result').textContent = `₪${result.toFixed(2)}`;
                 document.getElementById('calc-result').className = resultClass;
                 document.getElementById('calc-status').textContent = status;
-                
+
             } else {
                 changeCalculator.classList.add('hidden');
             }
@@ -986,7 +1290,7 @@
         // Handle quick payment form submission
         document.getElementById('quick-payment-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const customerId = document.getElementById('payment_customer_id').value;
             if (!customerId) {
                 showNotification('Please select a customer', 'error');
@@ -996,7 +1300,7 @@
             const formData = new FormData(this);
             const submitButton = this.querySelector('button[type="submit"]');
             const originalButtonContent = submitButton.innerHTML;
-            
+
             // Show loading state
             submitButton.disabled = true;
             submitButton.innerHTML = `
@@ -1006,12 +1310,13 @@
                 </svg>
                 {{ __('dashboard.Processing...') }}
             `;
-            
+
             try {
                 const response = await fetch(`/customers/${customerId}/payments`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
                         'Accept': 'application/json',
                     },
                     body: formData
@@ -1020,17 +1325,17 @@
                 if (response.ok) {
                     const result = await response.json();
                     showNotification('Payment added successfully!', 'success');
-                    
+
                     // Reset form
                     this.reset();
                     document.getElementById('payment_customer_id').value = '';
                     document.getElementById('payment_customer_select').value = '';
                     document.getElementById('customer-balance-info').classList.add('hidden');
                     document.getElementById('change-calculator').classList.add('hidden');
-                    
+
                     // Reload recent payments
                     loadRecentPayments();
-                    
+
                     // Update customer balance in dropdown if still selected
                     const paymentCustomerSelect = document.getElementById('payment_customer_select');
                     if (result.new_balance !== undefined) {
@@ -1041,14 +1346,16 @@
                                 const parts = option.textContent.split(' (');
                                 const baseText = parts[0];
                                 if (result.new_balance != 0) {
-                                    option.textContent = `${baseText} ({{ __('dashboard.Debt') }}: ₪${Math.abs(result.new_balance).toFixed(2)})`;
+                                    option.textContent =
+                                        `${baseText} ({{ __('dashboard.Debt') }}: ₪${Math.abs(result.new_balance).toFixed(2)})`;
                                 } else {
-                                    option.textContent = `${baseText} ({{ __('dashboard.No Debt') }})`;
+                                    option.textContent =
+                                        `${baseText} ({{ __('dashboard.No Debt') }})`;
                                 }
                             }
                         });
                     }
-                    
+
                 } else {
                     const errorData = await response.json();
                     showNotification(errorData.message || 'Failed to add payment', 'error');
@@ -1066,7 +1373,7 @@
         // Load recent payments for restaurant
         async function loadRecentPayments() {
             const customerId = document.getElementById('payment_customer_id').value;
-            
+
             if (!customerId) {
                 document.getElementById('recent-payments').innerHTML = `
                     <div class="p-4 text-center text-gray-500">
@@ -1079,10 +1386,10 @@
             try {
                 const response = await fetch(`/customers/${customerId}/recent-payments`);
                 if (!response.ok) throw new Error('Failed to fetch payments');
-                
+
                 const data = await response.json(); // This is the full response object
                 const payments = data.payments; // Extract the payments array
-                
+
                 if (!Array.isArray(payments) || payments.length === 0) {
                     document.getElementById('recent-payments').innerHTML = `
                         <div class="p-4 text-center text-gray-500">
@@ -1109,7 +1416,7 @@
                 `).join('');
 
                 document.getElementById('recent-payments').innerHTML = paymentsHtml;
-                
+
             } catch (error) {
                 console.error('Failed to load recent payments:', error);
                 document.getElementById('recent-payments').innerHTML = `
@@ -1159,7 +1466,7 @@
 
             searchInput.addEventListener('input', function() {
                 const query = this.value.trim();
-                
+
                 clearTimeout(customerDebounceTimeout);
                 customerDebounceTimeout = setTimeout(() => {
                     if (query.length === 0) {
@@ -1228,7 +1535,8 @@
                     try {
                         const response = await fetch(`/products/search?barcode=${encodeURIComponent(code)}`);
                         if (!response.ok) {
-                            showNotification('{{ __('messages.Error fetching product from server.') }}', 'error');
+                            showNotification('{{ __('messages.Error fetching product from server.') }}',
+                                'error');
                             return;
                         }
                         const result = await response.json();
@@ -1240,9 +1548,11 @@
                             result.has_tags = result.has_tags || false;
                             addProductRow(result);
                             e.target.value = '';
-                            showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', result.name), 'success');
+                            showNotification(`{{ __('messages.Added {product} to bill') }}`.replace(
+                                '{product}', result.name), 'success');
                         } else {
-                            showNotification('{{ __('messages.Product not found for barcode: {code}') }}'.replace('{code}', code), 'warning');
+                            showNotification('{{ __('messages.Product not found for barcode: {code}') }}'
+                                .replace('{code}', code), 'warning');
                         }
                     } catch (err) {
                         console.error('Fetch error:', err);
@@ -1257,25 +1567,26 @@
             const modal = document.getElementById('barcode-modal');
             const duplicateBarcode = document.getElementById('duplicate-barcode');
             const duplicateProducts = document.getElementById('duplicate-products');
-            
+
             duplicateBarcode.textContent = barcode;
             duplicateProducts.innerHTML = '';
-            
+
             products.forEach(product => {
                 const productDiv = document.createElement('div');
-                productDiv.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors';
+                productDiv.className =
+                    'flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors';
                 productDiv.innerHTML = `
                     <div class="flex-1">
                         <div class="px-8 font-medium text-gray-900">${product.name}</div>
                         <div class="px-8 text-sm text-gray-500">Price: ${product.selling_price} | Stock: ${product.quantity}</div>
                     </div>
                     <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                        {{__('messages.Select')}}
+                        {{ __('messages.Select') }}
                     </button>
                 `;
                 duplicateProducts.appendChild(productDiv);
             });
-            
+
             modal.classList.remove('hidden');
         }
 
@@ -1285,7 +1596,8 @@
                 const product = JSON.parse(e.target.dataset.product);
                 addProductRow(product);
                 closeBarcodeModal();
-                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
+                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
+                    .name), 'success');
                 if (!isRestaurant) {
                     document.getElementById('barcode_input').focus();
                 }
@@ -1319,7 +1631,8 @@
             currentCategory = null;
             showBackButton(false);
             const btn = document.getElementById('toggle-category-mode');
-            btn.textContent = browseByCategory ? '{{ __("dashboard.Show All Products") }}' : '{{ __("dashboard.Browse by Category") }}';
+            btn.textContent = browseByCategory ? '{{ __('dashboard.Show All Products') }}' :
+                '{{ __('dashboard.Browse by Category') }}';
             // Clear search when toggling modes
             searchTerm = '';
             document.getElementById('product-search').value = '';
@@ -1339,7 +1652,7 @@
         });
 
         // Enhanced product search with debouncing
-        document.getElementById('product-search').addEventListener('input', function () {
+        document.getElementById('product-search').addEventListener('input', function() {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
                 const searchValue = this.value.trim();
@@ -1438,8 +1751,9 @@
         function createProductCard(product) {
             const card = document.createElement('div');
             const isOutOfStock = product.quantity === 0;
-            
-            card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
+
+            card.className =
+                `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
             card.dataset.productId = product.id;
             card.dataset.cost_price = product.cost_price;
             card.dataset.selling_price = product.selling_price;
@@ -1454,15 +1768,15 @@
                 // Silent fail
             }
 
-            const imageHtml = firstImage
-                ? `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
-                : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+            const imageHtml = firstImage ?
+                `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">` :
+                `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                    </div>`;
 
-            const categoryBadge = product.category ? 
+            const categoryBadge = product.category ?
                 `<div class="mb-1">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         ${product.category}
@@ -1476,11 +1790,11 @@
                     </div>
                     <div class="min-w-0">
                         ${categoryBadge}
-                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
+                        <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
                         <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
                         <div class="mt-1">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                ${isOutOfStock ? '{{__('messages.Out of Stock')}}' : `${product.quantity} {{__('messages.in stock')}}`}
+                                ${isOutOfStock ? '{{ __('messages.Out of Stock') }}' : `${product.quantity} {{ __('messages.in stock') }}`}
                             </span>
                         </div>
                     </div>
@@ -1546,7 +1860,7 @@
                         <div class="flex items-center">
                             <div class="flex-grow border-t border-gray-300"></div>
                             <span class="flex-shrink mx-4 text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
-                                {{__('messages.Uncategorized')}}
+                                {{ __('messages.Uncategorized') }}
                             </span>
                             <div class="flex-grow border-t border-gray-300"></div>
                         </div>
@@ -1567,14 +1881,16 @@
             container.innerHTML = '';
 
             if (categories.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">{{ __("messages.No categories found") }}</p>';
+                container.innerHTML =
+                    '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No categories found') }}</p>';
                 return;
             }
 
             categories.forEach(cat => {
                 const displayName = translations[cat] || cat;
                 const card = document.createElement('div');
-                card.className = 'bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 p-8 rounded-xl cursor-pointer text-center border border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105';
+                card.className =
+                    'bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 p-8 rounded-xl cursor-pointer text-center border border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105';
 
                 card.innerHTML = `
                     <div class="text-xl font-bold text-blue-800">${displayName}</div>
@@ -1613,7 +1929,8 @@
             if (!product) return;
 
             if (product.quantity === 0) {
-                showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name), 'warning');
+                showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name),
+                    'warning');
             }
 
             if (product.has_tags && availableTags.length > 0) {
@@ -1631,19 +1948,20 @@
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
                 const currentQty = parseInt(qty.value);
-                
+
                 if (currentQty >= product.quantity) {
-                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
+                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace(
+                        '{product}', product.name).replace('{quantity}', product.quantity), 'warning');
                     return;
                 }
-                
+
                 qty.value = currentQty + 1;
                 calculateTotal();
                 return;
             }
 
-            const row = document.createElement('div');
-            row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
+            const row = document.createElement('tr');
+            row.className = 'product-row';
 
             const id = product.id;
             const cost = product.cost_price;
@@ -1654,44 +1972,35 @@
                 <input type="hidden" name="product_ids[]" value="${id}">
                 <input type="hidden" name="cost_prices[]" value="${cost}">
                 <input type="hidden" name="product_tags[]" value="">
-                
-                <div class="flex items-center justify-between p-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
-                        <div class="text-xs text-gray-500">${maxStock} in stock</div>
+
+                <td class="product-name-cell">
+                    <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
+                    <div class="text-xs text-gray-500">${maxStock} in stock</div>
+                </td>
+                <td>
+                    <input type="number" name="quantities[]" class="quantity" min="1" value="1" required>
+                </td>
+                <td>
+                    <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${price}" required>
+                </td>
+                <td>
+                    <div class="flex gap-1">
+                        <div class="discount-toggle text-xs">
+                            <button type="button" class="discount-type-btn active" data-type="total">{{ __('messages.Total') }}</button>
+                            <button type="button" class="discount-type-btn" data-type="per-unit">{{ __('messages.Per Unit') }}</button>
+                        </div>
+                        <input type="number" name="discounts[]" class="discount" min="0" step="0.01" value="0" required>
+                        <input type="hidden" name="discount_types[]" class="discount-type" value="total">
                     </div>
-                    <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                </td>
+                <td class="text-center font-semibold total-cell">0.00</td>
+                <td>
+                    <button type="button" class="remove-row">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
-                </div>
-                
-            <div class="px-2 pb-2">
-                <div class="grid grid-cols-3 gap-2 text-xs">
-                    <div class="grid grid-cols-2 gap-1 col-span-2">
-                        <div>
-                            <label class="block text-gray-600 mb-1">Qty</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
-                        </div>
-                        <div>
-                            <label class="block text-gray-600 mb-1">Price</label>
-                            <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${price}" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
-                        <div class="flex gap-1 h-7">
-                            <div class="discount-toggle text-xs h-full">
-                                <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
-                                <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
-                            </div>
-                            <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
-                            <input type="hidden" name="discount_types[]" class="discount-type" value="total">
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </td>
             `;
 
             productsList.appendChild(row);
@@ -1706,7 +2015,7 @@
             modal.innerHTML = `
                 <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                     <div class="modal-overlay fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
-                    
+
                     <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                         <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                             <div class="sm:flex sm:items-start">
@@ -1717,19 +2026,19 @@
                                 </div>
                                 <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                     <h3 class="text-lg leading-6 font-medium text-gray-900">
-                                        {{__('messages.Select Tags for')}} ${product.name}
+                                        {{ __('messages.Select Tags for') }} ${product.name}
                                     </h3>
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">${tag.name}</div>
-                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                    </div>
-                                                </label>
-                                            `).join('')}
+                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                <div class="flex-1">
+                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            </label>
+                                                                                                                                                                                        `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -1737,26 +2046,26 @@
                         </div>
                         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                             <button type="button" id="confirm-tags" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                                {{__('messages.Add to Bill')}}
+                                {{ __('messages.Add to Bill') }}
                             </button>
                             <button type="button" id="cancel-tags" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                                {{__('messages.Cancel')}}
+                                {{ __('messages.Cancel') }}
                             </button>
                         </div>
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
             document.getElementById('confirm-tags').addEventListener('click', () => {
                 const selectedTags = [];
                 const checkboxes = modal.querySelectorAll('.tag-checkbox:checked');
-                
+
                 checkboxes.forEach(cb => {
                     selectedTags.push(`${cb.dataset.name}@${cb.dataset.price}`);
                 });
-                
+
                 const tagsString = selectedTags.join('&');
                 addProductRowWithTags(product, tagsString);
                 document.body.removeChild(modal);
@@ -1764,14 +2073,14 @@
                     document.getElementById('barcode_input').focus();
                 }
             });
-            
+
             document.getElementById('cancel-tags').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 if (!isRestaurant) {
                     document.getElementById('barcode_input').focus();
                 }
             });
-            
+
             modal.querySelector('.modal-overlay').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 if (!isRestaurant) {
@@ -1792,74 +2101,68 @@
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
                 const currentQty = parseInt(qty.value);
-                
+
                 if (currentQty >= product.quantity) {
-                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace('{product}', product.name).replace('{quantity}', product.quantity), 'warning');
+                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace(
+                        '{product}', product.name).replace('{quantity}', product.quantity), 'warning');
                     return;
                 }
-                
+
                 qty.value = currentQty + 1;
                 calculateTotal();
-                showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name), 'success');
+                showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product
+                    .name), 'success');
                 return;
             }
 
-            const row = document.createElement('div');
-            row.className = 'product-row compact bg-gray-50 border border-gray-200 rounded-lg';
-            
+            const row = document.createElement('tr');
+            row.className = 'product-row';
+
             const tagsDisplay = tagsString ? tagsString.split('&').map(tag => {
                 const [name, price] = tag.split('@');
                 return `${name} (+${parseFloat(price).toFixed(2)})`;
             }).join(', ') : '';
-            
+
             row.innerHTML = `
                 <input type="hidden" name="product_ids[]" value="${product.id}">
                 <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
                 <input type="hidden" name="product_tags[]" value="${tagsString}">
-                
-                <div class="flex items-center justify-between p-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-sm font-medium text-gray-900 truncate">${product.name}</div>
-                        <div class="text-xs text-gray-500">${product.quantity} in stock</div>
-                        ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
+
+                <td class="product-name-cell">
+                    <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
+                    <div class="text-xs text-gray-500">${product.quantity} in stock</div>
+                    ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
+                </td>
+                <td>
+                    <input type="number" name="quantities[]" class="quantity" min="1" value="1" required>
+                </td>
+                <td>
+                    <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${product.selling_price}" required>
+                </td>
+                <td>
+                    <div class="flex gap-1">
+                        <div class="discount-toggle text-xs">
+                            <button type="button" class="discount-type-btn active" data-type="total">{{ __('messages.Total') }}</button>
+                            <button type="button" class="discount-type-btn" data-type="per-unit">{{ __('messages.Per Unit') }}</button>
+                        </div>
+                        <input type="number" name="discounts[]" class="discount" min="0" step="0.01" value="0" required>
+                        <input type="hidden" name="discount_types[]" class="discount-type" value="total">
                     </div>
-                    <button type="button" class="remove-row text-red-600 hover:text-red-800 p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                </td>
+                <td class="text-center font-semibold total-cell">0.00</td>
+                <td>
+                    <button type="button" class="remove-btn-small">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
-                </div>
-                
-            <div class="px-2 pb-2">
-                <div class="grid grid-cols-3 gap-2 text-xs">
-                    <div class="grid grid-cols-2 gap-1 col-span-2">
-                        <div>
-                            <label class="block text-gray-600 mb-1">Qty</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
-                        </div>
-                        <div>
-                            <label class="block text-gray-600 mb-1">Price</label>
-                            <input type="number" name="selling_prices[]" class="selling-price w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="${product.selling_price}" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-gray-600 mb-1">{{__('messages.Discount')}}</label>
-                        <div class="flex gap-1 h-7">
-                            <div class="discount-toggle text-xs h-full">
-                                <button type="button" class="discount-type-btn active h-full" data-type="total">{{__('messages.Total')}}</button>
-                                <button type="button" class="discount-type-btn h-full" data-type="per-unit">{{__('messages.Unit')}}</button>
-                            </div>
-                            <input type="number" name="discounts[]" class="discount w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0" step="0.01" value="0" required>
-                            <input type="hidden" name="discount_types[]" class="discount-type" value="total">
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </td>
             `;
-            
+
             productsList.appendChild(row);
             calculateTotal();
-            showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name), 'success');
+            showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name),
+                'success');
         }
 
         // Clear all products
@@ -1907,7 +2210,10 @@
                 }
 
                 const finalSubtotal = Math.max(0, subtotal - appliedDiscount);
-                
+
+                // Update the row's total cell
+                row.querySelector('.total-cell').textContent = finalSubtotal.toFixed(2);
+
                 total += finalSubtotal;
                 totalDiscount += appliedDiscount;
             }
@@ -1931,11 +2237,11 @@
                 const row = e.target.closest('.product-row');
                 const buttons = row.querySelectorAll('.discount-type-btn');
                 const hiddenInput = row.querySelector('.discount-type');
-                
+
                 buttons.forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 hiddenInput.value = e.target.dataset.type;
-                
+
                 calculateTotal();
                 return;
             }
@@ -1950,12 +2256,14 @@
                     name: nameElement.textContent,
                     cost_price: parseFloat(card.dataset.cost_price),
                     selling_price: parseFloat(card.dataset.selling_price),
-                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(/\d+/)?.[0] || 0),
+                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
+                        /\d+/)?.[0] || 0),
                     has_tags: card.dataset.has_tags === 'true'
                 };
 
                 addProductRow(product);
-                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
+                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
+                    .name), 'success');
                 if (!isRestaurant) {
                     document.getElementById('barcode_input').focus();
                 }
@@ -2036,7 +2344,7 @@
         // Standard Print Button
         document.getElementById('print-button').addEventListener('click', async () => {
             // Check customer selection for restaurant role
-            if (isRestaurant) { 
+            if (isRestaurant) {
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
                     showNoCustomerModal(async () => {
@@ -2074,7 +2382,7 @@
         // Receipt Print Button
         document.getElementById('print-receipt-button').addEventListener('click', async () => {
             // Check customer selection for restaurant role
-            if (isRestaurant) { 
+            if (isRestaurant) {
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
                     showNoCustomerModal(async () => {
@@ -2117,7 +2425,7 @@
                     clearInterval(checkPrintWindowClosed);
                     // Redirect to dashboard after print window closes
                     setTimeout(() => {
-                        window.location.href = '{{ route("dashboard") }}';
+                        window.location.href = '{{ route('dashboard') }}';
                     }, 500); // Small delay
                 }
             }, 1000);
@@ -2128,7 +2436,7 @@
                     window.removeEventListener('message', handlePrintWindowClose);
                     clearInterval(checkPrintWindowClosed);
                     setTimeout(() => {
-                        window.location.href = '{{ route("dashboard") }}';
+                        window.location.href = '{{ route('dashboard') }}';
                     }, 500);
                 }
             };
@@ -2139,7 +2447,9 @@
         function collectPrintData() {
             const rows = document.querySelectorAll('.product-row');
             const products = [];
-            let total = 0, totalDiscount = 0, subtotal = 0;
+            let total = 0,
+                totalDiscount = 0,
+                subtotal = 0;
 
             rows.forEach(row => {
                 const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
@@ -2174,7 +2484,7 @@
                 const unitPriceWithTags = price + tagsTotal;
                 const subtotalWithTags = (price * qty) + (tagsTotal * qty);
                 const finalSubtotal = Math.max(0, subtotalWithTags - actualDiscount);
-                
+
                 subtotal += subtotalWithTags;
                 total += finalSubtotal;
                 totalDiscount += actualDiscount;
@@ -2214,14 +2524,13 @@
                 }
             }
 
-            const userDetails = {!! json_encode(auth()->user()->details ?? "") !!}.replace(/\\n/g, '\n');
-            const shopOwnerName = 
-                @if(auth()->user()->role === 'employee' && auth()->user()->shop_owner_id)
+            const userDetails = {!! json_encode(auth()->user()->details ?? '') !!}.replace(/\\n/g, '\n');
+            const shopOwnerName =
+                @if (auth()->user()->role === 'employee' && auth()->user()->shop_owner_id)
                     '{{ auth()->user()->shopOwner->name ?? 'Shop Owner' }}'
                 @else
                     '{{ auth()->user()->name ?? 'Shop Owner' }}'
-                @endif
-            ;
+                @endif ;
 
             const notes = document.getElementById('note').value.trim();
 
@@ -2238,31 +2547,33 @@
                 shopOwnerName: shopOwnerName,
                 userName: '{{ auth()->user()->name }}',
                 currentDate: new Date().toLocaleDateString('en-GB'),
-                currentTime: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+                currentTime: new Date().toLocaleTimeString('en-GB', {
+                    hour12: false
+                }),
                 currentDateTime: new Date().toLocaleString('en-GB'),
                 billId: currentBillId || '-'
             };
         }
 
-       // Enhanced print functions with postMessage communication
-       function openStandardPrintTab(data) {
-           const printWindow = window.open('', '_blank', 'width=800,height=600');
-           if (!printWindow) {
-               showNotification('Please allow popups for printing', 'error');
-               return;
-           }
+        // Enhanced print functions with postMessage communication
+        function openStandardPrintTab(data) {
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                showNotification('Please allow popups for printing', 'error');
+                return;
+            }
 
-           // Store print window reference for communication
-           window.printWindowRef = printWindow;
+            // Store print window reference for communication
+            window.printWindowRef = printWindow;
 
-           const standardHtml = generateStandardPrintHtml(data);
-           printWindow.document.write(standardHtml);
-           printWindow.document.close();
+            const standardHtml = generateStandardPrintHtml(data);
+            printWindow.document.write(standardHtml);
+            printWindow.document.close();
 
-           printWindow.onload = function() {
-               // Create button container
-               const buttonContainer = printWindow.document.createElement('div');
-               buttonContainer.style.cssText = `
+            printWindow.onload = function() {
+                // Create button container
+                const buttonContainer = printWindow.document.createElement('div');
+                buttonContainer.style.cssText = `
                    position: fixed;
                    top: 10px;
                    right: 10px;
@@ -2272,10 +2583,10 @@
                    gap: 5px;
                `;
 
-               // Add print button
-               const printButton = printWindow.document.createElement('button');
-               printButton.innerHTML = '🖨️ Print';
-               printButton.style.cssText = `
+                // Add print button
+                const printButton = printWindow.document.createElement('button');
+                printButton.innerHTML = '🖨️ Print';
+                printButton.style.cssText = `
                    padding: 8px 16px;
                    background-color: #2563eb;
                    color: white;
@@ -2287,14 +2598,14 @@
                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                `;
 
-               printButton.onclick = () => {
-                   printWindow.print();
-               };
+                printButton.onclick = () => {
+                    printWindow.print();
+                };
 
-               // Add close button that won't be printed
-               const closeButton = printWindow.document.createElement('button');
-               closeButton.innerHTML = '💾 Save & Close';
-               closeButton.style.cssText = `
+                // Add close button that won't be printed
+                const closeButton = printWindow.document.createElement('button');
+                closeButton.innerHTML = '💾 Save & Close';
+                closeButton.style.cssText = `
                    padding: 8px 16px;
                    background-color: #dc2626;
                    color: white;
@@ -2306,50 +2617,59 @@
                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                `;
 
-               // Hide buttons when printing
-               const style = printWindow.document.createElement('style');
-               style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
-               printWindow.document.head.appendChild(style);
-               printButton.className = 'print-btn';
-               closeButton.className = 'close-btn';
+                // Hide buttons when printing
+                const style = printWindow.document.createElement('style');
+                style.textContent = '@media print { .print-btn, .close-btn { display: none !important; } }';
+                printWindow.document.head.appendChild(style);
+                printButton.className = 'print-btn';
+                closeButton.className = 'close-btn';
 
-               closeButton.onclick = () => {
-                   // Send message to parent window to save
-                   if (window.opener) {
-                       window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
-                   }
-                   printWindow.close();
-               };
+                closeButton.onclick = () => {
+                    // Send message to parent window to save
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            action: 'saveBill',
+                            source: 'printWindow'
+                        }, '*');
+                    }
+                    printWindow.close();
+                };
 
-               // Append buttons to container
-               buttonContainer.appendChild(printButton);
-               buttonContainer.appendChild(closeButton);
-               printWindow.document.body.appendChild(buttonContainer);
+                // Append buttons to container
+                buttonContainer.appendChild(printButton);
+                buttonContainer.appendChild(closeButton);
+                printWindow.document.body.appendChild(buttonContainer);
 
-               // Listen for messages from parent
-               window.addEventListener('message', (event) => {
-                   if (event.data.action === 'billSaved') {
-                       console.log('Bill saved confirmation received');
-                   }
-               });
+                // Listen for messages from parent
+                window.addEventListener('message', (event) => {
+                    if (event.data.action === 'billSaved') {
+                        console.log('Bill saved confirmation received');
+                    }
+                });
 
-               // Save when window is closed by other means
-               printWindow.addEventListener('beforeunload', () => {
-                   if (window.opener) {
-                       window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
-                       // Also notify that window is closing
-                       setTimeout(() => {
-                           window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
-                       }, 100);
-                   }
-               });
+                // Save when window is closed by other means
+                printWindow.addEventListener('beforeunload', () => {
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            action: 'saveBill',
+                            source: 'printWindow'
+                        }, '*');
+                        // Also notify that window is closing
+                        setTimeout(() => {
+                            window.opener.postMessage({
+                                action: 'windowClosed',
+                                source: 'printWindow'
+                            }, '*');
+                        }, 100);
+                    }
+                });
 
-               // Show print dialog
-               setTimeout(() => {
-                   printWindow.print();
-               }, 500);
-           };
-       }
+                // Show print dialog
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500);
+            };
+        }
 
         function openReceiptPrintTab(data) {
             const printWindow = window.open('', '_blank', 'width=400,height=600');
@@ -2422,7 +2742,10 @@
                 closeButton.onclick = () => {
                     // Send message to parent window to save
                     if (window.opener) {
-                        window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                        window.opener.postMessage({
+                            action: 'saveBill',
+                            source: 'printWindow'
+                        }, '*');
                     }
                     printWindow.close();
                 };
@@ -2442,10 +2765,16 @@
                 // Save when window is closed by other means
                 printWindow.addEventListener('beforeunload', () => {
                     if (window.opener) {
-                        window.opener.postMessage({ action: 'saveBill', source: 'printWindow' }, '*');
+                        window.opener.postMessage({
+                            action: 'saveBill',
+                            source: 'printWindow'
+                        }, '*');
                         // Also notify that window is closing
                         setTimeout(() => {
-                            window.opener.postMessage({ action: 'windowClosed', source: 'printWindow' }, '*');
+                            window.opener.postMessage({
+                                action: 'windowClosed',
+                                source: 'printWindow'
+                            }, '*');
                         }, 100);
                     }
                 });
@@ -2478,9 +2807,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                            ` : '-'}
+                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                        ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -2496,7 +2825,7 @@
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <style>
                         * { box-sizing: border-box; margin: 0; padding: 0; }
-                        
+
                         body {
                             font-family: 'Arial', 'Tahoma', sans-serif;
                             font-size: 16px;
@@ -2509,14 +2838,14 @@
                             direction: rtl;
                             text-align: right;
                         }
-                        
+
                         table {
                             width: 100% !important;
                             border-collapse: collapse !important;
                             margin: 3mm 0 !important;
                             direction: rtl;
                         }
-                        
+
                         th, td {
                             border: 2px solid black !important;
                             padding: 4mm !important;
@@ -2527,7 +2856,7 @@
                             overflow-wrap: break-word;
                             vertical-align: middle;
                         }
-                        
+
                         .text-center { text-align: center !important; }
                         .text-right { text-align: right !important; }
                         .text-left { text-align: left !important; }
@@ -2538,16 +2867,16 @@
                         .text-xs { font-size: 11px !important; line-height: 1.3 !important; }
                         .mb-3 { margin-bottom: 3mm !important; }
                         .mb-4 { margin-bottom: 4mm !important; }
-                        
+
                         .grid { display: flex; flex-wrap: wrap; gap: 4mm; margin: 3mm 0; }
                         .grid-cols-2 > div { flex: 1; min-width: 45%; }
-                        
+
                         tfoot tr { background-color: #f3f4f6 !important; }
                         tfoot .bg-gray-100 { background-color: #e5e7eb !important; }
                         tfoot .bg-gray-200 { background-color: #d1d5db !important; }
-                        
+
                         small { display: block; margin-top: 2px; color: #666; font-size: 10px !important; }
-                        
+
                         @media print {
                             @page { margin: 5mm; size: A4; }
                             body { font-size: 16px !important; direction: rtl !important; }
@@ -2567,14 +2896,14 @@
                             <div>${data.currentDateTime}</div>
                             ${data.userDetails ? `<div class="mt-1">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
-                        
+
                         <div class="text-left">
                             ${data.customerName ? `<div class="font-semibold">{{ __('messages.Customer') }}: ${data.customerName}</div>` : ''}
                             ${data.customerPhone ? `<div>{{ __('messages.Phone') }}: ${data.customerPhone}</div>` : ''}
                             ${data.notes ? `<div>{{ __('messages.Notes') }}: ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
                     </div>
-                    
+
                     <table class="w-full border-2 border-black text-xs mb-4">
                         <thead>
                             <tr class="bg-gray-100">
@@ -2605,7 +2934,7 @@
                             </tr>
                         </tfoot>
                     </table>
-                    
+
                     <div class="text-left">
                         <div class="text-xs">HawiTech</div>
                         <div class="text-xs">{{ __('messages.WhatsApp') }}: +(970) 599647713</div>
@@ -2627,7 +2956,7 @@
                     <tr>
                         <td class="border px-1 py-1 text-center text-sm">
                             <div>${product.name}</div>
-                            ${tagsDisplayArabic ? `<div class="text-xs">{{__('messages.Tags')}}: ${tagsDisplayArabic}</div>` : ''}
+                            ${tagsDisplayArabic ? `<div class="text-xs">{{ __('messages.Tags') }}: ${tagsDisplayArabic}</div>` : ''}
                         </td>
                         <td class="border px-1 py-1 text-center text-sm">${product.qty}</td>
                         <td class="border px-1 py-1 text-center text-sm">
@@ -2648,7 +2977,7 @@
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <style>
                         * { box-sizing: border-box; margin: 0; padding: 0; }
-                        
+
                         body {
                             font-family: 'Arial', 'Courier New', monospace;
                             font-size: 14px;
@@ -2663,21 +2992,21 @@
                             max-width: 104mm;
                             min-width: 56mm;
                         }
-                        
+
                         .receipt-container {
                             width: 100%;
                             max-width: 100%;
                             overflow-wrap: break-word;
                             word-wrap: break-word;
                         }
-                        
+
                         table {
                             width: 100% !important;
                             border-collapse: collapse !important;
                             margin: 1mm 0 !important;
                             table-layout: fixed !important;
                         }
-                        
+
                         th, td {
                             border: 1px solid black !important;
                             padding: 2mm !important;
@@ -2689,18 +3018,18 @@
                             vertical-align: middle !important;
                             hyphens: auto !important;
                         }
-                        
+
                         th {
                             font-weight: bold !important;
                             background-color: #f5f5f5 !important;
                         }
-                        
+
                         /* Column widths for better text fit */
                         .col-product { width: 40% !important; }
                         .col-qty { width: 15% !important; }
                         .col-price { width: 20% !important; }
                         .col-total { width: 25% !important; }
-                        
+
                         h1, h2, h3 {
                             font-size: 16px !important;
                             font-weight: bold !important;
@@ -2708,7 +3037,7 @@
                             text-align: center !important;
                             word-wrap: break-word !important;
                         }
-                        
+
                         .text-center { text-align: center !important; }
                         .text-right { text-align: right !important; }
                         .text-left { text-align: left !important; }
@@ -2724,12 +3053,12 @@
                         .py-1 { padding: 1mm 0 !important; }
                         .py-2 { padding: 2mm 0 !important; }
                         .bg-gray-200 { background-color: #e5e7eb !important; }
-                        
+
                         .totals-section {
                             border: 1px solid black;
                             margin: 2mm 0;
                         }
-                        
+
                         .totals-row {
                             display: flex;
                             justify-content: space-between;
@@ -2739,38 +3068,38 @@
                             font-weight: normal;
                             font-size: 13px;
                         }
-                        
+
                         .totals-row:last-child {
                             border-bottom: none;
                             background-color: #e5e7eb;
                             font-size: 14px;
                             font-weight: bold;
                         }
-                        
+
                         hr {
                             border: 1px solid black;
                             margin: 2mm 0;
                         }
-                        
+
                         .info-grid {
                             display: flex;
                             justify-content: space-between;
                             margin: 2mm 0;
                             flex-wrap: wrap;
                         }
-                        
+
                         .info-left, .info-right {
                             flex: 1;
                             min-width: 45%;
                             font-size: 12px;
                             font-weight: normal;
                         }
-                        
+
                         .info-left .font-bold,
                         .info-right .font-bold {
                             font-weight: bold;
                         }
-                        
+
                         /* Responsive adjustments for very small widths */
                         @media (max-width: 60mm) {
                             body { font-size: 12px; padding: 1mm; }
@@ -2781,13 +3110,13 @@
                             .totals-row { font-size: 11px; padding: 1.5mm 2mm; }
                             .totals-row:last-child { font-size: 12px; }
                         }
-                        
+
                         @media print {
-                            @page { 
-                                margin: 0; 
+                            @page {
+                                margin: 0;
                                 size: auto;
                             }
-                            
+
                             body {
                                 margin: 0 !important;
                                 padding: 1mm !important;
@@ -2817,30 +3146,30 @@
                         <!-- Bill Info -->
                         <div class="info-grid text-sm">
                             <div class="info-right">
-                                <div class="font-bold">{{__('messages.Date')}}: ${data.currentDate}</div>
-                                <div class="font-bold">{{__('messages.Time')}}: ${data.currentTime}</div>
+                                <div class="font-bold">{{ __('messages.Date') }}: ${data.currentDate}</div>
+                                <div class="font-bold">{{ __('messages.Time') }}: ${data.currentTime}</div>
                             </div>
                             <div class="info-left">
-                                <div class="font-bold">{{__('messages.Bill number')}}: ${data.billId}</div>
+                                <div class="font-bold">{{ __('messages.Bill number') }}: ${data.billId}</div>
                                 ${data.customerName ? `<div class="font-bold">${data.customerName}</div>` : ''}
                             </div>
                         </div>
 
                         <!-- Creator Info -->
                         <div class="mb-2">
-                            <div class="font-bold text-sm">{{__('messages.Created By')}}: ${data.userName}</div>
+                            <div class="font-bold text-sm">{{ __('messages.Created By') }}: ${data.userName}</div>
                             ${data.userDetails ? `<div class="text-sm">${data.userDetails.replace(/\n/g, '<br>')}</div>` : ''}
-                            ${data.notes ? `<div class="text-sm"><strong>{{__('messages.Notes')}}:</strong> ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
+                            ${data.notes ? `<div class="text-sm"><strong>{{ __('messages.Notes') }}:</strong> ${data.notes.replace(/\n/g, '<br>')}</div>` : ''}
                         </div>
 
                         <!-- Products Table -->
                         <table>
                             <thead>
                                 <tr class="bg-gray-200">
-                                    <th class="col-product">{{__('messages.Product')}}</th>
-                                    <th class="col-qty">{{__('messages.Qty')}}</th>
-                                    <th class="col-price">{{__('messages.Unit Price')}}</th>
-                                    <th class="col-total">{{__('messages.Total')}}</th>
+                                    <th class="col-product">{{ __('messages.Product') }}</th>
+                                    <th class="col-qty">{{ __('messages.Qty') }}</th>
+                                    <th class="col-price">{{ __('messages.Unit Price') }}</th>
+                                    <th class="col-total">{{ __('messages.Total') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2851,22 +3180,22 @@
                         <!-- Totals Section -->
                         <div class="totals-section">
                             <div class="totals-row">
-                                <div>{{__('messages.Subtotal')}}:</div>
+                                <div>{{ __('messages.Subtotal') }}:</div>
                                 <div>${data.subtotal.toFixed(1)}</div>
                             </div>
                             <div class="totals-row">
-                                <div>{{__('messages.Total discount')}}:</div>
+                                <div>{{ __('messages.Total discount') }}:</div>
                                 <div>${data.totalDiscount.toFixed(1)}</div>
                             </div>
                             <div class="totals-row">
-                                <div>{{__('messages.Final Total')}}:</div>
+                                <div>{{ __('messages.Final Total') }}:</div>
                                 <div>${data.total.toFixed(1)}</div>
                             </div>
                         </div>
 
                         <!-- Footer -->
                         <div class="text-center mt-3 text-sm">
-                            <div class="mb-1">{{__('messages.Thank you for your business!')}}</div>
+                            <div class="mb-1">{{ __('messages.Thank you for your business!') }}</div>
                             <hr>
                             <div>HawiTech</div>
                             <div>WhatsApp: +(970) 599647713</div>
@@ -2895,10 +3224,11 @@
         // Notification system
         function showNotification(message, type = 'info') {
             let notification = document.querySelector('.notification-toast');
-            
+
             if (!notification) {
                 notification = document.createElement('div');
-                notification.className = 'notification-toast fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+                notification.className =
+                    'notification-toast fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
                 document.body.appendChild(notification);
             }
 
@@ -2908,18 +3238,19 @@
                 warning: 'bg-yellow-500',
                 info: 'bg-blue-500'
             };
-            
-            notification.className = `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+
+            notification.className =
+                `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
             notification.textContent = message;
-            
+
             if (notification.hideTimeout) {
                 clearTimeout(notification.hideTimeout);
             }
-            
+
             requestAnimationFrame(() => {
                 notification.classList.remove('translate-x-full');
             });
-            
+
             notification.hideTimeout = setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => {
@@ -2945,7 +3276,7 @@
             }
 
             // Check customer selection for restaurant role
-            if (isRestaurant) { 
+            if (isRestaurant) {
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
                     e.preventDefault();
@@ -2966,7 +3297,7 @@
                 e.preventDefault();
 
                 // Check customer selection for restaurant role before submitting
-                if (isRestaurant) { 
+                if (isRestaurant) {
                     const customerSelect = document.getElementById('customer_id');
                     if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
                         showNoCustomerModal(() => {
@@ -3005,260 +3336,297 @@
         };
 
 
-// Cash Drawer Integration - FIXED VERSION
-class CashDrawerManager {
-    constructor() {
-        this.platform = this.detectPlatform();
-        this.method = this.determineBestMethod();
-        this.escPosCommand = '\x1B\x70\x00\x19\xFA'; // ESC/POS drawer open command
-    }
-    
-    detectPlatform() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isAndroid = /android/.test(userAgent);
-        const isWindows = /windows/.test(userAgent);
-        const isWebView = /wv/.test(userAgent); // Android WebView
-        const isSunmi = /sunmi/i.test(userAgent);
-
-        if (isSunmi) return 'sunmi';
-        if (isWebView || (isAndroid && window.Android)) return 'android-webview';
-        if (isAndroid) return 'android-browser';
-        if (isWindows) return 'windows';
-        return 'other';
-    }
-    
-    determineBestMethod() {
-        if (navigator.serial) return 'webserial';
-        if (navigator.usb) return 'webusb';
-        switch(this.platform) {
-            case 'sunmi':
-            case 'android-webview':
-            case 'android-browser':
-                return 'sunmi-sdk';
-            case 'windows':
-                return 'network-bridge';
-            default:
-                return 'network-bridge';
-        }
-    }
-    
-    async openDrawer() {
-        try {
-            switch(this.method) {
-                case 'sunmi-sdk':
-                    return await this.openViaSunmiSDK();
-                case 'native-bridge':
-                    return await this.openViaAndroidBridge();
-                case 'web-intent':
-                    return await this.openViaWebIntent();
-                case 'webserial':
-                    return await this.openViaWebSerial();
-                case 'webusb':
-                    return await this.openViaWebUSB();
-                case 'network-bridge':
-                    return await this.openViaNetworkBridge();
-                default:
-                    return await this.openViaWebFallback();
+        // Cash Drawer Integration - FIXED VERSION
+        class CashDrawerManager {
+            constructor() {
+                this.platform = this.detectPlatform();
+                this.method = this.determineBestMethod();
+                this.escPosCommand = '\x1B\x70\x00\x19\xFA'; // ESC/POS drawer open command
             }
-        } catch (error) {
-            console.error('Cash drawer error:', error);
-            throw new Error(`Failed to open cash drawer: ${error.message}`);
-        }
-    }
-    
-    // Sunmi SDK for Sunmi POS devices and Android bridge fallback
-    async openViaSunmiSDK() {
-        if (typeof window.sunmiPrinter !== 'undefined' && window.sunmiPrinter.sendRAWData) {
-            const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]); // ESC/POS drawer open command
-            window.sunmiPrinter.sendRAWData(command);
-            return { success: true, method: 'Sunmi SDK' };
-        } else if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
-            window.Android.openCashDrawer();
-            return { success: true, method: 'Android Native Bridge' };
-        }
-        throw new Error('Neither Sunmi nor Android bridge API available');
-    }
 
-    // Android WebView with native bridge
-    async openViaAndroidBridge() {
-        if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
-            window.Android.openCashDrawer();
-            return { success: true, method: 'Android Native Bridge' };
-        }
-        throw new Error('Android bridge not available');
-    }
-    
-    // Android browser with web intent
-    async openViaWebIntent() {
-        const intentUrl = `intent://drawer/open#Intent;scheme=cashpos;package=com.yourapp.pos;end`;
-        window.location.href = intentUrl;
-        return { success: true, method: 'Android Web Intent' };
-    }
-    
-    // Windows/Chrome with WebSerial API
-    async openViaWebSerial() {
-        if (!navigator.serial) {
-            throw new Error('WebSerial not supported');
-        }
+            detectPlatform() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isAndroid = /android/.test(userAgent);
+                const isWindows = /windows/.test(userAgent);
+                const isWebView = /wv/.test(userAgent); // Android WebView
+                const isSunmi = /sunmi/i.test(userAgent);
 
-        try {
-            const port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 9600 });
-
-            const writer = port.writable.getWriter();
-            const data = new TextEncoder().encode(this.escPosCommand);
-            await writer.write(data);
-            writer.releaseLock();
-            await port.close();
-
-            return { success: true, method: 'WebSerial API' };
-        } catch (error) {
-            throw new Error(`WebSerial failed: ${error.message}`);
-        }
-    }
-
-    // WebUSB for USB connected printers/drawers
-    async openViaWebUSB() {
-        if (!navigator.usb) {
-            throw new Error('WebUSB not supported');
-        }
-
-        try {
-            // Request device - user will select
-            const device = await navigator.usb.requestDevice({ filters: [] });
-
-            await device.open();
-            await device.selectConfiguration(1);
-            await device.claimInterface(0);
-
-            // ESC/POS drawer open command
-            const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]);
-
-            // Send to endpoint 1 (bulk out, common for printers)
-            await device.transferOut(1, command);
-
-            await device.close();
-
-            return { success: true, method: 'WebUSB' };
-        } catch (error) {
-            throw new Error(`WebUSB failed: ${error.message}`);
-        }
-    }
-
-    // Network bridge (local service) - Works on both Windows and Android
-    async openViaNetworkBridge() {
-        const endpoints = [
-            'http://localhost:8080/drawer/open',
-            'http://localhost:3000/drawer/open',
-            'http://127.0.0.1:8080/drawer/open'
-        ];
-        
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: 'open_drawer' }),
-                    signal: AbortSignal.timeout(2000)
-                });
-                
-                if (response.ok) {
-                    return { success: true, method: `Network Bridge (${endpoint})` };
-                }
-            } catch (error) {
-                console.log(`Failed to connect to ${endpoint}:`, error.message);
+                if (isSunmi) return 'sunmi';
+                if (isWebView || (isAndroid && window.Android)) return 'android-webview';
+                if (isAndroid) return 'android-browser';
+                if (isWindows) return 'windows';
+                return 'other';
             }
-        }
-        
-        throw new Error('No network bridge service found. Please install the POS Bridge service.');
-    }
-    
-    // FIXED: Fallback method with proper string escaping
-    async openViaWebFallback() {
-        return new Promise((resolve) => {
-            // Create a hidden print frame
-            const printFrame = document.createElement('iframe');
-            printFrame.style.display = 'none';
-            printFrame.style.width = '0';
-            printFrame.style.height = '0';
-            printFrame.style.border = 'none';
-            document.body.appendChild(printFrame);
-            
-            // Create the print content using DOM manipulation instead of template literals
-            const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-            printDoc.open();
-            printDoc.write('<!DOCTYPE html><html><head><title>Print</title></head><body></body></html>');
-            printDoc.close();
-            
-            // Add event listener for the message
-            const messageHandler = (e) => {
-                if (e.data === 'drawer-attempted') {
-                    cleanup();
-                    resolve({ success: true, method: 'Web Fallback (Print Dialog)' });
+
+            determineBestMethod() {
+                if (navigator.serial) return 'webserial';
+                if (navigator.usb) return 'webusb';
+                switch (this.platform) {
+                    case 'sunmi':
+                    case 'android-webview':
+                    case 'android-browser':
+                        return 'sunmi-sdk';
+                    case 'windows':
+                        return 'network-bridge';
+                    default:
+                        return 'network-bridge';
                 }
-            };
-            
-            const cleanup = () => {
-                if (printFrame && printFrame.parentNode) {
-                    document.body.removeChild(printFrame);
-                }
-                window.removeEventListener('message', messageHandler);
-            };
-            
-            window.addEventListener('message', messageHandler);
-            
-            // Try to trigger print dialog in the iframe
-            printFrame.onload = () => {
+            }
+
+            async openDrawer() {
                 try {
-                    if (printFrame.contentWindow) {
-                        // Send message back to parent after attempting print
-                        setTimeout(() => {
-                            printFrame.contentWindow.print();
-                            window.postMessage('drawer-attempted', '*');
-                        }, 100);
+                    switch (this.method) {
+                        case 'sunmi-sdk':
+                            return await this.openViaSunmiSDK();
+                        case 'native-bridge':
+                            return await this.openViaAndroidBridge();
+                        case 'web-intent':
+                            return await this.openViaWebIntent();
+                        case 'webserial':
+                            return await this.openViaWebSerial();
+                        case 'webusb':
+                            return await this.openViaWebUSB();
+                        case 'network-bridge':
+                            return await this.openViaNetworkBridge();
+                        default:
+                            return await this.openViaWebFallback();
                     }
                 } catch (error) {
-                    console.log('Print attempt failed:', error);
-                    window.postMessage('drawer-attempted', '*');
+                    console.error('Cash drawer error:', error);
+                    throw new Error(`Failed to open cash drawer: ${error.message}`);
                 }
-            };
-            
-            // Timeout fallback
-            setTimeout(() => {
-                if (printFrame && printFrame.parentNode) {
-                    cleanup();
-                    resolve({ success: true, method: 'Web Fallback (Timeout)' });
+            }
+
+            // Sunmi SDK for Sunmi POS devices and Android bridge fallback
+            async openViaSunmiSDK() {
+                if (typeof window.sunmiPrinter !== 'undefined' && window.sunmiPrinter.sendRAWData) {
+                    const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]); // ESC/POS drawer open command
+                    window.sunmiPrinter.sendRAWData(command);
+                    return {
+                        success: true,
+                        method: 'Sunmi SDK'
+                    };
+                } else if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
+                    window.Android.openCashDrawer();
+                    return {
+                        success: true,
+                        method: 'Android Native Bridge'
+                    };
                 }
-            }, 3000);
-        });
-    }
-}
+                throw new Error('Neither Sunmi nor Android bridge API available');
+            }
 
-// Initialize cash drawer manager
-const drawerManager = new CashDrawerManager();
+            // Android WebView with native bridge
+            async openViaAndroidBridge() {
+                if (typeof window.Android !== 'undefined' && window.Android.openCashDrawer) {
+                    window.Android.openCashDrawer();
+                    return {
+                        success: true,
+                        method: 'Android Native Bridge'
+                    };
+                }
+                throw new Error('Android bridge not available');
+            }
 
-// Add event listener to the button
-document.getElementById('open-cash-drawer')?.addEventListener('click', async function() {
-    const originalContent = this.innerHTML;
-    
-    this.disabled = true;
-    this.innerHTML = `
+            // Android browser with web intent
+            async openViaWebIntent() {
+                const intentUrl = `intent://drawer/open#Intent;scheme=cashpos;package=com.yourapp.pos;end`;
+                window.location.href = intentUrl;
+                return {
+                    success: true,
+                    method: 'Android Web Intent'
+                };
+            }
+
+            // Windows/Chrome with WebSerial API
+            async openViaWebSerial() {
+                if (!navigator.serial) {
+                    throw new Error('WebSerial not supported');
+                }
+
+                try {
+                    const port = await navigator.serial.requestPort();
+                    await port.open({
+                        baudRate: 9600
+                    });
+
+                    const writer = port.writable.getWriter();
+                    const data = new TextEncoder().encode(this.escPosCommand);
+                    await writer.write(data);
+                    writer.releaseLock();
+                    await port.close();
+
+                    return {
+                        success: true,
+                        method: 'WebSerial API'
+                    };
+                } catch (error) {
+                    throw new Error(`WebSerial failed: ${error.message}`);
+                }
+            }
+
+            // WebUSB for USB connected printers/drawers
+            async openViaWebUSB() {
+                if (!navigator.usb) {
+                    throw new Error('WebUSB not supported');
+                }
+
+                try {
+                    // Request device - user will select
+                    const device = await navigator.usb.requestDevice({
+                        filters: []
+                    });
+
+                    await device.open();
+                    await device.selectConfiguration(1);
+                    await device.claimInterface(0);
+
+                    // ESC/POS drawer open command
+                    const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]);
+
+                    // Send to endpoint 1 (bulk out, common for printers)
+                    await device.transferOut(1, command);
+
+                    await device.close();
+
+                    return {
+                        success: true,
+                        method: 'WebUSB'
+                    };
+                } catch (error) {
+                    throw new Error(`WebUSB failed: ${error.message}`);
+                }
+            }
+
+            // Network bridge (local service) - Works on both Windows and Android
+            async openViaNetworkBridge() {
+                const endpoints = [
+                    'http://localhost:8080/drawer/open',
+                    'http://localhost:3000/drawer/open',
+                    'http://127.0.0.1:8080/drawer/open'
+                ];
+
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                command: 'open_drawer'
+                            }),
+                            signal: AbortSignal.timeout(2000)
+                        });
+
+                        if (response.ok) {
+                            return {
+                                success: true,
+                                method: `Network Bridge (${endpoint})`
+                            };
+                        }
+                    } catch (error) {
+                        console.log(`Failed to connect to ${endpoint}:`, error.message);
+                    }
+                }
+
+                throw new Error('No network bridge service found. Please install the POS Bridge service.');
+            }
+
+            // FIXED: Fallback method with proper string escaping
+            async openViaWebFallback() {
+                return new Promise((resolve) => {
+                    // Create a hidden print frame
+                    const printFrame = document.createElement('iframe');
+                    printFrame.style.display = 'none';
+                    printFrame.style.width = '0';
+                    printFrame.style.height = '0';
+                    printFrame.style.border = 'none';
+                    document.body.appendChild(printFrame);
+
+                    // Create the print content using DOM manipulation instead of template literals
+                    const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+                    printDoc.open();
+                    printDoc.write(
+                        '<!DOCTYPE html><html><head><title>Print</title></head><body></body></html>');
+                    printDoc.close();
+
+                    // Add event listener for the message
+                    const messageHandler = (e) => {
+                        if (e.data === 'drawer-attempted') {
+                            cleanup();
+                            resolve({
+                                success: true,
+                                method: 'Web Fallback (Print Dialog)'
+                            });
+                        }
+                    };
+
+                    const cleanup = () => {
+                        if (printFrame && printFrame.parentNode) {
+                            document.body.removeChild(printFrame);
+                        }
+                        window.removeEventListener('message', messageHandler);
+                    };
+
+                    window.addEventListener('message', messageHandler);
+
+                    // Try to trigger print dialog in the iframe
+                    printFrame.onload = () => {
+                        try {
+                            if (printFrame.contentWindow) {
+                                // Send message back to parent after attempting print
+                                setTimeout(() => {
+                                    printFrame.contentWindow.print();
+                                    window.postMessage('drawer-attempted', '*');
+                                }, 100);
+                            }
+                        } catch (error) {
+                            console.log('Print attempt failed:', error);
+                            window.postMessage('drawer-attempted', '*');
+                        }
+                    };
+
+                    // Timeout fallback
+                    setTimeout(() => {
+                        if (printFrame && printFrame.parentNode) {
+                            cleanup();
+                            resolve({
+                                success: true,
+                                method: 'Web Fallback (Timeout)'
+                            });
+                        }
+                    }, 3000);
+                });
+            }
+        }
+
+        // Initialize cash drawer manager
+        const drawerManager = new CashDrawerManager();
+
+        // Add event listener to the button
+        document.getElementById('open-cash-drawer')?.addEventListener('click', async function() {
+            const originalContent = this.innerHTML;
+
+            this.disabled = true;
+            this.innerHTML = `
         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
         {{ __('dashboard.Opening...') }}
     `;
-    
-    try {
-        const result = await drawerManager.openDrawer();
-        showNotification(`{{ __('dashboard.Cash drawer opened successfully') }} (${result.method})`, 'success');
-    } catch (error) {
-        showNotification(error.message, 'error');
-    } finally {
-        this.disabled = false;
-        this.innerHTML = originalContent;
-    }
-});
+
+            try {
+                const result = await drawerManager.openDrawer();
+                showNotification(`{{ __('dashboard.Cash drawer opened successfully') }} (${result.method})`,
+                    'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalContent;
+            }
+        });
     </script>
 </x-app-layout>

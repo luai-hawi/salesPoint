@@ -8,7 +8,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center space-x-4">
-            <a href="{{ route('admin.dashboard') }}" 
+            <a href="{{ route('admin.dashboard') }}"
                class="text-gray-600 hover:text-gray-900 transition-colors duration-200">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -22,7 +22,7 @@
 
     <div class="py-8">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
-            
+
             @if(session('success'))
                 <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
                     {{ session('success') }}
@@ -41,13 +41,13 @@
                     <!-- Name -->
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Full Name') }}</label>
-                        <input type="text" 
-                               name="name" 
-                               id="name" 
-                               value="{{ old('name', $shopOwner->name) }}" 
+                        <input type="text"
+                               name="name"
+                               id="name"
+                               value="{{ old('name', $shopOwner->name) }}"
                                required
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
-                        @error('name') 
+                        @error('name')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -96,18 +96,35 @@
                         @enderror
                     </div>
 
+                    <!-- Image Limit -->
+                    <div>
+                        <label for="image_limit" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Image Upload Limit') }}</label>
+                        <input type="number"
+                               name="image_limit"
+                               id="image_limit"
+                               value="{{ old('image_limit', $shopOwner->image_limit ?? 1000) }}"
+                               min="0"
+                               max="10000"
+                               class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                               placeholder="1000">
+                        <p class="text-xs text-gray-500 mt-1">{{ __('messages.Maximum number of images allowed across all products. Default: 1000') }}</p>
+                        @error('image_limit')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Password -->
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-                            {{ __('messages.Password') }} 
+                            {{ __('messages.Password') }}
                             <span class="text-xs text-gray-500">({{ __('messages.leave empty to keep current password') }})</span>
                         </label>
-                        <input type="password" 
-                               name="password" 
+                        <input type="password"
+                               name="password"
                                id="password"
                                class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                                placeholder="{{ __('messages.Enter new password') }}">
-                        @error('password') 
+                        @error('password')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -115,15 +132,15 @@
                     <!-- Role -->
                     <div>
                         <label for="role" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.User Role') }}</label>
-                        <select name="role" 
-                                id="role" 
+                        <select name="role"
+                                id="role"
                                 required
                                 class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
                             <option value="shop_owner" {{ old('role', $shopOwner->role) == 'shop_owner' ? 'selected' : '' }}>{{ __('messages.Shop Owner') }}</option>
                             <option value="admin" {{ old('role', $shopOwner->role) == 'admin' ? 'selected' : '' }}>{{ __('messages.Admin') }}</option>
                             <option value="disabled" {{ old('role', $shopOwner->role) == 'disabled' ? 'selected' : '' }}>{{ __('messages.Disabled') }}</option>
                         </select>
-                        @error('role') 
+                        @error('role')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -133,13 +150,13 @@
                         <h4 class="text-sm font-medium text-gray-900 mb-2">{{ __('messages.Current Status:') }}</h4>
                         <div class="flex items-center space-x-2">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                {{ $shopOwner->role === 'admin' ? 'bg-red-100 text-red-800' : 
+                                {{ $shopOwner->role === 'admin' ? 'bg-red-100 text-red-800' :
                                    ($shopOwner->role === 'disabled' ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800') }}">
                                 {{ ucfirst(str_replace('_', ' ', $shopOwner->role)) }}
                             </span>
                             <span class="text-sm text-gray-600">{{ __('messages.since') }} {{ $shopOwner->created_at->format('M j, Y') }}</span>
                         </div>
-                        
+
                         @if($shopOwner->role === 'shop_owner' && $shopOwner->employees_count > 0)
                             <p class="text-sm text-yellow-600 mt-2">
                                 ⚠️ {{ __('messages.This shop owner has') }} {{ $shopOwner->employees_count }} {{ __('messages.Changing role will affect their access.') }}
@@ -149,7 +166,7 @@
 
                     <!-- Action Buttons -->
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
-                        <a href="{{ route('admin.dashboard') }}" 
+                        <a href="{{ route('admin.dashboard') }}"
                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
                             {{ __('messages.Cancel') }}
                         </a>
@@ -169,7 +186,7 @@
                     </div>
                     <div class="p-6">
                         <div class="flex items-center space-x-4">
-                            <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}" 
+                            <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}"
                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
                                 {{ __('messages.View Shop Details') }}
                             </a>

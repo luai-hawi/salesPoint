@@ -52,15 +52,14 @@ class ShopOwnerController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             $validated['password'] = Hash::make($validated['password']);
             $user = User::create($validated);
-            
+
             DB::commit();
-            
+
             return redirect()->route('admin.shop-owners.index')
                 ->with('success', ucfirst(str_replace('_', ' ', $user->role)) . ' created successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -80,17 +79,17 @@ class ShopOwnerController extends Controller
         }
 
         // Load employees with pagination-like limit for performance
-        $shopOwner->load(['employees' => function($query) {
+        $shopOwner->load(['employees' => function ($query) {
             $query->latest()->take(50); // Limit to prevent memory issues
         }]);
 
         // Get all user IDs for this shop (owner + employees)
         $userIds = collect([$shopOwner->id])->merge($shopOwner->employees->pluck('id'))->filter();
-        
+
         // Calculate statistics with better error handling
         try {
             $shopOwner->total_sales = Bill::whereIn('user_id', $userIds)->sum('total_price') ?? 0;
-            
+
             $shopOwner->sales_this_month = Bill::whereIn('user_id', $userIds)
                 ->whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
@@ -103,7 +102,16 @@ class ShopOwnerController extends Controller
             $shopOwner->products_count = Product::where('user_id', $shopOwner->id)->count();
             $shopOwner->customers_count = Customer::where('user_id', $shopOwner->id)->count();
             $shopOwner->employees_count = $shopOwner->employees->count();
-            
+
+            // Count total images for this user
+            $shopOwner->total_images = 0;
+            $products = Product::where('user_id', $shopOwner->id)->whereNotNull('pictures')->get();
+            foreach ($products as $product) {
+                $pictures = json_decode($product->pictures, true);
+                if (is_array($pictures)) {
+                    $shopOwner->total_images += count($pictures);
+                }
+            }
         } catch (\Exception $e) {
             // Set default values if queries fail
             $shopOwner->total_sales = 0;
@@ -138,11 +146,12 @@ class ShopOwnerController extends Controller
             'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
             'phone_number' => 'nullable|string|max:20',
             'subscription_cost' => 'nullable|numeric|min:0',
+            'image_limit' => 'nullable|integer|min:0|max:10000',
         ]);
 
         try {
             DB::beginTransaction();
-            
+
             if ($request->filled('password')) {
                 $validated['password'] = Hash::make($validated['password']);
             } else {
@@ -150,16 +159,15 @@ class ShopOwnerController extends Controller
             }
 
             $shopOwner->update($validated);
-            
+
             DB::commit();
-            
-            $redirectRoute = in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant']) 
-                ? 'admin.shop-owners.show' 
+
+            $redirectRoute = in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant'])
+                ? 'admin.shop-owners.show'
                 : 'admin.shop-owners.index';
-                
+
             return redirect()->route($redirectRoute, $shopOwner->id)
                 ->with('success', 'User updated successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -175,26 +183,25 @@ class ShopOwnerController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             // Delete all employees first
             if ($shopOwner->role === 'shop_owner' || $shopOwner->role === 'restaurant' || $shopOwner->role === 'merchant' || $shopOwner->role === 'disabled') {
                 $shopOwner->employees()->delete();
-                
+
                 // Delete related business data
                 Product::where('user_id', $shopOwner->id)->delete();
                 Customer::where('user_id', $shopOwner->id)->delete();
-                
+
                 // Note: You might want to keep bills for accounting purposes
                 // Bill::where('user_id', $shopOwner->id)->delete();
             }
-            
+
             $shopOwner->delete();
-            
+
             DB::commit();
-            
+
             return redirect()->route('admin.shop-owners.index')
                 ->with('success', 'User and all related data deleted successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -214,7 +221,6 @@ class ShopOwnerController extends Controller
             $status = ($newRole === 'shop_owner' || $newRole === 'restaurant' || $newRole === 'merchant') ? 'activated' : 'disabled';
             return redirect()->back()
                 ->with('success', "Shop owner has been {$status} successfully.");
-                
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to update status. Please try again.']);
@@ -244,12 +250,18 @@ class ShopOwnerController extends Controller
      */
     public function allEmployees()
     {
-        $employees = User::where('role', 'employee')
-            ->with(['shopOwner' => function($query) {
+        $user = auth()->user();
+        $query = User::where('role', 'employee')
+            ->with(['shopOwner' => function ($query) {
                 $query->select('id', 'name', 'email', 'role');
-            }])
-            ->latest()
-            ->get();
+            }]);
+
+        // If user is employee, only show employees of their shop owner
+        if ($user->role === 'employee') {
+            $query->where('shop_owner_id', $user->shop_owner_id);
+        }
+
+        $employees = $query->latest()->get();
 
         return view('admin.employees.index', compact('employees'));
     }
@@ -259,11 +271,18 @@ class ShopOwnerController extends Controller
      */
     public function createEmployee()
     {
-        $shopOwners = User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
+        $user = auth()->user();
+        $query = User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
             ->select('id', 'name', 'email')
-            ->orderBy('name')
-            ->get();
-            
+            ->orderBy('name');
+
+        // If user is employee, only show their shop owner
+        if ($user->role === 'employee') {
+            $query->where('id', $user->shop_owner_id);
+        }
+
+        $shopOwners = $query->get();
+
         return view('admin.employees.create', compact('shopOwners'));
     }
 
@@ -272,21 +291,31 @@ class ShopOwnerController extends Controller
      */
     public function storeEmployee(Request $request)
     {
-        $validated = $request->validate([
+        $user = auth()->user();
+
+        $validationRules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'shop_owner_id' => 'required|exists:users,id',
             'phone_number' => 'nullable|string|max:20',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:manage_products,manage_bills,manage_customers,manage_suppliers,manage_purchase_bills,manage_settings,manage_tags,view_financial,manage_employees,manage_expenses',
-        ]);
+        ];
+
+        // If user is employee, don't require shop_owner_id and force it to their owner
+        if ($user->role === 'employee') {
+            $validated = $request->validate($validationRules);
+            $validated['shop_owner_id'] = $user->shop_owner_id;
+        } else {
+            $validationRules['shop_owner_id'] = 'required|exists:users,id';
+            $validated = $request->validate($validationRules);
+        }
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
+            ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
             ->first();
-            
+
         if (!$shopOwner) {
             return redirect()->back()
                 ->withInput()
@@ -295,7 +324,7 @@ class ShopOwnerController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             $validated['password'] = Hash::make($validated['password']);
             $validated['role'] = 'employee';
 
@@ -307,7 +336,7 @@ class ShopOwnerController extends Controller
             }
 
             DB::commit();
-            
+
             // Redirect based on where we came from
             if ($request->has('from_shop') && $request->from_shop) {
                 return redirect()->route('admin.shop-owners.show', $validated['shop_owner_id'])
@@ -316,7 +345,6 @@ class ShopOwnerController extends Controller
 
             return redirect()->route('admin.employees.index')
                 ->with('success', 'Employee created successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -334,12 +362,19 @@ class ShopOwnerController extends Controller
         if ($employee->role !== 'employee') {
             abort(404);
         }
-        
-        $shopOwners = User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
+
+        $user = auth()->user();
+        $query = User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
             ->select('id', 'name', 'email')
-            ->orderBy('name')
-            ->get();
-            
+            ->orderBy('name');
+
+        // If user is employee, only show their shop owner
+        if ($user->role === 'employee') {
+            $query->where('id', $user->shop_owner_id);
+        }
+
+        $shopOwners = $query->get();
+
         return view('admin.employees.edit', compact('employee', 'shopOwners'));
     }
 
@@ -353,21 +388,31 @@ class ShopOwnerController extends Controller
             abort(404);
         }
 
-        $validated = $request->validate([
+        $user = auth()->user();
+
+        $validationRules = [
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($employee->id)],
             'password' => 'nullable|string|min:8',
-            'shop_owner_id' => 'required|exists:users,id',
             'phone_number' => 'nullable|string|max:20',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:manage_products,manage_bills,manage_customers,manage_suppliers,manage_purchase_bills,manage_settings,manage_tags,view_financial,manage_employees,manage_expenses',
-        ]);
+        ];
+
+        // If user is employee, don't require shop_owner_id and force it to their owner
+        if ($user->role === 'employee') {
+            $validated = $request->validate($validationRules);
+            $validated['shop_owner_id'] = $user->shop_owner_id;
+        } else {
+            $validationRules['shop_owner_id'] = 'required|exists:users,id';
+            $validated = $request->validate($validationRules);
+        }
 
         // Verify the shop_owner_id belongs to an actual shop owner
         $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
+            ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
             ->first();
-            
+
         if (!$shopOwner) {
             return redirect()->back()
                 ->withInput()
@@ -376,7 +421,7 @@ class ShopOwnerController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             if ($request->filled('password')) {
                 $validated['password'] = Hash::make($validated['password']);
             } else {
@@ -395,10 +440,9 @@ class ShopOwnerController extends Controller
             }
 
             DB::commit();
-            
+
             return redirect()->route('admin.employees.index')
                 ->with('success', 'Employee updated successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -416,7 +460,14 @@ class ShopOwnerController extends Controller
         if ($employee->role !== 'employee') {
             abort(404);
         }
-        
+
+        $user = auth()->user();
+
+        // If user is employee, ensure they can only delete employees of their shop owner
+        if ($user->role === 'employee' && $employee->shop_owner_id !== $user->shop_owner_id) {
+            abort(403, 'Unauthorized');
+        }
+
         try {
             $shopOwnerId = $employee->shop_owner_id;
             $employee->delete();
@@ -429,7 +480,6 @@ class ShopOwnerController extends Controller
 
             return redirect()->route('admin.employees.index')
                 ->with('success', 'Employee deleted successfully.');
-                
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to delete employee. Please try again.']);
