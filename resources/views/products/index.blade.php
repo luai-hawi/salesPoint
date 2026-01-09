@@ -4,77 +4,102 @@
     if (in_array($sessionLocale, ['en', 'ar'])) {
         app()->setLocale($sessionLocale);
     }
-    @endphp
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-bold text-2xl text-gray-800 leading-tight flex items-center">
                 <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                 </svg>
                 {{ __('messages.Product Management') }}
             </h2>
             <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                {{ __('messages.Total Products:') }} <span class="font-bold text-blue-600">{{ $products->total() }}</span>
+                {{ __('messages.Total Products:') }} <span
+                    class="font-bold text-blue-600">{{ $products->total() }}</span>
             </div>
         </div>
     </x-slot>
 
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="w-full px-4 sm:px-6 lg:px-8 max-w-none">
-            
+
             <!-- Search and Actions Bar -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <!-- Search Input -->
                     <div class="relative flex-1 max-w-md">
-                        <input
-                            type="text"
-                            id="product-search"
-                            name="search"
+                        <input type="text" id="product-search" name="search"
                             placeholder="{{ __('messages.Search by name, barcode, or price...') }}"
                             class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                            value="{{ request('search') }}"
-                        />
-                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            value="{{ request('search') }}" />
+                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
 
                     <!-- Low Stock Filter -->
                     <div class="flex items-center ml-4">
                         <label for="low-stock-filter" class="relative cursor-pointer">
-                            <input type="checkbox" id="low-stock-filter" class="sr-only" {{ request('low_stock') ? 'checked' : '' }}>
-                            <div class="w-12 h-7 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out" id="toggle-bg"></div>
-                            <div class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center" id="toggle-circle">
-                                <svg class="w-3 h-3 text-orange-500 opacity-0 transition-opacity duration-200" id="warning-icon" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            <input type="checkbox" id="low-stock-filter" class="sr-only"
+                                {{ request('low_stock') ? 'checked' : '' }}>
+                            <div class="w-12 h-7 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out"
+                                id="toggle-bg"></div>
+                            <div class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center"
+                                id="toggle-circle">
+                                <svg class="w-3 h-3 text-orange-500 opacity-0 transition-opacity duration-200"
+                                    id="warning-icon" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                             </div>
                         </label>
-                        <label for="low-stock-filter" class="ml-3 text-sm font-semibold text-gray-700 cursor-pointer transition-all duration-200 hover:text-orange-600 select-none">{{ __('messages.Show low stock only') }}</label>
+                        <label for="low-stock-filter"
+                            class="ml-3 text-sm font-semibold text-gray-700 cursor-pointer transition-all duration-200 hover:text-orange-600 select-none">{{ __('messages.Show low stock only') }}</label>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="flex gap-3">
-                        <a href="{{ route('products.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center shadow-sm">
+                        <a href="{{ route('products.create') }}"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
                             {{ __('messages.Add New Product') }}
                         </a>
-                        
-                        <button id="view-order-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
+
+                        <button id="view-order-list-btn"
+                            class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                </path>
                             </svg>
-                            <span id="order-count-badge" class="hidden bg-white bg-opacity-20 text-xs font-bold px-2 py-1 rounded-full ml-1">0</span>
+                            <span id="order-count-badge"
+                                class="hidden bg-white bg-opacity-20 text-xs font-bold px-2 py-1 rounded-full ml-1">0</span>
                             {{ __('messages.Order List') }}
                         </button>
 
-                        <a href="{{ route('products.export') }}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
+                        <a href="{{ route('products.search-barcode') }}"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            {{ __('messages.Barcode Search') }}
+                        </a>
+
+                        <a href="{{ route('products.export') }}"
+                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center shadow-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
                             </svg>
                             {{ __('messages.Export CSV') }}
                         </a>
@@ -86,8 +111,11 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="p-6 border-b border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                            </path>
                         </svg>
                         {{ __('messages.Product Inventory') }}
                     </h3>
@@ -95,8 +123,9 @@
 
                 <div id="products-container" class="p-6">
                     <!-- Updated grid with more columns for smaller cards -->
-                    <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-                        @foreach($products as $product)
+                    <div id="products-grid"
+                        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+                        @foreach ($products as $product)
                             @include('products.partials.product-card', ['product' => $product])
                         @endforeach
                     </div>
@@ -108,15 +137,20 @@
                     </div>
 
                     <!-- Empty State -->
-                    @if($products->isEmpty())
+                    @if ($products->isEmpty())
                         <div class="text-center py-12">
-                            <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                             </svg>
-                            <h3 class="mt-4 text-lg font-medium text-gray-900">{{ __('messages.No products found') }}</h3>
-                            <p class="mt-2 text-gray-500">{{ __('messages.Get started by creating your first product.') }}</p>
+                            <h3 class="mt-4 text-lg font-medium text-gray-900">{{ __('messages.No products found') }}
+                            </h3>
+                            <p class="mt-2 text-gray-500">
+                                {{ __('messages.Get started by creating your first product.') }}</p>
                             <div class="mt-6">
-                                <a href="{{ route('products.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                                <a href="{{ route('products.create') }}"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                                     {{ __('messages.Add Product') }}
                                 </a>
                             </div>
@@ -125,7 +159,7 @@
                 </div>
 
                 <!-- Pagination -->
-                @if($products->hasPages())
+                @if ($products->hasPages())
                     <div class="bg-gray-50 px-6 py-4 border-t border-gray-100" id="pagination-links">
                         {{ $products->links('vendor.pagination.custom-light') }}
                     </div>
@@ -138,13 +172,17 @@
     <div id="bulk-add-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
-                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        <div
+                            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -153,16 +191,20 @@
                             </h3>
                             <div class="mt-4">
                                 <p class="text-sm text-gray-500 mb-4" id="product-name-display"></p>
-                                
+
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Quantity to Add') }}</label>
-                                        <input type="number" id="add-quantity" min="1" value="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Quantity to Add') }}</label>
+                                        <input type="number" id="add-quantity" min="1" value="1"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
-                                    
+
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Cost Price per Unit') }}</label>
-                                        <input type="number" id="add-cost-price" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Cost Price per Unit') }}</label>
+                                        <input type="number" id="add-cost-price" step="0.01" min="0"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                 </div>
                             </div>
@@ -170,10 +212,12 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" id="confirm-add-stock" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button type="button" id="confirm-add-stock"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
                         {{ __('messages.Add Stock') }}
                     </button>
-                    <button type="button" id="cancel-add-stock" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button type="button" id="cancel-add-stock"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         {{ __('messages.Cancel') }}
                     </button>
                 </div>
@@ -186,12 +230,17 @@
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
 
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
-                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        <div
+                            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                                </path>
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -202,17 +251,23 @@
                                 <div id="order-items-container" class="space-y-3 max-h-96 overflow-y-auto">
                                     <!-- Order items will be added here -->
                                     <div id="empty-order-message" class="text-center py-8">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                            </path>
                                         </svg>
-                                        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ __('messages.No items in order list') }}</h3>
-                                        <p class="mt-1 text-sm text-gray-500">{{ __('messages.Add some products to your order first.') }}</p>
+                                        <h3 class="mt-2 text-sm font-medium text-gray-900">
+                                            {{ __('messages.No items in order list') }}</h3>
+                                        <p class="mt-1 text-sm text-gray-500">
+                                            {{ __('messages.Add some products to your order first.') }}</p>
                                     </div>
                                 </div>
 
                                 <!-- Order Summary -->
                                 <div id="order-summary" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
-                                    <h4 class="text-sm font-medium text-gray-900 mb-2">{{ __('messages.Order Summary') }}</h4>
+                                    <h4 class="text-sm font-medium text-gray-900 mb-2">
+                                        {{ __('messages.Order Summary') }}</h4>
                                     <div class="flex justify-between text-sm">
                                         <span>{{ __('messages.Total Items') }}:</span>
                                         <span id="total-order-items" class="font-medium">0</span>
@@ -223,19 +278,26 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" id="print-order-btn" class="hidden w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button type="button" id="print-order-btn"
+                        class="hidden w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                            </path>
                         </svg>
                         {{ __('messages.Print Order List') }}
                     </button>
-                    <button type="button" id="clear-order-btn" class="hidden mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button type="button" id="clear-order-btn"
+                        class="hidden mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                            </path>
                         </svg>
                         {{ __('messages.Clear Order') }}
                     </button>
-                    <button type="button" id="close-order-modal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button type="button" id="close-order-modal"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         {{ __('messages.Cancel') }}
                     </button>
                 </div>
@@ -266,8 +328,15 @@
         }
 
         @keyframes flash {
-            0%, 100% { background-color: transparent; }
-            50% { background-color: #dcfce7; }
+
+            0%,
+            100% {
+                background-color: transparent;
+            }
+
+            50% {
+                background-color: #dcfce7;
+            }
         }
 
         /* Responsive grid adjustments */
@@ -342,13 +411,17 @@
             const warningIcon = document.getElementById('warning-icon');
 
             if (checked) {
-                toggleBg.className = 'w-12 h-7 bg-gradient-to-r from-orange-400 to-red-500 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out shadow-orange-200';
-                toggleCircle.className = 'absolute top-1 right-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center';
+                toggleBg.className =
+                    'w-12 h-7 bg-gradient-to-r from-orange-400 to-red-500 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out shadow-orange-200';
+                toggleCircle.className =
+                    'absolute top-1 right-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center';
                 warningIcon.classList.remove('opacity-0');
                 warningIcon.classList.add('opacity-100');
             } else {
-                toggleBg.className = 'w-12 h-7 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out';
-                toggleCircle.className = 'absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center';
+                toggleBg.className =
+                    'w-12 h-7 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full shadow-inner cursor-pointer transition-all duration-300 ease-in-out';
+                toggleCircle.className =
+                    'absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-lg transform transition-all duration-300 ease-in-out flex items-center justify-center';
                 warningIcon.classList.remove('opacity-100');
                 warningIcon.classList.add('opacity-0');
             }
@@ -384,49 +457,52 @@
             document.getElementById('loading-indicator').classList.remove('hidden');
 
             fetch(url, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const newGrid = doc.querySelector('#products-grid');
-                const newPagination = doc.querySelector('#pagination-links');
-
-                if (newGrid) {
-                    document.getElementById('products-grid').innerHTML = newGrid.innerHTML;
-                }
-                if (newPagination) {
-                    const paginationContainer = document.getElementById('pagination-links');
-                    if (paginationContainer) {
-                        paginationContainer.innerHTML = newPagination.innerHTML;
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
 
-                // Update checkbox state based on URL
-                const urlObj = new URL(url);
-                const lowStockParam = urlObj.searchParams.get('low_stock');
-                const checkbox = document.getElementById('low-stock-filter');
-                checkbox.checked = lowStockParam === '1';
-                updateToggleState(checkbox.checked);
+                    const newGrid = doc.querySelector('#products-grid');
+                    const newPagination = doc.querySelector('#pagination-links');
 
-                attachEventListeners();
-                attachPaginationLinks();
-            })
-            .catch(error => {
-                console.error('Error loading products:', error);
-                showNotification("{{ __('messages.Error loading products') }}", 'error');
-            })
-            .finally(() => {
-                document.getElementById('loading-indicator').classList.add('hidden');
-            });
+                    if (newGrid) {
+                        document.getElementById('products-grid').innerHTML = newGrid.innerHTML;
+                    }
+                    if (newPagination) {
+                        const paginationContainer = document.getElementById('pagination-links');
+                        if (paginationContainer) {
+                            paginationContainer.innerHTML = newPagination.innerHTML;
+                        }
+                    }
+
+                    // Update checkbox state based on URL
+                    const urlObj = new URL(url);
+                    const lowStockParam = urlObj.searchParams.get('low_stock');
+                    const checkbox = document.getElementById('low-stock-filter');
+                    checkbox.checked = lowStockParam === '1';
+                    updateToggleState(checkbox.checked);
+
+                    attachEventListeners();
+                    attachPaginationLinks();
+                })
+                .catch(error => {
+                    console.error('Error loading products:', error);
+                    showNotification("{{ __('messages.Error loading products') }}", 'error');
+                })
+                .finally(() => {
+                    document.getElementById('loading-indicator').classList.add('hidden');
+                });
         }
 
         // Modal functionality
         function showAddStockModal(productId, productName) {
             currentProductId = productId;
-            document.getElementById('product-name-display').textContent = `{{ __('messages.Adding stock for: ') }}${productName}`;
+            document.getElementById('product-name-display').textContent =
+                `{{ __('messages.Adding stock for: ') }}${productName}`;
             document.getElementById('add-quantity').value = 1;
             document.getElementById('add-cost-price').value = '';
             document.getElementById('bulk-add-modal').classList.remove('hidden');
@@ -453,44 +529,44 @@
             }
 
             fetch('/batches', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    product_id: currentProductId,
-                    quantity: quantity,
-                    cost_price: costPrice
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        product_id: currentProductId,
+                        quantity: quantity,
+                        cost_price: costPrice
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success !== false) {
-                    // Update the product card
-                    const productCard = document.querySelector(`[data-product-id="${currentProductId}"]`);
-                    if (productCard) {
-                        const quantityDisplay = productCard.querySelector('.quantity-display');
-                        
-                        if (quantityDisplay && data.updated_quantity !== undefined) {
-                            quantityDisplay.textContent = data.updated_quantity;
-                            quantityDisplay.parentElement.classList.add('success-flash');
-                            setTimeout(() => {
-                                quantityDisplay.parentElement.classList.remove('success-flash');
-                            }, 600);
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success !== false) {
+                        // Update the product card
+                        const productCard = document.querySelector(`[data-product-id="${currentProductId}"]`);
+                        if (productCard) {
+                            const quantityDisplay = productCard.querySelector('.quantity-display');
+
+                            if (quantityDisplay && data.updated_quantity !== undefined) {
+                                quantityDisplay.textContent = data.updated_quantity;
+                                quantityDisplay.parentElement.classList.add('success-flash');
+                                setTimeout(() => {
+                                    quantityDisplay.parentElement.classList.remove('success-flash');
+                                }, 600);
+                            }
                         }
+
+                        showNotification("{{ __('messages.Stock added successfully!') }}", 'success');
+                        hideAddStockModal();
+                    } else {
+                        showNotification("{{ __('messages.Failed to add stock') }}", 'error');
                     }
-                    
-                    showNotification("{{ __('messages.Stock added successfully!') }}", 'success');
-                    hideAddStockModal();
-                } else {
+                })
+                .catch(error => {
+                    console.error('Error:', error);
                     showNotification("{{ __('messages.Failed to add stock') }}", 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification("{{ __('messages.Failed to add stock') }}", 'error');
-            });
+                });
         });
 
         // Modal close handlers
@@ -499,7 +575,9 @@
 
         // Delete confirmation
         function confirmDelete(productId, productName) {
-            if (confirm(`{{ __('messages.Are you sure you want to delete') }} "${productName}"? {{ __('messages.This action cannot be undone.') }}`)) {
+            if (confirm(
+                    `{{ __('messages.Are you sure you want to delete') }} "${productName}"? {{ __('messages.This action cannot be undone.') }}`
+                    )) {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/products/${productId}`;
@@ -521,14 +599,15 @@
                 warning: 'bg-yellow-500',
                 info: 'bg-blue-500'
             };
-            
-            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+
+            notification.className =
+                `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
             notification.textContent = message;
-            
+
             document.body.appendChild(notification);
-            
+
             setTimeout(() => notification.classList.remove('translate-x-full'), 100);
-            
+
             setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => notification.remove(), 300);
@@ -579,7 +658,8 @@
 
                 addToOrderList(productId, productName, productPrice, productImage);
                 updateOrderBadge();
-                showNotification(`{{ __('messages.Added') }} "${productName}" {{ __('messages.to order list') }}`, 'success');
+                showNotification(`{{ __('messages.Added') }} "${productName}" {{ __('messages.to order list') }}`,
+                    'success');
             }
         });
 
@@ -684,7 +764,8 @@
                 `;
             }).join('');
 
-            container.innerHTML = itemsHtml + '<div id="empty-order-message" class="hidden">' + emptyMessage.innerHTML + '</div>';
+            container.innerHTML = itemsHtml + '<div id="empty-order-message" class="hidden">' + emptyMessage.innerHTML +
+                '</div>';
 
             document.getElementById('total-order-items').textContent = totalItems;
         }
@@ -716,20 +797,23 @@
 
         // Clear order functionality
         document.getElementById('clear-order-btn').addEventListener('click', function() {
-            if (confirm('{{ __("messages.Are you sure you want to clear the order list?") }}')) {
+            if (confirm('{{ __('messages.Are you sure you want to clear the order list?') }}')) {
                 clearOrderList();
-                showNotification('{{ __("messages.Order list cleared") }}', 'info');
+                showNotification('{{ __('messages.Order list cleared') }}', 'info');
             }
         });
 
         // Remove from order functionality
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('remove-from-order') || e.target.closest('.remove-from-order')) {
-                const button = e.target.classList.contains('remove-from-order') ? e.target : e.target.closest('.remove-from-order');
+                const button = e.target.classList.contains('remove-from-order') ? e.target : e.target.closest(
+                    '.remove-from-order');
                 const productId = button.dataset.productId;
                 const productName = orderList.find(item => item.id === productId)?.name;
                 removeFromOrderList(productId);
-                showNotification(`{{ __('messages.Removed') }} "${productName}" {{ __('messages.from order list') }}`, 'info');
+                showNotification(
+                    `{{ __('messages.Removed') }} "${productName}" {{ __('messages.from order list') }}`,
+                    'info');
             }
         });
 

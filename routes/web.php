@@ -127,8 +127,24 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 
 
 
+// Products - Search routes (used by dashboard) - moved outside middleware for AJAX access
+Route::middleware(['auth'])->group(function () {
+    Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
+    Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
+    Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
+    Route::get('/products/search-barcode', [ProductsController::class, 'searchBarcode'])->name('products.search-barcode');
+    Route::get('/products/categories', [ProductsController::class, 'getCategories'])->name('products.categories');
+});
+
+// Barcode search page
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])->group(function () {
+    Route::get('/barcode-search', function () {
+        return view('products.barcode-search', ['results' => null, 'searched' => false]);
+    })->name('barcode.search');
+});
+
 // ------------------- SHOP OWNER AND EMPLOYEE ROUTES -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
 
         // Tags Management
@@ -151,14 +167,11 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
         // Quick Payment for Customers
         Route::post('customers/{customer}/quick-payments', [CustomerController::class, 'quickStorePayment'])->name('customers.quick-payments.store');
 
-        // Products
+        // Products CRUD with permissions
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_products'])->group(function () {
             Route::resource('products', ProductsController::class)->except(['show']);
             Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
             Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
-            Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
-            Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
-            Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
             Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
             Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
             Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
@@ -186,7 +199,6 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_bills'])->group(function () {
             Route::resource('bills', BillsController::class);
             Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
-            Route::get('/bills/search-api', [BillsController::class, 'search'])->name('bills.search');
             Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
             Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
         });
@@ -221,7 +233,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_o
 // ------------------- SHOP OWNER AND EMPLOYEE SPECIFIC ROUTES -------------------
 Route::prefix('shopowner')
     ->as('shopowner.')
-    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
+    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees'])->group(function () {
             Route::resource('employees', EmployeeController::class);
@@ -239,7 +251,7 @@ Route::prefix('shopowner')
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
 
@@ -568,9 +580,9 @@ Route::get('/api/categories', function () {
     }
 
     return response()->json($categories);
-})->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant']);
+})->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant']);
 
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
 
         // Suppliers

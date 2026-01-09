@@ -1,14 +1,23 @@
+@php
+    // FORCE locale setting - this is a temporary fix to test
+    $sessionLocale = session('locale', 'en');
+    if (in_array($sessionLocale, ['en', 'ar'])) {
+        app()->setLocale($sessionLocale);
+    }
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                @if(request('duplicate'))
+                @if (request('duplicate'))
                     {{ __('messages.Duplicate Purchase Bill') }}
                 @else
                     {{ __('messages.Create Purchase Bill') }}
                 @endif
             </h2>
-            <a href="{{ route('purchase-bills.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+            <a href="{{ route('purchase-bills.index') }}"
+                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                 {{ __('messages.Back to Purchase Bills') }}
             </a>
         </div>
@@ -20,16 +29,19 @@
                 <div class="p-6">
                     <form method="POST" action="{{ route('purchase-bills.store') }}" id="purchase-bill-form">
                         @csrf
-                        
+
                         <!-- Bill Header Information -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                             <div>
-                                <label for="supplier_id" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Supplier') }} *</label>
+                                <label for="supplier_id"
+                                    class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Supplier') }}
+                                    *</label>
                                 <select name="supplier_id" id="supplier_id" required
-                                        class="w-full border border-gray-300 rounded-lg px-8 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 rounded-lg px-8 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">{{ __('messages.Select Supplier') }}</option>
-                                    @foreach($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}" {{ old('supplier_id', $duplicatedBill->supplier_id ?? '') == $supplier->id ? 'selected' : '' }}>
+                                    @foreach ($suppliers as $supplier)
+                                        <option value="{{ $supplier->id }}"
+                                            {{ old('supplier_id', $duplicatedBill->supplier_id ?? '') == $supplier->id ? 'selected' : '' }}>
                                             {{ $supplier->name }}
                                         </option>
                                     @endforeach
@@ -40,30 +52,34 @@
                             </div>
 
                             <div>
-                                <label for="purchase_date" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Purchase Date') }} *</label>
+                                <label for="purchase_date"
+                                    class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Purchase Date') }}
+                                    *</label>
                                 <input type="date" name="purchase_date" id="purchase_date" required
-                                       value="{{ old('purchase_date', date('Y-m-d')) }}"
-                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    value="{{ old('purchase_date', date('Y-m-d')) }}"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('purchase_date')
                                     <div class="mt-1 text-sm text-red-600">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div>
-                                <label for="reference_number" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Reference Number') }}</label>
+                                <label for="reference_number"
+                                    class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Reference Number') }}</label>
                                 <input type="text" name="reference_number" id="reference_number"
-                                       value="{{ old('reference_number', $duplicatedBill->reference_number ?? '') }}"
-                                       placeholder="{{ __('messages.Supplier\'s invoice number') }}"
-                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    value="{{ old('reference_number', $duplicatedBill->reference_number ?? '') }}"
+                                    placeholder="{{ __('messages.Supplier\'s invoice number') }}"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('reference_number')
                                     <div class="mt-1 text-sm text-red-600">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div>
-                                <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Notes') }}</label>
+                                <label for="notes"
+                                    class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Notes') }}</label>
                                 <textarea name="notes" id="notes" rows="2"
-                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('notes', $duplicatedBill->notes ?? '') }}</textarea>
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('notes', $duplicatedBill->notes ?? '') }}</textarea>
                                 @error('notes')
                                     <div class="mt-1 text-sm text-red-600">{{ $message }}</div>
                                 @enderror
@@ -73,19 +89,19 @@
                         <!-- Advanced Product Search -->
                         <div class="mb-6">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('messages.Add Products') }}</h3>
-                            
+
                             <!-- Barcode Scanner -->
                             <div class="mb-4">
                                 <div class="relative">
-                                    <input
-                                        type="text"
-                                        id="barcode_input"
+                                    <input type="text" id="barcode_input"
                                         placeholder="{{ __('messages.Scan or enter barcode...') }}"
                                         class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
-                                        autocomplete="off"
-                                    />
-                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                                        autocomplete="off" />
+                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
+                                        </path>
                                     </svg>
                                 </div>
                             </div>
@@ -93,23 +109,29 @@
                             <!-- Product Search -->
                             <div class="mb-4">
                                 <div class="relative">
-                                    <input type="text" id="product-search" placeholder="{{ __('messages.Search products by name...') }}"
-                                           class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    <input type="text" id="product-search"
+                                        placeholder="{{ __('messages.Search products by name...') }}"
+                                        class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                     </svg>
                                 </div>
                             </div>
 
                             <!-- Filter Options -->
                             <div class="flex flex-wrap gap-2 mb-4">
-                                <button id="filter-all" class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
+                                <button id="filter-all"
+                                    class="filter-btn active px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors">
                                     {{ __('messages.All Products') }}
                                 </button>
-                                <button id="filter-in-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                                <button id="filter-in-stock"
+                                    class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
                                     {{ __('messages.In Stock Only') }}
                                 </button>
-                                <button id="filter-out-of-stock" class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
+                                <button id="filter-out-of-stock"
+                                    class="filter-btn px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors">
                                     {{ __('messages.Out of Stock') }}
                                 </button>
                             </div>
@@ -118,19 +140,26 @@
                             <div class="bg-white rounded-xl border border-gray-200">
                                 <div class="p-4 border-b border-gray-100">
                                     <h4 class="font-medium text-gray-800 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                        <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
+                                            </path>
                                         </svg>
                                         {{ __('messages.Available Products') }}
                                     </h4>
                                 </div>
                                 <div id="product-cards-container" class="max-h-80 overflow-y-auto">
-                                    <div id="product-results" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
+                                    <div id="product-results"
+                                        class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
                                         <!-- Products will be loaded here -->
                                     </div>
                                     <div id="loading-indicator" class="hidden p-4 text-center">
-                                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                                        <p class="text-sm text-gray-500 mt-2">{{ __('messages.Loading products...') }}</p>
+                                        <div
+                                            class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto">
+                                        </div>
+                                        <p class="text-sm text-gray-500 mt-2">{{ __('messages.Loading products...') }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -142,18 +171,31 @@
                                 <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ __('messages.Product') }}</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ __('messages.Quantity') }}</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ __('messages.Unit Cost') }}</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ __('messages.Total') }}</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ __('messages.Action') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Product') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Quantity') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Unit Cost') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Barcodes') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Total') }}</th>
+                                            <th
+                                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                {{ __('messages.Action') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
                                         <!-- Products will be added here dynamically -->
                                     </tbody>
                                 </table>
-                                
+
                                 <div id="no-products-message" class="text-center py-8 text-gray-500">
                                     {{ __('messages.No products added yet. Use the search above to add products.') }}
                                 </div>
@@ -170,10 +212,12 @@
 
                         <!-- Submit Buttons -->
                         <div class="flex justify-end space-x-3">
-                            <a href="{{ route('purchase-bills.index') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
+                            <a href="{{ route('purchase-bills.index') }}"
+                                class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
                                 {{ __('messages.Cancel') }}
                             </a>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                                 {{ __('messages.Create Purchase Bill') }}
                             </button>
                         </div>
@@ -188,10 +232,12 @@
         .product-card {
             transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
         }
+
         .product-card:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
+
         .product-card.out-of-stock {
             opacity: 0.7;
         }
@@ -216,7 +262,7 @@
         let productIndex = 0;
         const productsData = @json($products->keyBy('id'));
         const duplicatedBill = @json($duplicatedBill ?? null);
-        
+
         // Advanced search variables (copied from dashboard)
         let currentFilter = 'all';
         let debounceTimeout = null;
@@ -229,18 +275,25 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Load products initially
             fetchProducts(true);
-            
+
             // Initialize with duplicated products if exists
             if (duplicatedBill && duplicatedBill.products) {
                 const tableBody = document.getElementById('products-table-body');
                 const noProductsMessage = document.getElementById('no-products-message');
-                
+
                 noProductsMessage.style.display = 'none';
-                
+
                 duplicatedBill.products.forEach(function(product) {
-                    addProductRow(product.id, product.name, product.pivot.unit_cost, product.pivot.quantity);
+                    let barcodes = [];
+                    try {
+                        barcodes = product.pivot.barcodes ? JSON.parse(product.pivot.barcodes) : [];
+                    } catch (e) {
+                        barcodes = [];
+                    }
+                    addProductRow(product.id, product.name, product.pivot.unit_cost, product.pivot.quantity,
+                        barcodes);
                 });
-                
+
                 updateTotal();
             }
 
@@ -269,9 +322,11 @@
                     } else if (result && result.id) {
                         addProductToTable(result);
                         e.target.value = '';
-                        showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', result.name), 'success');
+                        showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}',
+                            result.name), 'success');
                     } else {
-                        showNotification('{{ __('messages.Product not found for barcode: {code}') }}'.replace('{code}', code), 'warning');
+                        showNotification('{{ __('messages.Product not found for barcode: {code}') }}'.replace(
+                            '{code}', code), 'warning');
                     }
                 } catch (err) {
                     console.error('Fetch error:', err);
@@ -288,7 +343,7 @@
             modal.innerHTML = `
                 <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                     <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true"></div>
-                    
+
                     <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                         <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                             <div class="sm:flex sm:items-start">
@@ -308,16 +363,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                <div class="flex-1">
-                                                    <div class="font-medium text-gray-900">${product.name}</div>
-                                                    <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
-                                                </div>
-                                                <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                    {{ __('messages.Select') }}
-                                                </button>
-                                            </div>
-                                        `).join('')}
+                                                                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                            <div class="flex-1">
+                                                                                <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                            </div>
+                                                                            <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                {{ __('messages.Select') }}
+                                                                            </button>
+                                                                        </div>
+                                                                    `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -330,26 +385,27 @@
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
             // Add event listeners
             modal.querySelector('#close-modal').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 document.getElementById('barcode_input').focus();
             });
-            
+
             modal.querySelector('.modal-overlay').addEventListener('click', () => {
                 document.body.removeChild(modal);
                 document.getElementById('barcode_input').focus();
             });
-            
+
             modal.querySelectorAll('.select-duplicate-product').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const product = JSON.parse(btn.dataset.product);
                     addProductToTable(product);
                     document.body.removeChild(modal);
-                    showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product.name), 'success');
+                    showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}',
+                        product.name), 'success');
                     document.getElementById('barcode_input').focus();
                 });
             });
@@ -360,7 +416,7 @@
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
-                
+
                 currentFilter = e.target.id.replace('filter-', '');
                 searchTerm = document.getElementById('product-search').value.trim();
                 fetchProducts(true);
@@ -368,7 +424,7 @@
         });
 
         // Enhanced product search with debouncing (copied from dashboard)
-        document.getElementById('product-search').addEventListener('input', function () {
+        document.getElementById('product-search').addEventListener('input', function() {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
                 searchTerm = this.value.trim();
@@ -405,9 +461,9 @@
                 })
                 .then(data => {
                     const products = data.data || [];
-                    
+
                     if (products.length === 0 && currentPage === 1) {
-                        document.getElementById('product-results').innerHTML = 
+                        document.getElementById('product-results').innerHTML =
                             '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
                         hasMore = false;
                         return;
@@ -421,7 +477,7 @@
                 })
                 .catch(error => {
                     if (currentPage === 1) {
-                        document.getElementById('product-results').innerHTML = 
+                        document.getElementById('product-results').innerHTML =
                             '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
                     }
                     console.error(error);
@@ -449,8 +505,9 @@
         function createProductCard(product) {
             const card = document.createElement('div');
             const isOutOfStock = product.quantity === 0;
-            
-            card.className = `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
+
+            card.className =
+                `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
             card.dataset.productId = product.id;
             card.dataset.cost_price = product.cost_price;
             card.dataset.selling_price = product.selling_price;
@@ -464,15 +521,15 @@
                 // Silent fail
             }
 
-            const imageHtml = firstImage
-                ? `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">`
-                : `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+            const imageHtml = firstImage ?
+                `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">` :
+                `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                    </div>`;
 
-            const categoryBadge = product.category ? 
+            const categoryBadge = product.category ?
                 `<div class="mb-1">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         ${product.category}
@@ -518,7 +575,7 @@
             });
 
             const container = document.getElementById('product-results');
-            
+
             Object.keys(groupedProducts).sort().forEach(category => {
                 if (Object.keys(groupedProducts).length > 1 || uncategorizedProducts.length > 0) {
                     const categoryHeader = document.createElement('div');
@@ -578,7 +635,7 @@
             const scrollTop = container.scrollTop;
             const scrollHeight = container.scrollHeight;
             const clientHeight = container.clientHeight;
-            
+
             if (scrollTop + clientHeight >= scrollHeight - 100) {
                 fetchProducts();
             }
@@ -596,11 +653,13 @@
                     name: nameElement.textContent,
                     cost_price: parseFloat(card.dataset.cost_price),
                     selling_price: parseFloat(card.dataset.selling_price),
-                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(/\d+/)?.[0] || 0)
+                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
+                        /\d+/)?.[0] || 0)
                 };
 
                 addProductToTable(product);
-                showNotification(`{{ __('messages.Added {product} to purchase bill') }}`.replace('{product}', product.name), 'success');
+                showNotification(`{{ __('messages.Added {product} to purchase bill') }}`.replace('{product}',
+                    product.name), 'success');
                 document.getElementById('barcode_input').focus();
             }
         });
@@ -611,10 +670,10 @@
         }
 
         // Original table management functions (preserved from original)
-        function addProductRow(productId, productName, currentCost, quantity = 1) {
+        function addProductRow(productId, productName, currentCost, quantity = 1, barcodes = []) {
             const tableBody = document.getElementById('products-table-body');
             const noProductsMessage = document.getElementById('no-products-message');
-            
+
             // Check if product already exists
             const existingRow = document.querySelector(`input[value="${productId}"][name="product_ids[]"]`);
             if (existingRow) {
@@ -622,7 +681,7 @@
                 const quantityInput = row.querySelector('.quantity-input');
                 const currentQty = parseInt(quantityInput.value);
                 quantityInput.value = currentQty + quantity;
-                
+
                 // Update row total
                 const costInput = row.querySelector('.cost-input');
                 const cost = parseFloat(costInput.value) || 0;
@@ -631,7 +690,7 @@
                 updateTotal();
                 return;
             }
-            
+
             noProductsMessage.style.display = 'none';
 
             const row = document.createElement('tr');
@@ -641,12 +700,16 @@
                     <input type="hidden" name="product_ids[]" value="${productId}">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="number" name="quantities[]" value="${quantity}" min="1" 
+                    <input type="number" name="quantities[]" value="${quantity}" min="1"
                            class="w-20 border border-gray-300 rounded px-2 py-1 quantity-input">
                 </td>
                 <td class="px-4 py-3">
                     <input type="number" name="unit_costs[]" value="${currentCost}" min="0" step="0.01"
                            class="w-24 border border-gray-300 rounded px-2 py-1 cost-input">
+                </td>
+                <td class="px-4 py-3">
+                    <input type="text" name="barcodes[]" value="${Array.isArray(barcodes) ? barcodes.join(', ') : ''}" placeholder="Enter barcodes separated by commas"
+                           class="w-48 border border-gray-300 rounded px-2 py-1 barcodes-input">
                 </td>
                 <td class="px-4 py-3">
                     <div class="font-medium total-cell">₪${(quantity * currentCost).toFixed(2)}</div>
@@ -682,7 +745,7 @@
                 row.querySelector('.total-cell').textContent = `₪${total.toFixed(2)}`;
                 updateTotal();
             }
-            
+
             updateTotal();
         }
 
@@ -712,10 +775,11 @@
         // Notification system (copied from dashboard)
         function showNotification(message, type = 'info') {
             let notification = document.querySelector('.notification-toast');
-            
+
             if (!notification) {
                 notification = document.createElement('div');
-                notification.className = 'notification-toast fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+                notification.className =
+                    'notification-toast fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
                 document.body.appendChild(notification);
             }
 
@@ -725,18 +789,19 @@
                 warning: 'bg-yellow-500',
                 info: 'bg-blue-500'
             };
-            
-            notification.className = `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+
+            notification.className =
+                `notification-toast fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
             notification.textContent = message;
-            
+
             if (notification.hideTimeout) {
                 clearTimeout(notification.hideTimeout);
             }
-            
+
             requestAnimationFrame(() => {
                 notification.classList.remove('translate-x-full');
             });
-            
+
             notification.hideTimeout = setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => {
@@ -753,7 +818,7 @@
                 e.preventDefault();
                 document.getElementById('barcode_input').focus();
             }
-            
+
             if (e.key === 'Escape') {
                 const modal = document.getElementById('barcode-modal');
                 if (modal) {

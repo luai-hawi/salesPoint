@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PurchaseBill;
 use App\Models\Product;
+use App\Models\ProductBarcode;
 use App\Models\Supplier;
 use App\Models\Batch;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class PurchaseBillController extends Controller
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $query = PurchaseBill::where('user_id', $ownerId)
             ->with(['supplier', 'creator', 'products']);
 
@@ -24,7 +25,7 @@ class PurchaseBillController extends Controller
         if ($request->filled('date')) {
             $query->whereDate('purchase_date', $request->date);
         }
-        
+
         // Date range filter
         if ($request->filled('date_from')) {
             $query->whereDate('purchase_date', '>=', $request->date_from);
@@ -43,22 +44,22 @@ class PurchaseBillController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('reference_number', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', function ($sq) use ($search) {
-                      $sq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
         $bills = $query->orderBy('purchase_date', 'desc')->paginate(20);
-        
+
         // Get suppliers for filter dropdown
         $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
-        
+
         // Calculate totals for current page results
         $totalAmount = $bills->sum('total_amount');
-        
+
         return view('purchase-bills.index', compact('bills', 'suppliers', 'totalAmount'));
     }
 
@@ -66,10 +67,10 @@ class PurchaseBillController extends Controller
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
         $products = Product::where('user_id', $ownerId)->orderBy('name')->get();
-        
+
         // Handle duplication
         $duplicatedBill = null;
         if ($request->filled('duplicate')) {
@@ -78,7 +79,7 @@ class PurchaseBillController extends Controller
                 ->with(['supplier', 'products'])
                 ->first();
         }
-        
+
         return view('purchase-bills.create', compact('suppliers', 'products', 'duplicatedBill'));
     }
 
@@ -86,10 +87,10 @@ class PurchaseBillController extends Controller
     {
         try {
             Log::info('PurchaseBillController store request:', $request->all());
-            
+
             $user = auth()->user();
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
+
             $request->validate([
                 'supplier_id' => 'required|exists:suppliers,id',
                 'purchase_date' => 'required|date',
@@ -101,66 +102,71 @@ class PurchaseBillController extends Controller
                 'quantities.*' => 'required|integer|min:1',
                 'unit_costs' => 'required|array',
                 'unit_costs.*' => 'required|numeric|min:0',
+                'barcodes' => 'nullable|array',
+                'barcodes.*' => 'nullable|string',
             ]);
-
-            // Ensure all products belong to the owner
-            $productIds = $request->product_ids;
-            $validProducts = Product::where('user_id', $ownerId)
-                ->whereIn('id', $productIds)
-                ->count();
-                
-            if ($validProducts !== count($productIds)) {
-                return redirect()->back()
-                    ->withErrors(['product_ids' => 'One or more selected products are invalid.'])
-                    ->withInput();
-            }
-
-            // Ensure supplier belongs to the owner
-            $supplier = Supplier::where('id', $request->supplier_id)
-                ->where('user_id', $ownerId)
-                ->firstOrFail();
 
             DB::beginTransaction();
 
-            // Create purchase bill
             $purchaseBill = PurchaseBill::create([
                 'supplier_id' => $request->supplier_id,
+                'user_id' => $ownerId,
                 'purchase_date' => $request->purchase_date,
                 'reference_number' => $request->reference_number,
                 'notes' => $request->notes,
                 'total_amount' => 0, // Will be calculated
-                'user_id' => $ownerId,
                 'created_by' => $user->id,
             ]);
 
             $totalAmount = 0;
 
-            // Process each product
             foreach ($request->product_ids as $index => $productId) {
                 $quantity = (int) $request->quantities[$index];
                 $unitCost = (float) $request->unit_costs[$index];
+                $barcodesString = $request->barcodes[$index] ?? '';
+                $barcodes = array_filter(array_map('trim', explode(',', $barcodesString)));
                 $totalCost = $quantity * $unitCost;
-                
+
                 $totalAmount += $totalCost;
 
-                // Attach product to purchase bill
+                // Attach product to purchase bill with barcodes
                 $purchaseBill->products()->attach($productId, [
                     'quantity' => $quantity,
                     'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
+                    'barcodes' => $barcodes,
                 ]);
 
-                // Update product stock and average cost (ADDING TO STORAGE)
+                // Add barcodes to product's barcode collection
+                if (!empty($barcodes)) {
+                    foreach ($barcodes as $barcode) {
+                        if (!empty(trim($barcode))) {
+                            // Check if barcode already exists for this product
+                            $exists = ProductBarcode::where('product_id', $productId)
+                                ->where('barcode', trim($barcode))
+                                ->exists();
+
+                            if (!$exists) {
+                                ProductBarcode::create([
+                                    'product_id' => $productId,
+                                    'barcode' => trim($barcode),
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                // Update product stock and average cost
                 $product = Product::where('id', $productId)
                     ->where('user_id', $ownerId)
                     ->firstOrFail();
-                
+
                 $this->addToStorage($product, $quantity, $unitCost, $ownerId);
 
-                Log::info('Purchase processed for product:', [
+                Log::info('Added product to purchase bill:', [
                     'product_id' => $productId,
-                    'quantity_purchased' => $quantity,
-                    'unit_cost' => $unitCost,
+                    'added_quantity' => $quantity,
+                    'added_cost' => $unitCost,
                     'new_quantity' => $product->fresh()->quantity,
                     'new_avg_cost' => $product->fresh()->cost_price
                 ]);
@@ -170,7 +176,8 @@ class PurchaseBillController extends Controller
             $purchaseBill->total_amount = $totalAmount;
             $purchaseBill->save();
 
-            // Update supplier balance (we now owe them more)
+            // Update supplier balance
+            $supplier = $purchaseBill->supplier;
             $supplier->balance += $totalAmount;
             $supplier->save();
 
@@ -178,17 +185,14 @@ class PurchaseBillController extends Controller
 
             Log::info('Purchase bill created successfully:', [
                 'bill_id' => $purchaseBill->id,
-                'supplier_id' => $supplier->id,
-                'total_amount' => $totalAmount,
-                'products_count' => count($request->product_ids)
+                'total_amount' => $totalAmount
             ]);
 
             return redirect()->route('purchase-bills.index')
                 ->with('success', 'Purchase bill created successfully!');
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
-            Log::error('Validation error in purchase bill store:', $e->errors());
+            Log::error('Validation error in purchase bill creation:', $e->errors());
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
@@ -207,24 +211,24 @@ class PurchaseBillController extends Controller
     public function show(PurchaseBill $purchaseBill)
     {
         $this->authorizePurchaseBill($purchaseBill);
-        
+
         $purchaseBill->load(['supplier', 'products', 'creator']);
-        
+
         return view('purchase-bills.show', compact('purchaseBill'));
     }
 
     public function edit(PurchaseBill $purchaseBill)
     {
         $this->authorizePurchaseBill($purchaseBill);
-        
+
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
         $products = Product::where('user_id', $ownerId)->orderBy('name')->get();
-        
+
         $purchaseBill->load(['supplier', 'products']);
-        
+
         return view('purchase-bills.edit', compact('purchaseBill', 'suppliers', 'products'));
     }
 
@@ -232,12 +236,12 @@ class PurchaseBillController extends Controller
     {
         try {
             Log::info('PurchaseBillController update request:', ['bill_id' => $purchaseBill->id, 'data' => $request->all()]);
-            
+
             $this->authorizePurchaseBill($purchaseBill);
-            
+
             $user = auth()->user();
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
+
             $request->validate([
                 'supplier_id' => 'required|exists:suppliers,id',
                 'purchase_date' => 'required|date',
@@ -249,6 +253,8 @@ class PurchaseBillController extends Controller
                 'quantities.*' => 'required|integer|min:1',
                 'unit_costs' => 'required|array',
                 'unit_costs.*' => 'required|numeric|min:0',
+                'barcodes' => 'nullable|array',
+                'barcodes.*' => 'nullable|string',
             ]);
 
             DB::beginTransaction();
@@ -262,9 +268,9 @@ class PurchaseBillController extends Controller
             foreach ($oldProducts as $product) {
                 $quantity = $product->pivot->quantity;
                 $unitCost = $product->pivot->unit_cost;
-                
+
                 $this->removeFromStorage($product, $quantity, $unitCost, $ownerId);
-                
+
                 Log::info('Reversed product from purchase bill:', [
                     'product_id' => $product->id,
                     'removed_quantity' => $quantity,
@@ -300,8 +306,10 @@ class PurchaseBillController extends Controller
             foreach ($request->product_ids as $index => $productId) {
                 $quantity = (int) $request->quantities[$index];
                 $unitCost = (float) $request->unit_costs[$index];
+                $barcodesString = $request->barcodes[$index] ?? '';
+                $barcodes = array_filter(array_map('trim', explode(',', $barcodesString)));
                 $totalCost = $quantity * $unitCost;
-                
+
                 $totalAmount += $totalCost;
 
                 // Attach product to purchase bill
@@ -309,13 +317,33 @@ class PurchaseBillController extends Controller
                     'quantity' => $quantity,
                     'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
+                    'barcodes' => json_encode($barcodes),
                 ]);
+
+                // Add new barcodes to product's barcode collection
+                if (!empty($barcodes)) {
+                    foreach ($barcodes as $barcode) {
+                        if (!empty(trim($barcode))) {
+                            // Check if barcode already exists for this product
+                            $exists = ProductBarcode::where('product_id', $productId)
+                                ->where('barcode', trim($barcode))
+                                ->exists();
+
+                            if (!$exists) {
+                                ProductBarcode::create([
+                                    'product_id' => $productId,
+                                    'barcode' => trim($barcode),
+                                ]);
+                            }
+                        }
+                    }
+                }
 
                 // Update product stock and average cost (ADDING TO STORAGE)
                 $product = Product::where('id', $productId)
                     ->where('user_id', $ownerId)
                     ->firstOrFail();
-                
+
                 $this->addToStorage($product, $quantity, $unitCost, $ownerId);
 
                 Log::info('Added product to updated purchase bill:', [
@@ -348,7 +376,6 @@ class PurchaseBillController extends Controller
 
             return redirect()->route('purchase-bills.show', $purchaseBill)
                 ->with('success', 'Purchase bill updated successfully!');
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             Log::error('Validation error in purchase bill update:', $e->errors());
@@ -372,7 +399,7 @@ class PurchaseBillController extends Controller
     {
         try {
             Log::info('PurchaseBillController destroy request:', ['bill_id' => $purchaseBill->id]);
-            
+
             $this->authorizePurchaseBill($purchaseBill);
 
             $user = auth()->user();
@@ -384,9 +411,9 @@ class PurchaseBillController extends Controller
             foreach ($purchaseBill->products as $product) {
                 $quantity = $product->pivot->quantity;
                 $unitCost = $product->pivot->unit_cost;
-                
+
                 $this->removeFromStorage($product, $quantity, $unitCost, $ownerId);
-                
+
                 Log::info('Reversed product from deleted purchase bill:', [
                     'product_id' => $product->id,
                     'removed_quantity' => $quantity,
@@ -417,7 +444,6 @@ class PurchaseBillController extends Controller
 
             return redirect()->route('purchase-bills.index')
                 ->with('success', 'Purchase bill deleted successfully! All stock changes have been reversed.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting purchase bill:', [
@@ -438,17 +464,17 @@ class PurchaseBillController extends Controller
     {
         $oldQty = $product->quantity;
         $oldAvgCost = $product->cost_price;
-        
+
         // Update product quantity
         $product->quantity += $quantity;
-        
+
         // Update average cost price using weighted average (PURCHASE LOGIC)
         if ($oldQty <= 0) {
             $product->cost_price = $unitCost;
         } else {
             $product->cost_price = ($oldAvgCost * $oldQty + $unitCost * $quantity) / $product->quantity;
         }
-        
+
         $product->cost_price = round($product->cost_price, 2);
         $product->save();
 
@@ -480,23 +506,23 @@ class PurchaseBillController extends Controller
     {
         $previousQuantity = $product->quantity;
         $previousAvgCost = $product->cost_price;
-        
+
         // Update product quantity (removing from storage)
         $product->quantity -= $quantity;
-        
+
         // Recalculate average cost when removing from storage (PURCHASE LOGIC)
         if ($product->quantity <= 0) {
             $product->cost_price = 0;
         } else {
             // Calculate what the total cost was before this removal
             $totalCostBefore = $previousAvgCost * $previousQuantity;
-            
+
             // Calculate the cost being removed
             $removedTotalCost = $unitCost * $quantity;
-            
+
             // Calculate remaining cost and new average
             $remainingTotalCost = $totalCostBefore - $removedTotalCost;
-            
+
             if ($remainingTotalCost > 0) {
                 $product->cost_price = $remainingTotalCost / $product->quantity;
             } else {
@@ -515,7 +541,7 @@ class PurchaseBillController extends Controller
                 }
             }
         }
-        
+
         $product->cost_price = round($product->cost_price, 2);
         $product->save();
 
@@ -524,7 +550,7 @@ class PurchaseBillController extends Controller
             ->where('cost_price', $unitCost)
             ->where('user_id', $ownerId)
             ->first();
-            
+
         if ($batch) {
             if ($batch->quantity <= $quantity) {
                 $batch->delete();

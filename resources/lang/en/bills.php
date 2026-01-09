@@ -21,6 +21,7 @@ return [
     'Total' => 'Total',
     'Remove' => 'Remove',
     'No barcode' => 'No barcode',
+    'Search and Select Product' => 'Search and Select Product',
     'Add Products' => 'Add Products',
     'Scan Barcode' => 'Scan Barcode',
     'Scan or enter barcode' => 'Scan or enter barcode',
@@ -36,7 +37,7 @@ return [
     'Product already added to this bill' => 'Product already added to this bill',
     'Please enter a barcode' => 'Please enter a barcode',
     'Product not found for barcode: ' => 'Product not found for barcode: ',
-    
+
     // Additional keys for bills index and create views
     'Total Bills' => 'Total Bills',
     'Total Sales' => 'Total Sales',
@@ -92,5 +93,20 @@ return [
     'Failed to delete batch. Please try again.' => 'Failed to delete batch. Please try again.',
     'Print Receipt' => 'Print Receipt',
     'Tags' => 'Tags',
-    'Tags Price'=>'Tags Price',
+    'Tags Price' => 'Tags Price',
+
+    // Barcode Search
+    'Barcode Search' => 'Barcode Search',
+    'Search Barcode in Purchase Bills' => 'Search Barcode in Purchase Bills',
+    'Enter barcode to search...' => 'Enter barcode to search...',
+    'Found {count} results for barcode: {barcode}' => 'Found {count} results for barcode: {barcode}',
+    'No purchase bills found containing barcode: {barcode}' => 'No purchase bills found containing barcode: {barcode}',
+
+    // Purchase Bills Barcodes
+    'Barcodes' => 'Barcodes',
+    'Enter barcodes separated by commas' => 'Enter barcodes separated by commas',
+
+    // Product Additional Barcodes
+    'Additional Barcodes' => 'Additional Barcodes',
+    'Enter additional barcodes (one per line)' => 'Enter additional barcodes (one per line)',
 ];

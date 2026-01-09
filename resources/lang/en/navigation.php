@@ -25,7 +25,7 @@ return [
     'Suppliers' => 'Suppliers',
     'Manage Suppliers' => 'Manage Suppliers',
     'Add Supplier' => 'Add Supplier',
-    'Purchase Bills' => 'Purchase Bills', 
+    'Purchase Bills' => 'Purchase Bills',
     'New Purchase Bill' => 'New Purchase Bill',
     'AR' => 'AR',
     'EN' => 'EN',
@@ -37,24 +37,25 @@ return [
     'Bills' => 'Bills',
     'Customers' => 'Customers',
     'More' => 'More',
-    
+
     // Admin Specific
     'Shop Owners' => 'Shop Owners',
     'All Employees' => 'All Employees',
-    
+
     // Inventory Section
     'Inventory' => 'Inventory',
     'Products' => 'Products',
     'Out of Stock' => 'Out of Stock',
     'Tags' => 'Tags',
-    
+    'Barcode Search' => 'Barcode Search',
+
     // Suppliers Section
     'Suppliers' => 'Suppliers',
     'Manage Suppliers' => 'Manage Suppliers',
     'Add Supplier' => 'Add Supplier',
     'Purchase Bills' => 'Purchase Bills',
     'New Purchase Bill' => 'New Purchase Bill',
-    
+
     // Management Section
     'Management' => 'Management',
     'Employees' => 'Employees',
@@ -70,19 +71,19 @@ return [
     'EN' => 'EN',
     'AR' => 'AR',
     'Log Out' => 'Log Out',
-    
+
     // User Roles
     'Admin' => 'Admin',
     'Administrator' => 'Administrator',
     'Owner' => 'Owner',
     'Shop Owner' => 'Shop Owner',
     'Employee' => 'Employee',
-    
+
     // Quick Actions
     'Add Product' => 'Add Product',
     'Add Customer' => 'Add Customer',
     'New Purchase' => 'New Purchase',
-    
+
     // Additional Links
     'Home' => 'Home',
     'Analytics' => 'Analytics',

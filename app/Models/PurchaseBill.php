@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,13 @@ class PurchaseBill extends Model
     protected $casts = [
         'total_amount' => 'decimal:2',
         'purchase_date' => 'date',
+        'pivot.barcodes' => 'array',
     ];
+
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d');
+    }
 
     public function supplier()
     {
@@ -41,7 +48,7 @@ class PurchaseBill extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class, 'purchase_bill_product')
-            ->withPivot('quantity', 'unit_cost', 'total_cost')
+            ->withPivot('quantity', 'unit_cost', 'total_cost', 'barcodes')
             ->withTimestamps();
     }
 }

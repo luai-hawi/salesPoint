@@ -11,71 +11,105 @@ use Illuminate\Http\Request;
 
 class BillsController extends Controller
 {
-        public function getTags(Request $request)
-        {
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
-            $tags = \App\Models\Tag::where('user_id', $ownerId)->get();
-            
-            return response()->json($tags);
+    public function getTags(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+        $tags = \App\Models\Tag::where('user_id', $ownerId)->get();
+
+        return response()->json($tags);
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $date = $request->input('date');
+
+        $baseQuery = Bill::where('user_id', $ownerId)
+            ->with(['products' => function ($q) use ($ownerId) {
+                $q->where('user_id', $ownerId);
+            }, 'customer', 'creator'])
+            ->orderBy('created_at', 'desc');
+
+        if ($date) {
+            $baseQuery->whereDate('created_at', $date);
         }
 
-public function index(Request $request)
-{
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $date = $request->input('date');
-    
-    $baseQuery = Bill::where('user_id', $ownerId)
-        ->with(['products' => function ($q) use ($ownerId) {
-            $q->where('user_id', $ownerId);
-        }, 'customer', 'creator'])
-        ->orderBy('created_at', 'desc');
-    
-    if ($date) {
-        $baseQuery->whereDate('created_at', $date);
-    }
-        
-    // Use selected date or default to today for money calculations
-    $calculationDate = $date ? $date : today();
-    
-    $calculationBills = Bill::where('user_id', $ownerId)
-        ->with(['products' => function ($q) use ($ownerId) {
-            $q->where('user_id', $ownerId);
-        }])
-        ->whereDate('created_at', $calculationDate)
-        ->get();
-    
-    $totalSales = $calculationBills->sum('total_price');
-    $totalProfit = $calculationBills->sum(function ($bill) {
-        return $bill->products->sum(function ($product) {
-            $quantity = $product->pivot->quantity;
-            $costPrice = $product->pivot->cost_price;
-            $sellingPrice = $product->pivot->selling_price;
-            $discount = $product->pivot->discount;
-            
-            return (($sellingPrice - $costPrice) * $quantity) - $discount;
+        // Handle search
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $searchTerms = explode(' ', $search);
+            foreach ($searchTerms as $term) {
+                $term = trim($term);
+                if ($term) {
+                    $baseQuery->where(function ($q) use ($term) {
+                        $q->whereRaw('LOWER(CAST(id AS CHAR)) LIKE ?', ["%{$term}%"])
+                            ->orWhereRaw('LOWER(note) LIKE ?', ["%{$term}%"])
+                            ->orWhereRaw('LOWER(CAST(total_price AS CHAR)) LIKE ?', ["%{$term}%"])
+                            ->orWhereHas('customer', function ($customerQuery) use ($term) {
+                                $customerQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"]);
+                            })
+                            ->orWhereHas('creator', function ($creatorQuery) use ($term) {
+                                $creatorQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"]);
+                            });
+                    });
+                }
+            }
+        }
+
+        // Use selected date or default to today for money calculations
+        $calculationDate = $date ? $date : today();
+
+        $calculationBills = Bill::where('user_id', $ownerId)
+            ->with(['products' => function ($q) use ($ownerId) {
+                $q->where('user_id', $ownerId);
+            }])
+            ->whereDate('created_at', $calculationDate)
+            ->get();
+
+        $totalSales = $calculationBills->sum('total_price');
+        $totalProfit = $calculationBills->sum(function ($bill) {
+            return $bill->products->sum(function ($product) {
+                $quantity = $product->pivot->quantity;
+                $costPrice = $product->pivot->cost_price;
+                $sellingPrice = $product->pivot->selling_price;
+                $discount = $product->pivot->discount;
+
+                return (($sellingPrice - $costPrice) * $quantity) - $discount;
+            });
         });
-    });
-    
-    $bills = $baseQuery->paginate(20);
-    
-    return view('bills.index', [
-        'bills' => $bills,
-        'totalSales' => $totalSales,
-        'totalProfit' => $totalProfit,
-        'selectedDate' => $date,
-    ]);
-}
+
+        $bills = $baseQuery->paginate(20);
+
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            return response()->json([
+                'bills' => $bills->items(),
+                'pagination' => [
+                    'current_page' => $bills->currentPage(),
+                    'last_page' => $bills->lastPage(),
+                    'total' => $bills->total(),
+                ]
+            ]);
+        }
+
+        return view('bills.index', [
+            'bills' => $bills,
+            'totalSales' => $totalSales,
+            'totalProfit' => $totalProfit,
+            'selectedDate' => $date,
+        ]);
+    }
     // public function create()
     // {
     //     $user = auth()->user();
     //     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
     //     $products = Product::where('user_id', $ownerId)->get();
     //     $customers = Customer::where('user_id', $ownerId)->get();
-        
+
     //     // Prepare products data for JavaScript
     //     $productsForJS = $products->map(function ($p) {
     //         return [
@@ -95,7 +129,7 @@ public function index(Request $request)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $request->validate([
             'product_ids' => 'required|array|min:1',
             'quantities' => 'required|array',
@@ -111,7 +145,7 @@ public function index(Request $request)
         // Check if it's a damaged bill
         $isDamaged = $request->has('is_damaged');
         $noteText = $request->input('note', '');
-        
+
         if ($isDamaged) {
             $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
         }
@@ -127,9 +161,9 @@ public function index(Request $request)
 
         $total = 0;
 
-       foreach ($request->product_ids as $index => $productId) {
+        foreach ($request->product_ids as $index => $productId) {
             if (empty($productId)) continue;
-            
+
             $qty = (int) $request->quantities[$index];
             $costPrice = (float) $request->cost_prices[$index];
             $sellingPrice = (float) $request->selling_prices[$index];
@@ -180,7 +214,7 @@ public function index(Request $request)
             }
 
             $tagsTotal = $this->calculateTagsTotal($tags);
-            $lineTotal = ($sellingPrice * $qty) - $discount + ($tagsTotal*$qty);
+            $lineTotal = ($sellingPrice * $qty) - $discount + ($tagsTotal * $qty);
 
             $bill->products()->attach($productId, [
                 'quantity' => $qty,
@@ -228,6 +262,7 @@ public function index(Request $request)
 
         $products = Product::where('user_id', $ownerId)
             ->where('is_active', true)
+            ->with('barcodes')
             ->get();
         $bill->load(['products', 'customer', 'creator']);
 
@@ -239,13 +274,13 @@ public function index(Request $request)
         return $this->show($bill);
     }
 
-        private function calculateTagsTotal($tagsString)
+    private function calculateTagsTotal($tagsString)
     {
         if (!$tagsString) return 0;
-        
+
         $total = 0;
         $tagPairs = explode('&', $tagsString);
-        
+
         foreach ($tagPairs as $pair) {
             if (strpos($pair, '@') !== false) {
                 $parts = explode('@', $pair);
@@ -254,373 +289,372 @@ public function index(Request $request)
                 }
             }
         }
-        
+
         return $total;
     }
 
-public function update(Request $request, Bill $bill)
-{
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    public function update(Request $request, Bill $bill)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
-    if ($bill->user_id !== $ownerId) {
-        abort(403, 'Unauthorized');
-    }
+        if ($bill->user_id !== $ownerId) {
+            abort(403, 'Unauthorized');
+        }
 
-    $request->validate([
-        'note' => 'nullable|string|max:1000',
-        'remove_products' => 'array',
-        'new_product_id' => 'nullable|exists:products,id,user_id,' . $ownerId,
-        'new_quantity' => 'nullable|integer|min:1',
-        'dynamic_product_ids' => 'array',
-        'dynamic_quantities' => 'array',
-        'dynamic_discounts' => 'array', 
-        'dynamic_product_tags' => 'array',
-    ]);
+        $request->validate([
+            'note' => 'nullable|string|max:1000',
+            'remove_products' => 'array',
+            'new_product_id' => 'nullable|exists:products,id,user_id,' . $ownerId,
+            'new_quantity' => 'nullable|integer|min:1',
+            'dynamic_product_ids' => 'array',
+            'dynamic_quantities' => 'array',
+            'dynamic_discounts' => 'array',
+            'dynamic_product_tags' => 'array',
+        ]);
 
-    // Update note
-    $noteText = $request->input('note', '');
-    if ($bill->is_damaged && !str_contains($noteText, 'Damaged Bill')) {
-        $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
-    }
-    $bill->update(['note' => $noteText]);
+        // Update note
+        $noteText = $request->input('note', '');
+        if ($bill->is_damaged && !str_contains($noteText, 'Damaged Bill')) {
+            $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
+        }
+        $bill->update(['note' => $noteText]);
 
-    // Get products to remove
-    $toRemove = $request->input('remove_products', []);
+        // Get products to remove
+        $toRemove = $request->input('remove_products', []);
 
-    // Handle deletions first
-    if (!empty($toRemove)) {
-        foreach ($toRemove as $uniqueKey) {
-            // Split the unique key
+        // Handle deletions first
+        if (!empty($toRemove)) {
+            foreach ($toRemove as $uniqueKey) {
+                // Split the unique key
+                $keyParts = explode('_', $uniqueKey, 2);
+                $productId = $keyParts[0];
+                $tags = isset($keyParts[1]) ? $keyParts[1] : '';
+
+                // Find matching pivot record
+                $pivotQuery = \DB::table('bill_product')
+                    ->where('bill_id', $bill->id)
+                    ->where('product_id', $productId);
+
+                // Handle tags comparison
+                if ($tags === '') {
+                    $pivotQuery->where(function ($q) {
+                        $q->whereNull('tags')->orWhere('tags', '');
+                    });
+                } else {
+                    $pivotQuery->where('tags', $tags);
+                }
+
+                $pivotRecord = $pivotQuery->first();
+
+                if ($pivotRecord) {
+                    // Return stock
+                    $product = Product::find($productId);
+                    if ($product) {
+                        $product->quantity += $pivotRecord->quantity;
+                        $product->save();
+
+                        // Return to batch
+                        $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
+                    }
+
+                    // Delete the pivot record
+                    $pivotQuery->delete();
+                }
+            }
+        }
+
+        // Update existing products (quantities/discounts) - but skip removed ones
+        $quantities = $request->input('quantities', []);
+        $discounts = $request->input('discounts', []);
+
+        foreach ($quantities as $uniqueKey => $quantity) {
+            // Skip if this was marked for removal
+            if (in_array($uniqueKey, $toRemove)) {
+                continue;
+            }
+
             $keyParts = explode('_', $uniqueKey, 2);
             $productId = $keyParts[0];
             $tags = isset($keyParts[1]) ? $keyParts[1] : '';
-            
-            // Find matching pivot record
+
+            // Find the pivot record
             $pivotQuery = \DB::table('bill_product')
                 ->where('bill_id', $bill->id)
                 ->where('product_id', $productId);
-                
-            // Handle tags comparison
+
             if ($tags === '') {
-                $pivotQuery->where(function($q) {
+                $pivotQuery->where(function ($q) {
                     $q->whereNull('tags')->orWhere('tags', '');
                 });
             } else {
                 $pivotQuery->where('tags', $tags);
             }
-            
-            $pivotRecord = $pivotQuery->first();
-            
-            if ($pivotRecord) {
-                // Return stock
-                $product = Product::find($productId);
-                if ($product) {
-                    $product->quantity += $pivotRecord->quantity;
-                    $product->save();
-                    
-                    // Return to batch
-                    $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
-                }
-                
-                // Delete the pivot record
-                $pivotQuery->delete();
-            }
-        }
-    }
 
-    // Update existing products (quantities/discounts) - but skip removed ones
-    $quantities = $request->input('quantities', []);
-    $discounts = $request->input('discounts', []);
-    
-    foreach ($quantities as $uniqueKey => $quantity) {
-        // Skip if this was marked for removal
-        if (in_array($uniqueKey, $toRemove)) {
-            continue;
-        }
-        
-        $keyParts = explode('_', $uniqueKey, 2);
-        $productId = $keyParts[0];
-        $tags = isset($keyParts[1]) ? $keyParts[1] : '';
-        
-        // Find the pivot record
-        $pivotQuery = \DB::table('bill_product')
-            ->where('bill_id', $bill->id)
-            ->where('product_id', $productId);
-            
-        if ($tags === '') {
-            $pivotQuery->where(function($q) {
-                $q->whereNull('tags')->orWhere('tags', '');
-            });
-        } else {
-            $pivotQuery->where('tags', $tags);
-        }
-        
-        $pivotRecord = $pivotQuery->first();
-        
-        if ($pivotRecord) {
-            $newQuantity = (int)$quantity;
-            $newDiscount = isset($discounts[$uniqueKey]) ? (float)$discounts[$uniqueKey] : $pivotRecord->discount;
-            $quantityDiff = $newQuantity - $pivotRecord->quantity;
-            
-            // Update stock if quantity changed
-            if ($quantityDiff != 0) {
-                $product = Product::find($productId);
-                if ($product) {
-                    $product->quantity -= $quantityDiff;
-                    $product->save();
-                    
-                    if ($quantityDiff > 0) {
-                        $this->consumeProductStockAllowNegative($product, $quantityDiff);
-                    } else {
-                        $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
+            $pivotRecord = $pivotQuery->first();
+
+            if ($pivotRecord) {
+                $newQuantity = (int)$quantity;
+                $newDiscount = isset($discounts[$uniqueKey]) ? (float)$discounts[$uniqueKey] : $pivotRecord->discount;
+                $quantityDiff = $newQuantity - $pivotRecord->quantity;
+
+                // Update stock if quantity changed
+                if ($quantityDiff != 0) {
+                    $product = Product::find($productId);
+                    if ($product) {
+                        $product->quantity -= $quantityDiff;
+                        $product->save();
+
+                        if ($quantityDiff > 0) {
+                            $this->consumeProductStockAllowNegative($product, $quantityDiff);
+                        } else {
+                            $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
+                        }
                     }
                 }
+
+                // Update the pivot record
+                $pivotQuery->update([
+                    'quantity' => $newQuantity,
+                    'discount' => $newDiscount,
+                    'updated_at' => now(),
+                ]);
             }
-            
-            // Update the pivot record
-            $pivotQuery->update([
-                'quantity' => $newQuantity,
-                'discount' => $newDiscount,
-                'updated_at' => now(),
-            ]);
         }
-    }
 
-    // Add new products from dynamic data - BUT EXCLUDE DELETED ONES
-    $dynamicProductIds = $request->input('dynamic_product_ids', []);
-    $dynamicQuantities = $request->input('dynamic_quantities', []);
-    $dynamicDiscounts = $request->input('dynamic_discounts', []);
-    $dynamicProductTags = $request->input('dynamic_product_tags', []);
+        // Add new products from dynamic data - BUT EXCLUDE DELETED ONES
+        $dynamicProductIds = $request->input('dynamic_product_ids', []);
+        $dynamicQuantities = $request->input('dynamic_quantities', []);
+        $dynamicDiscounts = $request->input('dynamic_discounts', []);
+        $dynamicProductTags = $request->input('dynamic_product_tags', []);
 
-    foreach ($dynamicProductIds as $uniqueKey => $productId) {
-        // CRITICAL: Skip if this product was marked for deletion
-        if (in_array($uniqueKey, $toRemove)) {
-            continue;
-        }
-        
-        // Check if this already exists in database
-        $keyParts = explode('_', $uniqueKey, 2);
-        $checkProductId = $keyParts[0];
-        $checkTags = isset($keyParts[1]) ? $keyParts[1] : '';
-        
-        $existsQuery = \DB::table('bill_product')
-            ->where('bill_id', $bill->id)
-            ->where('product_id', $checkProductId);
-            
-        if ($checkTags === '') {
-            $existsQuery->where(function($q) {
-                $q->whereNull('tags')->orWhere('tags', '');
-            });
-        } else {
-            $existsQuery->where('tags', $checkTags);
-        }
-        
-        // Skip if already exists
-        if ($existsQuery->exists()) {
-            continue;
-        }
-        
-        $quantity = (int)($dynamicQuantities[$uniqueKey] ?? 1);
-        $discount = (float)($dynamicDiscounts[$uniqueKey] ?? 0);
-        $tags = $dynamicProductTags[$uniqueKey] ?? '';
-        
-        $product = Product::find($productId);
-        if (!$product) continue;
-        
-        // Update stock
-        $product->quantity -= $quantity;
-        $product->save();
-        
-        // Handle batch consumption
-        $this->consumeProductStockAllowNegative($product, $quantity);
-        
-        // Apply damage discount if needed
-        if ($bill->is_damaged) {
-            $discount = $quantity * $product->selling_price;
-        }
-        
-        // Insert new record
-        \DB::table('bill_product')->insert([
-            'bill_id' => $bill->id,
-            'product_id' => $productId,
-            'quantity' => $quantity,
-            'discount' => $discount,
-            'cost_price' => $product->cost_price,
-            'selling_price' => $product->selling_price,
-            'tags' => $tags === '' ? null : $tags,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
+        foreach ($dynamicProductIds as $uniqueKey => $productId) {
+            // CRITICAL: Skip if this product was marked for deletion
+            if (in_array($uniqueKey, $toRemove)) {
+                continue;
+            }
 
-    // Handle dropdown product addition
-    $newProductId = $request->input('new_product_id');
-    $newQty = (int)$request->input('new_quantity');
+            // Check if this already exists in database
+            $keyParts = explode('_', $uniqueKey, 2);
+            $checkProductId = $keyParts[0];
+            $checkTags = isset($keyParts[1]) ? $keyParts[1] : '';
 
-    if ($newProductId && $newQty > 0) {
-        $product = Product::find($newProductId);
-        if ($product) {
-            $product->quantity -= $newQty;
+            $existsQuery = \DB::table('bill_product')
+                ->where('bill_id', $bill->id)
+                ->where('product_id', $checkProductId);
+
+            if ($checkTags === '') {
+                $existsQuery->where(function ($q) {
+                    $q->whereNull('tags')->orWhere('tags', '');
+                });
+            } else {
+                $existsQuery->where('tags', $checkTags);
+            }
+
+            // Skip if already exists
+            if ($existsQuery->exists()) {
+                continue;
+            }
+
+            $quantity = (int)($dynamicQuantities[$uniqueKey] ?? 1);
+            $discount = (float)($dynamicDiscounts[$uniqueKey] ?? 0);
+            $tags = $dynamicProductTags[$uniqueKey] ?? '';
+
+            $product = Product::find($productId);
+            if (!$product) continue;
+
+            // Update stock
+            $product->quantity -= $quantity;
             $product->save();
-            
-            $this->consumeProductStockAllowNegative($product, $newQty);
-            
-            $discount = $bill->is_damaged ? ($newQty * $product->selling_price) : 0;
-            
+
+            // Handle batch consumption
+            $this->consumeProductStockAllowNegative($product, $quantity);
+
+            // Apply damage discount if needed
+            if ($bill->is_damaged) {
+                $discount = $quantity * $product->selling_price;
+            }
+
+            // Insert new record
             \DB::table('bill_product')->insert([
                 'bill_id' => $bill->id,
-                'product_id' => $newProductId,
-                'quantity' => $newQty,
+                'product_id' => $productId,
+                'quantity' => $quantity,
                 'discount' => $discount,
                 'cost_price' => $product->cost_price,
                 'selling_price' => $product->selling_price,
-                'tags' => null,
+                'tags' => $tags === '' ? null : $tags,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
         }
-    }
 
-    // Recalculate totals
-    $this->recalculateBillTotal($bill);
-    $this->updateCustomerBalance($bill);
+        // Handle dropdown product addition
+        $newProductId = $request->input('new_product_id');
+        $newQty = (int)$request->input('new_quantity');
 
-    if ($request->ajax()) {
-        return response()->json([
-            'success' => true,
-            'message' => 'Bill updated successfully!',
-            'bill' => $bill
-        ]);
-    } else {
-        return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
-    }
-}
-/**
- * Helper method to consume product stock using FIFO (ALLOWS NEGATIVE STOCK)
- */
-private function consumeProductStockAllowNegative($product, $quantity)
-{
-    // Product stock is already updated in the main method
-    // Just handle batch consumption, allowing negative batches
-    
-    $remaining = $quantity;
-    $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
-    
-    foreach ($batches as $batch) {
-        if ($remaining <= 0) break;
-        
-        $consume = min($remaining, $batch->quantity);
-        $batch->quantity -= $consume;
-        $remaining -= $consume;
-        $batch->save();
-    }
-    
-    // If still remaining, consume from the latest batch (can go negative)
-    if ($remaining > 0) {
-        $lastBatch = $product->batches()->orderByDesc('id')->first();
-        if ($lastBatch) {
-            $lastBatch->quantity -= $remaining;
-            $lastBatch->save();
+        if ($newProductId && $newQty > 0) {
+            $product = Product::find($newProductId);
+            if ($product) {
+                $product->quantity -= $newQty;
+                $product->save();
+
+                $this->consumeProductStockAllowNegative($product, $newQty);
+
+                $discount = $bill->is_damaged ? ($newQty * $product->selling_price) : 0;
+
+                \DB::table('bill_product')->insert([
+                    'bill_id' => $bill->id,
+                    'product_id' => $newProductId,
+                    'quantity' => $newQty,
+                    'discount' => $discount,
+                    'cost_price' => $product->cost_price,
+                    'selling_price' => $product->selling_price,
+                    'tags' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        // Recalculate totals
+        $this->recalculateBillTotal($bill);
+        $this->updateCustomerBalance($bill);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Bill updated successfully!',
+                'bill' => $bill
+            ]);
         } else {
-            // If no batches exist, create a negative batch
+            return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
+        }
+    }
+    /**
+     * Helper method to consume product stock using FIFO (ALLOWS NEGATIVE STOCK)
+     */
+    private function consumeProductStockAllowNegative($product, $quantity)
+    {
+        // Product stock is already updated in the main method
+        // Just handle batch consumption, allowing negative batches
+
+        $remaining = $quantity;
+        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) break;
+
+            $consume = min($remaining, $batch->quantity);
+            $batch->quantity -= $consume;
+            $remaining -= $consume;
+            $batch->save();
+        }
+
+        // If still remaining, consume from the latest batch (can go negative)
+        if ($remaining > 0) {
+            $lastBatch = $product->batches()->orderByDesc('id')->first();
+            if ($lastBatch) {
+                $lastBatch->quantity -= $remaining;
+                $lastBatch->save();
+            } else {
+                // If no batches exist, create a negative batch
+                $product->batches()->create([
+                    'quantity' => -$remaining,
+                    'cost_price' => $product->cost_price,
+                    'user_id' => auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : auth()->user()->id,
+                ]);
+            }
+        }
+    }
+    /**
+     * Helper method to return stock to appropriate batch
+     */
+    private function returnToBatch($product, $quantity, $costPrice, $ownerId)
+    {
+        $previousQuantity = $product->quantity - $quantity; // Quantity before return
+        //recalculate average cost price
+        if ($product->quantity <= 0) {
+            $product->cost_price = $costPrice;
+        } else {
+            $product->cost_price =
+                ($product->cost_price * $previousQuantity + $costPrice * $quantity)
+                / max(1, ($previousQuantity + $quantity));
+        }
+        $product->cost_price = round($product->cost_price, 2);
+        $product->save();
+
+
+        $batch = $product->batches()->where('cost_price', $costPrice)->first();
+
+        if ($batch) {
+            $batch->quantity += $quantity;
+            $batch->save();
+        } else {
             $product->batches()->create([
-                'quantity' => -$remaining,
-                'cost_price' => $product->cost_price,
-                'user_id' => auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : auth()->user()->id,
+                'quantity' => $quantity,
+                'cost_price' => $costPrice,
+                'user_id' => $ownerId,
             ]);
         }
     }
-}
-/**
- * Helper method to return stock to appropriate batch
- */
-private function returnToBatch($product, $quantity, $costPrice, $ownerId)
-{
-    $previousQuantity = $product->quantity - $quantity; // Quantity before return
-    //recalculate average cost price
-    if($product->quantity <= 0){
-        $product->cost_price = $costPrice;
-    }else{
-        $product->cost_price = 
-        ($product->cost_price * $previousQuantity + $costPrice * $quantity) 
-        / max(1, ($previousQuantity + $quantity));
-    }
-    $product->cost_price = round($product->cost_price, 2);
-    $product->save();
 
+    /**
+     * Helper method to recalculate bill total (positive quantities only)
+     */
+    private function recalculateBillTotal($bill)
+    {
+        $total = 0;
+        $bill->load('products');
 
-    $batch = $product->batches()->where('cost_price', $costPrice)->first();
-    
-    if ($batch) {
-        $batch->quantity += $quantity;
-        $batch->save();
-    } else {
-        $product->batches()->create([
-            'quantity' => $quantity,
-            'cost_price' => $costPrice,
-            'user_id' => $ownerId,
-        ]);
-    }
-    
-}
+        foreach ($bill->products as $product) {
+            $qty = $product->pivot->quantity;
+            $unitPrice = $product->pivot->selling_price;
+            $discount = $product->pivot->discount ?? 0;
 
-/**
- * Helper method to recalculate bill total (positive quantities only)
- */
-private function recalculateBillTotal($bill)
-{
-    $total = 0;
-    $bill->load('products');
-    
-    foreach ($bill->products as $product) {
-        $qty = $product->pivot->quantity;
-        $unitPrice = $product->pivot->selling_price;
-        $discount = $product->pivot->discount ?? 0;
-        
-        // Calculate tags total if exists
-        $tagsTotal = 0;
-        if ($product->pivot->tags) {
-            $tagsTotal = $this->calculateTagsTotal($product->pivot->tags);
+            // Calculate tags total if exists
+            $tagsTotal = 0;
+            if ($product->pivot->tags) {
+                $tagsTotal = $this->calculateTagsTotal($product->pivot->tags);
+            }
+
+            // Calculate subtotal: (unit_price + tags_per_unit) * quantity - discount
+            $subtotal = max(0, (($unitPrice + $tagsTotal) * $qty) - $discount);
+            $total += $subtotal;
         }
-        
-        // Calculate subtotal: (unit_price + tags_per_unit) * quantity - discount
-        $subtotal = max(0, (($unitPrice + $tagsTotal) * $qty) - $discount);
-        $total += $subtotal;
+
+        $bill->total_price = $total;
+        $bill->save();
     }
 
-    $bill->total_price = $total;
-    $bill->save();
-}
+    /**
+     * Helper method to update customer balance
+     */
+    private function updateCustomerBalance($bill)
+    {
+        if ($bill->customer_id) {
+            $customer = $bill->customer;
 
-/**
- * Helper method to update customer balance
- */
-private function updateCustomerBalance($bill)
-{
-    if ($bill->customer_id) {
-        $customer = $bill->customer;
-        
-        $existingPayment = $customer->payments()
-            ->where('note', "Bill #{$bill->id} created as debt")
-            ->first();
-        
-        if ($existingPayment) {
-            $oldAmount = abs($existingPayment->amount);
-            $newAmount = $bill->total_price;
-            $difference = $newAmount - $oldAmount;
-            
-            $existingPayment->update(['amount' => -1 * $newAmount]);
-            $customer->update(['balance' => $customer->balance - $difference]);
+            $existingPayment = $customer->payments()
+                ->where('note', "Bill #{$bill->id} created as debt")
+                ->first();
+
+            if ($existingPayment) {
+                $oldAmount = abs($existingPayment->amount);
+                $newAmount = $bill->total_price;
+                $difference = $newAmount - $oldAmount;
+
+                $existingPayment->update(['amount' => -1 * $newAmount]);
+                $customer->update(['balance' => $customer->balance - $difference]);
+            }
         }
     }
-}
 
     public function destroy(Bill $bill)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         if ($bill->user_id !== $ownerId) {
             abort(403, 'Unauthorized action.');
         }
@@ -652,13 +686,13 @@ private function updateCustomerBalance($bill)
                     'user_id' => $ownerId,
                 ]);
             }
-            
+
             if ($oldQty <= 0) {
                 $product->cost_price = $costPrice;
             } else {
                 // Recalculate average cost price using weighted average
-                $product->cost_price = 
-                    ($oldAvg * $oldQty + $costPrice * $restoredQty) 
+                $product->cost_price =
+                    ($oldAvg * $oldQty + $costPrice * $restoredQty)
                     / max(1, ($oldQty + $restoredQty));
             }
             $product->cost_price = round($product->cost_price, 2);
@@ -697,18 +731,18 @@ private function updateCustomerBalance($bill)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $today = now()->toDateString();
         $thisMonth = now()->format('Y-m');
-        
+
         $todayBills = Bill::where('user_id', $ownerId)
             ->whereDate('created_at', $today)
             ->with('products');
-            
+
         $monthlyBills = Bill::where('user_id', $ownerId)
             ->where('created_at', 'like', $thisMonth . '%')
             ->with('products');
-        
+
         $stats = [
             'today' => [
                 'sales' => $todayBills->sum('total_price'),
@@ -729,63 +763,10 @@ private function updateCustomerBalance($bill)
                 }),
             ]
         ];
-        
+
         return response()->json($stats);
     }
 
-    /**
-     * Search bills by various criteria
-     */
-    public function search(Request $request)
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
-        $query = Bill::where('user_id', $ownerId)
-            ->with(['products', 'customer', 'creator']);
-            
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('note', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-        
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-        
-        if ($request->filled('min_amount')) {
-            $query->where('total_price', '>=', $request->min_amount);
-        }
-        
-        if ($request->filled('max_amount')) {
-            $query->where('total_price', '<=', $request->max_amount);
-        }
-        
-        if ($request->filled('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
-        }
-        
-        $bills = $query->orderBy('created_at', 'desc')->paginate(20);
-        
-        return response()->json([
-            'bills' => $bills->items(),
-            'pagination' => [
-                'current_page' => $bills->currentPage(),
-                'last_page' => $bills->lastPage(),
-                'total' => $bills->total(),
-            ]
-        ]);
-    }
 
     /**
      * Duplicate a bill (useful for similar orders)
@@ -803,7 +784,7 @@ private function updateCustomerBalance($bill)
             ->where('is_active', true)
             ->get();
         $customers = Customer::where('user_id', $ownerId)->get();
-        
+
         // Prepare products data for JavaScript
         $productsForJS = $products->map(function ($p) {
             return [
@@ -815,7 +796,7 @@ private function updateCustomerBalance($bill)
                 'quantity' => $p->quantity,
             ];
         })->toArray();
-        
+
         // Pre-populate with bill data
         $billData = [
             'note' => $bill->note,
@@ -831,7 +812,7 @@ private function updateCustomerBalance($bill)
                 ];
             }),
         ];
-        
+
         return view('bills.create', compact('productsForJS', 'products', 'customers', 'billData'));
     }
 }

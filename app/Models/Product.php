@@ -51,4 +51,9 @@ public function batches()
     return $this->hasMany(Batch::class);
 }
 
+public function barcodes()
+{
+    return $this->hasMany(ProductBarcode::class);
+}
+
 }

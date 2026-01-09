@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductBarcode;
 use Illuminate\Http\Request;
 use App\Models\Batch;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 
 class ProductsController extends Controller
@@ -53,6 +55,8 @@ class ProductsController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'nullable|string|max:255', // Add category validation
             'barcode' => 'nullable|string|max:255',
+            'additional_barcodes' => 'nullable|array',
+            'additional_barcodes.*' => 'nullable|string|max:255',
             'pictures' => 'nullable|array',
             'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
             'cost_price' => 'required|numeric',
@@ -90,6 +94,19 @@ class ProductsController extends Controller
 
         $product->save();
 
+        // Save additional barcodes
+        if ($request->has('additional_barcodes')) {
+            $barcodes = array_filter($request->additional_barcodes); // Remove empty values
+            foreach ($barcodes as $barcode) {
+                if (!empty(trim($barcode))) {
+                    ProductBarcode::create([
+                        'product_id' => $product->id,
+                        'barcode' => trim($barcode),
+                    ]);
+                }
+            }
+        }
+
         // create initial batch for this product
         $batch = new Batch();
         $batch->product_id = $product->id;
@@ -118,6 +135,8 @@ class ProductsController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'nullable|string|max:255', // Add category validation
             'barcode' => 'nullable|string|max:255',
+            'additional_barcodes' => 'nullable|array',
+            'additional_barcodes.*' => 'nullable|string|max:255',
             'pictures' => 'nullable|array',
             'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
             'cost_price' => 'required|numeric',
@@ -157,6 +176,23 @@ class ProductsController extends Controller
         }
 
         $product->save();
+
+        // Update additional barcodes
+        if ($request->has('additional_barcodes')) {
+            // Delete existing barcodes
+            $product->barcodes()->delete();
+
+            // Add new barcodes
+            $barcodes = array_filter($request->additional_barcodes); // Remove empty values
+            foreach ($barcodes as $barcode) {
+                if (!empty(trim($barcode))) {
+                    ProductBarcode::create([
+                        'product_id' => $product->id,
+                        'barcode' => trim($barcode),
+                    ]);
+                }
+            }
+        }
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
@@ -204,6 +240,23 @@ class ProductsController extends Controller
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
     }
 
+    // Get all categories for the current user
+    public function getCategories(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+        $categories = Product::where('user_id', $ownerId)
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->pluck('category')
+            ->sort()
+            ->values();
+
+        return response()->json($categories);
+    }
+
     // Enhanced search for all products with quantity ordering
     public function searchAllProducts(Request $request)
     {
@@ -218,11 +271,16 @@ class ProductsController extends Controller
             ->where('is_active', true);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('barcode', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%");
-            });
+            $searchTerms = explode(' ', $search);
+            foreach ($searchTerms as $term) {
+                $term = trim($term);
+                if ($term) {
+                    $query->where(function ($q) use ($term) {
+                        $q->where('name', 'like', "%{$term}%")
+                            ->orWhere('category', 'like', "%{$term}%");
+                    });
+                }
+            }
         }
 
         // Filter by specific category if provided
@@ -263,24 +321,52 @@ class ProductsController extends Controller
         $productId = $request->input('productid');
 
         if ($barcode) {
-            // Find all products with this barcode
-            $products = Product::where('barcode', $barcode)
+            // Collect all products that match this barcode (main or additional)
+            $mainBarcodeProducts = Product::where('barcode', $barcode)
                 ->where('user_id', $ownerId)
                 ->where('is_active', true)
                 ->get();
 
-            if ($products->count() === 1) {
+            $additionalBarcodeProducts = \DB::table('product_barcodes')
+                ->join('products', 'product_barcodes.product_id', '=', 'products.id')
+                ->where('products.user_id', $ownerId)
+                ->where('products.is_active', true)
+                ->where('product_barcodes.barcode', $barcode)
+                ->select('products.*')
+                ->get();
+
+            // Combine all matching products, avoiding duplicates
+            $allProducts = collect();
+            $productIds = [];
+
+            // Add main barcode products
+            foreach ($mainBarcodeProducts as $product) {
+                if (!in_array($product->id, $productIds)) {
+                    $allProducts->push($product);
+                    $productIds[] = $product->id;
+                }
+            }
+
+            // Add additional barcode products
+            foreach ($additionalBarcodeProducts as $product) {
+                if (!in_array($product->id, $productIds)) {
+                    $allProducts->push($product);
+                    $productIds[] = $product->id;
+                }
+            }
+
+            if ($allProducts->count() === 1) {
                 // Single product found - return it directly
-                return response()->json($products->first());
-            } elseif ($products->count() > 1) {
+                return response()->json($allProducts->first());
+            } elseif ($allProducts->count() > 1) {
                 // Multiple products found - return array with special flag
                 return response()->json([
                     'multiple_products' => true,
-                    'products' => $products,
+                    'products' => $allProducts,
                     'barcode' => $barcode
                 ]);
             } else {
-                // No products found
+                // No products found at all
                 return response()->json(null);
             }
         } elseif ($productId) {
@@ -292,6 +378,50 @@ class ProductsController extends Controller
         }
 
         return response()->json(null);
+    }
+
+    // Search barcode in purchase bills to find suppliers
+    public function searchBarcode(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $barcode = trim($request->input('barcode'));
+
+        if (!$barcode) {
+            return view('products.barcode-search', ['results' => null, 'searched' => false]);
+        }
+
+        // Search in purchase_bill_product table for barcodes containing this barcode
+        $results = \DB::table('purchase_bill_product')
+            ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
+            ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
+            ->join('products', 'purchase_bill_product.product_id', '=', 'products.id')
+            ->where('purchase_bills.user_id', $ownerId)
+            ->whereJsonContains('purchase_bill_product.barcodes', $barcode)
+            ->select(
+                'products.name as product_name',
+                'products.id as product_id',
+                'suppliers.name as supplier_name',
+                'suppliers.id as supplier_id',
+                'purchase_bills.purchase_date',
+                'purchase_bills.reference_number',
+                'purchase_bill_product.quantity',
+                'purchase_bill_product.unit_cost',
+                'purchase_bill_product.barcodes'
+            )
+            ->orderBy('purchase_bills.purchase_date', 'desc')
+            ->get()
+            ->map(function ($result) {
+                // Convert purchase_date string to Carbon object
+                $result->purchase_date = \Carbon\Carbon::parse($result->purchase_date);
+                return $result;
+            });
+
+        return view('products.barcode-search', [
+            'results' => $results,
+            'searched' => true,
+            'barcode' => $barcode
+        ]);
     }
     // Export products to CSV
     public function export()

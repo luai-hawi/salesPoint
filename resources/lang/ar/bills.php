@@ -36,7 +36,9 @@ return [
     'Product already added to this bill' => 'المنتج مضاف بالفعل إلى هذه الفاتورة',
     'Please enter a barcode' => 'يرجى إدخال الباركود',
     'Product not found for barcode: ' => 'لم يتم العثور على المنتج للباركود: ',
-    
+    'Search and Select Product' => 'ابحث واختر المنتجات',
+
+
     // Additional keys for bills index and create views
     'Total Bills' => 'إجمالي الفواتير',
     'Total Sales' => 'إجمالي المبيعات',
@@ -93,5 +95,20 @@ return [
     'Failed to delete batch. Please try again.' => 'فشل في حذف الدفعة. يرجى المحاولة مرة أخرى.',
     'Print Receipt' => 'طباعة الإيصال',
     'Tags' => 'العلامات',
-    'Tags Price'=>'سعر الاضافة',
+    'Tags Price' => 'سعر الإضافة',
+
+    // Barcode Search
+    'Barcode Search' => 'البحث بالباركود',
+    'Search Barcode in Purchase Bills' => 'البحث عن الباركود في فواتير الشراء',
+    'Enter barcode to search...' => 'أدخل الباركود للبحث...',
+    'Found {count} results for barcode: {barcode}' => 'تم العثور على {count} نتائج للباركود: {barcode}',
+    'No purchase bills found containing barcode: {barcode}' => 'لم يتم العثور على فواتير شراء تحتوي على الباركود: {barcode}',
+
+    // Purchase Bills Barcodes
+    'Barcodes' => 'الباركودات',
+    'Enter barcodes separated by commas' => 'أدخل الباركودات مفصولة بفواصل',
+
+    // Product Additional Barcodes
+    'Additional Barcodes' => 'باركودات إضافية',
+    'Enter additional barcodes (one per line)' => 'أدخل باركودات إضافية (واحد في كل سطر)',
 ];
