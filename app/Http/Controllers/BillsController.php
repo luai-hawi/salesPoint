@@ -57,6 +57,13 @@ class BillsController extends Controller
                             })
                             ->orWhereHas('creator', function ($creatorQuery) use ($term) {
                                 $creatorQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"]);
+                            })
+                            ->orWhereHas('products', function ($productQuery) use ($term) {
+                                $productQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"])
+                                    ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
+                            })
+                            ->orWhereHas('products.barcodes', function ($barcodeQuery) use ($term) {
+                                $barcodeQuery->whereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
                             });
                     });
                 }
