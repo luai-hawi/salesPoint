@@ -22,7 +22,6 @@ class PurchaseBill extends Model
     protected $casts = [
         'total_amount' => 'decimal:2',
         'purchase_date' => 'date',
-        'pivot.barcodes' => 'array',
     ];
 
     protected function serializeDate(\DateTimeInterface $date)

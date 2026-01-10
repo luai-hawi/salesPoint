@@ -284,7 +284,7 @@
                 existingProducts.forEach(function(product) {
                     let barcodes = [];
                     try {
-                        barcodes = product.pivot.barcodes ? JSON.parse(product.pivot.barcodes) : [];
+                        barcodes = JSON.parse(product.pivot.barcodes) || [];
                     } catch (e) {
                         barcodes = [];
                     }
@@ -363,16 +363,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                    <div class="flex-1">
-                                                                                        <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                        <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
-                                                                                    </div>
-                                                                                    <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                        {{ __('messages.Select') }}
-                                                                                    </button>
-                                                                                </div>
-                                                                            `).join('')}
+                                                                                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                        <div class="flex-1">
+                                                                                                            <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                            <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                        </div>
+                                                                                                        <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                            {{ __('messages.Select') }}
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -700,16 +700,23 @@
                     <input type="hidden" name="product_ids[]" value="${productId}">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="number" name="quantities[]" value="${quantity}" min="1"
-                           class="w-20 border border-gray-300 rounded px-2 py-1 quantity-input">
+                    <input type="number" name="quantities[]" min="1"
+                            class="w-20 border border-gray-300 rounded px-2 py-1 quantity-input">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="number" name="unit_costs[]" value="${currentCost}" min="0" step="0.01"
-                           class="w-24 border border-gray-300 rounded px-2 py-1 cost-input">
+                    <input type="number" name="unit_costs[]" min="0" step="0.01"
+                            class="w-24 border border-gray-300 rounded px-2 py-1 cost-input">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="text" name="barcodes[]" value="${Array.isArray(barcodes) ? barcodes.join(', ') : ''}" placeholder="Enter barcodes separated by commas"
-                           class="w-48 border border-gray-300 rounded px-2 py-1 barcodes-input">
+                    <div class="barcodes-container w-48">
+                        <div class="barcodes-list max-h-20 overflow-y-auto border border-gray-300 rounded p-1 mb-1 text-sm">
+                            <!-- Barcodes will be listed here -->
+                        </div>
+                        <div class="flex">
+                            <input type="text" class="barcode-input flex-1 border border-gray-300 rounded-l px-2 py-1 text-sm" placeholder="Enter barcode">
+                            <button type="button" class="add-barcode-btn bg-blue-600 text-white px-2 py-1 rounded-r text-sm hover:bg-blue-700" data-product-id="${productId}">Add</button>
+                        </div>
+                    </div>
                 </td>
                 <td class="px-4 py-3">
                     <div class="font-medium total-cell">₪${(quantity * currentCost).toFixed(2)}</div>
@@ -723,9 +730,59 @@
 
             tableBody.appendChild(row);
 
-            // Add event listeners
+            // Set input values
             const quantityInput = row.querySelector('.quantity-input');
             const costInput = row.querySelector('.cost-input');
+            quantityInput.value = quantity;
+            costInput.value = currentCost;
+
+            // Setup barcodes UI
+            const barcodesContainer = row.querySelector('.barcodes-container');
+            const barcodesList = barcodesContainer.querySelector('.barcodes-list');
+            const addBtn = barcodesContainer.querySelector('.add-barcode-btn');
+            const barcodeInput = barcodesContainer.querySelector('.barcode-input');
+            const prodId = addBtn.dataset.productId;
+
+            function addBarcode(code) {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center py-1';
+                item.innerHTML = `
+                    <span class="text-gray-700 text-xs">${code}</span>
+                    <button type="button" class="remove-barcode text-red-600 hover:text-red-800 ml-1 text-sm">×</button>
+                `;
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = `barcodes_${prodId}[]`;
+                hiddenInput.value = code;
+                barcodesContainer.appendChild(hiddenInput);
+                barcodesList.appendChild(item);
+                item.querySelector('.remove-barcode').addEventListener('click', () => {
+                    item.remove();
+                    hiddenInput.remove();
+                });
+            }
+
+            // Add existing barcodes
+            barcodes.forEach(addBarcode);
+
+            // Add event for add button
+            addBtn.addEventListener('click', () => {
+                const code = barcodeInput.value.trim();
+                if (code) {
+                    addBarcode(code);
+                    barcodeInput.value = '';
+                }
+            });
+
+            // Prevent form submission on enter in barcode input
+            barcodeInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addBtn.click();
+                }
+            });
+
+            // Add event listeners
             const removeBtn = row.querySelector('.remove-product');
 
             quantityInput.addEventListener('input', updateRowTotal);
