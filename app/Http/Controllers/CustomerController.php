@@ -11,6 +11,10 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $query = Customer::where('user_id', $ownerId);
 
@@ -18,8 +22,8 @@ class CustomerController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
             });
         }
 
@@ -34,14 +38,23 @@ class CustomerController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         return view('customers.create');
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:50',
@@ -76,12 +89,22 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeCustomer($customer);
         return view('customers.edit', compact('customer'));
     }
 
     public function update(Request $request, Customer $customer)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeCustomer($customer);
 
         $validated = $request->validate([
@@ -96,30 +119,35 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('delete_customers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeCustomer($customer);
-        
+
         // Check if customer has any payments
         if ($customer->payments()->count() > 0) {
             return redirect()->route('customers.index')
                 ->with('error', 'Cannot delete customer with payment history. Please clear all payments first.');
         }
-        
+
         // Check if customer has outstanding balance
         if ($customer->balance != 0) {
             return redirect()->route('customers.index')
                 ->with('error', 'Cannot delete customer with outstanding balance. Please settle the account first.');
         }
-        
+
         // Check if customer has any bills
         $billsCount = \App\Models\Bill::where('customer_id', $customer->id)->count();
         if ($billsCount > 0) {
             return redirect()->route('customers.index')
                 ->with('error', 'Cannot delete customer with existing bills. Please remove bill associations first.');
         }
-        
+
         $customerName = $customer->name;
         $customer->delete();
-        
+
         return redirect()->route('customers.index')
             ->with('success', "Customer '{$customerName}' deleted successfully!");
     }
@@ -141,52 +169,52 @@ class CustomerController extends Controller
         return view('customers.payments', compact('customer', 'payments', 'shopOwner'));
     }
 
-        public function storePayment(Request $request, Customer $customer)
-        {
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
-            $request->validate([
-                'amount' => 'required|numeric',
-                'type' => 'required|string|in:cash,card,transfer,check', // Add this line
-                'note' => 'nullable|string|max:255',
+    public function storePayment(Request $request, Customer $customer)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+
+        $request->validate([
+            'amount' => 'required|numeric',
+            'type' => 'required|string|in:cash,card,transfer,check', // Add this line
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        // Create payment record
+        $payment = $customer->payments()->create([
+            'amount' => $request->amount,
+            'type' => $request->type,    // Add this line
+            'note' => $request->note,
+            'user_id' => $ownerId
+        ]);
+
+        // Update customer balance
+        $customer->balance += $request->amount;
+        $customer->save();
+
+        if ($request->expectsJson()) {
+            // Get updated last bill data
+            $lastBillData = $customer->getLastBillData($ownerId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment added successfully',
+                'payment' => $payment,
+                'new_balance' => $customer->balance,
+                'last_bill_amount' => $lastBillData['amount'], // Add last bill data
+                'last_bill_id' => $lastBillData['bill_id'],
+                'customer' => $customer
             ]);
-
-            // Create payment record
-            $payment = $customer->payments()->create([
-                'amount' => $request->amount,
-                'type' => $request->type,    // Add this line
-                'note' => $request->note,
-                'user_id' => $ownerId
-            ]);
-
-            // Update customer balance
-            $customer->balance += $request->amount;
-            $customer->save();
-
-            if ($request->expectsJson()) {
-                // Get updated last bill data
-                $lastBillData = $customer->getLastBillData($ownerId);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Payment added successfully',
-                    'payment' => $payment,
-                    'new_balance' => $customer->balance,
-                    'last_bill_amount' => $lastBillData['amount'], // Add last bill data
-                    'last_bill_id' => $lastBillData['bill_id'],
-                    'customer' => $customer
-                ]);
-            }
-
-            return redirect()->back()->with('success', 'Payment added successfully');
         }
+
+        return redirect()->back()->with('success', 'Payment added successfully');
+    }
 
     public function updatePayment(Request $request, CustomerPayment $customer_payment)
     {
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        
+
         if ($customer_payment->user_id !== $ownerId) {
             abort(403, 'Unauthorized');
         }
@@ -221,64 +249,64 @@ class CustomerController extends Controller
     }
 
 
-public function quickStorePayment(Request $request, Customer $customer) {
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $this->authorizeCustomer($customer);
+    public function quickStorePayment(Request $request, Customer $customer)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizeCustomer($customer);
 
-    $validated = $request->validate([
-        'amount' => 'required|numeric|not_in:0',
-        'type' => 'required|string|in:cash,card,transfer,check', // Add this line
-        'note' => 'nullable|string|max:255',
-    ]);
+        $validated = $request->validate([
+            'amount' => 'required|numeric|not_in:0',
+            'type' => 'required|string|in:cash,card,transfer,check', // Add this line
+            'note' => 'nullable|string|max:255',
+        ]);
 
-    $customer->payments()->create([
-        'amount' => $validated['amount'],
-        'type' => $validated['type'], // Add this line
-        'note' => $validated['note'] ?? null,
-        'user_id' => $ownerId,
-    ]);
+        $customer->payments()->create([
+            'amount' => $validated['amount'],
+            'type' => $validated['type'], // Add this line
+            'note' => $validated['note'] ?? null,
+            'user_id' => $ownerId,
+        ]);
 
-    $customer->update(['balance' => $customer->balance + $validated['amount']]);
+        $customer->update(['balance' => $customer->balance + $validated['amount']]);
 
-    // Return the updated balance
-    return response()->json([
-        'success' => true, 
-        'message' => 'Payment added successfully!',
-        'new_balance' => $customer->fresh()->balance
-    ]);
-}
-public function getRecentPayments(Customer $customer)
-{
-    $user = auth()->user();
-    $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-    $this->authorizeCustomer($customer);
-    
-    // Get the last bill data using our model method
-    $lastBillData = $customer->getLastBillData($ownerId);
-    
-    // Get the last 10 payments for this customer
-    $payments = $customer->payments()
-        ->latest()
-        ->take(10)
-        ->get()
-        ->map(function ($payment) {
-            return [
-                'id' => $payment->id,
-                'amount' => $payment->amount,
-                'type' => $payment->type,
-                'note' => $payment->note,
-                'created_at' => $payment->created_at->format('M d, Y H:i'),
-                'created_at_human' => $payment->created_at->diffForHumans(),
-            ];
-        });
+        // Return the updated balance
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment added successfully!',
+            'new_balance' => $customer->fresh()->balance
+        ]);
+    }
+    public function getRecentPayments(Customer $customer)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizeCustomer($customer);
 
-    return response()->json([
-        'payments' => $payments,
-        'last_bill_amount' => $lastBillData['amount'],
-        'last_bill_id' => $lastBillData['bill_id'],
-        'last_bill_date' => $lastBillData['date']
-    ]);
-}
+        // Get the last bill data using our model method
+        $lastBillData = $customer->getLastBillData($ownerId);
 
+        // Get the last 10 payments for this customer
+        $payments = $customer->payments()
+            ->latest()
+            ->take(10)
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'type' => $payment->type,
+                    'note' => $payment->note,
+                    'created_at' => $payment->created_at->format('M d, Y H:i'),
+                    'created_at_human' => $payment->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json([
+            'payments' => $payments,
+            'last_bill_amount' => $lastBillData['amount'],
+            'last_bill_id' => $lastBillData['bill_id'],
+            'last_bill_date' => $lastBillData['date']
+        ]);
+    }
 }

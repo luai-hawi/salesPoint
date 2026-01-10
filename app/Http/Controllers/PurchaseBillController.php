@@ -16,6 +16,10 @@ class PurchaseBillController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_purchase_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $query = PurchaseBill::where('user_id', $ownerId)
@@ -66,6 +70,10 @@ class PurchaseBillController extends Controller
     public function create(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_purchase_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
@@ -89,6 +97,10 @@ class PurchaseBillController extends Controller
             Log::info('PurchaseBillController store request:', $request->all());
 
             $user = auth()->user();
+            if ($user->role === 'employee' && !$user->hasPermission('create_purchase_bills')) {
+                abort(403, 'Unauthorized');
+            }
+
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
             $request->validate([
@@ -209,6 +221,11 @@ class PurchaseBillController extends Controller
 
     public function show(PurchaseBill $purchaseBill)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_purchase_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizePurchaseBill($purchaseBill);
 
         $purchaseBill->load(['supplier', 'products', 'creator']);
@@ -218,6 +235,11 @@ class PurchaseBillController extends Controller
 
     public function edit(PurchaseBill $purchaseBill)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_purchase_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizePurchaseBill($purchaseBill);
         $user = auth()->user();
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
@@ -232,6 +254,10 @@ class PurchaseBillController extends Controller
 
     public function update(Request $request, PurchaseBill $purchaseBill)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_purchase_bills')) {
+            abort(403, 'Unauthorized');
+        }
 
         $this->authorizePurchaseBill($purchaseBill);
         $user = auth()->user();
@@ -357,6 +383,11 @@ class PurchaseBillController extends Controller
     {
         try {
             Log::info('PurchaseBillController destroy request:', ['bill_id' => $purchaseBill->id]);
+
+            $user = auth()->user();
+            if ($user->role === 'employee' && !$user->hasPermission('delete_purchase_bills')) {
+                abort(403, 'Unauthorized');
+            }
 
             $this->authorizePurchaseBill($purchaseBill);
 

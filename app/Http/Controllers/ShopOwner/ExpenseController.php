@@ -10,6 +10,10 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_expenses')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $query = Expense::where('user_id', $ownerId);
 
@@ -26,6 +30,10 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_expenses')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $request->validate([
             'title' => 'required|string|max:255',
@@ -47,6 +55,11 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('delete_expenses')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeOwner($expense);
 
         $expense->delete();

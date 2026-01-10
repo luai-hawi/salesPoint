@@ -17,16 +17,24 @@ class BatchController extends Controller
     {
         try {
             Log::info('BatchController store request:', $request->all());
-            
+
             $user = auth()->user();
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
+
+            // Check permissions for employees
+            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: You do not have permission to edit products'
+                ], 403);
+            }
+
             $data = $request->validate([
                 'product_id' => 'required|exists:products,id',
                 'quantity' => 'required|integer|min:1',
                 'cost_price' => 'required|numeric|min:0',
             ]);
-            
+
             $data['user_id'] = $ownerId;
 
             // Ensure the product belongs to the logged-in user
@@ -41,7 +49,7 @@ class BatchController extends Controller
 
             // Check if a batch with the same cost price exists for this product and user
             $existingBatch = Batch::where('product_id', $data['product_id'])
-                ->whereHas('product', function($q) use ($ownerId) {
+                ->whereHas('product', function ($q) use ($ownerId) {
                     $q->where('user_id', $ownerId);
                 })
                 ->where('cost_price', $data['cost_price'])
@@ -85,7 +93,6 @@ class BatchController extends Controller
                 'updated_quantity' => $product->quantity,
                 'message' => 'Batch added successfully'
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             Log::error('Validation error in batch store:', $e->errors());
@@ -114,10 +121,18 @@ class BatchController extends Controller
     {
         try {
             Log::info('BatchController update request:', ['batch_id' => $batch->id, 'data' => $request->all()]);
-            
+
             $user = auth()->user();
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
+
+            // Check permissions for employees
+            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: You do not have permission to edit products'
+                ], 403);
+            }
+
             // Ensure batch belongs to a product of the logged-in user
             if ($batch->product->user_id !== $ownerId) {
                 return response()->json([
@@ -174,7 +189,6 @@ class BatchController extends Controller
                 'success' => true,
                 'message' => 'Batch updated successfully'
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             Log::error('Validation error in batch update:', $e->errors());
@@ -202,13 +216,21 @@ class BatchController extends Controller
      */
     public function destroy(Batch $batch)
     {
-        
+
         try {
             Log::info('BatchController destroy request:', ['batch_id' => $batch->id]);
-            
+
             $user = auth()->user();
             $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-            
+
+            // Check permissions for employees
+            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: You do not have permission to edit products'
+                ], 403);
+            }
+
             if ($batch->product->user_id !== $ownerId) {
                 return response()->json([
                     'success' => false,
@@ -232,11 +254,11 @@ class BatchController extends Controller
                     $product->cost_price = 0; // No stock left
                 }
             }
-            
+
 
             $product->cost_price = round($product->cost_price, 2);
             $product->save();
-            
+
             $batchId = $batch->id;
             $batch->delete();
 
@@ -252,7 +274,6 @@ class BatchController extends Controller
                 'success' => true,
                 'message' => 'Batch deleted successfully'
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting batch:', [

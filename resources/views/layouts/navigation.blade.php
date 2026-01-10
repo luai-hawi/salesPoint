@@ -60,7 +60,11 @@
                                 {{ __('navigation.Dashboard') }}
                             </x-nav-link>
 
-                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
+                            @if (auth()->user()->role !== 'employee' ||
+                                    auth()->user()->hasPermission('view_products') ||
+                                    auth()->user()->hasPermission('create_products') ||
+                                    auth()->user()->hasPermission('edit_products') ||
+                                    auth()->user()->hasPermission('delete_products'))
                                 <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')"
                                     class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('products.index') ? 'bg-green-100 text-green-700 border-green-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +75,11 @@
                                 </x-nav-link>
                             @endif
 
-                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
+                            @if (auth()->user()->role !== 'employee' ||
+                                    auth()->user()->hasPermission('view_products') ||
+                                    auth()->user()->hasPermission('create_products') ||
+                                    auth()->user()->hasPermission('edit_products') ||
+                                    auth()->user()->hasPermission('delete_products'))
                                 <x-nav-link :href="route('products.out-of-stock')" :active="request()->routeIs('products.out-of-stock')"
                                     class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('products.out-of-stock') ? 'bg-orange-100 text-orange-700 border-orange-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +113,11 @@
                                 </x-nav-link>
                             @endif
 
-                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_bills'))
+                            @if (auth()->user()->role !== 'employee' ||
+                                    auth()->user()->hasPermission('view_bills') ||
+                                    auth()->user()->hasPermission('create_bills') ||
+                                    auth()->user()->hasPermission('edit_bills') ||
+                                    auth()->user()->hasPermission('delete_bills'))
                                 <x-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')"
                                     class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('bills.index') ? 'bg-purple-100 text-purple-700 border-purple-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +129,11 @@
                                 </x-nav-link>
                             @endif
 
-                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_customers'))
+                            @if (auth()->user()->role !== 'employee' ||
+                                    auth()->user()->hasPermission('view_customers') ||
+                                    auth()->user()->hasPermission('create_customers') ||
+                                    auth()->user()->hasPermission('edit_customers') ||
+                                    auth()->user()->hasPermission('delete_customers'))
                                 <x-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')"
                                     class="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('customers.index') ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +172,11 @@
                                     x-transition:leave-end="opacity-0 transform scale-95"
                                     class="absolute z-50 right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
 
-                                    @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_tags'))
+                                    @if (auth()->user()->role !== 'employee' ||
+                                            auth()->user()->hasPermission('view_tags') ||
+                                            auth()->user()->hasPermission('create_tags') ||
+                                            auth()->user()->hasPermission('edit_tags') ||
+                                            auth()->user()->hasPermission('delete_tags'))
                                         <!-- Products Section -->
                                         <div class="px-4 py-2">
                                             <h3
@@ -179,14 +199,24 @@
 
                                     @if (auth()->user()->role !== 'admin')
                                         @if (auth()->user()->role !== 'employee' ||
-                                                auth()->user()->hasPermission('manage_suppliers') ||
-                                                (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills')))
+                                                auth()->user()->hasPermission('view_suppliers') ||
+                                                auth()->user()->hasPermission('create_suppliers') ||
+                                                auth()->user()->hasPermission('edit_suppliers') ||
+                                                auth()->user()->hasPermission('delete_suppliers') ||
+                                                auth()->user()->hasPermission('view_purchase_bills') ||
+                                                auth()->user()->hasPermission('create_purchase_bills') ||
+                                                auth()->user()->hasPermission('edit_purchase_bills') ||
+                                                auth()->user()->hasPermission('delete_purchase_bills'))
                                             <!-- Suppliers Section -->
                                             <div class="px-4 py-2 border-t border-gray-100">
                                                 <h3
                                                     class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                                                     {{ __('navigation.Suppliers') }}</h3>
-                                                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_suppliers'))
+                                                @if (auth()->user()->role !== 'employee' ||
+                                                        auth()->user()->hasPermission('view_suppliers') ||
+                                                        auth()->user()->hasPermission('create_suppliers') ||
+                                                        auth()->user()->hasPermission('edit_suppliers') ||
+                                                        auth()->user()->hasPermission('delete_suppliers'))
                                                     <a href="{{ route('suppliers.index') }}"
                                                         class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('suppliers.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                         <svg class="w-4 h-4 mr-3 text-cyan-600" fill="none"
@@ -200,7 +230,11 @@
                                                     </a>
                                                 @endif
 
-                                                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills'))
+                                                @if (auth()->user()->role !== 'employee' ||
+                                                        auth()->user()->hasPermission('view_purchase_bills') ||
+                                                        auth()->user()->hasPermission('create_purchase_bills') ||
+                                                        auth()->user()->hasPermission('edit_purchase_bills') ||
+                                                        auth()->user()->hasPermission('delete_purchase_bills'))
                                                     <a href="{{ route('purchase-bills.index') }}"
                                                         class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('purchase-bills.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                         <svg class="w-4 h-4 mr-3 text-blue-600" fill="none"
@@ -245,7 +279,11 @@
                                                     </a>
                                                 @endif
 
-                                                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses'))
+                                                @if (auth()->user()->role !== 'employee' ||
+                                                        auth()->user()->hasPermission('view_expenses') ||
+                                                        auth()->user()->hasPermission('create_expenses') ||
+                                                        auth()->user()->hasPermission('edit_expenses') ||
+                                                        auth()->user()->hasPermission('delete_expenses'))
                                                     <a href="{{ route('shopowner.expenses.index') }}"
                                                         class="flex items-center p-2 rounded-md hover:bg-gray-50 transition-colors duration-200 {{ request()->routeIs('shopowner.expenses.index') ? 'bg-gray-50 text-gray-900' : 'text-gray-700' }}">
                                                         <svg class="w-4 h-4 mr-3 text-red-600" fill="none"
@@ -441,7 +479,11 @@
                     {{ __('navigation.Dashboard') }}
                 </x-responsive-nav-link>
 
-                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_products'))
+                @if (auth()->user()->role !== 'employee' ||
+                        auth()->user()->hasPermission('view_products') ||
+                        auth()->user()->hasPermission('create_products') ||
+                        auth()->user()->hasPermission('edit_products') ||
+                        auth()->user()->hasPermission('delete_products'))
                     <x-responsive-nav-link :href="route('products.index')" :active="request()->routeIs('products.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -451,7 +493,11 @@
                     </x-responsive-nav-link>
                 @endif
 
-                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_bills'))
+                @if (auth()->user()->role !== 'employee' ||
+                        auth()->user()->hasPermission('view_bills') ||
+                        auth()->user()->hasPermission('create_bills') ||
+                        auth()->user()->hasPermission('edit_bills') ||
+                        auth()->user()->hasPermission('delete_bills'))
                     <x-responsive-nav-link :href="route('bills.index')" :active="request()->routeIs('bills.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -462,7 +508,11 @@
                     </x-responsive-nav-link>
                 @endif
 
-                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_customers'))
+                @if (auth()->user()->role !== 'employee' ||
+                        auth()->user()->hasPermission('view_customers') ||
+                        auth()->user()->hasPermission('create_customers') ||
+                        auth()->user()->hasPermission('edit_customers') ||
+                        auth()->user()->hasPermission('delete_customers'))
                     <x-responsive-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.index')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -473,7 +523,11 @@
                     </x-responsive-nav-link>
                 @endif
 
-                @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_tags'))
+                @if (auth()->user()->role !== 'employee' ||
+                        auth()->user()->hasPermission('view_tags') ||
+                        auth()->user()->hasPermission('create_tags') ||
+                        auth()->user()->hasPermission('edit_tags') ||
+                        auth()->user()->hasPermission('delete_tags'))
                     <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')" class="flex items-center">
                         <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -512,8 +566,14 @@
 
                     @if (auth()->user()->role !== 'admin')
                         @if (auth()->user()->role !== 'employee' ||
-                                auth()->user()->hasPermission('manage_suppliers') ||
-                                (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_purchase_bills')))
+                                auth()->user()->hasPermission('view_suppliers') ||
+                                auth()->user()->hasPermission('create_suppliers') ||
+                                auth()->user()->hasPermission('edit_suppliers') ||
+                                auth()->user()->hasPermission('delete_suppliers') ||
+                                auth()->user()->hasPermission('view_purchase_bills') ||
+                                auth()->user()->hasPermission('create_purchase_bills') ||
+                                auth()->user()->hasPermission('edit_purchase_bills') ||
+                                auth()->user()->hasPermission('delete_purchase_bills'))
                             <!-- Mobile Suppliers Menu -->
                             <div class="space-y-1">
                                 <div class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg mt-2">

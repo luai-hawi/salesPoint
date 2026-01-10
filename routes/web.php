@@ -148,11 +148,9 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
     ->group(function () {
 
         // Tags Management
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_tags'])->group(function () {
-            Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
-            Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
-            Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
-        });
+        Route::get('/tags', [TagsController::class, 'index'])->name('tags.index');
+        Route::post('/tags', [TagsController::class, 'store'])->name('tags.store');
+        Route::delete('/tags/{tag}', [TagsController::class, 'destroy'])->name('tags.destroy');
 
         // Settings
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_settings'])->group(function () {
@@ -168,15 +166,13 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         Route::post('customers/{customer}/quick-payments', [CustomerController::class, 'quickStorePayment'])->name('customers.quick-payments.store');
 
         // Products CRUD with permissions
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_products'])->group(function () {
-            Route::resource('products', ProductsController::class)->except(['show']);
-            Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
-            Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
-            Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
-            Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
-            Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
-            Route::get('/products/next-id', [ProductsController::class, 'getNextProductId'])->name('products.next-id');
-        });
+        Route::resource('products', ProductsController::class)->except(['show']);
+        Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+        Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
+        Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
+        Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');
+        Route::post('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock.bulk');
+        Route::get('/products/next-id', [ProductsController::class, 'getNextProductId'])->name('products.next-id');
 
         // Temporary debug route
         Route::get('/debug-products', function () {
@@ -196,20 +192,16 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         });
 
         // Enhanced Bills Routes
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_bills'])->group(function () {
-            Route::resource('bills', BillsController::class);
-            Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
-            Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
-            Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
-        });
+        Route::resource('bills', BillsController::class);
+        Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
+        Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
+        Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
 
         // Customers & Payments
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_customers'])->group(function () {
-            Route::resource('customers', CustomerController::class);
-            Route::get('customers/{customer}/payments', [CustomerController::class, 'showPayments'])->name('customers.payments');
-            Route::post('customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
-            Route::put('payments/{customer_payment}', [CustomerController::class, 'updatePayment'])->name('payments.update');
-        });
+        Route::resource('customers', CustomerController::class);
+        Route::get('customers/{customer}/payments', [CustomerController::class, 'showPayments'])->name('customers.payments');
+        Route::post('customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
+        Route::put('payments/{customer_payment}', [CustomerController::class, 'updatePayment'])->name('payments.update');
 
         // Batches
         Route::post('/batches', [BatchController::class, 'store']);
@@ -243,11 +235,9 @@ Route::prefix('shopowner')
         });
 
         // Expenses
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_expenses'])->group(function () {
-            Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
-            Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
-            Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
-        });
+        Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
@@ -586,22 +576,18 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
     ->group(function () {
 
         // Suppliers
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_suppliers'])->group(function () {
-            Route::resource('suppliers', SupplierController::class);
-            Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
-            Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
-            Route::get('/suppliers/{supplier}/more-payments', [SupplierController::class, 'getMorePayments'])->name('suppliers.more-payments');
-            Route::get('/suppliers/{supplier}/print-report', [SupplierController::class, 'printSupplierReport'])->name('suppliers.print-report');
-            Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
-        });
+        Route::resource('suppliers', SupplierController::class);
+        Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
+        Route::get('/suppliers/{supplier}/recent-payments', [SupplierController::class, 'getRecentPayments'])->name('suppliers.recent-payments');
+        Route::get('/suppliers/{supplier}/more-payments', [SupplierController::class, 'getMorePayments'])->name('suppliers.more-payments');
+        Route::get('/suppliers/{supplier}/print-report', [SupplierController::class, 'printSupplierReport'])->name('suppliers.print-report');
+        Route::delete('supplier-payments/{supplier_payment}', [SupplierController::class, 'deletePayment'])->name('supplier-payments.destroy');
 
 
         // Purchase Bills
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_purchase_bills'])->group(function () {
-            Route::resource('purchase-bills', PurchaseBillController::class);
-            Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
-            Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
-        });
+        Route::resource('purchase-bills', PurchaseBillController::class);
+        Route::get('/purchase-bills/{purchaseBill}/print', [PurchaseBillController::class, 'print'])->name('purchase-bills.print');
+        Route::post('/purchase-bills/{purchaseBill}/duplicate', [PurchaseBillController::class, 'duplicate'])->name('purchase-bills.duplicate');
 
         // API endpoints for AJAX calls
         Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');

@@ -24,6 +24,10 @@ class BillsController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $date = $request->input('date');
 
@@ -128,6 +132,10 @@ class BillsController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $request->validate([
@@ -254,6 +262,10 @@ class BillsController extends Controller
     public function show(Bill $bill)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         if ($bill->user_id !== $ownerId) {
@@ -296,6 +308,10 @@ class BillsController extends Controller
     public function update(Request $request, Bill $bill)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         if ($bill->user_id !== $ownerId) {
@@ -653,6 +669,10 @@ class BillsController extends Controller
     public function destroy(Bill $bill)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('delete_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         if ($bill->user_id !== $ownerId) {

@@ -1687,6 +1687,7 @@ return [
     'Manage Expenses' => 'إدارة المصروفات',
     'Permissions' => 'الصلاحيات',
     'No permissions' => 'لا توجد صلاحيات',
+    'Other Permissions' => 'صلاحيات أخرى',
 
     // Supplier Print Report Translations
     'Print Report' => 'طباعة التقرير',

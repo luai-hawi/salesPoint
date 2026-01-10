@@ -16,6 +16,10 @@ class ProductsController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $query = Product::where('user_id', $ownerId);
 
@@ -44,12 +48,21 @@ class ProductsController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         return view('products.create');
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $request->validate([
             'name' => 'required|string|max:255',
@@ -121,6 +134,11 @@ class ProductsController extends Controller
 
     public function edit(Product $product)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeProduct($product);
         return view('products.edit', compact('product'));
     }
@@ -128,6 +146,10 @@ class ProductsController extends Controller
     public function update(Request $request, Product $product)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $this->authorizeProduct($product);
 
@@ -230,6 +252,11 @@ class ProductsController extends Controller
 
     public function destroy(Product $product)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('delete_products')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeProduct($product);
 
         // Delete associated images before deleting the product

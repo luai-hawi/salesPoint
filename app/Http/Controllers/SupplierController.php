@@ -11,6 +11,10 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('view_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
         $query = Supplier::where('user_id', $ownerId);
 
@@ -34,12 +38,21 @@ class SupplierController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         return view('suppliers.create');
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $validated = $request->validate([
@@ -83,6 +96,11 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeSupplier($supplier);
 
         $user = auth()->user();
@@ -106,6 +124,11 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('edit_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeSupplier($supplier);
 
         $validated = $request->validate([
@@ -123,6 +146,11 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('delete_suppliers')) {
+            abort(403, 'Unauthorized');
+        }
+
         $this->authorizeSupplier($supplier);
 
         // Check if supplier has purchase bills

@@ -1616,6 +1616,7 @@ return [
     'Manage Expenses' => 'Manage Expenses',
     'Permissions' => 'Permissions',
     'No permissions' => 'No permissions',
+    'Other Permissions' => 'Other Permissions',
 
     // Supplier Print Report Translations
     'Print Report' => 'Print Report',
