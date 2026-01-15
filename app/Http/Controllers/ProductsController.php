@@ -90,7 +90,7 @@ class ProductsController extends Controller
         $product = new Product();
         $product->name = $request->name;
         $product->category = $request->category; // Add category
-        $product->barcode = $request->barcode;
+        $product->barcode = trim($request->barcode);
         $product->quantity = $request->quantity;
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
@@ -179,7 +179,7 @@ class ProductsController extends Controller
 
         $product->name = $request->name;
         $product->category = $request->category; // Add category
-        $product->barcode = $request->barcode;
+        $product->barcode = trim($request->barcode);
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
         $product->has_tags = $request->has('has_tags');
@@ -292,6 +292,7 @@ class ProductsController extends Controller
         $search = $request->query('search', '');
         $category = $request->query('category', '');
         $page = $request->query('page', 1);
+        $perPage = $request->query('per_page', 20);
 
         $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
             ->where('user_id', $ownerId)
@@ -324,13 +325,51 @@ class ProductsController extends Controller
 
         // Order by category first (null categories at end), then by quantity status, then by name
         // Products with quantity > 0 first, then by name
-        $products = $query->orderByRaw('CASE WHEN category IS NULL OR category = "" THEN 1 ELSE 0 END')
+        // Get products
+        $productsQuery = $query->orderByRaw('CASE WHEN category IS NULL OR category = "" THEN 1 ELSE 0 END')
             ->orderBy('category')
             ->orderByRaw('CASE WHEN quantity > 0 THEN 0 ELSE 1 END')
-            ->orderBy('name')
-            ->paginate(20);
+            ->orderBy('name');
 
-        return response()->json($products);
+        if ($perPage > 10000) {
+            // Load all products without pagination
+            $products = $productsQuery->get();
+            $products->load('barcodes');
+
+            // Add barcodes to each product
+            $products->transform(function ($product) {
+                $additionalBarcodes = $product->barcodes->pluck('barcode')->toArray();
+                $allBarcodes = array_merge([$product->barcode], $additionalBarcodes);
+                $product->unsetRelation('barcodes');
+                $product->barcodes = array_map('trim', array_filter($allBarcodes)); // trim and remove nulls/empties
+                return $product;
+            });
+
+            // Return in paginated format for compatibility
+            return response()->json([
+                'data' => $products,
+                'current_page' => 1,
+                'per_page' => $products->count(),
+                'total' => $products->count(),
+                'last_page' => 1,
+                'from' => 1,
+                'to' => $products->count()
+            ]);
+        } else {
+            $products = $productsQuery->paginate($perPage);
+            $products->getCollection()->load('barcodes');
+
+            // Add barcodes to each product in the collection
+            $products->getCollection()->transform(function ($product) {
+                $additionalBarcodes = $product->barcodes->pluck('barcode')->toArray();
+                $allBarcodes = array_merge([$product->barcode], $additionalBarcodes);
+                $product->unsetRelation('barcodes');
+                $product->barcodes = array_map('trim', array_filter($allBarcodes)); // trim and remove nulls/empties
+                return $product;
+            });
+
+            return response()->json($products);
+        }
     }
 
 

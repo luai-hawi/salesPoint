@@ -3,6 +3,13 @@
     $firstImage = $images[0] ?? null;
     $isOutOfStock = $product->quantity <= 0;
     $isLowStock = $product->quantity > 0 && $product->quantity <= 10;
+
+    // Check if the user is a restaurant owner or an employee of a restaurant owner
+    $isRestaurant =
+        auth()->user()->role === 'restaurant' ||
+        (auth()->user()->role === 'employee' &&
+            auth()->user()->shop_owner_id &&
+            auth()->user()->shopOwner->role === 'restaurant');
 @endphp
 
 <div class="product-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md"
@@ -23,7 +30,7 @@
         @endif
 
         <!-- Stock Status Overlay -->
-        @if ($isOutOfStock)
+        @if ($isOutOfStock && !$isRestaurant)
             <div class="absolute inset-0 bg-red-500 bg-opacity-80 flex items-center justify-center">
                 <span class="text-white font-bold text-sm">OUT OF STOCK</span>
             </div>

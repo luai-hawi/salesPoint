@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Supplier;
 use App\Models\PurchaseBill;
 use App\Models\SupplierPayment;
+use App\Models\ProductBarcode;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -1076,7 +1077,7 @@ class FinancialDashboardController extends Controller
             ->get();
 
         $purchaseProductsSheet->fromArray([
-            ['Purchase Bill ID', 'Product Name', 'Quantity', 'Unit Cost', 'Total Cost', 'Purchase Date']
+            ['Purchase Bill ID', 'Product Name', 'Quantity', 'Unit Cost', 'Total Cost', 'Barcodes', 'Purchase Date']
         ]);
 
         $row = 2;
@@ -1088,6 +1089,7 @@ class FinancialDashboardController extends Controller
                     $product->quantity,
                     $product->unit_cost,
                     $product->total_cost,
+                    json_encode($product->barcodes),
                     $product->purchase_date
                 ]
             ], null, 'A' . $row);
@@ -1117,6 +1119,31 @@ class FinancialDashboardController extends Controller
                     $payment->payment_date,
                     $payment->note,
                     $payment->created_at->format('Y-m-d H:i:s')
+                ]
+            ], null, 'A' . $row);
+            $row++;
+        }
+
+        // 15. Product Barcodes Sheet (NEW)
+        $productBarcodesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Product Barcodes');
+        $spreadsheet->addSheet($productBarcodesSheet);
+
+        $productBarcodes = ProductBarcode::whereHas('product', function ($q) use ($shopOwnerId) {
+            $q->where('user_id', $shopOwnerId);
+        })->with('product')->get();
+
+        $productBarcodesSheet->fromArray([
+            ['ID', 'Product Name', 'Barcode', 'Created At']
+        ]);
+
+        $row = 2;
+        foreach ($productBarcodes as $barcode) {
+            $productBarcodesSheet->fromArray([
+                [
+                    $barcode->id,
+                    $barcode->product->name ?? 'N/A',
+                    $barcode->barcode,
+                    $barcode->created_at->format('Y-m-d H:i:s')
                 ]
             ], null, 'A' . $row);
             $row++;

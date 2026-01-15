@@ -55,8 +55,26 @@ Route::get('/dashboard', function () {
 
     $products = \App\Models\Product::where('user_id', $ownerId)
         ->where('is_active', true)
-        ->select('id', 'name', 'selling_price', 'cost_price', 'barcode')
-        ->get();
+        ->with('barcodes')
+        ->select('id', 'name', 'selling_price', 'cost_price', 'barcode', 'pictures', 'quantity', 'category', 'has_tags')
+        ->get()
+        ->map(function ($product) {
+            // Transform barcodes relationship to simple array
+            $product->barcodes = $product->barcodes->pluck('barcode')->toArray();
+            return $product;
+        });
+
+    // Get categories and tags for local access
+    $categories = \App\Models\Product::where('user_id', $ownerId)
+        ->whereNotNull('category')
+        ->where('category', '!=', '')
+        ->distinct()
+        ->pluck('category')
+        ->sort()
+        ->values()
+        ->toArray();
+
+    $tags = \App\Models\Tag::where('user_id', $ownerId)->get();
 
     $totalToday = \App\Models\Bill::where('user_id', $ownerId)
         ->whereDate('created_at', Carbon::today())
@@ -79,7 +97,7 @@ Route::get('/dashboard', function () {
         ->take(5) // Show top 5
         ->get();
 
-    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths', 'billsCount'));
+    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths', 'billsCount', 'categories', 'tags'));
 })->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 

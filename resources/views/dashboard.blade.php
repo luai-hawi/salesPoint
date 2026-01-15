@@ -917,7 +917,9 @@
     <script>
         // Global variables
         const products = @json($products);
-        let availableTags = [];
+        const categories = @json($categories ?? []);
+        const tags = @json($tags ?? []);
+        let availableTags = tags; // Use passed tags instead of fetching
         const customers = @json($customers);
         let customerDebounceTimeout = null;
         let paymentCustomerDebounceTimeout = null;
@@ -943,6 +945,8 @@
         let currentCategory = null;
         let pendingAction = null;
         let isProcessingNoCustomerAction = false;
+        let allProducts = []; // Store all products for local filtering
+        let productsLoaded = false; // Flag to check if all products are loaded
 
         // Message listener for print window communication
         window.addEventListener('message', async (event) => {
@@ -962,7 +966,7 @@
             }
         });
 
-        // Initialize
+        // Initialize - Load all products initially for local search
         fetchProducts(true);
 
         if (!isRestaurant) {
@@ -972,8 +976,6 @@
             setupRestaurantCustomerSelectors();
             loadRecentPayments();
         }
-
-        fetchTags();
 
         // Function for print tab to call when done
         window.submitBillForm = async function() {
@@ -1427,35 +1429,16 @@
             }
         }
 
-        // Fetch available tags
-        async function fetchTags() {
-            try {
-                const response = await fetch('/api/tags');
-                if (response.ok) {
-                    availableTags = await response.json();
-                }
-            } catch (error) {
-                console.error('Failed to fetch tags:', error);
-            }
-        }
 
-        // Fetch categories
-        async function fetchCategories(search = '') {
-            try {
-                const params = new URLSearchParams();
-                if (search) params.append('search', search);
-
-                const response = await fetch(`/api/categories?${params}`);
-                if (response.ok) {
-                    const categories = await response.json();
-                    renderCategories(categories);
-                } else {
-                    renderCategories([]);
-                }
-            } catch (error) {
-                console.error('Failed to fetch categories:', error);
-                renderCategories([]);
+        // Fetch categories - now uses local data
+        function fetchCategories(search = '') {
+            let filteredCategories = categories;
+            if (search) {
+                filteredCategories = categories.filter(cat =>
+                    cat.toLowerCase().includes(search.toLowerCase())
+                );
             }
+            renderCategories(filteredCategories);
         }
 
         // Customer search functionality
@@ -1524,39 +1507,56 @@
             }
         }
 
-        // Enhanced barcode input handler (only for non-restaurant)
+        // Enhanced barcode input handler (only for non-restaurant) - LOCAL LOOKUP
         if (!isRestaurant) {
-            document.getElementById('barcode_input').addEventListener('keydown', async e => {
+            document.getElementById('barcode_input').addEventListener('keydown', e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     const code = e.target.value.trim();
                     if (!code) return;
 
-                    try {
-                        const response = await fetch(`/products/search?barcode=${encodeURIComponent(code)}`);
-                        if (!response.ok) {
-                            showNotification('{{ __('messages.Error fetching product from server.') }}',
-                                'error');
+                    // Search locally in products array (prefer fully loaded data)
+                    const matchingProducts = [];
+                    const codeLower = code.toLowerCase();
+                    const productsToSearch = (productsLoaded && allProducts.length > 0) ? allProducts : products;
+                    productsToSearch.forEach(product => {
+                        // Check main barcode
+                        if (product.barcode && product.barcode.toLowerCase() === codeLower) {
+                            matchingProducts.push(product);
                             return;
                         }
-                        const result = await response.json();
-
-                        if (result && result.multiple_products) {
-                            showBarcodeModal(result.products, result.barcode);
-                            e.target.value = '';
-                        } else if (result && result.id) {
-                            result.has_tags = result.has_tags || false;
-                            addProductRow(result);
-                            e.target.value = '';
-                            showNotification(`{{ __('messages.Added {product} to bill') }}`.replace(
-                                '{product}', result.name), 'success');
-                        } else {
-                            showNotification('{{ __('messages.Product not found for barcode: {code}') }}'
-                                .replace('{code}', code), 'warning');
+                        // Check additional barcodes
+                        if (product.barcodes) {
+                            let barcodes = product.barcodes;
+                            if (typeof barcodes === 'string') {
+                                try {
+                                    barcodes = JSON.parse(barcodes);
+                                } catch (e) {
+                                    barcodes = [];
+                                }
+                            }
+                            if (Array.isArray(barcodes)) {
+                                if (barcodes.some(b => b && typeof b === 'string' && b.toLowerCase() ===
+                                        codeLower)) {
+                                    matchingProducts.push(product);
+                                }
+                            }
                         }
-                    } catch (err) {
-                        console.error('Fetch error:', err);
-                        showNotification('{{ __('messages.Failed to fetch product data.') }}', 'error');
+                    });
+
+                    if (matchingProducts.length > 1) {
+                        showBarcodeModal(matchingProducts, code);
+                        e.target.value = '';
+                    } else if (matchingProducts.length === 1) {
+                        const product = matchingProducts[0];
+                        product.has_tags = product.has_tags || false;
+                        addProductRow(product);
+                        e.target.value = '';
+                        showNotification(`{{ __('messages.Added {product} to bill') }}`.replace(
+                            '{product}', product.name), 'success');
+                    } else {
+                        showNotification('{{ __('messages.Product not found for barcode: {code}') }}'
+                            .replace('{code}', code), 'warning');
                     }
                 }
             });
@@ -1613,19 +1613,18 @@
         document.querySelector('.modal-overlay')?.addEventListener('click', closeBarcodeModal);
 
 
-        // Filter buttons
+        // Filter buttons - now local
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
 
                 currentFilter = e.target.id.replace('filter-', '');
-                searchTerm = document.getElementById('product-search').value.trim();
-                fetchProducts(true);
+                renderFilteredProducts();
             });
         });
 
-        // Category mode toggle
+        // Category mode toggle - now local
         document.getElementById('toggle-category-mode').addEventListener('click', () => {
             browseByCategory = !browseByCategory;
             currentCategory = null;
@@ -1637,36 +1636,22 @@
             searchTerm = '';
             document.getElementById('product-search').value = '';
 
-            if (browseByCategory) {
-                fetchCategories();
-            } else {
-                fetchProducts(true);
-            }
+            renderFilteredProducts();
         });
 
-        // Back to categories button
+        // Back to categories button - now local
         document.getElementById('back-to-categories').querySelector('button').addEventListener('click', () => {
             currentCategory = null;
-            fetchCategories();
+            renderFilteredProducts();
             showBackButton(false);
         });
 
-        // Enhanced product search with debouncing
+        // Enhanced product search with debouncing - now local
         document.getElementById('product-search').addEventListener('input', function() {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
-                const searchValue = this.value.trim();
-                currentPage = 1;
-                hasMore = true;
-
-                if (browseByCategory && !currentCategory) {
-                    // When browsing by category and no category selected, search categories
-                    fetchCategories(searchValue);
-                } else {
-                    // Normal product search
-                    searchTerm = searchValue;
-                    fetchProducts(true);
-                }
+                searchTerm = this.value.trim();
+                renderFilteredProducts();
             }, 300);
         });
 
@@ -1684,10 +1669,10 @@
             }
 
             const params = new URLSearchParams({
-                search: searchTerm,
-                page: currentPage,
-                filter: currentFilter,
-                per_page: 12
+                search: '', // Load all products initially
+                page: 1,
+                filter: 'all',
+                per_page: 999999 // Load all products
             });
             if (category) params.append('category', category);
 
@@ -1699,27 +1684,12 @@
                 .then(data => {
                     const products = data.data || [];
 
-                    if (products.length === 0 && currentPage === 1) {
-                        if (browseByCategory && !category) {
-                            renderCategories([]);
-                        } else {
-                            document.getElementById('product-results').innerHTML =
-                                '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
-                        }
-                        hasMore = false;
-                        return;
-                    }
+                    // Store all products for local filtering
+                    allProducts = products;
+                    productsLoaded = true;
 
-                    if (browseByCategory && !category) {
-                        const categories = [...new Set(products.map(p => p.category).filter(c => c))];
-                        renderCategories(categories);
-                    } else {
-                        const filteredProducts = filterProducts(products);
-                        renderProducts(filteredProducts, !reset, category);
-                    }
-
-                    hasMore = data.current_page < data.last_page;
-                    currentPage++;
+                    // Render filtered products
+                    renderFilteredProducts();
                 })
                 .catch(error => {
                     if (currentPage === 1) {
@@ -1733,6 +1703,61 @@
                     isLoading = false;
                     showLoadingIndicator(false);
                 });
+        }
+
+        // Render filtered products locally
+        function renderFilteredProducts() {
+            if (!productsLoaded) return;
+
+            const container = document.getElementById('product-results');
+            container.innerHTML = '';
+
+            if (browseByCategory && !currentCategory) {
+                // Show categories
+                const categorySet = new Set();
+                allProducts.forEach(p => {
+                    if (p.category) categorySet.add(p.category);
+                });
+                renderCategories(Array.from(categorySet));
+                return;
+            }
+
+            // Filter products
+            let filtered = allProducts.filter(product => {
+                // Search filter
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    const nameMatch = product.name.toLowerCase().includes(term);
+                    const categoryMatch = product.category?.toLowerCase().includes(term);
+                    const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(term);
+                    const additionalBarcodeMatch = product.barcodes && Array.isArray(product.barcodes) && product
+                        .barcodes.some(b => b && typeof b === 'string' && b.toLowerCase().includes(term));
+                    if (!nameMatch && !categoryMatch && !barcodeMatch && !additionalBarcodeMatch) {
+                        return false;
+                    }
+                }
+                // Category filter
+                if (currentCategory && product.category !== currentCategory) {
+                    return false;
+                }
+                // Stock filter
+                switch (currentFilter) {
+                    case 'in-stock':
+                        return product.quantity > 0;
+                    case 'out-of-stock':
+                        return product.quantity === 0;
+                    default:
+                        return true;
+                }
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML =
+                    '<p class="text-gray-500 text-center py-4 col-span-full">{{ __('messages.No products found') }}</p>';
+                return;
+            }
+
+            renderProducts(filtered, false, currentCategory);
         }
 
         // Filter products based on current filter
@@ -1753,7 +1778,7 @@
             const isOutOfStock = product.quantity === 0;
 
             card.className =
-                `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock ? 'out-of-stock' : ''}`;
+                `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock && !isRestaurant ? 'out-of-stock' : ''}`;
             card.dataset.productId = product.id;
             card.dataset.cost_price = product.cost_price;
             card.dataset.selling_price = product.selling_price;
@@ -1769,7 +1794,7 @@
             }
 
             const imageHtml = firstImage ?
-                `<img src="/storage/${firstImage}" class="w-full h-20 object-cover rounded-lg bg-gray-100" loading="lazy" alt="${product.name}">` :
+                `<img data-src="/storage/${firstImage}" class="lazy-image w-full h-20 object-cover rounded-lg bg-gray-100" alt="${product.name}">` :
                 `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -1793,8 +1818,8 @@
                         <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
                         <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
                         <div class="mt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                ${isOutOfStock ? '{{ __('messages.Out of Stock') }}' : `${product.quantity} {{ __('messages.in stock') }}`}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock && !isRestaurant ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                ${isOutOfStock && !isRestaurant ? '{{ __('messages.Out of Stock') }}' : `${product.quantity} {{ __('messages.in stock') }}`}
                             </span>
                         </div>
                     </div>
@@ -1873,6 +1898,43 @@
                     container.appendChild(card);
                 });
             }
+
+            // Initialize lazy loading for new images
+            initializeLazyLoading();
+        }
+
+        // Lazy loading for product images - loads in batches
+        function initializeLazyLoading() {
+            const lazyImages = document.querySelectorAll('.lazy-image');
+            const imagesArray = Array.from(lazyImages);
+
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const index = imagesArray.indexOf(img);
+                            // Load this image and the next 11 (batch of 12)
+                            for (let i = index; i < Math.min(index + 12, imagesArray.length); i++) {
+                                const imageToLoad = imagesArray[i];
+                                if (imageToLoad.classList.contains('lazy-image')) {
+                                    imageToLoad.src = imageToLoad.dataset.src;
+                                    imageToLoad.classList.remove('lazy-image');
+                                    observer.unobserve(imageToLoad);
+                                }
+                            }
+                        }
+                    });
+                });
+
+                lazyImages.forEach(img => imageObserver.observe(img));
+            } else {
+                // Fallback for browsers without IntersectionObserver
+                lazyImages.forEach(img => {
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy-image');
+                });
+            }
         }
 
         // Render categories for browsing
@@ -1899,7 +1961,7 @@
                     currentCategory = cat;
                     searchTerm = ''; // Clear search when selecting category
                     document.getElementById('product-search').value = '';
-                    fetchProducts(true, cat);
+                    renderFilteredProducts();
                     showBackButton(true);
                 };
                 container.appendChild(card);
@@ -2031,14 +2093,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                    <div class="flex-1">
-                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                </label>
-                                                                                                                                                                                            `).join('')}
+                                                                                                                                                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                            </label>
+                                                                                                                                                                                                                                                                                                                        `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2807,9 +2869,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                            ` : '-'}
+                                                                                                                                                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                        ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -3206,20 +3268,6 @@
             `;
         }
 
-        // Scroll handler
-        document.getElementById('product-cards-container').addEventListener('scroll', (e) => {
-            const container = e.target;
-            const scrollTop = container.scrollTop;
-            const scrollHeight = container.scrollHeight;
-            const clientHeight = container.clientHeight;
-
-            if (scrollTop + clientHeight >= scrollHeight - 100) {
-                // Only load more when not browsing categories or when viewing products in a specific category
-                if (!browseByCategory || currentCategory) {
-                    fetchProducts(false, currentCategory);
-                }
-            }
-        });
 
         // Notification system
         function showNotification(message, type = 'info') {
