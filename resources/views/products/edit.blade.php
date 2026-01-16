@@ -789,10 +789,6 @@
                         e.preventDefault(); // Prevent form submission
                     }
                 }
-                // Prevent form submission for additional barcode fields
-                else if (e.target.name === 'additional_barcodes[]') {
-                    e.preventDefault(); // Prevent form submission
-                }
             }
         });
 

@@ -29,7 +29,10 @@ class ProductsController extends Controller
                 $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
                     ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"])
                     ->orWhere('cost_price', 'like', "%{$search}%")
-                    ->orWhere('selling_price', 'like', "%{$search}%");
+                    ->orWhere('selling_price', 'like', "%{$search}%")
+                    ->orWhereHas('barcodes', function ($qb) use ($search) {
+                        $qb->whereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"]);
+                    });
             });
         }
 
@@ -212,19 +215,10 @@ class ProductsController extends Controller
             $uniqueBarcodes = array_unique($newBarcodes);
             if (count($newBarcodes) !== count($uniqueBarcodes)) {
                 return back()->withErrors(['additional_barcodes' => 'Duplicate barcodes detected. Please use unique barcodes for each product.'])
-                            ->withInput();
+                    ->withInput();
             }
 
-            // Check if any new barcode already exists in the database (excluding this product's current barcodes)
-            $duplicateBarcodes = ProductBarcode::whereIn('barcode', $newBarcodes)
-                ->where('product_id', '!=', $product->id)
-                ->pluck('barcode')
-                ->toArray();
-
-            if (!empty($duplicateBarcodes)) {
-                return back()->withErrors(['additional_barcodes' => 'One or more barcodes already exist for other products: ' . implode(', ', $duplicateBarcodes)])
-                            ->withInput();
-            }
+            // Allow duplicate barcodes across different products
 
             // Delete existing barcodes
             $product->barcodes()->delete();
@@ -238,6 +232,9 @@ class ProductsController extends Controller
                     ]);
                 }
             }
+        } else {
+            // If no additional barcodes are submitted, delete all existing ones
+            $product->barcodes()->delete();
         }
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
