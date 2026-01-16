@@ -778,12 +778,21 @@
 
 
 
-        // Auto-save on Enter key
+        // Auto-save on Enter key for batch fields only
         document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && (e.target.classList.contains('batch-qty') || e.target.classList.contains(
-                    'batch-cost'))) {
-                const saveBtn = e.target.closest('tr').querySelector('.save-batch');
-                if (saveBtn) saveBtn.click();
+            if (e.key === 'Enter') {
+                // Prevent form submission for batch fields
+                if (e.target.classList.contains('batch-qty') || e.target.classList.contains('batch-cost')) {
+                    const saveBtn = e.target.closest('tr').querySelector('.save-batch');
+                    if (saveBtn) {
+                        saveBtn.click();
+                        e.preventDefault(); // Prevent form submission
+                    }
+                }
+                // Prevent form submission for additional barcode fields
+                else if (e.target.name === 'additional_barcodes[]') {
+                    e.preventDefault(); // Prevent form submission
+                }
             }
         });
 
@@ -810,6 +819,20 @@
             div.querySelector('.remove-barcode-btn').addEventListener('click', function() {
                 div.remove();
             });
+
+            // Add event listener to barcode input for Enter key
+            const barcodeInput = div.querySelector('input[name="additional_barcodes[]"]');
+            barcodeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addBarcodeInput(); // Add new barcode field instead of submitting
+                }
+            });
+
+            // Add event listener for blur to check for duplicates
+            barcodeInput.addEventListener('blur', function() {
+                checkForDuplicateBarcodes();
+            });
         }
 
         // Generate barcode
@@ -833,6 +856,46 @@
         });
 
         // Add this to your existing JavaScript in create.blade.php and edit.blade.php
+
+        // Function to check for duplicate barcodes
+        function checkForDuplicateBarcodes() {
+            const barcodeInputs = document.querySelectorAll('input[name="additional_barcodes[]"]');
+            const barcodes = [];
+            let hasDuplicate = false;
+
+            // Collect all barcodes
+            barcodeInputs.forEach(input => {
+                const barcode = input.value.trim();
+                if (barcode) {
+                    if (barcodes.includes(barcode)) {
+                        hasDuplicate = true;
+                        // Highlight duplicate input
+                        input.classList.add('border-red-500', 'border-2');
+                    } else {
+                        barcodes.push(barcode);
+                        input.classList.remove('border-red-500', 'border-2');
+                    }
+                }
+            });
+
+            if (hasDuplicate) {
+                showNotification('{{ __('messages.Duplicate barcode detected! Please use unique barcodes.') }}', 'error');
+            }
+
+            return !hasDuplicate;
+        }
+
+        // Add validation before form submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const hasDuplicates = !checkForDuplicateBarcodes();
+            if (hasDuplicates) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                showNotification('{{ __('messages.Cannot save product with duplicate barcodes.') }}', 'error');
+                return false;
+            }
+            return true;
+        });
 
         // Fetch existing categories for autocomplete
         async function loadCategoryAutoComplete() {

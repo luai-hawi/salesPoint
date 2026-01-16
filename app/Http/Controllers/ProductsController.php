@@ -201,16 +201,40 @@ class ProductsController extends Controller
 
         // Update additional barcodes
         if ($request->has('additional_barcodes')) {
+            // Get existing barcodes for this product
+            $existingBarcodes = $product->barcodes()->pluck('barcode')->toArray();
+
+            // Get new barcodes from request
+            $newBarcodes = array_filter($request->additional_barcodes); // Remove empty values
+            $newBarcodes = array_map('trim', $newBarcodes); // Trim all barcodes
+
+            // Check for duplicates in the new barcodes
+            $uniqueBarcodes = array_unique($newBarcodes);
+            if (count($newBarcodes) !== count($uniqueBarcodes)) {
+                return back()->withErrors(['additional_barcodes' => 'Duplicate barcodes detected. Please use unique barcodes for each product.'])
+                            ->withInput();
+            }
+
+            // Check if any new barcode already exists in the database (excluding this product's current barcodes)
+            $duplicateBarcodes = ProductBarcode::whereIn('barcode', $newBarcodes)
+                ->where('product_id', '!=', $product->id)
+                ->pluck('barcode')
+                ->toArray();
+
+            if (!empty($duplicateBarcodes)) {
+                return back()->withErrors(['additional_barcodes' => 'One or more barcodes already exist for other products: ' . implode(', ', $duplicateBarcodes)])
+                            ->withInput();
+            }
+
             // Delete existing barcodes
             $product->barcodes()->delete();
 
             // Add new barcodes
-            $barcodes = array_filter($request->additional_barcodes); // Remove empty values
-            foreach ($barcodes as $barcode) {
-                if (!empty(trim($barcode))) {
+            foreach ($newBarcodes as $barcode) {
+                if (!empty($barcode)) {
                     ProductBarcode::create([
                         'product_id' => $product->id,
-                        'barcode' => trim($barcode),
+                        'barcode' => $barcode,
                     ]);
                 }
             }
@@ -339,7 +363,8 @@ class ProductsController extends Controller
             // Add barcodes to each product
             $products->transform(function ($product) {
                 $additionalBarcodes = $product->barcodes->pluck('barcode')->toArray();
-                $allBarcodes = array_merge([$product->barcode], $additionalBarcodes);
+                $mainBarcode = $product->barcode ? [$product->barcode] : [];
+                $allBarcodes = array_merge($mainBarcode, $additionalBarcodes);
                 $product->unsetRelation('barcodes');
                 $product->barcodes = array_map('trim', array_filter($allBarcodes)); // trim and remove nulls/empties
                 return $product;
@@ -362,7 +387,8 @@ class ProductsController extends Controller
             // Add barcodes to each product in the collection
             $products->getCollection()->transform(function ($product) {
                 $additionalBarcodes = $product->barcodes->pluck('barcode')->toArray();
-                $allBarcodes = array_merge([$product->barcode], $additionalBarcodes);
+                $mainBarcode = $product->barcode ? [$product->barcode] : [];
+                $allBarcodes = array_merge($mainBarcode, $additionalBarcodes);
                 $product->unsetRelation('barcodes');
                 $product->barcodes = array_map('trim', array_filter($allBarcodes)); // trim and remove nulls/empties
                 return $product;
