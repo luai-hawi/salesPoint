@@ -8,6 +8,7 @@ return [
     | Based on the provided views
     */
     'month' => 'شهر',
+    'Bill created successfully!' => 'تم إنشاء الفاتورة بنجاح!',
     'Loss Value' => 'قيمة الخسارة',
     'ID' => 'الرقم',
     'Enter selling price' => 'أدخل سعر البيع',
@@ -1722,4 +1723,15 @@ return [
     'Total Purchases' => 'إجمالي المشتريات',
     'Created Date' => 'تاريخ الإنشاء',
     'Last Updated' => 'آخر تحديث',
+
+    // Dashboard Notifications
+    'Form not found. Please refresh the page.' => 'النموذج غير موجود. يرجى تحديث الصفحة.',
+    'Security token missing. Please refresh the page.' => 'رمز الأمان مفقود. يرجى تحديث الصفحة.',
+    'Please select a customer' => 'يرجى اختيار عميل',
+    'Payment added successfully!' => 'تم إضافة الدفعة بنجاح!',
+    'Failed to add payment' => 'فشل في إضافة الدفعة',
+    'Bill saved successfully!' => 'تم حفظ الفاتورة بنجاح!',
+    'Failed to save bill' => 'فشل في حفظ الفاتورة',
+    'Failed to save bill - network error' => 'فشل في حفظ الفاتورة - خطأ في الشبكة',
+    'Please allow popups for printing' => 'يرجى السماح بالنوافذ المنبثقة للطباعة',
 ];

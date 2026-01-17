@@ -194,37 +194,44 @@ class BillsController extends Controller
                 ->where('user_id', $ownerId)
                 ->firstOrFail();
 
-            // Update product quantity
-            $product->quantity -= $qty;
-            // Update last sale date when product is sold
-            $product->last_sale_date = now();
-            $product->save();
+            // Update product quantity only if not restaurant role
+            $isRestaurant = $user->role === 'restaurant' ||
+                ($user->role === 'employee' && $user->shop_owner_id &&
+                    $user->shopOwner && $user->shopOwner->role === 'restaurant');
 
-            // Handle batch consumption (FIFO)
-            $remainingQty = $qty;
-            $batches = $product->batches()->where('quantity', '>', 0)->orderBy('created_at')->get();
+            if (!$isRestaurant) {
+                // Update product quantity
+                $product->quantity -= $qty;
+                // Update last sale date when product is sold
+                $product->last_sale_date = now();
+                $product->save();
 
-            foreach ($batches as $batch) {
-                if ($remainingQty <= 0) break;
+                // Handle batch consumption (FIFO)
+                $remainingQty = $qty;
+                $batches = $product->batches()->where('quantity', '>', 0)->orderBy('created_at')->get();
 
-                $consume = min($batch->quantity, $remainingQty);
-                $batch->quantity -= $consume;
-                $batch->save();
-                $remainingQty -= $consume;
-            }
+                foreach ($batches as $batch) {
+                    if ($remainingQty <= 0) break;
 
-            // If still remaining quantity, create negative batch
-            if ($remainingQty > 0) {
-                $lastBatch = $product->batches()->latest()->first();
-                if ($lastBatch) {
-                    $lastBatch->quantity -= $remainingQty;
-                    $lastBatch->save();
-                } else {
-                    $product->batches()->create([
-                        'quantity' => -1 * $remainingQty,
-                        'cost_price' => $product->cost_price,
-                        'user_id' => $ownerId,
-                    ]);
+                    $consume = min($batch->quantity, $remainingQty);
+                    $batch->quantity -= $consume;
+                    $batch->save();
+                    $remainingQty -= $consume;
+                }
+
+                // If still remaining quantity, create negative batch
+                if ($remainingQty > 0) {
+                    $lastBatch = $product->batches()->latest()->first();
+                    if ($lastBatch) {
+                        $lastBatch->quantity -= $remainingQty;
+                        $lastBatch->save();
+                    } else {
+                        $product->batches()->create([
+                            'quantity' => -1 * $remainingQty,
+                            'cost_price' => $product->cost_price,
+                            'user_id' => $ownerId,
+                        ]);
+                    }
                 }
             }
 
@@ -371,14 +378,20 @@ class BillsController extends Controller
                 $pivotRecord = $pivotQuery->first();
 
                 if ($pivotRecord) {
-                    // Return stock
-                    $product = Product::find($productId);
-                    if ($product) {
-                        $product->quantity += $pivotRecord->quantity;
-                        $product->save();
+                    // Return stock only if not restaurant
+                    $isRestaurant = $user->role === 'restaurant' ||
+                        ($user->role === 'employee' && $user->shop_owner_id &&
+                            $user->shopOwner && $user->shopOwner->role === 'restaurant');
 
-                        // Return to batch
-                        $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
+                    if (!$isRestaurant) {
+                        $product = Product::find($productId);
+                        if ($product) {
+                            $product->quantity += $pivotRecord->quantity;
+                            $product->save();
+
+                            // Return to batch
+                            $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
+                        }
                     }
 
                     // Delete the pivot record
@@ -421,17 +434,23 @@ class BillsController extends Controller
                 $newDiscount = isset($discounts[$uniqueKey]) ? (float)$discounts[$uniqueKey] : $pivotRecord->discount;
                 $quantityDiff = $newQuantity - $pivotRecord->quantity;
 
-                // Update stock if quantity changed
+                // Update stock if quantity changed (only for non-restaurants)
                 if ($quantityDiff != 0) {
-                    $product = Product::find($productId);
-                    if ($product) {
-                        $product->quantity -= $quantityDiff;
-                        $product->save();
+                    $isRestaurant = $user->role === 'restaurant' ||
+                        ($user->role === 'employee' && $user->shop_owner_id &&
+                            $user->shopOwner && $user->shopOwner->role === 'restaurant');
 
-                        if ($quantityDiff > 0) {
-                            $this->consumeProductStockAllowNegative($product, $quantityDiff);
-                        } else {
-                            $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
+                    if (!$isRestaurant) {
+                        $product = Product::find($productId);
+                        if ($product) {
+                            $product->quantity -= $quantityDiff;
+                            $product->save();
+
+                            if ($quantityDiff > 0) {
+                                $this->consumeProductStockAllowNegative($product, $quantityDiff);
+                            } else {
+                                $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
+                            }
                         }
                     }
                 }
@@ -486,12 +505,19 @@ class BillsController extends Controller
             $product = Product::find($productId);
             if (!$product) continue;
 
-            // Update stock
-            $product->quantity -= $quantity;
-            $product->save();
+            // Update stock only for non-restaurants
+            $isRestaurant = $user->role === 'restaurant' ||
+                ($user->role === 'employee' && $user->shop_owner_id &&
+                    $user->shopOwner && $user->shopOwner->role === 'restaurant');
 
-            // Handle batch consumption
-            $this->consumeProductStockAllowNegative($product, $quantity);
+            if (!$isRestaurant) {
+                // Update stock
+                $product->quantity -= $quantity;
+                $product->save();
+
+                // Handle batch consumption
+                $this->consumeProductStockAllowNegative($product, $quantity);
+            }
 
             // Apply damage discount if needed
             if ($bill->is_damaged) {

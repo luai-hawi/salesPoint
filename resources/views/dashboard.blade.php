@@ -218,7 +218,13 @@
                                                 class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <option value="">{{ __('dashboard.Select Customer') }}</option>
                                                 @foreach ($customers as $customer)
-                                                    <option value="{{ $customer->id }}">
+                                                    <option value="{{ $customer->id }}"
+                                                        data-name="{{ $customer->name }}"
+                                                        data-phone="{{ $customer->phone }}"
+                                                        data-balance="{{ $customer->balance }}"
+                                                        data-last-bill="{{ $customer->last_bill_amount ?? 0 }}"
+                                                        data-last-bill-id="{{ $customer->last_bill_id ?? '' }}"
+                                                        data-last-bill-date="{{ $customer->last_bill_date ?? '' }}">
                                                         {{ $customer->name }} - {{ $customer->phone }} (Balance:
                                                         {{ $customer->balance ?? '0.00' }})
                                                     </option>
@@ -952,8 +958,6 @@
         window.addEventListener('message', async (event) => {
             if (event.data.source === 'printWindow') {
                 if (event.data.action === 'saveBill') {
-                    console.log('Received save request from print window');
-
                     // For dashboard, we already saved before opening print window
                     // Just send confirmation back to print window
                     if (window.printWindowRef && !window.printWindowRef.closed) {
@@ -977,14 +981,12 @@
             loadRecentPayments();
         }
 
-        // Function for print tab to call when done
+        // Function for AJAX bill submission
         window.submitBillForm = async function() {
-            console.log('=== DASHBOARD SUBMIT BILL FORM STARTED ===');
-
             const form = document.getElementById('create-bill');
             if (!form) {
                 console.error('Form not found');
-                showNotification('Form not found. Please refresh the page.', 'error');
+                showNotification('{{ __('messages.Form not found. Please refresh the page.') }}', 'error');
                 return;
             }
 
@@ -996,18 +998,27 @@
 
             if (!csrfToken) {
                 console.error('CSRF token not found');
-                showNotification('Security token missing. Please refresh the page.', 'error');
+                showNotification('{{ __('messages.Security token missing. Please refresh the page.') }}',
+                    'error');
                 return;
             }
 
-            // Show loading notification
-            showNotification('Saving bill...', 'info');
+            // Show loading state
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <svg class="w-4 h-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ __('dashboard.Creating Bill...') }}
+            `;
 
-            console.log('Form action:', form.action);
-            console.log('CSRF token:', csrfToken ? 'Present' : 'Missing');
+            // Show loading notification
+            showNotification('{{ __('messages.Creating bill...') }}', 'info');
 
             try {
-                console.log('Sending request...');
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -1018,35 +1029,242 @@
                     body: formData
                 });
 
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
-
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('Success result:', result);
-                    showNotification('Bill saved successfully!', 'success');
+                    showNotification('{{ __('messages.Bill created successfully!') }}', 'success');
+
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
+
+                        // Update UI after successful bill creation
+                        await updateUIAfterBillCreation(result.bill);
                     }
                 } else {
                     try {
                         const errorData = await response.json();
-                        console.error('Error response:', errorData);
-                        showNotification(errorData.message || 'Failed to save bill', 'error');
+                        showNotification(errorData.message || '{{ __('messages.Failed to create bill') }}',
+                            'error');
                     } catch (parseError) {
-                        console.error('Failed to parse error response:', parseError);
                         const textResponse = await response.text();
-                        console.error('Raw error response:', textResponse);
-                        showNotification('Failed to save bill - server error', 'error');
+                        showNotification('{{ __('messages.Failed to create bill - server error') }}', 'error');
                     }
                 }
             } catch (error) {
-                console.error('Save error:', error);
-                showNotification('Failed to save bill - network error', 'error');
+                showNotification('{{ __('messages.Failed to create bill - network error') }}', 'error');
+            } finally {
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        };
+
+        // Function to update UI after bill creation
+        async function updateUIAfterBillCreation(bill) {
+            try {
+                // Update product quantities in the displayed cards and allProducts array
+                const productRows = document.querySelectorAll('.product-row');
+                productRows.forEach(row => {
+                    const productId = row.querySelector('input[name="product_ids[]"]').value;
+                    const quantityInput = row.querySelector('.quantity');
+                    const quantitySold = parseInt(quantityInput.value);
+
+                    // Update the allProducts array with new quantities
+                    const productIndex = allProducts.findIndex(p => p.id == productId);
+                    if (productIndex !== -1) {
+                        allProducts[productIndex].quantity = Math.max(0, allProducts[productIndex].quantity -
+                            quantitySold);
+                    }
+
+                    // Update product card quantity display
+                    const productCards = document.querySelectorAll(`[data-product-id="${productId}"]`);
+                    productCards.forEach(productCard => {
+                        // Find the span that contains the quantity text (works for both English and Arabic)
+                        const quantitySpans = productCard.querySelectorAll('span');
+                        let quantitySpan = null;
+                        for (const span of quantitySpans) {
+                            const text = span.textContent.trim();
+                            if (text.includes('in stock') || text.includes('Out of Stock') ||
+                                text.includes('متوفر') || text.includes('غير متوفر')) {
+                                quantitySpan = span;
+                                break;
+                            }
+                        }
+
+                        if (quantitySpan) {
+                            const currentText = quantitySpan.textContent.trim();
+
+                            // Extract current quantity from text
+                            const qtyMatch = currentText.match(/(\d+)/);
+                            const currentQty = qtyMatch ? parseInt(qtyMatch[1]) : 0;
+                            const newQty = Math.max(0, currentQty - quantitySold);
+
+                            // Update the span text and styling
+                            if (newQty === 0 && !isRestaurant) {
+                                quantitySpan.textContent = 'Out of Stock';
+                                quantitySpan.className =
+                                    'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                                productCard.classList.add('out-of-stock');
+                            } else {
+                                quantitySpan.textContent = `${newQty} in stock`;
+                                if (newQty <= 10) {
+                                    quantitySpan.className =
+                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
+                                } else {
+                                    quantitySpan.className =
+                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                                }
+                                productCard.classList.remove('out-of-stock');
+                            }
+                        }
+                    });
+                });
+
+                // Update today's sales total in header
+                const headerSalesElements = document.querySelectorAll('.text-green-600');
+                headerSalesElements.forEach(element => {
+                    if (element.textContent.includes('₪')) {
+                        const currentTotalText = element.textContent.replace('₪', '').replace(',', '').trim();
+                        const currentTotal = parseFloat(currentTotalText) || 0;
+                        const newTotal = currentTotal + parseFloat(bill.total_price);
+                        element.textContent = '₪' + newTotal.toFixed(2);
+                    }
+                });
+
+                // Update today's sales total in performance section
+                const performanceSalesElements = document.querySelectorAll('.text-blue-800');
+                performanceSalesElements.forEach(element => {
+                    if (element.textContent.includes('₪')) {
+                        const currentTotalText = element.textContent.replace('₪', '').replace(',', '').trim();
+                        const currentTotal = parseFloat(currentTotalText) || 0;
+                        const newTotal = currentTotal + parseFloat(bill.total_price);
+                        element.textContent = '₪' + newTotal.toFixed(2);
+                    }
+                });
+
+                // Update bill count
+                const billsCountElement = document.getElementById('bills_count');
+                if (billsCountElement) {
+                    const currentCount = parseInt(billsCountElement.textContent.trim()) || 0;
+                    billsCountElement.textContent = currentCount + 1;
+                }
+
+                // For restaurants, update last bill info
+                if (isRestaurant) {
+                    const customerId = bill.customer_id;
+
+                    // Update both customer selects (bill form and payment form)
+                    const customerSelects = [
+                        document.getElementById('customer_id'), // Bill form select
+                        document.getElementById('payment_customer_select') // Payment form select
+                    ];
+
+                    customerSelects.forEach(customerSelect => {
+                        if (customerSelect) {
+                            // Find the option for this customer
+                            const customerOption = Array.from(customerSelect.options).find(option => option
+                                .value == customerId);
+                            if (customerOption) {
+                                customerOption.setAttribute('data-last-bill', bill.total_price);
+                                customerOption.setAttribute('data-last-bill-id', bill.id);
+                                customerOption.setAttribute('data-last-bill-date', new Date().toISOString()
+                                    .split('T')[0]);
+
+                                // Update the display text
+                                const customerName = customerOption.getAttribute('data-name');
+                                const customerPhone = customerOption.getAttribute('data-phone');
+                                customerOption.textContent =
+                                    `${customerName} - ${customerPhone} (Last Bill: ₪${parseFloat(bill.total_price).toFixed(2)})`;
+                            }
+                        }
+                    });
+
+                    // Update customer balance info if visible
+                    const customerBalanceInfo = document.getElementById('customer-balance-info');
+                    if (!customerBalanceInfo.classList.contains('hidden')) {
+                        const currentDebtSpan = document.getElementById('current-debt');
+                        const billDateInfo = document.getElementById('bill-date-info');
+                        const editLastBillBtn = document.getElementById('edit-last-bill-btn');
+
+                        if (currentDebtSpan) {
+                            currentDebtSpan.textContent = '₪' + parseFloat(bill.total_price).toFixed(2);
+                        }
+                        if (billDateInfo) {
+                            billDateInfo.innerHTML = `<div class="text-xs text-blue-600 mt-1">Today</div>`;
+                        }
+                        if (editLastBillBtn) {
+                            editLastBillBtn.classList.remove('hidden');
+                            editLastBillBtn.onclick = function() {
+                                window.open(`/bills/${bill.id}/edit`, '_blank');
+                            };
+                        }
+                    }
+
+                    // Reload recent payments for the customer
+                    if (customerId) {
+                        // Update the payment customer ID field temporarily and reload payments
+                        const originalPaymentCustomerId = document.getElementById('payment_customer_id').value;
+                        document.getElementById('payment_customer_id').value = customerId;
+                        loadRecentPayments();
+                        // Restore original value
+                        document.getElementById('payment_customer_id').value = originalPaymentCustomerId;
+                    }
+                }
+
+                // Clear the form
+                clearBillForm();
+
+            } catch (error) {
+                console.error('Error updating UI:', error);
+            }
+        }
+
+        // Function to clear the bill form
+        function clearBillForm() {
+            // Clear products list
+            const productsList = document.getElementById('products-list');
+            productsList.innerHTML = '';
+
+            // Reset totals
+            document.getElementById('total_price_display').textContent = '0.00';
+            document.getElementById('total_discount_display').textContent = '0.00';
+            document.getElementById('total_price').value = '0';
+            document.getElementById('total_discount').value = '0';
+
+            // Clear customer selection
+            const customerSelect = document.getElementById('customer_id');
+            if (customerSelect) {
+                customerSelect.value = '';
             }
 
-            console.log('=== DASHBOARD SUBMIT BILL FORM COMPLETED ===');
-        };
+            const customerSearch = document.getElementById('customer_search');
+            if (customerSearch) {
+                customerSearch.value = '';
+            }
+
+            const customerIdHidden = document.getElementById('customer_id_hidden');
+            if (customerIdHidden) {
+                customerIdHidden.value = '';
+            }
+
+            // Clear note
+            const noteTextarea = document.getElementById('note');
+            if (noteTextarea) {
+                noteTextarea.value = '';
+            }
+
+            // Reset damaged toggle
+            const isDamagedCheckbox = document.getElementById('is_damaged');
+            if (isDamagedCheckbox) {
+                isDamagedCheckbox.checked = false;
+            }
+
+            // Clear customer suggestions
+            const customerSuggestions = document.getElementById('customer_suggestions');
+            if (customerSuggestions) {
+                customerSuggestions.classList.add('hidden');
+                customerSuggestions.innerHTML = '';
+            }
+        }
 
         function setupRestaurantCustomerSelectors() {
             const paymentCustomerSelect = document.getElementById('payment_customer_select');
@@ -1295,7 +1513,7 @@
 
             const customerId = document.getElementById('payment_customer_id').value;
             if (!customerId) {
-                showNotification('Please select a customer', 'error');
+                showNotification('{{ __('messages.Please select a customer') }}', 'error');
                 return;
             }
 
@@ -1326,7 +1544,7 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    showNotification('Payment added successfully!', 'success');
+                    showNotification('{{ __('messages.Payment added successfully!') }}', 'success');
 
                     // Reset form
                     this.reset();
@@ -1360,11 +1578,12 @@
 
                 } else {
                     const errorData = await response.json();
-                    showNotification(errorData.message || 'Failed to add payment', 'error');
+                    showNotification(errorData.message || '{{ __('messages.Failed to add payment') }}',
+                        'error');
                 }
             } catch (error) {
                 console.error('Payment error:', error);
-                showNotification('Failed to add payment', 'error');
+                showNotification('{{ __('messages.Failed to add payment') }}', 'error');
             } finally {
                 // Restore button
                 submitButton.disabled = false;
@@ -1821,8 +2040,8 @@
                         <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
                         <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
                         <div class="mt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock && !isRestaurant ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                ${isOutOfStock && !isRestaurant ? '{{ __('messages.Out of Stock') }}' : `${product.quantity} {{ __('messages.in stock') }}`}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                ${isOutOfStock ? '{{ __('messages.Out of Stock') }}' : `${!isRestaurant ? `${product.quantity} {{ __('messages.in stock') }}` : ''}`}
                             </span>
                         </div>
                     </div>
@@ -2096,14 +2315,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            </label>
-                                                                                                                                                                                                                                                                                                                                                        `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2391,17 +2610,17 @@
                         currentBillId = result.bill.id;
                     }
 
-                    showNotification('Bill saved successfully!', 'success');
+                    showNotification('{{ __('messages.Bill saved successfully!') }}', 'success');
                     return true;
                 } else {
                     const errorData = await response.json();
                     console.error('Save failed:', errorData);
-                    showNotification(errorData.message || 'Failed to save bill', 'error');
+                    showNotification(errorData.message || '{{ __('messages.Failed to save bill') }}', 'error');
                     return false;
                 }
             } catch (error) {
                 console.error('Save error:', error);
-                showNotification('Failed to save bill - network error', 'error');
+                showNotification('{{ __('messages.Failed to save bill - network error') }}', 'error');
                 return false;
             }
         }
@@ -2624,7 +2843,7 @@
         function openStandardPrintTab(data) {
             const printWindow = window.open('', '_blank', 'width=800,height=600');
             if (!printWindow) {
-                showNotification('Please allow popups for printing', 'error');
+                showNotification('{{ __('messages.Please allow popups for printing') }}', 'error');
                 return;
             }
 
@@ -2739,7 +2958,7 @@
         function openReceiptPrintTab(data) {
             const printWindow = window.open('', '_blank', 'width=400,height=600');
             if (!printWindow) {
-                showNotification('Please allow popups for printing', 'error');
+                showNotification('{{ __('messages.Please allow popups for printing') }}', 'error');
                 return;
             }
 
@@ -2872,9 +3091,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                        ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -3312,8 +3531,10 @@
             }, 3000);
         }
 
-        // Form validation
-        document.getElementById('create-bill').addEventListener('submit', (e) => {
+        // Form validation and AJAX submission
+        document.getElementById('create-bill').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
             if (isProcessingNoCustomerAction) {
                 isProcessingNoCustomerAction = false;
                 return;
@@ -3321,8 +3542,8 @@
 
             const rows = document.querySelectorAll('.product-row');
             if (rows.length === 0) {
-                e.preventDefault();
-                showNotification('{{ __('messages.Please add at least one product to the bill') }}', 'warning');
+                showNotification('{{ __('messages.Please add at least one product to the bill') }}',
+                    'warning');
                 return;
             }
 
@@ -3330,20 +3551,19 @@
             if (isRestaurant) {
                 const customerSelect = document.getElementById('customer_id');
                 if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                    e.preventDefault();
                     showNoCustomerModal(() => {
                         isProcessingNoCustomerAction = true;
-                        document.getElementById('create-bill').submit();
+                        submitBillForm();
                     });
                     return;
                 }
             }
 
-            showNotification('{{ __('messages.Creating bill...') }}', 'info');
+            await submitBillForm();
         });
 
         // Keyboard shortcuts
-        document.addEventListener('keydown', e => {
+        document.addEventListener('keydown', async e => {
             if (e.key === 'F2') {
                 e.preventDefault();
 
@@ -3351,15 +3571,15 @@
                 if (isRestaurant) {
                     const customerSelect = document.getElementById('customer_id');
                     if (!customerSelect || !customerSelect.value || customerSelect.value === '') {
-                        showNoCustomerModal(() => {
+                        showNoCustomerModal(async () => {
                             isProcessingNoCustomerAction = true;
-                            document.getElementById('create-bill').submit();
+                            await submitBillForm();
                         });
                         return;
                     }
                 }
 
-                document.getElementById('create-bill').submit();
+                await submitBillForm();
             }
 
             if (e.key === 'Escape') {

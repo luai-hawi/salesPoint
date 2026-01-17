@@ -9,6 +9,7 @@ return [
     */
     'month' => 'month',
     'Loss Value' => 'Loss Value',
+    'Bill created successfully!' => 'Bill created successfully!',
     'ID' => 'ID',
     'Enter cost price' => 'Enter cost price',
     'Enter selling price' => 'Enter selling price',
@@ -1651,4 +1652,15 @@ return [
     'Total Purchases' => 'Total Purchases',
     'Created Date' => 'Created Date',
     'Last Updated' => 'Last Updated',
+
+    // Dashboard Notifications
+    'Form not found. Please refresh the page.' => 'Form not found. Please refresh the page.',
+    'Security token missing. Please refresh the page.' => 'Security token missing. Please refresh the page.',
+    'Please select a customer' => 'Please select a customer',
+    'Payment added successfully!' => 'Payment added successfully!',
+    'Failed to add payment' => 'Failed to add payment',
+    'Bill saved successfully!' => 'Bill saved successfully!',
+    'Failed to save bill' => 'Failed to save bill',
+    'Failed to save bill - network error' => 'Failed to save bill - network error',
+    'Please allow popups for printing' => 'Please allow popups for printing',
 ];
