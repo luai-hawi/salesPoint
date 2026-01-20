@@ -76,7 +76,7 @@
                                 <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
                                     {{ __('messages.Product Name') }} *
                                 </label>
-                                <input type="text" name="name" id="name"
+                                <input type="text" name="name" id="name" tabindex="1" autofocus
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('name') border-red-500 @enderror"
                                     value="{{ old('name') }}" required
                                     placeholder="{{ __('messages.Enter product name...') }}">
@@ -183,6 +183,7 @@
                                 </label>
                                 <div class="relative">
                                     <input type="number" step="1" name="quantity" id="quantity"
+                                        tabindex="4"
                                         class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                         value="{{ old('quantity', 0) }}" required min="0"
                                         placeholder="{{ __('products.Enter initial stock quantity') }}">
@@ -224,7 +225,7 @@
                                     {{ __('messages.Cost Price (per unit)') }} *
                                 </label>
                                 <div class="relative">
-                                    <input type="number" name="cost_price" id="cost_price"
+                                    <input type="number" name="cost_price" id="cost_price" tabindex="2"
                                         class="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                         step="0.01" value="{{ old('cost_price') }}" required min="0"
                                         placeholder="{{ __('messages.Enter cost price') }}">
@@ -240,7 +241,7 @@
                                     {{ __('messages.Selling Price (per unit)') }} *
                                 </label>
                                 <div class="relative">
-                                    <input type="number" name="selling_price" id="selling_price"
+                                    <input type="number" name="selling_price" id="selling_price" tabindex="3"
                                         class="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                         step="0.01" value="{{ old('selling_price') }}" required min="0"
                                         placeholder="{{ __('messages.Enter selling price') }}">
@@ -314,7 +315,7 @@
                             {{ __('messages.Cancel') }}
                         </a>
 
-                        <button type="submit"
+                        <button type="submit" tabindex="5"
                             class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

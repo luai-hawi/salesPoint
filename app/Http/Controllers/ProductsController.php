@@ -131,7 +131,7 @@ class ProductsController extends Controller
         $batch->user_id = $ownerId;
         $batch->save();
 
-        return redirect()->route('products.index')->with('success', 'Product created successfully.');
+        return redirect()->route('products.create')->with('success', 'Product created successfully.');
     }
 
 
