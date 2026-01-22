@@ -151,6 +151,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/products/searchWithoutBarcode', [ProductsController::class, 'searchWithoutBarcode']);
     Route::get('/products/searchAll', [ProductsController::class, 'searchAllProducts']);
     Route::get('/products/search-barcode', [ProductsController::class, 'searchBarcode'])->name('products.search-barcode');
+    Route::get('/products/get-suppliers', [ProductsController::class, 'getProductSuppliers'])->name('products.get-suppliers');
     Route::get('/products/categories', [ProductsController::class, 'getCategories'])->name('products.categories');
 });
 

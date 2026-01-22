@@ -481,7 +481,7 @@ class ProductsController extends Controller
         }
 
         // Search in purchase_bill_product table for barcodes containing this barcode
-        $results = \DB::table('purchase_bill_product')
+        $barcodeResults = \DB::table('purchase_bill_product')
             ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
             ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
             ->join('products', 'purchase_bill_product.product_id', '=', 'products.id')
@@ -506,11 +506,88 @@ class ProductsController extends Controller
                 return $result;
             });
 
+        $productSuppliers = collect();
+
+        // If no barcode results, find product by barcode and get all suppliers who purchased it
+        if ($barcodeResults->isEmpty()) {
+            // Find product by barcode
+            $product = Product::where('user_id', $ownerId)
+                ->where(function ($q) use ($barcode) {
+                    $q->where('barcode', $barcode)
+                        ->orWhereHas('barcodes', function ($qb) use ($barcode) {
+                            $qb->where('barcode', $barcode);
+                        });
+                })
+                ->first();
+
+            if ($product) {
+                // Get all suppliers who have purchased this product
+                $productSuppliers = \DB::table('purchase_bill_product')
+                    ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
+                    ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
+                    ->where('purchase_bills.user_id', $ownerId)
+                    ->where('purchase_bill_product.product_id', $product->id)
+                    ->select(
+                        'products.name as product_name',
+                        'products.id as product_id',
+                        'suppliers.name as supplier_name',
+                        'suppliers.id as supplier_id',
+                        'purchase_bills.purchase_date',
+                        'purchase_bills.reference_number',
+                        'purchase_bill_product.quantity',
+                        'purchase_bill_product.unit_cost',
+                        'purchase_bill_product.barcodes'
+                    )
+                    ->orderBy('purchase_bills.purchase_date', 'desc')
+                    ->get()
+                    ->map(function ($result) {
+                        // Convert purchase_date string to Carbon object
+                        $result->purchase_date = \Carbon\Carbon::parse($result->purchase_date);
+                        return $result;
+                    });
+            }
+        }
+
         return view('products.barcode-search', [
-            'results' => $results,
+            'barcodeResults' => $barcodeResults,
+            'productSuppliers' => $productSuppliers,
             'searched' => true,
             'barcode' => $barcode
         ]);
+    }
+
+    // Get suppliers for a specific product
+    public function getProductSuppliers(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $productId = $request->input('product_id');
+
+        if (!$productId) {
+            return response()->json(['error' => 'Product ID required'], 400);
+        }
+
+        $suppliers = \DB::table('purchase_bill_product')
+            ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
+            ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
+            ->where('purchase_bills.user_id', $ownerId)
+            ->where('purchase_bill_product.product_id', $productId)
+            ->select(
+                'suppliers.name as supplier_name',
+                'suppliers.id as supplier_id',
+                'purchase_bills.purchase_date',
+                'purchase_bills.reference_number',
+                'purchase_bill_product.quantity',
+                'purchase_bill_product.unit_cost'
+            )
+            ->orderBy('purchase_bills.purchase_date', 'desc')
+            ->get()
+            ->map(function ($result) {
+                $result->purchase_date = \Carbon\Carbon::parse($result->purchase_date);
+                return $result;
+            });
+
+        return response()->json($suppliers);
     }
     // Export products to CSV
     public function export()
