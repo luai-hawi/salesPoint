@@ -28,7 +28,7 @@ return [
     'found_results_for_barcode' => 'Found :count results for barcode: :barcode',
     'Suppliers with Barcode' => 'Suppliers with Barcode',
     'Suppliers for Product' => 'Suppliers for Product',
-    'Barcode not found, showing suppliers who purchased this product' => 'Barcode not found, showing suppliers who purchased this product',
+    'Barcode not found, showing suppliers who purchased this product' => 'Barcode not found, showing suppliers who selled us this product',
     'Product Search Results' => 'Product Search Results',
     'Suppliers for Selected Product' => 'Suppliers for Selected Product',
     'Search by Barcode' => 'Search by Barcode',

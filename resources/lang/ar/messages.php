@@ -33,7 +33,7 @@ return [
     'No purchase bills found containing barcode: :barcode' => 'لم يتم العثور على فواتير شراء تحتوي على الباركود: :barcode',
     'Suppliers with Barcode' => 'الموردون الذين لديهم الباركود',
     'Suppliers for Product' => 'الموردون للمنتج',
-    'Barcode not found, showing suppliers who purchased this product' => 'الباركود غير موجود، عرض الموردين الذين اشتروا هذا المنتج',
+    'Barcode not found, showing suppliers who purchased this product' => 'الباركود غير موجود، عرض الموردين الذين باعونا هذا المنتج',
     'Product Search Results' => 'نتائج البحث عن المنتج',
     'Suppliers for Selected Product' => 'الموردون للمنتج المحدد',
     'Search by Barcode' => 'البحث بالباركود',

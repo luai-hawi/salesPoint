@@ -525,6 +525,7 @@ class ProductsController extends Controller
                 $productSuppliers = \DB::table('purchase_bill_product')
                     ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
                     ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
+                    ->join('products', 'purchase_bill_product.product_id', '=', 'products.id')
                     ->where('purchase_bills.user_id', $ownerId)
                     ->where('purchase_bill_product.product_id', $product->id)
                     ->select(
@@ -570,9 +571,12 @@ class ProductsController extends Controller
         $suppliers = \DB::table('purchase_bill_product')
             ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
             ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
+            ->join('products', 'purchase_bill_product.product_id', '=', 'products.id')
             ->where('purchase_bills.user_id', $ownerId)
             ->where('purchase_bill_product.product_id', $productId)
             ->select(
+                'products.name as product_name',
+                'products.id as product_id',
                 'suppliers.name as supplier_name',
                 'suppliers.id as supplier_id',
                 'purchase_bills.purchase_date',
