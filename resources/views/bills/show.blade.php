@@ -167,6 +167,28 @@
                     </h3>
                 </div>
 
+                <div class="px-6 py-4 border-b border-gray-200 bg-white">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <label for="bill_discount_percent_edit"
+                                class="block text-sm font-medium text-gray-700 mb-2">
+                                {{ __('messages.Whole Bill Discount (%)') }}
+                            </label>
+                            <input type="number" id="bill_discount_percent_edit" min="0" max="100"
+                                step="0.01" placeholder="0"
+                                class="w-40 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                            <p class="text-xs text-gray-500 mt-1">
+                                {{ __('messages.Distributes discount across all items') }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">{{ __('messages.Total discount') }}</p>
+                            <p class="text-lg font-semibold text-gray-900">₪<span
+                                    id="total_discount_display_edit">0.00</span></p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table id="products-table" class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -600,14 +622,14 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ __('messages.Select Tags for') }} ${product.name}</h3>
                     <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                         ${availableTags.map(tag => `
-                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                    <div class="flex-1">
-                                                                                                                                        <div class="font-medium">${tag.name}</div>
-                                                                                                                                        <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                    </div>
-                                                                                                                                </label>
-                                                                                                                            `).join('')}
+                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                        <div class="flex-1">
+                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                            <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                        </div>
+                                                                                                                                    </label>
+                                                                                                                                `).join('')}
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
@@ -745,8 +767,58 @@
             }
         }
 
+        let isApplyingBillDiscountEdit = false;
+
+        function getBillDiscountPercentEdit() {
+            const input = document.getElementById('bill_discount_percent_edit');
+            if (!input) return 0;
+            const value = parseFloat(input.value);
+            if (Number.isNaN(value)) return 0;
+            return Math.min(Math.max(value, 0), 100);
+        }
+
+        function applyBillDiscountPercentEdit(percent) {
+            if (percent <= 0) return;
+            isApplyingBillDiscountEdit = true;
+
+            document.querySelectorAll('#products-table tbody tr').forEach(row => {
+                const qty = parseInt(row.querySelector('.quantity')?.value || 0);
+
+                const priceCell = row.children[2];
+                const basePriceText = priceCell.querySelector('div').textContent
+                    .replace('₪', '')
+                    .replace(/,/g, '');
+                const basePrice = parseFloat(basePriceText) || 0;
+
+                let tagsPrice = 0;
+                const tagsElement = priceCell.querySelector('.text-xs.text-blue-600');
+                if (tagsElement) {
+                    const match = tagsElement.textContent.match(/\+₪([0-9.,]+)/);
+                    if (match) {
+                        tagsPrice = parseFloat(match[1].replace(/,/g, '')) || 0;
+                    }
+                }
+
+                const subtotal = (basePrice + tagsPrice) * qty;
+                const discountValue = subtotal * (percent / 100);
+
+                const discountInput = row.querySelector('.discount');
+                if (discountInput) {
+                    discountInput.value = discountValue.toFixed(2);
+                }
+            });
+
+            isApplyingBillDiscountEdit = false;
+        }
+
         function updateGrandTotal() {
+            const billDiscountPercent = getBillDiscountPercentEdit();
+            if (billDiscountPercent > 0) {
+                applyBillDiscountPercentEdit(billDiscountPercent);
+            }
+
             let total = 0;
+            let totalDiscount = 0;
             document.querySelectorAll('#products-table tbody tr').forEach(row => {
                 const qtyInput = row.querySelector('.quantity');
                 const discountInput = row.querySelector('.discount');
@@ -758,7 +830,7 @@
                     const priceCell = row.children[2];
                     const basePriceText = priceCell.querySelector('div').textContent
                         .replace('₪', '')
-                        .replace(/,/g, ''); // Remove commas before parsing
+                        .replace(/,/g, '');
                     const basePrice = parseFloat(basePriceText) || 0;
 
                     let tagsPrice = 0;
@@ -766,17 +838,16 @@
                     if (tagsElement) {
                         const match = tagsElement.textContent.match(/\+₪([0-9.,]+)/);
                         if (match) {
-                            // Remove commas from tags price too
                             tagsPrice = parseFloat(match[1].replace(/,/g, '')) || 0;
                         }
                     }
 
                     const lineTotal = Math.max(0, (basePrice + tagsPrice) * qty - discount);
                     total += lineTotal;
+                    totalDiscount += discount;
 
                     const totalCell = row.querySelector('.total-cell');
                     if (totalCell) {
-                        // Format the display with commas
                         totalCell.textContent = '₪' + lineTotal.toLocaleString('en-US', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -785,11 +856,18 @@
                 }
             });
 
-            // Format the grand total with commas
             document.getElementById('grand-total').textContent = '₪' + total.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
+
+            const totalDiscountDisplay = document.getElementById('total_discount_display_edit');
+            if (totalDiscountDisplay) {
+                totalDiscountDisplay.textContent = totalDiscount.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
         }
 
         // Add this debug function right before the form submission
@@ -1005,10 +1083,28 @@
         });
 
         document.querySelector('#products-table').addEventListener('input', (e) => {
+            if (e.target && e.target.id === 'bill_discount_percent_edit') {
+                updateGrandTotal();
+                return;
+            }
+
             if (e.target.classList.contains('quantity') || e.target.classList.contains('discount')) {
+                if (e.target.classList.contains('discount') && !isApplyingBillDiscountEdit) {
+                    const billDiscountInput = document.getElementById('bill_discount_percent_edit');
+                    if (billDiscountInput && parseFloat(billDiscountInput.value || 0) > 0) {
+                        billDiscountInput.value = '0';
+                    }
+                }
                 updateGrandTotal();
             }
         });
+
+        const billDiscountInputEdit = document.getElementById('bill_discount_percent_edit');
+        if (billDiscountInputEdit) {
+            billDiscountInputEdit.addEventListener('input', () => {
+                updateGrandTotal();
+            });
+        }
 
         // Message listener for print window communication
         window.addEventListener('message', async (event) => {
@@ -1834,9 +1930,9 @@
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                     ${product.actualDiscount > 0 ? `
-                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                        ` : '-'}
+                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                            ` : '-'}
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
             </tr>

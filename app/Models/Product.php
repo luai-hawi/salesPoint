@@ -24,6 +24,8 @@ class Product extends Model
         'deactivation_warning_months',
         'deactivation_months',
         'extended_until',
+        'variant_group_id',
+        'variant_name',
     ];
 
     /**
@@ -41,19 +43,29 @@ class Product extends Model
     ];
 
     public function bills()
-{
-    return $this->belongsToMany(Bill::class, 'bill_product')
-        ->withPivot('quantity','discount', 'cost_price', 'selling_price', 'tags');
-}
+    {
+        return $this->belongsToMany(Bill::class, 'bill_product')
+            ->withPivot('quantity', 'discount', 'cost_price', 'selling_price', 'tags');
+    }
 
-public function batches()
-{
-    return $this->hasMany(Batch::class);
-}
+    public function batches()
+    {
+        return $this->hasMany(Batch::class);
+    }
 
-public function barcodes()
-{
-    return $this->hasMany(ProductBarcode::class);
-}
+    public function barcodes()
+    {
+        return $this->hasMany(ProductBarcode::class);
+    }
 
+    public function variantGroup()
+    {
+        return $this->belongsTo(ProductVariantGroup::class, 'variant_group_id');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(Product::class, 'variant_group_id', 'variant_group_id')
+            ->where('id', '!=', $this->id);
+    }
 }

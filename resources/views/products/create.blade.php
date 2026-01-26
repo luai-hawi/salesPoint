@@ -62,8 +62,8 @@
                     </div>
                 @endif
 
-                <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data"
-                    class="p-6">
+                <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data" class="p-6"
+                    id="product-create-form">
                     @csrf
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -115,103 +115,160 @@
                                 @enderror
                             </div>
 
-                            <!-- Product Code/Barcode -->
-                            <div>
-                                <label for="barcode" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Product Code / Barcode') }}
-                                </label>
-                                <div class="flex">
-                                    <div class="relative flex-1">
-                                        <input type="text" name="barcode" id="barcode"
-                                            class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
-                                            value="{{ old('barcode') }}"
-                                            placeholder="{{ __('messages.Optional barcode or product code...') }}">
-                                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
+                            <!-- Variant Toggle Switch -->
+                            <div
+                                class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
+                                                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01">
                                             </path>
                                         </svg>
+                                        <label for="has_variants_toggle" class="text-sm font-semibold text-gray-700">
+                                            {{ __('messages.Create Product with Variants') }}
+                                        </label>
                                     </div>
-                                    <button type="button" id="generate-barcode"
-                                        class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="has_variants_toggle" class="sr-only peer">
+                                        <input type="hidden" name="has_variants" id="has_variants" value="0">
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
+                                        </div>
+                                    </label>
+                                </div>
+                                <p class="text-xs text-purple-600 mt-2">
+                                    {{ __('messages.Enable this to create multiple variants (e.g., S, M, L, XL) as separate products') }}
+                                </p>
+                            </div>
+
+                            <!-- Single Product Fields (shown when variants are disabled) -->
+                            <div id="single-product-fields">
+                                <!-- Product Code/Barcode -->
+                                <div>
+                                    <label for="barcode" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        {{ __('messages.Product Code / Barcode') }}
+                                    </label>
+                                    <div class="flex">
+                                        <div class="relative flex-1">
+                                            <input type="text" name="barcode" id="barcode"
+                                                class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
+                                                value="{{ old('barcode') }}"
+                                                placeholder="{{ __('messages.Optional barcode or product code...') }}">
+                                            <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <button type="button" id="generate-barcode"
+                                            class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            {{ __('messages.Generate') }}
+                                        </button>
+                                    </div>
+                                    @error('barcode')
+                                        <p class="text-red-500 text-xs mt-1 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+                                </div>
+
+                                <!-- Additional Barcodes -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        {{ __('messages.Additional Barcodes') }}
+                                    </label>
+                                    <div id="additional-barcodes-container" class="h-40 overflow-y-auto">
+                                        <!-- Additional barcode inputs will be added here -->
+                                    </div>
+                                    <button type="button" id="add-barcode-btn"
+                                        class="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                         </svg>
-                                        {{ __('messages.Generate') }}
+                                        {{ __('messages.Add Barcode') }}
                                     </button>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ __('messages.Optional - add multiple barcodes for this product.') }}</p>
                                 </div>
-                                @error('barcode')
-                                    <p class="text-red-500 text-xs mt-1 flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        {{ $message }}
-                                    </p>
-                                @enderror
-                            </div>
 
-                            <!-- Additional Barcodes -->
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Additional Barcodes') }}
-                                </label>
-                                <div id="additional-barcodes-container" class="h-40 overflow-y-auto">
-                                    <!-- Additional barcode inputs will be added here -->
-                                </div>
-                                <button type="button" id="add-barcode-btn"
-                                    class="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                    {{ __('messages.Add Barcode') }}
-                                </button>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ __('messages.Optional - add multiple barcodes for this product.') }}</p>
-                            </div>
-
-                            <!-- Initial Quantity -->
-                            <div>
-                                <label for="quantity" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Initial Stock Quantity') }} *
-                                </label>
-                                <div class="relative">
-                                    <input type="number" step="1" name="quantity" id="quantity"
-                                        tabindex="4"
-                                        class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                        value="{{ old('quantity', 0) }}" required min="0"
-                                        placeholder="{{ __('products.Enter initial stock quantity') }}">
-                                    <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
-                                        </path>
-                                    </svg>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ __('messages.This will create the initial stock batch for your product.') }}</p>
-                            </div>
-
-                            <!-- Has Tags Checkbox -->
-                            <div class="mb-6">
-                                <div class="flex items-center">
-                                    <input type="checkbox" name="has_tags" id="has_tags"
-                                        class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        value="1"
-                                        {{ old('has_tags', $product->has_tags ?? false) ? 'checked' : '' }}>
-                                    <label for="has_tags" class="ml-2 block text-sm font-medium text-gray-700">
-                                        {{ __('messages.This product has customizable tags') }}
+                                <!-- Initial Quantity -->
+                                <div>
+                                    <label for="quantity" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        {{ __('messages.Initial Stock Quantity') }} *
                                     </label>
+                                    <div class="relative">
+                                        <input type="number" step="1" name="quantity" id="quantity"
+                                            tabindex="4"
+                                            class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                            value="{{ old('quantity', 0) }}" required min="0"
+                                            placeholder="{{ __('products.Enter initial stock quantity') }}">
+                                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ __('messages.This will create the initial stock batch for your product.') }}
+                                    </p>
                                 </div>
-                                <p class="mt-1 text-sm text-gray-500">
-                                    {{ __('messages.Check this if customers can add extra options/tags to this product') }}
-                                </p>
+
+                                <!-- Has Tags Checkbox -->
+                                <div class="mb-6">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="has_tags" id="has_tags"
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            value="1"
+                                            {{ old('has_tags', $product->has_tags ?? false) ? 'checked' : '' }}>
+                                        <label for="has_tags" class="ml-2 block text-sm font-medium text-gray-700">
+                                            {{ __('messages.This product has customizable tags') }}
+                                        </label>
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-500">
+                                        {{ __('messages.Check this if customers can add extra options/tags to this product') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Variants Section (shown when variants are enabled) -->
+                            <div id="variants-section" style="display: none;">
+                                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="text-sm font-semibold text-purple-800">
+                                            {{ __('messages.Product Variants') }}</h4>
+                                        <button type="button" id="add-variant-btn"
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg transition-colors flex items-center text-sm">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            {{ __('messages.Add Variant') }}
+                                        </button>
+                                    </div>
+                                    <div id="variants-container" class="space-y-3 max-h-96 overflow-y-auto">
+                                        <!-- Variant inputs will be added here -->
+                                    </div>
+                                    <p class="text-xs text-purple-600 mt-2">
+                                        {{ __('messages.Add variants like S, M, L, XL. Each will be saved as a separate product.') }}
+                                    </p>
+                                </div>
                             </div>
 
                         </div>
@@ -291,7 +348,8 @@
                                         </label>
                                         <p class="pl-1">{{ __('messages.or drag and drop') }}</p>
                                     </div>
-                                    <p class="text-xs text-gray-500">{{ __('messages.PNG, JPG, GIF up to 2MB each') }}
+                                    <p class="text-xs text-gray-500">
+                                        {{ __('messages.PNG, JPG, GIF up to 2MB each') }}
                                     </p>
                                 </div>
                             </div>
@@ -315,14 +373,26 @@
                             {{ __('messages.Cancel') }}
                         </a>
 
-                        <button type="submit" tabindex="5"
-                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center shadow-sm">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            {{ __('messages.Create Product') }}
-                        </button>
+                        <div class="flex items-center">
+                            <button type="button" id="print-barcode"
+                                class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center mr-4 shadow-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                    </path>
+                                </svg>
+                                {{ __('messages.Print Barcode') }}
+                            </button>
+
+                            <button type="submit" tabindex="5"
+                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center shadow-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                {{ __('messages.Create Product') }}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -564,13 +634,116 @@
 
             // Initial calculation
             calculateProfitMargin();
+
+            // Variant toggle functionality
+            const variantsToggle = document.getElementById('has_variants_toggle');
+            const variantsInput = document.getElementById('has_variants');
+            const singleProductFields = document.getElementById('single-product-fields');
+            const variantsSection = document.getElementById('variants-section');
+            const quantityField = document.getElementById('quantity');
+            let variantCounter = 0;
+
+            variantsToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    variantsInput.value = '1';
+                    singleProductFields.style.display = 'none';
+                    variantsSection.style.display = 'block';
+                    quantityField.removeAttribute('required');
+                    // Add initial variant
+                    if (document.getElementById('variants-container').children.length === 0) {
+                        addVariantInput();
+                    }
+                } else {
+                    variantsInput.value = '0';
+                    singleProductFields.style.display = 'block';
+                    variantsSection.style.display = 'none';
+                    quantityField.setAttribute('required', 'required');
+                }
+            });
+
+            // Add variant input function
+            function addVariantInput(name = '', quantity = '', barcode = '') {
+                variantCounter++;
+                const container = document.getElementById('variants-container');
+                const div = document.createElement('div');
+                div.className = 'bg-white border border-purple-200 rounded-lg p-3';
+                div.innerHTML = `
+                    <div class="flex items-start gap-2">
+                        <div class="flex-1 grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Variant Name') }} *</label>
+                                <input type="text" name="variants[${variantCounter}][name]" value="${name}"
+                                       class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                       placeholder="e.g., S, M, L" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Quantity') }} *</label>
+                                <input type="number" name="variants[${variantCounter}][quantity]" value="${quantity}"
+                                       class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                       placeholder="0" min="0" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Barcode') }}</label>
+                                <input type="text" name="variants[${variantCounter}][barcode]" value="${barcode}"
+                                       class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                       placeholder="{{ __('messages.Optional') }}">
+                            </div>
+                        </div>
+                        <button type="button" class="remove-variant-btn mt-5 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+
+                // Add event listener to remove button
+                div.querySelector('.remove-variant-btn').addEventListener('click', function() {
+                    div.remove();
+                });
+            }
+
+            // Add variant button
+            document.getElementById('add-variant-btn').addEventListener('click', function() {
+                addVariantInput();
+            });
+
+            // Quick add common sizes
+            const commonSizes = ['S', 'M', 'L', 'XL'];
+            // You can add a button to quickly add these if needed
         });
 
         // Form validation before submit
-        document.querySelector('form').addEventListener('submit', function(e) {
+        const productCreateForm = document.getElementById('product-create-form');
+
+        productCreateForm.addEventListener('submit', async function(e) {
+            if (productCreateForm.dataset.barcodeConfirmed === '1') {
+                return;
+            }
             const name = document.getElementById('name').value.trim();
             const costPrice = parseFloat(document.getElementById('cost_price').value) || 0;
             const sellingPrice = parseFloat(document.getElementById('selling_price').value) || 0;
+            const hasVariants = document.getElementById('has_variants').value === '1';
+
+            let barcodesToCheck = [];
+
+            if (hasVariants) {
+                // Collect all variant barcodes
+                const variantBarcodeInputs = document.querySelectorAll(
+                    'input[name^="variants"][name$="[barcode]"]');
+                barcodesToCheck = Array.from(variantBarcodeInputs)
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
+            } else {
+                // Collect main and additional barcodes
+                const mainBarcode = document.getElementById('barcode').value.trim();
+                const additionalInputs = document.querySelectorAll('input[name="additional_barcodes[]"]');
+                const additionalBarcodes = Array.from(additionalInputs)
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
+                barcodesToCheck = [mainBarcode, ...additionalBarcodes].filter(Boolean);
+            }
 
             if (!name) {
                 e.preventDefault();
@@ -599,6 +772,62 @@
                     )) {
                     e.preventDefault();
                     return;
+                }
+            }
+
+            if (barcodesToCheck.length) {
+                e.preventDefault();
+                try {
+                    const response = await fetch('{{ route('products.check-barcodes') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            barcode: barcodesToCheck[0] || '',
+                            additional_barcodes: barcodesToCheck.slice(1)
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to check barcodes');
+                    }
+
+                    const data = await response.json();
+                    const duplicates = Array.isArray(data.duplicates) ? data.duplicates : [];
+
+                    if (duplicates.length) {
+                        const lines = duplicates.map(item => {
+                            const productNames = (item.products || [])
+                                .map(product => {
+                                    const label = product.source === 'main' ?
+                                        '{{ __('messages.Main barcode') }}' :
+                                        '{{ __('messages.Additional barcode') }}';
+                                    return product.name ? `${product.name} (${label})` : label;
+                                })
+                                .filter(Boolean)
+                                .join(', ');
+                            return `${item.barcode}: ${productNames}`;
+                        });
+
+                        const message =
+                            '{{ __('messages.Barcode already exists. Do you want to continue?') }}' +
+                            '\n\n' +
+                            '{{ __('messages.Conflicting barcodes') }}' +
+                            '\n' +
+                            lines.join('\n');
+
+                        if (!confirm(message)) {
+                            return;
+                        }
+                    }
+
+                    productCreateForm.dataset.barcodeConfirmed = '1';
+                    productCreateForm.submit();
+                } catch (error) {
+                    console.error(error);
+                    alert('{{ __('messages.Failed to verify barcodes. Please try again.') }}');
                 }
             }
         });
@@ -668,6 +897,121 @@
         // Replace your event listener for file input
         document.getElementById("pictures").addEventListener("change", async function(e) {
             await handleCompressedImages(e.target);
+        });
+
+        // Print barcode function
+        document.getElementById('print-barcode').addEventListener('click', function() {
+            const barcode = document.getElementById('barcode').value.trim();
+            const price = document.getElementById('selling_price').value.trim();
+
+            if (!barcode) {
+                alert('{{ __('messages.Please enter a barcode first.') }}');
+                return;
+            }
+
+            // Open new window/tab for printing
+            const printWindow = window.open('', '_blank', 'width=400,height=200');
+
+            // Write the barcode content to the new window
+            printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>{{ __('messages.Barcode Print') }}</title>
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background: white;
+        }
+
+        .barcode-container {
+            display: inline-block;
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .barcode-svg {
+            width: 300px;
+            height: 80px;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+
+        .price-text {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 2mm;
+                background: white !important;
+            }
+
+            .barcode-container {
+                border: none !important;
+                padding: 0 !important;
+                background: white !important;
+                margin: 0 !important;
+            }
+
+            .barcode-svg {
+                width: 70mm !important;
+                height: 20mm !important;
+                margin-bottom: 2mm !important;
+            }
+
+            .price-text {
+                font-size: 12pt !important;
+                margin-top: 0 !important;
+            }
+        }
+    </style>
+    </head>
+
+    <body>
+        <div class="barcode-container">
+            <svg id="print-barcode" class="barcode-svg"></svg>
+            <div class="price-text">₪${price || '0.00'}</div>
+        </div>
+        <script>
+            window.addEventListener('load', function() {
+                if (typeof JsBarcode === 'undefined') {
+                    console.error('JsBarcode failed to load');
+                    return;
+                }
+                JsBarcode('#print-barcode', '${barcode}', {
+                    format: 'CODE128',
+                    width: 2,
+                    height: 60,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 0,
+                    textAlign: 'center'
+                });
+                // Auto-print after barcode is generated
+                setTimeout(function() {
+                    window.print();
+                    setTimeout(function() {
+                        window.close();
+                    }, 1000);
+                }, 500);
+            });
+        <\/script>
+    </body>
+
+    </html>
+    `);
+            printWindow.document.close();
         });
     </script>
 </x-app-layout>

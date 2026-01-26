@@ -50,7 +50,7 @@
                         </div>
 
                         <form action="{{ route('products.update', $product->id) }}" method="POST"
-                            enctype="multipart/form-data" class="p-6">
+                            enctype="multipart/form-data" class="p-6" id="product-edit-form">
                             @csrf
                             @method('PUT')
 
@@ -64,6 +64,68 @@
                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
                                         required>
                                 </div>
+
+                                <!-- Product Variants Section -->
+                                @if ($product->variant_group_id)
+                                    <div class="md:col-span-2">
+                                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <div class="flex items-center">
+                                                    <svg class="w-5 h-5 text-blue-600 mr-2" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01">
+                                                        </path>
+                                                    </svg>
+                                                    <h4 class="text-sm font-semibold text-blue-800">
+                                                        {{ __('messages.Product Variants') }}</h4>
+                                                </div>
+                                                <button type="button" id="toggle-add-variants-btn"
+                                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors flex items-center text-xs">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                    {{ __('messages.Add More Variants') }}
+                                                </button>
+                                            </div>
+                                            <p class="text-xs text-blue-600 mb-3">
+                                                {{ __('messages.This product is part of a variant group. Click on any variant below to edit it.') }}
+                                            </p>
+                                            <div class="flex flex-wrap gap-2 mb-3">
+                                                @php
+                                                    $allVariants = \App\Models\Product::where(
+                                                        'variant_group_id',
+                                                        $product->variant_group_id,
+                                                    )
+                                                        ->orderBy('variant_name')
+                                                        ->get();
+                                                @endphp
+                                                @foreach ($allVariants as $variant)
+                                                    @if ($variant->id == $product->id)
+                                                        <span
+                                                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-600 text-white">
+                                                            {{ $variant->variant_name }}
+                                                            ({{ __('messages.Current') }})
+                                                        </span>
+                                                    @else
+                                                        <a href="{{ route('products.edit', $variant->id) }}"
+                                                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white text-blue-600 border border-blue-300 hover:bg-blue-100 transition-colors">
+                                                            {{ $variant->variant_name }}
+                                                            <svg class="w-3 h-3 ml-1" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                            </svg>
+                                                        </a>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                                 <div>
                                     <label
                                         class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Category') }}</label>
@@ -173,7 +235,7 @@
                                     <label
                                         class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Selling Price (per unit)') }}</label>
                                     <div class="relative">
-                                        <input type="number" name="selling_price"
+                                        <input type="number" name="selling_price" id="selling_price"
                                             value="{{ old('selling_price', $product->selling_price) }}"
                                             class="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
                                             step="0.01" required>
@@ -227,6 +289,16 @@
                             </div>
 
                             <div class="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+                                <button type="button" id="print-barcode"
+                                    class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center mr-4">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                        </path>
+                                    </svg>
+                                    {{ __('messages.Print Barcode') }}
+                                </button>
                                 <button type="submit"
                                     class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
@@ -239,6 +311,57 @@
                             </div>
                         </form>
                     </div>
+
+                    <!-- Add More Variants Card (Separate Form) -->
+                    @if ($product->variant_group_id)
+                        <div id="add-variants-card" style="display: none;"
+                            class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
+                            <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+                                <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    {{ __('messages.Add More Variants') }}
+                                </h3>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    {{ __('messages.Add additional variants to this product group') }}</p>
+                            </div>
+                            <form action="{{ route('products.addVariants', $product->id) }}" method="POST"
+                                class="p-6" id="add-variants-form-element">
+                                @csrf
+                                <div class="bg-white rounded-lg mb-3">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="text-sm font-semibold text-gray-700">
+                                            {{ __('messages.New Variants') }}</h5>
+                                        <button type="button" id="add-new-variant-btn"
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            {{ __('messages.Add Variant') }}
+                                        </button>
+                                    </div>
+                                    <div id="new-variants-container" class="space-y-3 max-h-96 overflow-y-auto">
+                                        <!-- New variant inputs will be added here -->
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 pt-4 border-t border-gray-200">
+                                    <button type="submit"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors font-medium">
+                                        {{ __('messages.Save New Variants') }}
+                                    </button>
+                                    <button type="button" id="cancel-add-variants-btn"
+                                        class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors font-medium">
+                                        {{ __('messages.Cancel') }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Right Column - Batch Management -->
@@ -457,6 +580,82 @@
             setTimeout(() => {
                 notification.remove();
             }, 3000);
+        }
+
+        // Barcode verification for main product edit form
+        const productEditForm = document.getElementById('product-edit-form');
+        if (productEditForm) {
+            productEditForm.addEventListener('submit', async function(e) {
+                if (productEditForm.dataset.barcodeConfirmed === '1') {
+                    return;
+                }
+
+                const mainBarcode = document.getElementById('barcode').value.trim();
+                const additionalInputs = document.querySelectorAll('input[name="additional_barcodes[]"]');
+                const additionalBarcodes = Array.from(additionalInputs)
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
+
+                const barcodesToCheck = [mainBarcode, ...additionalBarcodes].filter(Boolean);
+
+                if (barcodesToCheck.length) {
+                    e.preventDefault();
+                    try {
+                        const response = await fetch('{{ route('products.check-barcodes') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: JSON.stringify({
+                                barcode: mainBarcode,
+                                additional_barcodes: additionalBarcodes,
+                                ignore_product_id: {{ $product->id }}
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to check barcodes');
+                        }
+
+                        const data = await response.json();
+                        const duplicates = Array.isArray(data.duplicates) ? data.duplicates : [];
+
+                        if (duplicates.length) {
+                            const lines = duplicates.map(item => {
+                                const productNames = (item.products || [])
+                                    .map(product => {
+                                        const label = product.source === 'main' ?
+                                            '{{ __('messages.Main barcode') }}' :
+                                            '{{ __('messages.Additional barcode') }}';
+                                        return product.name ? `${product.name} (${label})` : label;
+                                    })
+                                    .filter(Boolean)
+                                    .join(', ');
+                                return `${item.barcode}: ${productNames}`;
+                            });
+
+                            const message =
+                                '{{ __('messages.Barcode already exists. Do you want to continue?') }}' +
+                                '\n\n' + lines.join('\n');
+
+                            if (confirm(message)) {
+                                productEditForm.dataset.barcodeConfirmed = '1';
+                                productEditForm.submit();
+                            }
+                        } else {
+                            productEditForm.dataset.barcodeConfirmed = '1';
+                            productEditForm.submit();
+                        }
+                    } catch (error) {
+                        console.error('Error checking barcodes:', error);
+                        if (confirm('{{ __('messages.Could not verify barcodes. Continue anyway?') }}')) {
+                            productEditForm.dataset.barcodeConfirmed = '1';
+                            productEditForm.submit();
+                        }
+                    }
+                }
+            });
         }
 
         // Update total value cell
@@ -912,5 +1111,278 @@
                 console.error('Failed to load categories:', error);
             }
         }
+
+        // Print barcode function
+        document.getElementById('print-barcode').addEventListener('click', function() {
+            const barcode = document.getElementById('barcode').value.trim();
+            const price = document.getElementById('selling_price').value.trim();
+
+            if (!barcode) {
+                alert('{{ __('messages.Please enter a barcode first.') }}');
+                return;
+            }
+
+            // Open new window/tab for printing
+            const printWindow = window.open('', '_blank', 'width=400,height=200');
+
+            // Write the barcode content to the new window
+            printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>{{ __('messages.Barcode Print') }}</title>
+                <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background: white;
+        }
+
+        .barcode-container {
+            display: inline-block;
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .barcode-svg {
+            width: 300px;
+            height: 80px;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+
+        .price-text {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 2mm;
+                background: white !important;
+            }
+
+            .barcode-container {
+                border: none !important;
+                padding: 0 !important;
+                background: white !important;
+                margin: 0 !important;
+            }
+
+            .barcode-svg {
+                width: 70mm !important;
+                height: 20mm !important;
+                margin-bottom: 2mm !important;
+            }
+
+            .price-text {
+                font-size: 12pt !important;
+                margin-top: 0 !important;
+            }
+        }
+    </style>
+    </head>
+
+    <body>
+        <div class="barcode-container">
+            <svg id="print-barcode" class="barcode-svg"></svg>
+            <div class="price-text">₪${price || '0.00'}</div>
+        </div>
+        <script>
+            window.addEventListener('load', function() {
+                if (typeof JsBarcode === 'undefined') {
+                    console.error('JsBarcode failed to load');
+                    return;
+                }
+                JsBarcode('#print-barcode', '${barcode}', {
+                    format: 'CODE128',
+                    width: 2,
+                    height: 60,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 0,
+                    textAlign: 'center'
+                });
+                // Auto-print after barcode is generated
+                setTimeout(function() {
+                    window.print();
+                    setTimeout(function() {
+                        window.close();
+                    }, 1000);
+                }, 500);
+            });
+        <\/script>
+    </body>
+
+    </html>
+    `);
+            printWindow.document.close();
+        });
+
+        // Add Variants Functionality
+        @if ($product->variant_group_id)
+            const toggleAddVariantsBtn = document.getElementById('toggle-add-variants-btn');
+            const addVariantsCard = document.getElementById('add-variants-card');
+            const cancelAddVariantsBtn = document.getElementById('cancel-add-variants-btn');
+            const addNewVariantBtn = document.getElementById('add-new-variant-btn');
+            const newVariantsContainer = document.getElementById('new-variants-container');
+            let newVariantCounter = 0;
+
+            if (toggleAddVariantsBtn) {
+                toggleAddVariantsBtn.addEventListener('click', function() {
+                    addVariantsCard.style.display = 'block';
+                    toggleAddVariantsBtn.style.display = 'none';
+                    // Scroll to the card
+                    addVariantsCard.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                    // Add initial variant input
+                    if (newVariantsContainer.children.length === 0) {
+                        addNewVariantInput();
+                    }
+                });
+            }
+
+            if (cancelAddVariantsBtn) {
+                cancelAddVariantsBtn.addEventListener('click', function() {
+                    addVariantsCard.style.display = 'none';
+                    toggleAddVariantsBtn.style.display = 'flex';
+                    newVariantsContainer.innerHTML = '';
+                    newVariantCounter = 0;
+                });
+            }
+
+            if (addNewVariantBtn) {
+                addNewVariantBtn.addEventListener('click', function() {
+                    addNewVariantInput();
+                });
+            }
+
+            function addNewVariantInput(name = '', quantity = '', barcode = '') {
+                newVariantCounter++;
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 border border-gray-200 rounded-lg p-3';
+                div.innerHTML = `
+                <div class="flex items-start gap-2">
+                    <div class="flex-1 grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Variant Name') }} *</label>
+                            <input type="text" name="new_variants[${newVariantCounter}][name]" value="${name}"
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                   placeholder="e.g., XXL" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Quantity') }} *</label>
+                            <input type="number" name="new_variants[${newVariantCounter}][quantity]" value="${quantity}"
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                   placeholder="0" min="0" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Barcode') }}</label>
+                            <input type="text" name="new_variants[${newVariantCounter}][barcode]" value="${barcode}"
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                   placeholder="{{ __('messages.Optional') }}">
+                        </div>
+                    </div>
+                    <button type="button" class="remove-new-variant-btn mt-5 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+                newVariantsContainer.appendChild(div);
+
+                // Add event listener to remove button
+                div.querySelector('.remove-new-variant-btn').addEventListener('click', function() {
+                    div.remove();
+                });
+            }
+
+            // Add barcode verification for new variants form
+            const addVariantsFormElement = document.getElementById('add-variants-form-element');
+            if (addVariantsFormElement) {
+                addVariantsFormElement.addEventListener('submit', async function(e) {
+                    if (addVariantsFormElement.dataset.barcodeConfirmed === '1') {
+                        return;
+                    }
+
+                    // Collect all variant barcodes
+                    const variantBarcodeInputs = document.querySelectorAll(
+                        'input[name^="new_variants"][name$="[barcode]"]');
+                    const barcodesToCheck = Array.from(variantBarcodeInputs)
+                        .map(input => input.value.trim())
+                        .filter(Boolean);
+
+                    if (barcodesToCheck.length) {
+                        e.preventDefault();
+                        try {
+                            const response = await fetch('{{ route('products.check-barcodes') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                        .content
+                                },
+                                body: JSON.stringify({
+                                    barcode: barcodesToCheck[0] || '',
+                                    additional_barcodes: barcodesToCheck.slice(1)
+                                })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Failed to check barcodes');
+                            }
+
+                            const data = await response.json();
+                            const duplicates = Array.isArray(data.duplicates) ? data.duplicates : [];
+
+                            if (duplicates.length) {
+                                const lines = duplicates.map(item => {
+                                    const productNames = (item.products || [])
+                                        .map(product => {
+                                            const label = product.source === 'main' ?
+                                                '{{ __('messages.Main barcode') }}' :
+                                                '{{ __('messages.Additional barcode') }}';
+                                            return product.name ? `${product.name} (${label})` :
+                                                label;
+                                        })
+                                        .filter(Boolean)
+                                        .join(', ');
+                                    return `${item.barcode}: ${productNames}`;
+                                });
+
+                                const message =
+                                    '{{ __('messages.Barcode already exists. Do you want to continue?') }}' +
+                                    '\n\n' + lines.join('\n');
+
+                                if (confirm(message)) {
+                                    addVariantsFormElement.dataset.barcodeConfirmed = '1';
+                                    addVariantsFormElement.submit();
+                                }
+                            } else {
+                                addVariantsFormElement.dataset.barcodeConfirmed = '1';
+                                addVariantsFormElement.submit();
+                            }
+                        } catch (error) {
+                            console.error('Error checking barcodes:', error);
+                            if (confirm('{{ __('messages.Could not verify barcodes. Continue anyway?') }}')) {
+                                addVariantsFormElement.dataset.barcodeConfirmed = '1';
+                                addVariantsFormElement.submit();
+                            }
+                        }
+                    }
+                });
+            }
+        @endif
     </script>
 </x-app-layout>

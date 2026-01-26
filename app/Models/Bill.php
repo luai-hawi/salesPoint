@@ -19,17 +19,18 @@ class Bill extends Model
     ];
 
     public function products()
-{
-    return $this->belongsToMany(Product::class, 'bill_product')
-        ->withPivot('quantity', 'discount', 'cost_price', 'selling_price', 'tags');
-}
+    {
+        return $this->belongsToMany(Product::class, 'bill_product')
+            ->withPivot('quantity', 'discount', 'cost_price', 'selling_price', 'tags');
+    }
 
-public function customer() {
-    return $this->belongsTo(Customer::class);
-}
-public function creator() {
-    return $this->belongsTo(User::class, 'created_by');
-}
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 
-
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

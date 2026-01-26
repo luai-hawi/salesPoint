@@ -67,71 +67,147 @@ class ProductsController extends Controller
         }
 
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'category' => 'nullable|string|max:255', // Add category validation
-            'barcode' => 'nullable|string|max:255',
-            'additional_barcodes' => 'nullable|array',
-            'additional_barcodes.*' => 'nullable|string|max:255',
-            'pictures' => 'nullable|array',
-            'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'cost_price' => 'required|numeric',
-            'selling_price' => 'required|numeric',
-            'has_tags' => 'boolean',
-        ]);
 
-        // Check image limit
-        if ($request->hasFile('pictures')) {
-            $owner = \App\Models\User::find($ownerId);
-            $currentImages = $this->countTotalImages($ownerId);
-            $newImagesCount = count($request->file('pictures'));
-            if ($currentImages + $newImagesCount > $owner->image_limit) {
-                return back()->withErrors(['pictures' => 'Image limit exceeded. You can upload a maximum of ' . $owner->image_limit . ' images total.'])->withInput();
+        // Check if creating variants
+        $hasVariants = $request->has('has_variants') && $request->has_variants == '1';
+
+        if ($hasVariants) {
+            // Validate variant data
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'category' => 'nullable|string|max:255',
+                'pictures' => 'nullable|array',
+                'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'cost_price' => 'required|numeric',
+                'selling_price' => 'required|numeric',
+                'has_tags' => 'boolean',
+                'variants' => 'required|array|min:1',
+                'variants.*.name' => 'required|string|max:255',
+                'variants.*.quantity' => 'required|integer|min:0',
+                'variants.*.barcode' => 'nullable|string|max:255',
+            ]);
+
+            // Create variant group
+            $variantGroup = \App\Models\ProductVariantGroup::create([
+                'name' => $request->name,
+                'user_id' => $ownerId,
+            ]);
+
+            // Handle pictures once for all variants
+            $pictures = null;
+            if ($request->hasFile('pictures')) {
+                $owner = \App\Models\User::find($ownerId);
+                $currentImages = $this->countTotalImages($ownerId);
+                $newImagesCount = count($request->file('pictures'));
+                if ($currentImages + $newImagesCount > $owner->image_limit) {
+                    return back()->withErrors(['pictures' => 'Image limit exceeded. You can upload a maximum of ' . $owner->image_limit . ' images total.'])->withInput();
+                }
+
+                $picturesArray = [];
+                foreach ($request->file('pictures') as $picture) {
+                    $picturesArray[] = $picture->store('products', 'public');
+                }
+                $pictures = json_encode($picturesArray);
             }
-        }
 
-        $product = new Product();
-        $product->name = $request->name;
-        $product->category = $request->category; // Add category
-        $product->barcode = trim($request->barcode);
-        $product->quantity = $request->quantity;
-        $product->cost_price = round($request->cost_price, 2);
-        $product->selling_price = $request->selling_price;
-        $product->user_id = $ownerId;
-        $product->has_tags = $request->has('has_tags');
+            // Create each variant as a separate product
+            foreach ($request->variants as $variantData) {
+                $product = new Product();
+                $product->name = $request->name . ' - ' . $variantData['name'];
+                $product->category = $request->category;
+                $product->barcode = isset($variantData['barcode']) ? trim($variantData['barcode']) : null;
+                $product->quantity = (int) $variantData['quantity'];
+                $product->cost_price = round($request->cost_price, 2);
+                $product->selling_price = $request->selling_price;
+                $product->user_id = $ownerId;
+                $product->has_tags = $request->has('has_tags');
+                $product->variant_group_id = $variantGroup->id;
+                $product->variant_name = $variantData['name'];
+                $product->pictures = $pictures;
 
-        if ($request->hasFile('pictures')) {
-            $pictures = [];
-            foreach ($request->file('pictures') as $picture) {
-                $pictures[] = $picture->store('products', 'public');
-            }
-            $product->pictures = json_encode($pictures);
-        }
+                $product->save();
 
-        $product->save();
-
-        // Save additional barcodes
-        if ($request->has('additional_barcodes')) {
-            $barcodes = array_filter($request->additional_barcodes); // Remove empty values
-            foreach ($barcodes as $barcode) {
-                if (!empty(trim($barcode))) {
-                    ProductBarcode::create([
+                // Create batch if quantity > 0
+                if ($product->quantity > 0) {
+                    Batch::create([
                         'product_id' => $product->id,
-                        'barcode' => trim($barcode),
+                        'quantity' => $product->quantity,
+                        'cost_price' => (float) $request->cost_price,
+                        'user_id' => $ownerId,
                     ]);
                 }
             }
+
+            return redirect()->route('products.create')->with('success', count($request->variants) . ' variant products created successfully.');
+        } else {
+            // Original single product creation logic
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'category' => 'nullable|string|max:255',
+                'barcode' => 'nullable|string|max:255',
+                'additional_barcodes' => 'nullable|array',
+                'additional_barcodes.*' => 'nullable|string|max:255',
+                'pictures' => 'nullable|array',
+                'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'cost_price' => 'required|numeric',
+                'selling_price' => 'required|numeric',
+                'has_tags' => 'boolean',
+            ]);
+
+            // Check image limit
+            if ($request->hasFile('pictures')) {
+                $owner = \App\Models\User::find($ownerId);
+                $currentImages = $this->countTotalImages($ownerId);
+                $newImagesCount = count($request->file('pictures'));
+                if ($currentImages + $newImagesCount > $owner->image_limit) {
+                    return back()->withErrors(['pictures' => 'Image limit exceeded. You can upload a maximum of ' . $owner->image_limit . ' images total.'])->withInput();
+                }
+            }
+
+            $product = new Product();
+            $product->name = $request->name;
+            $product->category = $request->category;
+            $product->barcode = trim($request->barcode);
+            $product->quantity = (int) $request->quantity;
+            $product->cost_price = round($request->cost_price, 2);
+            $product->selling_price = $request->selling_price;
+            $product->user_id = $ownerId;
+            $product->has_tags = $request->has('has_tags');
+
+            if ($request->hasFile('pictures')) {
+                $pictures = [];
+                foreach ($request->file('pictures') as $picture) {
+                    $pictures[] = $picture->store('products', 'public');
+                }
+                $product->pictures = json_encode($pictures);
+            }
+
+            $product->save();
+
+            if ($product->quantity > 0) {
+                Batch::create([
+                    'product_id' => $product->id,
+                    'quantity' => $product->quantity,
+                    'cost_price' => (float) $request->cost_price,
+                    'user_id' => $ownerId,
+                ]);
+            }
+
+            // Save additional barcodes
+            if ($request->has('additional_barcodes')) {
+                $barcodes = array_filter($request->additional_barcodes);
+                foreach ($barcodes as $barcode) {
+                    if (!empty(trim($barcode))) {
+                        ProductBarcode::create([
+                            'product_id' => $product->id,
+                            'barcode' => trim($barcode),
+                        ]);
+                    }
+                }
+            }
+
+            return redirect()->route('products.create')->with('success', 'Product created successfully.');
         }
-
-        // create initial batch for this product
-        $batch = new Batch();
-        $batch->product_id = $product->id;
-        $batch->quantity = $request->quantity;
-        $batch->cost_price = $request->cost_price;
-        $batch->user_id = $ownerId;
-        $batch->save();
-
-        return redirect()->route('products.create')->with('success', 'Product created successfully.');
     }
 
 
@@ -201,6 +277,7 @@ class ProductsController extends Controller
         }
 
         $product->save();
+
 
         // Update additional barcodes
         if ($request->has('additional_barcodes')) {
@@ -303,6 +380,90 @@ class ProductsController extends Controller
             ->values();
 
         return response()->json($categories);
+    }
+
+    public function checkBarcodes(Request $request)
+    {
+        $user = auth()->user();
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $ignoreProductId = $request->input('ignore_product_id');
+
+        $mainBarcode = trim((string) $request->input('barcode', ''));
+        $additionalBarcodes = $request->input('additional_barcodes', []);
+        if (!is_array($additionalBarcodes)) {
+            $additionalBarcodes = [];
+        }
+
+        $barcodes = array_merge([$mainBarcode], $additionalBarcodes);
+        $barcodes = array_values(array_unique(array_filter(array_map('trim', $barcodes))));
+
+        if (empty($barcodes)) {
+            return response()->json(['duplicates' => []]);
+        }
+
+        $duplicates = [];
+
+        $mainMatches = Product::query()
+            ->where('user_id', $ownerId)
+            ->when($ignoreProductId, function ($query) use ($ignoreProductId) {
+                $query->where('id', '!=', $ignoreProductId);
+            })
+            ->whereNotNull('barcode')
+            ->whereIn('barcode', $barcodes)
+            ->get(['id', 'name', 'barcode']);
+
+        foreach ($mainMatches as $product) {
+            $code = trim((string) $product->barcode);
+            if (!$code) {
+                continue;
+            }
+            if (!isset($duplicates[$code])) {
+                $duplicates[$code] = [
+                    'barcode' => $code,
+                    'products' => [],
+                ];
+            }
+            $duplicates[$code]['products'][$product->id] = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'source' => 'main',
+            ];
+        }
+
+        $additionalMatches = \DB::table('product_barcodes')
+            ->join('products', 'product_barcodes.product_id', '=', 'products.id')
+            ->where('products.user_id', $ownerId)
+            ->when($ignoreProductId, function ($query) use ($ignoreProductId) {
+                $query->where('products.id', '!=', $ignoreProductId);
+            })
+            ->whereIn('product_barcodes.barcode', $barcodes)
+            ->select('product_barcodes.barcode', 'products.id', 'products.name')
+            ->get();
+
+        foreach ($additionalMatches as $match) {
+            $code = trim((string) $match->barcode);
+            if (!$code) {
+                continue;
+            }
+            if (!isset($duplicates[$code])) {
+                $duplicates[$code] = [
+                    'barcode' => $code,
+                    'products' => [],
+                ];
+            }
+            $duplicates[$code]['products'][$match->id] = [
+                'id' => $match->id,
+                'name' => $match->name,
+                'source' => 'additional',
+            ];
+        }
+
+        $duplicates = array_values(array_map(function ($entry) {
+            $entry['products'] = array_values($entry['products']);
+            return $entry;
+        }, $duplicates));
+
+        return response()->json(['duplicates' => $duplicates]);
     }
 
     // Enhanced search for all products with quantity ordering
@@ -773,6 +934,69 @@ class ProductsController extends Controller
         $nextId = $maxId + 1;
 
         return response()->json(['next_id' => $nextId]);
+    }
+
+    /**
+     * Add more variants to an existing variant group
+     */
+    public function addVariants(Request $request, Product $product)
+    {
+        $user = auth()->user();
+        if ($user->role === 'employee' && !$user->hasPermission('create_products')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $this->authorizeProduct($product);
+
+        // Check if product is part of a variant group
+        if (!$product->variant_group_id) {
+            return back()->withErrors(['error' => 'This product is not part of a variant group.']);
+        }
+
+        // Validate new variants
+        $request->validate([
+            'new_variants' => 'required|array|min:1',
+            'new_variants.*.name' => 'required|string|max:255',
+            'new_variants.*.quantity' => 'required|integer|min:0',
+            'new_variants.*.barcode' => 'nullable|string|max:255',
+        ]);
+
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $variantGroup = $product->variantGroup;
+        $createdCount = 0;
+
+        // Create each new variant
+        foreach ($request->new_variants as $variantData) {
+            $newProduct = new Product();
+            $newProduct->name = $variantGroup->name . ' - ' . $variantData['name'];
+            $newProduct->category = $product->category;
+            $newProduct->barcode = isset($variantData['barcode']) ? trim($variantData['barcode']) : null;
+            $newProduct->quantity = (int) $variantData['quantity'];
+            $newProduct->cost_price = $product->cost_price;
+            $newProduct->selling_price = $product->selling_price;
+            $newProduct->user_id = $ownerId;
+            $newProduct->has_tags = $product->has_tags;
+            $newProduct->variant_group_id = $product->variant_group_id;
+            $newProduct->variant_name = $variantData['name'];
+            $newProduct->pictures = $product->pictures; // Share images
+
+            $newProduct->save();
+
+            // Create batch if quantity > 0
+            if ($newProduct->quantity > 0) {
+                Batch::create([
+                    'product_id' => $newProduct->id,
+                    'quantity' => $newProduct->quantity,
+                    'cost_price' => (float) $product->cost_price,
+                    'user_id' => $ownerId,
+                ]);
+            }
+
+            $createdCount++;
+        }
+
+        return redirect()->route('products.edit', $product->id)
+            ->with('success', $createdCount . ' new variant(s) added successfully.');
     }
 
     /**

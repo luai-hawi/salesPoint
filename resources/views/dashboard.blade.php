@@ -552,6 +552,18 @@
 
                         <div class="space-y-3">
                             <div class="bg-white bg-opacity-20 rounded-lg p-3">
+                                <label for="bill_discount_percent"
+                                    class="text-green-100 text-xs font-medium block mb-2">
+                                    {{ __('messages.Whole Bill Discount (%)') }}
+                                </label>
+                                <input type="number" id="bill_discount_percent" min="0" max="100"
+                                    step="0.01" placeholder="0"
+                                    class="w-full px-3 py-2 rounded-md text-gray-900 border border-white/30 bg-white/90 focus:ring-2 focus:ring-white focus:border-transparent" />
+                                <p class="text-[10px] text-green-100 mt-1">
+                                    {{ __('messages.Distributes discount across all items') }}
+                                </p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
                                     <span class="text-green-100">{{ __('dashboard.Total Discount:') }}</span>
                                     <span class="font-bold text-lg">₪<span
@@ -1953,9 +1965,9 @@
                         const nameMatch = product.name.toLowerCase().includes(word);
                         const categoryMatch = product.category?.toLowerCase().includes(word);
                         const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(
-                        word);
+                            word);
                         const additionalBarcodeMatch = product.barcodes && Array.isArray(product
-                            .barcodes) && product
+                                .barcodes) && product
                             .barcodes.some(b => b && typeof b === 'string' && b.toLowerCase().includes(
                                 word));
                         return nameMatch || categoryMatch || barcodeMatch || additionalBarcodeMatch;
@@ -2321,14 +2333,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2465,7 +2477,71 @@
         });
 
         // Calculate total
+        let isApplyingBillDiscount = false;
+
+        function getBillDiscountPercent() {
+            const input = document.getElementById('bill_discount_percent');
+            if (!input) return 0;
+            const value = parseFloat(input.value);
+            if (Number.isNaN(value)) return 0;
+            return Math.min(Math.max(value, 0), 100);
+        }
+
+        function applyBillDiscountPercent(percent) {
+            if (percent <= 0) return;
+            isApplyingBillDiscount = true;
+
+            const rows = document.querySelectorAll('.product-row');
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+                const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
+                const tagsInput = row.querySelector('input[name="product_tags[]"]');
+                const tagsString = tagsInput ? tagsInput.value : '';
+
+                let tagsTotal = 0;
+                if (tagsString) {
+                    const tagPairs = tagsString.split('&');
+                    for (const pair of tagPairs) {
+                        if (pair.includes('@')) {
+                            const [, tagPrice] = pair.split('@');
+                            tagsTotal += parseFloat(tagPrice) || 0;
+                        }
+                    }
+                }
+
+                const subtotal = (price * qty) + (tagsTotal * qty);
+                const discountValue = subtotal * (percent / 100);
+
+                const discountInput = row.querySelector('.discount');
+                const discountTypeInput = row.querySelector('.discount-type');
+                const discountTypeButtons = row.querySelectorAll('.discount-type-btn');
+
+                if (discountTypeInput) {
+                    discountTypeInput.value = 'total';
+                }
+
+                if (discountTypeButtons.length) {
+                    discountTypeButtons.forEach(btn => btn.classList.remove('active'));
+                    const totalButton = row.querySelector('.discount-type-btn[data-type="total"]');
+                    if (totalButton) {
+                        totalButton.classList.add('active');
+                    }
+                }
+
+                if (discountInput) {
+                    discountInput.value = discountValue.toFixed(2);
+                }
+            });
+
+            isApplyingBillDiscount = false;
+        }
+
         function calculateTotal() {
+            const billDiscountPercent = getBillDiscountPercent();
+            if (billDiscountPercent > 0) {
+                applyBillDiscountPercent(billDiscountPercent);
+            }
+
             let total = 0;
             let totalDiscount = 0;
 
@@ -2561,7 +2637,18 @@
         });
 
         document.addEventListener('input', e => {
+            if (e.target && e.target.id === 'bill_discount_percent') {
+                calculateTotal();
+                return;
+            }
+
             if (['quantity', 'discount', 'selling-price'].some(cls => e.target.classList.contains(cls))) {
+                if (e.target.classList.contains('discount') && !isApplyingBillDiscount) {
+                    const billDiscountInput = document.getElementById('bill_discount_percent');
+                    if (billDiscountInput && parseFloat(billDiscountInput.value || 0) > 0) {
+                        billDiscountInput.value = '0';
+                    }
+                }
                 calculateTotal();
             }
         });
@@ -3097,9 +3184,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

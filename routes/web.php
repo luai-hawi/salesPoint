@@ -153,6 +153,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/products/search-barcode', [ProductsController::class, 'searchBarcode'])->name('products.search-barcode');
     Route::get('/products/get-suppliers', [ProductsController::class, 'getProductSuppliers'])->name('products.get-suppliers');
     Route::get('/products/categories', [ProductsController::class, 'getCategories'])->name('products.categories');
+    Route::post('/products/check-barcodes', [ProductsController::class, 'checkBarcodes'])->name('products.check-barcodes');
 });
 
 // Barcode search page
@@ -187,6 +188,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         // Products CRUD with permissions
         Route::resource('products', ProductsController::class)->except(['show']);
         Route::post('/products/{product}/add-quantity', [ProductsController::class, 'addQuantity']);
+        Route::post('/products/{product}/add-variants', [ProductsController::class, 'addVariants'])->name('products.addVariants');
         Route::post('/products/{product}/toggle-active', [ProductsController::class, 'toggleActive'])->name('products.toggle-active');
         Route::get('/products/export', [ProductsController::class, 'export'])->name('products.export');
         Route::get('/products/out-of-stock', [ProductsController::class, 'outOfStock'])->name('products.out-of-stock');

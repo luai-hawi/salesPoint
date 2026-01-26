@@ -363,16 +363,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                                        <div class="flex-1">
-                                                                                                            <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                                            <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                            <div class="flex-1">
+                                                                                                                <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                                <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                            </div>
+                                                                                                            <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                                {{ __('messages.Select') }}
+                                                                                                            </button>
                                                                                                         </div>
-                                                                                                        <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                                            {{ __('messages.Select') }}
-                                                                                                        </button>
-                                                                                                    </div>
-                                                                                                `).join('')}
+                                                                                                    `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -766,11 +766,62 @@
             barcodes.forEach(addBarcode);
 
             // Add event for add button
-            addBtn.addEventListener('click', () => {
+            addBtn.addEventListener('click', async () => {
                 const code = barcodeInput.value.trim();
                 if (code) {
-                    addBarcode(code);
-                    barcodeInput.value = '';
+                    // Check if barcode already exists
+                    try {
+                        const response = await fetch('{{ route('products.check-barcodes') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                barcode: code,
+                                additional_barcodes: []
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to check barcode');
+                        }
+
+                        const data = await response.json();
+                        const duplicates = Array.isArray(data.duplicates) ? data.duplicates : [];
+
+                        if (duplicates.length > 0) {
+                            const lines = duplicates.map(item => {
+                                const productNames = (item.products || [])
+                                    .map(product => {
+                                        const label = product.source === 'main' ?
+                                            '{{ __('messages.Main barcode') }}' :
+                                            '{{ __('messages.Additional barcode') }}';
+                                        return product.name ? `${product.name} (${label})` : label;
+                                    })
+                                    .filter(Boolean)
+                                    .join(', ');
+                                return `${item.barcode}: ${productNames}`;
+                            });
+
+                            const message =
+                                '{{ __('messages.Barcode already exists. Do you want to continue?') }}' +
+                                '\n\n' + lines.join('\n');
+
+                            if (confirm(message)) {
+                                addBarcode(code);
+                                barcodeInput.value = '';
+                            }
+                        } else {
+                            addBarcode(code);
+                            barcodeInput.value = '';
+                        }
+                    } catch (error) {
+                        console.error('Error checking barcode:', error);
+                        // Continue adding barcode if verification fails
+                        addBarcode(code);
+                        barcodeInput.value = '';
+                    }
                 }
             });
 
