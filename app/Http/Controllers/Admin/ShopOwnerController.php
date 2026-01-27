@@ -7,10 +7,22 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\Bill;
 use App\Models\Customer;
+use App\Models\Employee;
+use App\Models\EmployeePayment;
+use App\Models\Expense;
+use App\Models\Supplier;
+use App\Models\SupplierPayment;
+use App\Models\PurchaseBill;
+use App\Models\CustomerPayment;
+use App\Models\Tag;
+use App\Models\Batch;
+use App\Models\ProductBarcode;
+use App\Models\ProductVariantGroup;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ShopOwnerController extends Controller
@@ -186,14 +198,77 @@ class ShopOwnerController extends Controller
 
             // Delete all employees first
             if ($shopOwner->role === 'shop_owner' || $shopOwner->role === 'restaurant' || $shopOwner->role === 'merchant' || $shopOwner->role === 'disabled') {
-                $shopOwner->employees()->delete();
+                // Get all employee IDs for this shop owner
+                $employeeIds = Employee::where('shop_owner_id', $shopOwner->id)->pluck('id');
 
-                // Delete related business data
+                // Delete employee payments
+                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
+
+                // Delete employees
+                Employee::where('shop_owner_id', $shopOwner->id)->delete();
+
+                // Delete product-related data (before deleting products)
+                // Get all product IDs for this user
+                $productIds = Product::where('user_id', $shopOwner->id)->pluck('id');
+
+                // Delete product barcodes
+                ProductBarcode::whereIn('product_id', $productIds)->delete();
+
+                // Delete batches
+                Batch::whereIn('product_id', $productIds)->delete();
+
+                // Delete product variant groups
+                ProductVariantGroup::where('user_id', $shopOwner->id)->delete();
+
+                // Delete product images from storage
+                $products = Product::where('user_id', $shopOwner->id)->get();
+                foreach ($products as $product) {
+                    $pictures = json_decode($product->pictures, true);
+                    if (is_array($pictures)) {
+                        foreach ($pictures as $picture) {
+                            if ($picture && Storage::disk('public')->exists($picture)) {
+                                Storage::disk('public')->delete($picture);
+                            }
+                        }
+                    }
+                }
+
+                // Delete products
                 Product::where('user_id', $shopOwner->id)->delete();
+
+                // Delete customer-related data (before deleting customers)
+                $customerIds = Customer::where('user_id', $shopOwner->id)->pluck('id');
+
+                // Delete customer payments
+                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
+
+                // Delete bills (cascade from customers - bill_product pivot will be deleted automatically)
+                Bill::whereIn('customer_id', $customerIds)->delete();
+
+                // Delete bills directly associated with user
+                Bill::where('user_id', $shopOwner->id)->delete();
+
+                // Delete customers
                 Customer::where('user_id', $shopOwner->id)->delete();
 
-                // Note: You might want to keep bills for accounting purposes
-                // Bill::where('user_id', $shopOwner->id)->delete();
+                // Delete supplier-related data (before deleting suppliers)
+                $supplierIds = Supplier::where('user_id', $shopOwner->id)->pluck('id');
+
+                // Delete supplier payments
+                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
+
+                // Delete purchase bills
+                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
+
+                // Delete purchase bills directly associated with user
+                PurchaseBill::where('user_id', $shopOwner->id)->delete();
+
+                // Delete suppliers
+                Supplier::where('user_id', $shopOwner->id)->delete();
+
+                // Delete other user-related data
+                Expense::where('user_id', $shopOwner->id)->delete();
+                Tag::where('user_id', $shopOwner->id)->delete();
             }
 
             $shopOwner->delete();
