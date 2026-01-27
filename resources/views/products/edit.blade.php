@@ -1187,15 +1187,20 @@
                 font-size: 12pt !important;
                 margin-top: 0 !important;
             }
+
+            button {
+                display: none !important;
+            }
         }
     </style>
     </head>
 
     <body>
         <div class="barcode-container">
-            <svg id="print-barcode" class="barcode-svg"></svg>
+            <canvas id="print-barcode" class="barcode-svg"></canvas>
             <div class="price-text">₪${price || '0.00'}</div>
         </div>
+        <button onclick="window.print(); setTimeout(() => window.close(), 1000);" style="margin-top: 10px; padding: 5px 10px;">Print Barcode</button>
         <script>
             window.addEventListener('load', function() {
                 if (typeof JsBarcode === 'undefined') {
@@ -1211,13 +1216,6 @@
                     margin: 0,
                     textAlign: 'center'
                 });
-                // Auto-print after barcode is generated
-                setTimeout(function() {
-                    window.print();
-                    setTimeout(function() {
-                        window.close();
-                    }, 1000);
-                }, 500);
             });
         <\/script>
     </body>
