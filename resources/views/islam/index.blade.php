@@ -604,7 +604,7 @@
 
 <body>
     <header class="header">
-        <h1>مبيعات إسلامية</h1>
+        <h1>حلقات اللبص🪒</h1>
         <div class="date-display" id="currentDate"></div>
         <div class="status-badge offline" id="connectionStatus">
             <span id="statusText">غير متصل</span>
