@@ -20,6 +20,7 @@ use App\Http\Controllers\TagsController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseBillController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\IslamicSalesController;
 
 
 
@@ -614,6 +615,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');
         Route::get('/api/purchase-bills/search', [PurchaseBillController::class, 'search'])->name('api.purchase-bills.search');
     });
+
+// ------------------- ISLAMIC SALES PWA -------------------
+// Offline-first PWA with local SQLite database - no server database operations
+Route::get('/islam', [IslamicSalesController::class, 'index'])->name('islam');
 
 // ------------------- LANGUAGE ROUTES -------------------
 require __DIR__ . '/language.php';

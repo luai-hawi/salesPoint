@@ -1,0 +1,45 @@
+{
+    "name": "مبيعات إسلامية",
+    "short_name": "مبيعات",
+    "description": "تطبيق مبيعات يعمل بدون إنترنت",
+    "start_url": "/islam",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f8fafc",
+    "theme_color": "#10b981",
+    "dir": "rtl",
+    "lang": "ar",
+    "categories": ["business", "productivity", "finance"],
+    "icons": [
+        {
+            "src": "/images/logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "scope": "/islam",
+    "serviceworker": {
+        "src": "/islam/sw.js",
+        "scope": "/islam",
+        "update_via_cache": "none"
+    },
+    "shortcuts": [
+        {
+            "name": "إضافة عملية بيع",
+            "short_name": "بيع جديد",
+            "description": "إضافة عملية بيع جديدة",
+            "url": "/islam",
+            "icons": []
+        }
+    ]
+}
