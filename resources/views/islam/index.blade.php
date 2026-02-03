@@ -23,6 +23,64 @@
             box-sizing: border-box;
         }
 
+        /* Install Prompt Styles */
+        #installPrompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+            display: none;
+            z-index: 10000;
+            text-align: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #installPrompt button {
+            background: white;
+            color: #10b981;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #installPrompt .close-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         :root {
             --primary: #10b981;
             --primary-dark: #059669;
@@ -603,6 +661,14 @@
 </head>
 
 <body>
+    <!-- Install Prompt Banner -->
+    <div id="installPrompt">
+        <button class="close-btn" onclick="dismissInstall()">×</button>
+        <div>📱 تثبيت التطبيق</div>
+        <div style="font-size: 12px; margin-top: 4px;">أضف التطبيق إلى شاشة هاتفك</div>
+        <button onclick="installApp()">تثبيت الآن</button>
+    </div>
+
     <header class="header">
         <h1>حلقات اللبص🪒</h1>
         <div class="date-display" id="currentDate"></div>
@@ -1214,6 +1280,25 @@
                 };
                 return date.toLocaleDateString('ar-EG', options);
             }
+
+            function installApp() {
+                if (deferredInstallPrompt) {
+                    deferredInstallPrompt.prompt();
+                    deferredInstallPrompt.userChoice.then(function(outcome) {
+                        console.log('Install outcome:', outcome);
+                        deferredInstallPrompt = null;
+                        var prompt = document.getElementById('installPrompt');
+                        if (prompt) prompt.style.display = 'none';
+                    });
+                }
+            }
+            
+            function dismissInstall() {
+                var prompt = document.getElementById('installPrompt');
+                if (prompt) prompt.style.display = 'none';
+            }
+
+            var deferredInstallPrompt = null;
 
             function setupPWA() {
                 // Register Service Worker
