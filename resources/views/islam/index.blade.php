@@ -132,6 +132,7 @@
         }
 
         .section {
+            position: relative;
             background: var(--card);
             border-radius: 16px;
             padding: 20px;
@@ -454,9 +455,10 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: var(--card);
+            background: white;
+            border: 2px solid var(--primary);
             border-radius: 12px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             max-height: 200px;
             overflow-y: auto;
             display: none;
@@ -471,7 +473,9 @@
         .autocomplete-item {
             padding: 12px 16px;
             cursor: pointer;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid #e0e0e0;
+            color: #333;
+            font-size: 16px;
         }
 
         .autocomplete-item:last-child {
@@ -910,6 +914,8 @@
                 var list = getElement('autocompleteList');
                 list.innerHTML = '';
 
+                console.log('showAutocomplete called with items:', items);
+
                 if (items.length === 0) {
                     list.classList.remove('show');
                     return;
@@ -927,6 +933,7 @@
                 });
 
                 list.classList.add('show');
+                console.log('Autocomplete dropdown shown with', items.length, 'items');
             }
 
             // ==================== Shortcut Functions ====================
