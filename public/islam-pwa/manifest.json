@@ -1,6 +1,6 @@
 {
-    "name": "مبيعات إسلامية",
-    "short_name": "مبيعات",
+    "name": "اللبص",
+    "short_name": "اللبص",
     "description": "تطبيق مبيعات يعمل بدون إنترنت",
     "start_url": "/islam",
     "display": "standalone",
