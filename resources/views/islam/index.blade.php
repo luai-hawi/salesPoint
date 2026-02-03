@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="حلقات اللبص🪒">
 
-    <link rel="manifest" href="/islam/manifest.json">
+    <link rel="manifest" href="/islam-pwa/manifest.json">
     <link rel="icon" type="image/png" href="/images/logo2.png">
     <link rel="apple-touch-icon" href="/images/logo2.png">
 
@@ -1218,7 +1218,7 @@
             function setupPWA() {
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('/islam/sw.js').then(function(registration) {
+                    navigator.serviceWorker.register('/islam-pwa/sw.js').then(function(registration) {
                         console.log('Service Worker registered:', registration);
                     }).catch(function(error) {
                         console.log('Service Worker registration failed:', error);

@@ -6,7 +6,7 @@ const ASSETS_TO_CACHE = [
     '/islam',
     '/islam/',
     '/islam/index',
-    '/islam/manifest.json',
+    '/islam-pwa/manifest.json',
     '/css/app.css',
     '/js/app.js',
     '/images/logo.png',

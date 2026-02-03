@@ -29,7 +29,7 @@
     "prefer_related_applications": false,
     "scope": "/islam",
     "serviceworker": {
-        "src": "/islam/sw.js",
+        "src": "/islam-pwa/sw.js",
         "scope": "/islam",
         "update_via_cache": "none"
     },
