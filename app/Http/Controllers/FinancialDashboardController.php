@@ -642,7 +642,7 @@ class FinancialDashboardController extends Controller
     public function printComprehensiveReport(Request $request)
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        $endDate = $request->get('end_date', $request->get('toDate', Carbon::now()->format('Y-m-d')));
 
         $userId = auth()->id();
         $shopOwnerId = auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : $userId;
@@ -651,6 +651,7 @@ class FinancialDashboardController extends Controller
         $data = [
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'toDate' => $endDate,
             'generated_at' => now()->format('Y-m-d H:i:s'),
             'generated_by' => auth()->user()->name,
         ];

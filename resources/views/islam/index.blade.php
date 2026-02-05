@@ -541,7 +541,11 @@
             background: #4f46e5;
         }
 
-        /* Print Modal */
+        /* Print Wrapper for print-only content */
+        #printContentWrapper {
+            display: none;
+        }
+
         .print-modal-overlay {
             position: fixed;
             top: 0;
@@ -628,27 +632,63 @@
         }
 
         @media print {
-            body * {
-                visibility: hidden;
+            @page {
+                margin: 0.5cm;
+                size: portrait;
             }
 
-            .print-content,
-            .print-content * {
-                visibility: visible;
+            body>* {
+                display: none !important;
             }
 
-            .print-content {
-                position: absolute;
+            #printContentWrapper {
+                display: block !important;
+                position: fixed;
                 left: 0;
                 top: 0;
                 width: 100%;
-                max-width: none;
-                max-height: none;
                 padding: 20px;
+                background: white;
             }
 
-            .print-close {
-                display: none !important;
+            #printContentWrapper table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                display: table !important;
+            }
+
+            #printContentWrapper table th,
+            #printContentWrapper table td {
+                padding: 8px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                text-align: right !important;
+                display: table-cell !important;
+            }
+
+            #printContentWrapper table th {
+                background: #f8fafc !important;
+                font-weight: 600 !important;
+            }
+
+            #printContentWrapper table tr {
+                display: table-row !important;
+            }
+
+            #printContentWrapper table tbody {
+                display: table-row-group !important;
+            }
+
+            #printContentWrapper table thead {
+                display: table-header-group !important;
+            }
+
+            #printContentWrapper .print-total {
+                margin-top: 20px !important;
+                padding: 15px !important;
+                background: #f8fafc !important;
+                border-radius: 12px !important;
+                display: flex !important;
+                justify-content: space-between !important;
             }
         }
 
@@ -761,6 +801,9 @@
         <button class="print-close" id="printClose">×</button>
         <div class="print-content" id="printContent"></div>
     </div>
+
+    <!-- Print Wrapper (visible only during print) -->
+    <div id="printContentWrapper" style="display: none;"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
     <script>
@@ -1266,6 +1309,7 @@
 
                     // Show print modal
                     getElement('printContent').innerHTML = html;
+                    getElement('printContentWrapper').innerHTML = html;
                     getElement('printModal').classList.add('show');
 
                     // Print after modal is shown
