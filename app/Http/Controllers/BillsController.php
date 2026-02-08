@@ -155,6 +155,7 @@ class BillsController extends Controller
             'customer_id' => 'nullable|exists:customers,id,user_id,' . $ownerId,
             'selling_prices' => 'required|array',
             'discount_types' => 'array',
+            'bill_date' => 'nullable|date',
         ]);
 
         // Check if it's a damaged bill
@@ -165,7 +166,11 @@ class BillsController extends Controller
             $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
         }
 
-        $bill = Bill::create([
+        // Get the custom date or use now()
+        $billDateInput = $request->input('bill_date');
+        $billDate = $billDateInput ? \Carbon\Carbon::parse($billDateInput) : now();
+
+        $bill = new Bill([
             'note' => $noteText,
             'total_price' => 0,
             'customer_id' => $request->input('customer_id'),
@@ -173,6 +178,11 @@ class BillsController extends Controller
             'created_by' => $user->id,
             'is_damaged' => $isDamaged,
         ]);
+
+        // Set timestamps manually
+        $bill->created_at = $billDate;
+        $bill->updated_at = $billDate;
+        $bill->save();
 
         $total = 0;
 

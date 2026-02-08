@@ -176,17 +176,25 @@ class CustomerController extends Controller
 
         $request->validate([
             'amount' => 'required|numeric',
-            'type' => 'required|string|in:cash,card,transfer,check', // Add this line
+            'type' => 'required|string|in:cash,card,transfer,check',
             'note' => 'nullable|string|max:255',
+            'payment_date' => 'nullable|date',
         ]);
 
-        // Create payment record
-        $payment = $customer->payments()->create([
+        // Create payment record using save() to allow custom created_at
+        $payment = new CustomerPayment([
             'amount' => $request->amount,
-            'type' => $request->type,    // Add this line
+            'type' => $request->type,
             'note' => $request->note,
-            'user_id' => $ownerId
+            'user_id' => $ownerId,
         ]);
+
+        if ($request->payment_date) {
+            $payment->created_at = $request->payment_date . ' ' . now()->format('H:i:s');
+        }
+
+        $payment->customer()->associate($customer);
+        $payment->save();
 
         // Update customer balance
         $customer->balance += $request->amount;

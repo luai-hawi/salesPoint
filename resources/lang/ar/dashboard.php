@@ -84,4 +84,5 @@ return [
     'Cancel' => 'إلغاء',
     '100% discount' => 'خصم 100%',
     'Damaged Bill' => 'فاتورة تالفة',
+    'Date' => 'التاريخ',
 ];

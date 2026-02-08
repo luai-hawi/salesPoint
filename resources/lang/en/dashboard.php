@@ -84,4 +84,5 @@ return [
     'Cancel' => 'Cancel',
     '100% discount' => '100% discount',
     'Damaged Bill' => 'Damaged Bill',
+    'Date' => 'Date',
 ];
