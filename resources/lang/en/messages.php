@@ -66,6 +66,25 @@ return [
     'Total Expenses' => 'Total expenses',
 
 
+    'Capital added successfully' => 'Capital added successfully',
+    'Capital entry deleted successfully' => 'Capital entry deleted successfully',
+    'Capital' => 'Capital',
+    'Outside Investment' => 'Outside Investment',
+    'Total Capital' => 'Total Capital',
+    'From outside sources' => 'From outside sources',
+    'Products Cost' => 'Products Cost',
+    'Inventory value' => 'Inventory value',
+    'Total Business Capital' => 'Total Business Capital',
+    'Capital + Inventory' => 'Capital + Inventory',
+    'Add Capital' => 'Add Capital',
+    'Recent Capital Entries' => 'Recent Capital Entries',
+    'Capital Inventory Total' => 'Capital + Inventory',
+    'Amount' => 'Amount',
+    'Date' => 'Date',
+    'Note' => 'Note',
+    'Add' => 'Add',
+    'Actions' => 'Actions',
+
     // Header Section
     'shop_title' => ':name\'s Shop',
     'edit_shop_owner' => 'Edit Shop Owner',
@@ -952,6 +971,20 @@ return [
     'Items:' => 'Items:',
     'Value:' => 'Value:',
 
+    // Daily Cash Flow Section - NEW
+    'Daily Cash Flow' => 'Daily Cash Flow',
+    'Cash In' => 'Cash In',
+    'Cash Out' => 'Cash Out',
+    'Net Cash Flow' => 'Net Cash Flow',
+    'Summary' => 'Summary',
+    'Total In' => 'Total In',
+    'Total Out' => 'Total Out',
+    'Balance' => 'Balance',
+    'Positive cash flow' => 'Positive cash flow',
+    'Negative cash flow' => 'Negative cash flow',
+    'View' => 'View',
+    'Customer Debt' => 'Customer Debt',
+
     // Common Actions & Messages
     'Home' => 'Home',
     'Loading...' => 'Loading...',
@@ -1701,4 +1734,11 @@ return [
     'New Variants' => 'New Variants',
     'Save New Variants' => 'Save New Variants',
     'Add additional variants to this product group' => 'Add additional variants to this product group',
+
+    // Capital Payments
+    'Capital Payments' => 'Capital Payments',
+    'No capital entries found' => 'No capital entries found',
+    'Error adding capital' => 'Error adding capital',
+    'An error occurred' => 'An error occurred',
+    'Manage Capital' => 'Manage Capital',
 ];

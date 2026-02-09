@@ -80,6 +80,130 @@
                 </form>
             </div>
 
+            <!-- NEW: Daily Cash Flow Section -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 lg:p-6 rounded-lg shadow-lg text-white">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-3">
+                        <h3 class="text-lg lg:text-xl font-bold flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                </path>
+                            </svg>
+                            {{ __('messages.Daily Cash Flow') }}
+                        </h3>
+                        <form method="GET" action="{{ route('dashboard.financial') }}"
+                            class="flex items-center gap-2">
+                            <input type="date" name="cash_flow_date" value="{{ $cashFlowDate }}"
+                                class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent">
+                            <button type="submit"
+                                class="px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
+                                {{ __('messages.View') }}
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Cash In Section -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                {{ __('messages.Cash In') }}
+                            </h4>
+                            <p class="text-2xl lg:text-3xl font-bold text-green-300 mb-2">
+                                ₪{{ number_format($dailyCashFlowData['cashIn']['total'], 0) }}</p>
+                            <div class="text-xs opacity-75 space-y-1">
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Sales') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['sales'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Customer Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['customerPayments'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Capital') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['capital'], 0) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cash Out Section -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4">
+                                    </path>
+                                </svg>
+                                {{ __('messages.Cash Out') }}
+                            </h4>
+                            <p class="text-2xl lg:text-3xl font-bold text-red-300 mb-2">
+                                ₪{{ number_format($dailyCashFlowData['cashOut']['total'], 0) }}</p>
+                            <div class="text-xs opacity-75 space-y-1">
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Supplier Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['supplierPayments'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Employee Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['employeePayments'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Expenses') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['expenses'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ __('messages.Customer Debt') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['minusPayments'], 0) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Net Cash Flow -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                                {{ __('messages.Net Cash Flow') }}
+                            </h4>
+                            <p
+                                class="text-2xl lg:text-3xl font-bold {{ $dailyCashFlowData['netCashFlow'] >= 0 ? 'text-green-300' : 'text-red-300' }} mb-2">
+                                {{ $dailyCashFlowData['netCashFlow'] >= 0 ? '+' : '' }}₪{{ number_format($dailyCashFlowData['netCashFlow'], 0) }}
+                            </p>
+                            <p class="text-xs opacity-75">
+                                {{ $dailyCashFlowData['netCashFlow'] >= 0 ? __('messages.Positive cash flow') : __('messages.Negative cash flow') }}
+                            </p>
+                        </div>
+
+                        <!-- Cash Flow Summary -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2z">
+                                    </path>
+                                </svg>
+                                {{ __('messages.Summary') }}
+                            </h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center"><span
+                                        class="text-xs opacity-75">{{ __('messages.Total In') }}</span><span
+                                        class="text-sm font-semibold text-green-300">₪{{ number_format($dailyCashFlowData['cashIn']['total'], 0) }}</span>
+                                </div>
+                                <div class="flex justify-between items-center"><span
+                                        class="text-xs opacity-75">{{ __('messages.Total Out') }}</span><span
+                                        class="text-sm font-semibold text-red-300">₪{{ number_format($dailyCashFlowData['cashOut']['total'], 0) }}</span>
+                                </div>
+                                <hr class="border-white border-opacity-20">
+                                <div class="flex justify-between items-center"><span
+                                        class="text-xs opacity-75">{{ __('messages.Balance') }}</span><span
+                                        class="text-sm font-bold {{ $dailyCashFlowData['netCashFlow'] >= 0 ? 'text-green-300' : 'text-red-300' }}">{{ $dailyCashFlowData['netCashFlow'] >= 0 ? '+' : '' }}₪{{ number_format($dailyCashFlowData['netCashFlow'], 0) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Enhanced Summary Cards - Including Supplier Data -->
             <div class="w-full mb-4 lg:mb-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-4">
@@ -178,7 +302,7 @@
                         <h3 class="text-lg lg:text-xl font-bold flex items-center mb-2 lg:mb-0">
                             <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2-2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v16zM8 9h8M8 13h8">
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v16zM8 9h8M8 13h8">
                                 </path>
                             </svg>
                             {{ __('messages.Store Inventory Value') }}
@@ -191,7 +315,8 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">💰 {{ __('messages.Cost Value') }}</h4>
+                                <h4 class="text-sm font-semibold opacity-90">💰 {{ __('messages.Cost Value') }}
+                                </h4>
                                 <span class="text-xl">📦</span>
                             </div>
                             <p class="text-xl lg:text-2xl font-bold">
@@ -257,6 +382,85 @@
                 </div>
             </div>
 
+            <!-- NEW: Capital Section -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 p-4 lg:p-6 rounded-lg shadow-lg text-white">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+                        <h3 class="text-lg lg:text-xl font-bold flex items-center mb-2 lg:mb-0">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                </path>
+                            </svg>
+                            {{ __('messages.Capital') }}
+                        </h3>
+                        <div class="text-sm bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                            {{ __('messages.Outside Investment') }}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Total Capital -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">{{ __('messages.Total Capital') }}</h4>
+                                <span class="text-xl">🏦</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">
+                                ₪{{ number_format($capitalData['total'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.From outside sources') }}</p>
+                        </div>
+
+                        <!-- Products Cost Value -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">{{ __('messages.Products Cost') }}</h4>
+                                <span class="text-xl">🛍️</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold">
+                                ₪{{ number_format($storeValueData['totalCostValue'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Inventory value') }}</p>
+                        </div>
+
+                        <!-- Total Capital + Products -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold opacity-90">
+                                    {{ __('messages.Total Business Capital') }}</h4>
+                                <span class="text-xl">📊</span>
+                            </div>
+                            <p class="text-xl lg:text-2xl font-bold text-yellow-200">
+                                ₪{{ number_format($capitalData['total'] + $storeValueData['totalCostValue'], 0) }}</p>
+                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Capital + Inventory') }}</p>
+                        </div>
+
+                        <!-- Add Capital Form -->
+                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
+                            <h4 class="text-sm font-semibold opacity-90 mb-3">{{ __('messages.Capital') }}</h4>
+                            <p class="text-xl lg:text-2xl font-bold text-white mb-2">
+                                ₪{{ number_format($capitalData['total'], 0) }}
+                            </p>
+                            <button onclick="openCapitalModal()"
+                                class="w-full px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
+                                {{ __('messages.Manage Capital') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Capital Entries Button -->
+                    <div class="mt-4">
+                        <button onclick="openCapitalModal()"
+                            class="text-sm font-semibold opacity-90 mb-3 flex items-center hover:underline">
+                            {{ __('messages.Recent Capital Entries') }}
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Enhanced Growth Stats - Including Purchase Growth -->
             <div class="w-full mb-4 lg:mb-6">
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
@@ -278,9 +482,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 lg:gap-4">
                         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">💰 {{ __('messages.Revenue Growth') }}
+                                <h4 class="text-sm font-semibold text-gray-800">💰
+                                    {{ __('messages.Revenue Growth') }}
                                 </h4>
-                                <span class="text-lg">{{ $growthData['revenue']['growth'] >= 0 ? '📈' : '📉' }}</span>
+                                <span
+                                    class="text-lg">{{ $growthData['revenue']['growth'] >= 0 ? '📈' : '📉' }}</span>
                             </div>
                             <p class="text-lg lg:text-xl font-bold text-gray-900">
                                 ₪{{ number_format($growthData['revenue']['current'], 0) }}</p>
@@ -372,7 +578,8 @@
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">🛒
                                 {{ __('messages.Daily Purchases') }}</h3>
-                            <span class="text-sm text-gray-600">₪{{ number_format($purchaseData['total'], 0) }}</span>
+                            <span
+                                class="text-sm text-gray-600">₪{{ number_format($purchaseData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
                             <canvas id="purchaseChart"></canvas>
@@ -398,14 +605,11 @@
             <div class="w-full mb-4 lg:mb-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div
-                            class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-start justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🤝
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥
                                 {{ __('messages.Customer Payments') }}</h3>
-                            <div class="text-xs text-gray-600 mt-1 sm:mt-0 lg:mt-1">
-                                ↗️ ₪{{ number_format($customerPaymentData['totalReceived'], 0) }} |
-                                ↘️ ₪{{ number_format($customerPaymentData['totalPaid'], 0) }}
-                            </div>
+                            <span
+                                class="text-sm text-gray-600">₪{{ number_format($customerPaymentData['total'], 0) }}</span>
                         </div>
                         <div class="h-48 lg:h-56">
                             <canvas id="customerPaymentChart"></canvas>
@@ -414,7 +618,7 @@
 
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👷
                                 {{ __('messages.Employee Payments') }}</h3>
                             <span
                                 class="text-sm text-gray-600">₪{{ number_format($employeePaymentData['total'], 0) }}</span>
@@ -426,259 +630,193 @@
                 </div>
             </div>
 
-            <!-- Enhanced Balance Overview - Including Supplier Balances -->
+            <!-- Damaged Products & Customer Balance Charts -->
             <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-                    <!-- Enhanced Quick Stats -->
-                    <div
-                        class="lg:col-span-1 xl:col-span-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 lg:p-5 rounded-lg shadow-md text-white">
-                        <h3 class="text-sm lg:text-md font-semibold mb-4">📊 {{ __('messages.Quick Stats') }}</h3>
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💹 {{ __('messages.Profit Margin') }}</span>
-                                <span class="font-bold text-white">
-                                    {{ $summaryData['totalRevenue'] > 0 ? number_format(($summaryData['totalProfit'] / $summaryData['totalRevenue']) * 100, 1) : 0 }}%
-                                </span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💚 {{ __('messages.Customer Credit') }}</span>
-                                <span
-                                    class="font-bold text-green-400">₪{{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">💔 {{ __('messages.Our Debt') }}</span>
-                                <span
-                                    class="font-bold text-red-400">₪{{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
-                            </div>
-                            <!-- NEW: Supplier debt stats -->
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">🏢 {{ __('messages.Supplier Debt') }}</span>
-                                <span
-                                    class="font-bold text-orange-400">₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-300">⚠️ {{ __('messages.Damage Loss') }}</span>
-                                <span
-                                    class="font-bold text-orange-400">₪{{ number_format($damagedData['total'], 0) }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Damaged Products -->
-                    <div
-                        class="lg:col-span-1 xl:col-span-1 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-3">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                    <!-- NEW: Damaged Products Chart -->
+                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm lg:text-md font-semibold text-gray-800">⚠️
-                                {{ __('messages.Damaged Items') }}</h3>
-                            <span class="text-lg">📦</span>
+                                {{ __('messages.Damaged Products') }}</h3>
+                            <span class="text-sm text-gray-600">₪{{ number_format($damagedData['total'], 0) }}</span>
                         </div>
-                        <div class="mb-4 grid grid-cols-2 gap-4">
-                            <div class="text-center">
-                                <span class="block text-sm text-gray-600">{{ __('messages.Items:') }}</span>
-                                <span
-                                    class="block font-semibold text-gray-900 text-lg">{{ $damagedData['count'] }}</span>
-                            </div>
-                            <div class="text-center">
-                                <span class="block text-sm text-gray-600">{{ __('messages.Value:') }}</span>
-                                <span
-                                    class="block font-semibold text-red-600 text-lg">₪{{ number_format($damagedData['total'], 0) }}</span>
-                            </div>
-                        </div>
-                        <div class="h-32 lg:h-40">
+                        <div class="h-48 lg:h-56">
                             <canvas id="damagedChart"></canvas>
                         </div>
                     </div>
 
-                    <!-- NEW: Supplier Balance Summary -->
-                    <div
-                        class="lg:col-span-2 xl:col-span-2 bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢
-                                {{ __('messages.Supplier Balance Overview') }}</h3>
-                            <div class="flex gap-2">
-                                <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
-                                    {{ __('messages.We Owe:') }}
-                                    ₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}
-                                </span>
-                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
-                                    {{ __('messages.They Owe:') }}
-                                    ₪{{ number_format($supplierBalanceData['totalOwed'], 0) }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="h-40 lg:h-48">
-                                <h4 class="text-sm font-medium text-gray-600 mb-2">
-                                    {{ __('messages.We Owe Suppliers') }}</h4>
-                                <canvas id="supplierOwingChart"></canvas>
-                            </div>
-                            <div class="h-40 lg:h-48">
-                                <h4 class="text-sm font-medium text-gray-600 mb-2">
-                                    {{ __('messages.Suppliers Owe Us') }}</h4>
-                                <canvas id="supplierOwedChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Customer Balance Row - Responsive -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💚
-                                {{ __('messages.Customers Owing Us') }}</h3>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥
+                                {{ __('messages.Customer Balance') }}</h3>
+                            <span
+                                class="text-sm {{ $customerBalanceData['totalOwing'] > $customerBalanceData['totalOwed'] ? 'text-red-600' : 'text-green-600' }}">
+                                {{ __('messages.Customers owe you:') }}
                                 ₪{{ number_format($customerBalanceData['totalOwing'], 0) }}
                             </span>
                         </div>
-                        <div class="h-56 lg:h-64">
-                            <canvas id="customerOwingChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💔
-                                {{ __('messages.Customers We Owe') }}</h3>
-                            <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
-                                ₪{{ number_format($customerBalanceData['totalOwed'], 0) }}
-                            </span>
-                        </div>
-                        <div class="h-56 lg:h-64">
-                            <canvas id="customerOwedChart"></canvas>
+                        <div class="h-48 lg:h-56">
+                            <canvas id="customerBalanceChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Enhanced Tables Section -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
-                    <!-- Top Products Table -->
-                    <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                        <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏆
-                                    {{ __('messages.Top Performing Products') }}</h3>
-                                <span class="text-sm text-gray-600">{{ __('messages.Performance Ranking') }}</span>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto max-h-80">
-                            <table class="min-w-full">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Rank') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Product') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Qty Sold') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+            <!-- Top Products Section -->
+            @if (isset($topProducts) && count($topProducts) > 0)
+                <div class="w-full mb-4 lg:mb-6">
+                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏆
+                            {{ __('messages.Top Products') }}
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">#</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
+                                            {{ __('messages.Product') }}
+                                        </th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
+                                            {{ __('messages.Quantity Sold') }}</th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
+                                            {{ __('messages.Revenue') }}</th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
                                             {{ __('messages.Profit') }}</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-100">
+                                <tbody>
                                     @foreach ($topProducts as $index => $product)
-                                        <tr class="hover:bg-gray-50 transition duration-150">
-                                            <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                                @if ($index == 0)
-                                                    <span class="text-lg">🥇</span>
-                                                @elseif($index == 1)
-                                                    <span class="text-lg">🥈</span>
-                                                @elseif($index == 2)
-                                                    <span class="text-lg">🥉</span>
-                                                @else
-                                                    <span
-                                                        class="text-sm text-gray-600 font-medium">{{ $index + 1 }}</span>
-                                                @endif
-                                            </td>
-                                            <td class="px-3 lg:px-4 py-3">
-                                                <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
-                                                    {{ $product->name }}</div>
-                                            </td>
-                                            <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                                <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ number_format($product->total_quantity) }}
-                                                </span>
-                                            </td>
-                                            <td
-                                                class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">
-                                                ₪{{ number_format($product->total_profit, 0) }}
-                                            </td>
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                            <td class="px-3 py-2 text-gray-600">{{ $index + 1 }}</td>
+                                            <td class="px-3 py-2 font-medium text-gray-800">{{ $product->name }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600">
+                                                {{ number_format($product->total_quantity) }}</td>
+                                            <td class="px-3 py-2 text-right font-medium text-green-600">
+                                                ₪{{ number_format($product->total_revenue, 0) }}</td>
+                                            <td class="px-3 py-2 text-right font-medium text-blue-600">
+                                                ₪{{ number_format($product->total_profit, 0) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                </div>
+            @endif
 
-                    <!-- NEW: Top Suppliers Table -->
-                    <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                        <div class="px-4 lg:px-5 py-3 border-b border-gray-200 bg-gray-50">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢
-                                    {{ __('messages.Top Suppliers') }}</h3>
-                                <span class="text-sm text-gray-600">{{ __('messages.Purchase Volume') }}</span>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto max-h-80">
-                            <table class="min-w-full">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Rank') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+            <!-- NEW: Top Suppliers Section -->
+            @if (isset($topSuppliers) && count($topSuppliers) > 0)
+                <div class="w-full mb-4 lg:mb-6">
+                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏢
+                            {{ __('messages.Top Suppliers') }}
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">#</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
                                             {{ __('messages.Supplier') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Bills') }}</th>
-                                        <th
-                                            class="px-3 lg:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('messages.Total') }}</th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
+                                            {{ __('messages.Bills Count') }}</th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
+                                            {{ __('messages.Total Purchases') }}</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-100">
+                                <tbody>
                                     @foreach ($topSuppliers as $index => $supplier)
-                                        <tr class="hover:bg-gray-50 transition duration-150">
-                                            <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                                @if ($index == 0)
-                                                    <span class="text-lg">🥇</span>
-                                                @elseif($index == 1)
-                                                    <span class="text-lg">🥈</span>
-                                                @elseif($index == 2)
-                                                    <span class="text-lg">🥉</span>
-                                                @else
-                                                    <span
-                                                        class="text-sm text-gray-600 font-medium">{{ $index + 1 }}</span>
-                                                @endif
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                            <td class="px-3 py-2 text-gray-600">{{ $index + 1 }}</td>
+                                            <td class="px-3 py-2 font-medium text-gray-800">{{ $supplier->name }}
                                             </td>
-                                            <td class="px-3 lg:px-4 py-3">
-                                                <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
-                                                    {{ $supplier->name }}</div>
-                                            </td>
-                                            <td class="px-3 lg:px-4 py-3 whitespace-nowrap">
-                                                <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                    {{ number_format($supplier->total_bills) }}
-                                                </span>
-                                            </td>
-                                            <td
-                                                class="px-3 lg:px-4 py-3 whitespace-nowrap text-sm text-orange-600 font-semibold">
-                                                ₪{{ number_format($supplier->total_purchases, 0) }}
-                                            </td>
+                                            <td class="px-3 py-2 text-right text-gray-600">
+                                                {{ number_format($supplier->total_bills) }}</td>
+                                            <td class="px-3 py-2 text-right font-medium text-orange-600">
+                                                ₪{{ number_format($supplier->total_purchases, 0) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Customer and Supplier Balance Sections -->
+            <div class="w-full mb-4 lg:mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                    <!-- NEW: Supplier Balance Section -->
+                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏢
+                            {{ __('messages.Supplier Balance') }}
+                        </h3>
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-red-600 font-medium">{{ __('messages.We owe suppliers:') }}</span>
+                                <span
+                                    class="font-bold text-red-600">₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span
+                                    class="text-green-600 font-medium">{{ __('messages.Suppliers owe us:') }}</span>
+                                <span
+                                    class="font-bold text-green-600">₪{{ number_format($supplierBalanceData['totalOwed'], 0) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                    {{ __('messages.Top Suppliers Owed') }}</h4>
+                                <div class="h-40">
+                                    <canvas id="supplierOwedChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                    {{ __('messages.Top Suppliers Owe Us') }}</h4>
+                                <div class="h-40">
+                                    <canvas id="supplierOweUsChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">👥
+                            {{ __('messages.Customer Balance') }}
+                        </h3>
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-red-600 font-medium">{{ __('messages.Customers owe us:') }}</span>
+                                <span
+                                    class="font-bold text-red-600">₪{{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span
+                                    class="text-green-600 font-medium">{{ __('messages.We owe customers:') }}</span>
+                                <span
+                                    class="font-bold text-green-600">₪{{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                    {{ __('messages.Top Customers Owed') }}</h4>
+                                <div class="h-40">
+                                    <canvas id="customerOwedChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                    {{ __('messages.Top Customers Owe Us') }}</h4>
+                                <div class="h-40">
+                                    <canvas id="customerOweUsChart"></canvas>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -687,947 +825,696 @@
     </div>
 
     @push('scripts')
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
-            window.addEventListener('load', function() {
-                console.log('=== CREATING ALL CHARTS (INCLUDING SUPPLIER CHARTS) ===');
+            // Common chart options
+            Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+            Chart.defaults.color = '#666';
 
-                // Check if Chart.js is loaded
-                if (typeof Chart === 'undefined') {
-                    console.error('Chart.js failed to load!');
-                    return;
-                }
-
-                console.log('Chart.js loaded successfully, version:', Chart.version);
-
-                // Get all data from PHP
-                const revenueData = {
-                    labels: {!! json_encode($revenueData['labels'] ?? []) !!},
-                    data: {!! json_encode($revenueData['data'] ?? []) !!}
-                };
-
-                const profitData = {
-                    labels: {!! json_encode($profitData['labels'] ?? []) !!},
-                    data: {!! json_encode($profitData['data'] ?? []) !!}
-                };
-
-                const expenseData = {
-                    labels: {!! json_encode($expenseData['categories']['labels'] ?? []) !!},
-                    data: {!! json_encode($expenseData['categories']['data'] ?? []) !!}
-                };
-
-                const customerPaymentData = {
-                    labels: {!! json_encode($customerPaymentData['labels'] ?? []) !!},
-                    received: {!! json_encode($customerPaymentData['received'] ?? []) !!},
-                    paid: {!! json_encode($customerPaymentData['paid'] ?? []) !!}
-                };
-
-                const employeePaymentData = {
-                    labels: {!! json_encode($employeePaymentData['byEmployee']['labels'] ?? []) !!},
-                    data: {!! json_encode($employeePaymentData['byEmployee']['data'] ?? []) !!}
-                };
-
-                const damagedData = {
-                    labels: {!! json_encode($damagedData['products']['labels'] ?? []) !!},
-                    data: {!! json_encode($damagedData['products']['data'] ?? []) !!}
-                };
-
-                const customerOwingData = {
-                    labels: {!! json_encode($customerBalanceData['topOwing']['labels'] ?? []) !!},
-                    data: {!! json_encode($customerBalanceData['topOwing']['data'] ?? []) !!}
-                };
-
-                const customerOwedData = {
-                    labels: {!! json_encode($customerBalanceData['topOwed']['labels'] ?? []) !!},
-                    data: {!! json_encode($customerBalanceData['topOwed']['data'] ?? []) !!}
-                };
-
-                // NEW: Supplier data
-                const purchaseData = {
-                    labels: {!! json_encode($purchaseData['labels'] ?? []) !!},
-                    data: {!! json_encode($purchaseData['data'] ?? []) !!}
-                };
-
-                const supplierPaymentData = {
-                    labels: {!! json_encode($supplierPaymentData['labels'] ?? []) !!},
-                    data: {!! json_encode($supplierPaymentData['data'] ?? []) !!}
-                };
-
-                const supplierOwingData = {
-                    labels: {!! json_encode($supplierBalanceData['topOwing']['labels'] ?? []) !!},
-                    data: {!! json_encode($supplierBalanceData['topOwing']['data'] ?? []) !!}
-                };
-
-                const supplierOwedData = {
-                    labels: {!! json_encode($supplierBalanceData['topOwed']['labels'] ?? []) !!},
-                    data: {!! json_encode($supplierBalanceData['topOwed']['data'] ?? []) !!}
-                };
-
-                // Helper function to destroy existing chart
-                function destroyExistingChart(canvasId) {
-                    const canvas = document.getElementById(canvasId);
-                    if (canvas) {
-                        const existingChart = Chart.getChart(canvas);
-                        if (existingChart) {
-                            existingChart.destroy();
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($revenueData['labels']) !!},
+                    datasets: [{
+                        label: 'Revenue',
+                        data: {!! json_encode($revenueData['data']) !!},
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
                         }
                     }
-                    return canvas;
                 }
+            });
 
-                // 1. REVENUE CHART (Line Chart)
-                const revenueCanvas = destroyExistingChart('revenueChart');
-                if (revenueCanvas) {
-                    new Chart(revenueCanvas, {
-                        type: 'line',
-                        data: {
-                            labels: revenueData.labels.length > 0 ? revenueData.labels : ['No Data'],
-                            datasets: [{
-                                label: '{{ __('messages.Revenue') }}',
-                                data: revenueData.data.length > 0 ? revenueData.data : [0],
-                                borderColor: '#10b981',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                borderWidth: 3,
-                                fill: true,
-                                tension: 0.4,
-                                pointBackgroundColor: '#10b981',
-                                pointBorderColor: '#ffffff',
-                                pointBorderWidth: 2,
-                                pointRadius: 5
-                            }]
+            // Profit Chart
+            const profitCtx = document.getElementById('profitChart').getContext('2d');
+            new Chart(profitCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($profitData['labels']) !!},
+                    datasets: [{
+                        label: 'Profit',
+                        data: {!! json_encode($profitData['data']) !!},
+                        backgroundColor: '#3B82F6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        usePointStyle: true,
-                                        padding: 15,
-                                        color: '#374151',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    titleColor: '#ffffff',
-                                    bodyColor: '#ffffff',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Revenue: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Revenue chart created');
+                    }
                 }
+            });
 
-                // 2. PROFIT CHART (Line Chart)
-                const profitCanvas = destroyExistingChart('profitChart');
-                if (profitCanvas) {
-                    new Chart(profitCanvas, {
-                        type: 'line',
-                        data: {
-                            labels: profitData.labels.length > 0 ? profitData.labels : [
-                                '{{ __('messages.No Data') }}'
-                            ],
-                            datasets: [{
-                                label: '{{ __('messages.Profit') }}',
-                                data: profitData.data.length > 0 ? profitData.data : [0],
-                                borderColor: '#3b82f6',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                borderWidth: 2,
-                                fill: true,
-                                tension: 0.4,
-                                pointBackgroundColor: '#3b82f6',
-                                pointBorderColor: '#ffffff',
-                                pointBorderWidth: 2,
-                                pointRadius: 4
-                            }]
+            // Expense Chart
+            const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+            new Chart(expenseCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Expenses', 'Remaining'],
+                    datasets: [{
+                        data: [{{ $expenseData['total'] }}, 100],
+                        backgroundColor: ['#EF4444', '#E5E7EB'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Purchase Chart
+            const purchaseCtx = document.getElementById('purchaseChart').getContext('2d');
+            new Chart(purchaseCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($purchaseData['labels']) !!},
+                    datasets: [{
+                        label: 'Purchases',
+                        data: {!! json_encode($purchaseData['data']) !!},
+                        backgroundColor: '#F97316',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        usePointStyle: true,
-                                        padding: 15,
-                                        color: '#374151',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Profit: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Profit chart created');
+                    }
                 }
+            });
 
-                // 3. EXPENSE CHART (Doughnut Chart)
-                const expenseCanvas = destroyExistingChart('expenseChart');
-                if (expenseCanvas && expenseData.labels.length > 0) {
-                    new Chart(expenseCanvas, {
-                        type: 'doughnut',
-                        data: {
-                            labels: expenseData.labels,
-                            datasets: [{
-                                data: expenseData.data,
-                                backgroundColor: [
-                                    '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
-                                    '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#84cc16'
-                                ],
-                                borderWidth: 2,
-                                borderColor: '#ffffff'
-                            }]
+            // Supplier Payment Chart
+            const supplierPaymentCtx = document.getElementById('supplierPaymentChart').getContext('2d');
+            new Chart(supplierPaymentCtx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($supplierPaymentData['labels']) !!},
+                    datasets: [{
+                        label: 'Supplier Payments',
+                        data: {!! json_encode($supplierPaymentData['data']) !!},
+                        borderColor: '#6366F1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutout: '60%',
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        padding: 12,
-                                        usePointStyle: true,
-                                        color: '#374151',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return context.label + ': ₪' + context.parsed.toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Expense chart created');
+                    }
                 }
+            });
 
-                // NEW: 4. PURCHASE CHART (Line Chart)
-                const purchaseCanvas = destroyExistingChart('purchaseChart');
-                if (purchaseCanvas) {
-                    new Chart(purchaseCanvas, {
-                        type: 'line',
-                        data: {
-                            labels: purchaseData.labels.length > 0 ? purchaseData.labels : ['No Data'],
-                            datasets: [{
-                                label: '{{ __('messages.Purchases') }}',
-                                data: purchaseData.data.length > 0 ? purchaseData.data : [0],
-                                borderColor: '#f97316',
-                                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                                borderWidth: 2,
-                                fill: true,
-                                tension: 0.4,
-                                pointBackgroundColor: '#f97316',
-                                pointBorderColor: '#ffffff',
-                                pointBorderWidth: 2,
-                                pointRadius: 4
-                            }]
+            // Customer Payment Chart
+            const customerPaymentCtx = document.getElementById('customerPaymentChart').getContext('2d');
+            new Chart(customerPaymentCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($customerPaymentData['labels']) !!},
+                    datasets: [{
+                        label: 'Received',
+                        data: {!! json_encode($customerPaymentData['received']) !!},
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    }, {
+                        label: 'Paid',
+                        data: {!! json_encode($customerPaymentData['paid']) !!},
+                        backgroundColor: '#EF4444',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        usePointStyle: true,
-                                        padding: 15,
-                                        color: '#374151',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Purchases: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Purchase chart created');
+                    }
                 }
+            });
 
-                // NEW: 5. SUPPLIER PAYMENT CHART (Bar Chart)
-                const supplierPaymentCanvas = destroyExistingChart('supplierPaymentChart');
-                if (supplierPaymentCanvas) {
-                    new Chart(supplierPaymentCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: supplierPaymentData.labels.length > 0 ? supplierPaymentData.labels : [
-                                'No Data'
-                            ],
-                            datasets: [{
-                                label: '{{ __('messages.Supplier Payments') }}',
-                                data: supplierPaymentData.data.length > 0 ? supplierPaymentData.data : [
-                                    0
-                                ],
-                                backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                                borderColor: '#6366f1',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Employee Payment Chart
+            const employeePaymentCtx = document.getElementById('employeePaymentChart').getContext('2d');
+            new Chart(employeePaymentCtx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($employeePaymentData['byEmployee']['labels']) !!},
+                    datasets: [{
+                        label: 'Employee Payments',
+                        data: {!! json_encode($employeePaymentData['byEmployee']['data']) !!},
+                        borderColor: '#EC4899',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Payment: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Supplier Payment chart created');
+                    }
                 }
+            });
 
-                // 6. CUSTOMER PAYMENT CHART (Bar Chart)
-                const customerPaymentCanvas = destroyExistingChart('customerPaymentChart');
-                if (customerPaymentCanvas) {
-                    new Chart(customerPaymentCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: customerPaymentData.labels.length > 0 ? customerPaymentData.labels : [
-                                '{{ __('messages.No Data') }}'
-                            ],
-                            datasets: [{
-                                label: '{{ __('messages.Received') }}',
-                                data: customerPaymentData.received.length > 0 ? customerPaymentData
-                                    .received : [0],
-                                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                                borderColor: '#22c55e',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }, {
-                                label: '{{ __('messages.Paid') }}',
-                                data: customerPaymentData.paid.length > 0 ? customerPaymentData.paid : [
-                                    0
-                                ],
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderColor: '#ef4444',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Damaged Chart
+            const damagedCtx = document.getElementById('damagedChart').getContext('2d');
+            new Chart(damagedCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Damaged', 'Good'],
+                    datasets: [{
+                        data: [{{ $damagedData['total'] }}, 100],
+                        backgroundColor: ['#EF4444', '#10B981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Customer Balance Chart
+            const customerBalanceCtx = document.getElementById('customerBalanceChart').getContext('2d');
+            new Chart(customerBalanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Owed to Us', 'We Owe'],
+                    datasets: [{
+                        label: 'Balance',
+                        data: [{{ $customerBalanceData['totalOwing'] }},
+                            {{ $customerBalanceData['totalOwed'] }}
+                        ],
+                        backgroundColor: ['#EF4444', '#10B981'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        usePointStyle: true,
-                                        padding: 15,
-                                        color: '#374151',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return context.dataset.label + ': ₪' + context.parsed.y
-                                                .toLocaleString();
-                                        }
-                                    }
-                                }
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Customer Payment chart created');
+                    }
                 }
+            });
 
-                // 7. EMPLOYEE PAYMENT CHART (Bar Chart)
-                const employeePaymentCanvas = destroyExistingChart('employeePaymentChart');
-                if (employeePaymentCanvas) {
-                    new Chart(employeePaymentCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: employeePaymentData.labels.length > 0 ? employeePaymentData.labels : [
-                                'No Data'
-                            ],
-                            datasets: [{
-                                label: 'Payment Amount',
-                                data: employeePaymentData.data.length > 0 ? employeePaymentData.data : [
-                                    0
-                                ],
-                                backgroundColor: [
-                                    'rgba(99, 102, 241, 0.8)', 'rgba(236, 72, 153, 0.8)',
-                                    'rgba(34, 197, 94, 0.8)', 'rgba(251, 191, 36, 0.8)',
-                                    'rgba(239, 68, 68, 0.8)', 'rgba(6, 182, 212, 0.8)'
-                                ],
-                                borderColor: [
-                                    '#6366f1', '#ec4899', '#22c55e', '#fbbf24', '#ef4444', '#06b6d4'
-                                ],
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Supplier Owed Chart
+            const supplierOwedCtx = document.getElementById('supplierOwedChart').getContext('2d');
+            new Chart(supplierOwedCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($supplierBalanceData['topOwing']['labels']) !!},
+                    datasets: [{
+                        label: 'Owed',
+                        data: {!! json_encode($supplierBalanceData['topOwing']['data']) !!},
+                        backgroundColor: '#EF4444',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Payment: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        y: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Employee Payment chart created');
+                    }
                 }
+            });
 
-                // 8. DAMAGED PRODUCTS CHART (Horizontal Bar Chart)
-                const damagedCanvas = destroyExistingChart('damagedChart');
-                if (damagedCanvas && damagedData.labels.length > 0) {
-                    new Chart(damagedCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: damagedData.labels,
-                            datasets: [{
-                                label: 'Damage Value',
-                                data: damagedData.data,
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderColor: '#ef4444',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Supplier Owe Us Chart
+            const supplierOweUsCtx = document.getElementById('supplierOweUsChart').getContext('2d');
+            new Chart(supplierOweUsCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($supplierBalanceData['topOwed']['labels']) !!},
+                    datasets: [{
+                        label: 'Owe Us',
+                        data: {!! json_encode($supplierBalanceData['topOwed']['data']) !!},
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 9
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                y: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 9
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Damage: ₪' + context.parsed.x.toLocaleString();
-                                        }
-                                    }
-                                }
+                        y: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Damaged Products chart created');
+                    }
                 }
+            });
 
-                // NEW: 9. SUPPLIER OWING CHART (Bar Chart)
-                const supplierOwingCanvas = destroyExistingChart('supplierOwingChart');
-                if (supplierOwingCanvas) {
-                    new Chart(supplierOwingCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: supplierOwingData.labels.length > 0 ? supplierOwingData.labels : [
-                                'No Data'],
-                            datasets: [{
-                                label: 'Amount We Owe',
-                                data: supplierOwingData.data.length > 0 ? supplierOwingData.data : [0],
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderColor: '#ef4444',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Customer Owed Chart
+            const customerOwedCtx = document.getElementById('customerOwedChart').getContext('2d');
+            new Chart(customerOwedCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($customerBalanceData['topOwing']['labels']) !!},
+                    datasets: [{
+                        label: 'Owed',
+                        data: {!! json_encode($customerBalanceData['topOwing']['data']) !!},
+                        backgroundColor: '#EF4444',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'We owe: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        y: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Supplier Owing chart created');
+                    }
                 }
+            });
 
-                // NEW: 10. SUPPLIER OWED CHART (Bar Chart)
-                const supplierOwedCanvas = destroyExistingChart('supplierOwedChart');
-                if (supplierOwedCanvas) {
-                    new Chart(supplierOwedCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: supplierOwedData.labels.length > 0 ? supplierOwedData.labels : ['No Data'],
-                            datasets: [{
-                                label: 'Amount They Owe',
-                                data: supplierOwedData.data.length > 0 ? supplierOwedData.data : [0],
-                                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                                borderColor: '#22c55e',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
+            // Customer Owe Us Chart
+            const customerOweUsCtx = document.getElementById('customerOweUsChart').getContext('2d');
+            new Chart(customerOweUsCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($customerBalanceData['topOwed']['labels']) !!},
+                    datasets: [{
+                        label: 'Owe Us',
+                        data: {!! json_encode($customerBalanceData['topOwed']['data']) !!},
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'They owe: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
+                        y: {
+                            grid: {
+                                display: false
                             }
                         }
-                    });
-                    console.log('✅ Supplier Owed chart created');
+                    }
                 }
-
-                // 11. CUSTOMER OWING CHART (Bar Chart)
-                const customerOwingCanvas = destroyExistingChart('customerOwingChart');
-                if (customerOwingCanvas) {
-                    new Chart(customerOwingCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: customerOwingData.labels.length > 0 ? customerOwingData.labels : [
-                                'No Data'],
-                            datasets: [{
-                                label: 'Amount Owing',
-                                data: customerOwingData.data.length > 0 ? customerOwingData.data : [0],
-                                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                                borderColor: '#22c55e',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'Owes: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    console.log('✅ Customer Owing chart created');
-                }
-
-                // 12. CUSTOMER OWED CHART (Bar Chart)
-                const customerOwedCanvas = destroyExistingChart('customerOwedChart');
-                if (customerOwedCanvas) {
-                    new Chart(customerOwedCanvas, {
-                        type: 'bar',
-                        data: {
-                            labels: customerOwedData.labels.length > 0 ? customerOwedData.labels : ['No Data'],
-                            datasets: [{
-                                label: 'Amount We Owe',
-                                data: customerOwedData.data.length > 0 ? customerOwedData.data : [0],
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderColor: '#ef4444',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(156, 163, 175, 0.2)'
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        },
-                                        callback: function(value) {
-                                            return '₪' + value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 11
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: function(context) {
-                                            return 'We owe: ₪' + context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    console.log('✅ Customer Owed chart created');
-                }
-
-                console.log('🎉 ALL CHARTS CREATED SUCCESSFULLY (INCLUDING SUPPLIER CHARTS)!');
             });
         </script>
+
+        <!-- Capital Entries Modal -->
+        <div id="capitalModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden"
+            onclick="closeCapitalModal(event)">
+            <div class="flex items-center justify-center min-h-screen p-4" onclick="event.stopPropagation()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">{{ __('messages.Capital') }}</h3>
+                        <button onclick="closeCapitalModal()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Add Capital Form -->
+                    <div class="p-4 bg-gray-50 border-b">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">{{ __('messages.Add Capital') }}</h4>
+                        <form id="capitalForm" class="space-y-3">
+                            @csrf
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="number" name="amount" placeholder="{{ __('messages.Amount') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    required min="0.01" step="0.01">
+                                <input type="date" name="entry_date" value="{{ date('Y-m-d') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <input type="text" name="note" placeholder="{{ __('messages.Note') }}"
+                                class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <button type="submit"
+                                class="w-full px-3 py-2 bg-emerald-600 text-white font-semibold rounded text-sm hover:bg-emerald-700 transition duration-200">
+                                {{ __('messages.Add') }}
+                            </button>
+                        </form>
+                        <div id="capitalMessage" class="mt-2 text-sm text-center hidden"></div>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div class="p-4 border-b flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">{{ __('messages.Date') }}:</label>
+                        <input type="date" id="capitalDateFilter"
+                            class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            onchange="filterCapitalEntries()">
+                        <button onclick="clearCapitalFilter()"
+                            class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">
+                            {{ __('messages.Clear') }}
+                        </button>
+                    </div>
+
+                    <!-- Capital Entries List -->
+                    <div class="p-4 overflow-y-auto max-h-[50vh]">
+                        @if ($capitalData['entries']->count() > 0)
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
+                                            {{ __('messages.Date') }}</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
+                                            {{ __('messages.Amount') }}</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
+                                            {{ __('messages.Note') }}</th>
+                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
+                                            {{ __('messages.Actions') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200" id="capitalEntriesBody">
+                                    @foreach ($capitalData['entries'] as $entry)
+                                        <tr class="hover:bg-gray-50 capital-entry" data-date="{{ $entry->entry_date }}">
+                                            <td class="px-3 py-2 whitespace-nowrap">
+                                                {{ \Carbon\Carbon::parse($entry->entry_date)->format('M d, Y') }}
+                                            </td>
+                                            <td class="px-3 py-2 font-semibold text-green-600">
+                                                ₪{{ number_format($entry->amount, 2) }}</td>
+                                            <td class="px-3 py-2 text-gray-600 truncate max-w-xs">
+                                                {{ $entry->note ?? '-' }}</td>
+                                            <td class="px-3 py-2 text-right">
+                                                <button onclick="deleteCapital({{ $entry->id }})"
+                                                    class="text-red-500 hover:text-red-700 text-xs">
+                                                    {{ __('messages.Delete') }}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @else
+                            <p class="text-center text-gray-500 py-8">{{ __('messages.No capital entries found') }}</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Capital Modal Functions
+            function openCapitalModal() {
+                document.getElementById('capitalModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeCapitalModal(event) {
+                if (!event || event.target === document.getElementById('capitalModal')) {
+                    document.getElementById('capitalModal').classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            }
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeCapitalModal();
+                }
+            });
+
+            // Filter Capital Entries by Date
+            function filterCapitalEntries() {
+                const dateFilter = document.getElementById('capitalDateFilter').value;
+                const entries = document.querySelectorAll('.capital-entry');
+
+                entries.forEach(entry => {
+                    const entryDate = entry.getAttribute('data-date');
+                    if (!dateFilter || entryDate === dateFilter) {
+                        entry.style.display = '';
+                    } else {
+                        entry.style.display = 'none';
+                    }
+                });
+            }
+
+            // Clear Capital Filter
+            function clearCapitalFilter() {
+                document.getElementById('capitalDateFilter').value = '';
+                filterCapitalEntries();
+            }
+
+            // AJAX Capital Form Submission
+            document.getElementById('capitalForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const form = this;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const messageDiv = document.getElementById('capitalMessage');
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = '{{ __('messages.Adding...') }}';
+                messageDiv.classList.add('hidden');
+
+                const formData = new FormData(form);
+
+                fetch('{{ route('capital.store') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            messageDiv.textContent = data.message;
+                            messageDiv.className = 'mt-2 text-sm text-center text-green-600';
+                            messageDiv.classList.remove('hidden');
+                            form.reset();
+                            form.querySelector('input[name="entry_date"]').value = '{{ date('Y-m-d') }}';
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            messageDiv.textContent = data.message || '{{ __('messages.Error adding capital') }}';
+                            messageDiv.className = 'mt-2 text-sm text-center text-red-600';
+                            messageDiv.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        messageDiv.textContent = '{{ __('messages.An error occurred') }}';
+                        messageDiv.className = 'mt-2 text-sm text-center text-red-600';
+                        messageDiv.classList.remove('hidden');
+                    })
+                    .finally(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '{{ __('messages.Add') }}';
+                    });
+            });
+
+            // Delete Capital Entry via AJAX
+            function deleteCapital(id) {
+                if (confirm('{{ __('messages.Are you sure?') }}')) {
+                    fetch('/dashboard/capital/' + id, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                location.reload();
+                            }
+                        });
+                }
+            }
+        </script>
+
+
     @endpush
 </x-app-layout>

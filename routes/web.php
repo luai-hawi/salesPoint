@@ -21,6 +21,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseBillController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\IslamicSalesController;
+use App\Http\Controllers\CapitalController;
 
 
 
@@ -279,6 +280,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         return response()->json($sales);
     });
     Route::get('/dashboard/export-data', [FinancialDashboardController::class, 'exportData'])->name('dashboard.export-data');
+
+    // Capital Entries
+    Route::post('/dashboard/capital', [CapitalController::class, 'store'])->name('capital.store');
+    Route::delete('/dashboard/capital/{id}', [CapitalController::class, 'destroy'])->name('capital.destroy');
 });
 
 

@@ -18,6 +18,7 @@ use App\Models\Supplier;
 use App\Models\PurchaseBill;
 use App\Models\SupplierPayment;
 use App\Models\ProductBarcode;
+use App\Models\CapitalEntry;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,13 @@ class FinancialDashboardController extends Controller
         // Growth Data - Updated to include purchases
         $growthData = $this->getGrowthData($startDate, $endDate, $shopOwnerId);
 
+        // Capital Data - NEW
+        $capitalData = $this->getCapitalData($shopOwnerId);
+
+        // Daily Cash Flow Data - NEW
+        $cashFlowDate = $request->get('cash_flow_date', Carbon::now()->format('Y-m-d'));
+        $dailyCashFlowData = $this->getDailyCashFlowData($shopOwnerId, $cashFlowDate);
+
         return view('dashboard.financial', compact(
             'summaryData',
             'storeValueData',
@@ -98,6 +106,9 @@ class FinancialDashboardController extends Controller
             'topProducts',
             'topSuppliers',
             'growthData',
+            'capitalData',
+            'dailyCashFlowData',
+            'cashFlowDate',
             'startDate',
             'endDate'
         ));
@@ -297,6 +308,101 @@ class FinancialDashboardController extends Controller
             ->get();
     }
 
+    // NEW: Capital Data
+    private function getCapitalData($userId)
+    {
+        $capitalEntries = CapitalEntry::where('user_id', $userId)
+            ->orderBy('entry_date', 'desc')
+            ->get();
+
+        $totalCapital = $capitalEntries->sum('amount');
+
+        return [
+            'entries' => $capitalEntries,
+            'total' => $totalCapital
+        ];
+    }
+
+    // NEW: Daily Cash Flow Data - Get cash in and out for a specific date
+    private function getDailyCashFlowData($userId, $date)
+    {
+        // Cash In:
+        // 1. Total sales from bills (completed sales)
+        $salesCashIn = Bill::where('user_id', $userId)
+            ->whereDate('created_at', $date)
+            ->where('is_damaged', false)
+            ->sum('total_price');
+
+        // 2. Customer payments received (positive amounts)
+        $customerPaymentsIn = CustomerPayment::where('user_id', $userId)
+            ->whereDate('created_at', $date)
+            ->where('amount', '>', 0)
+            ->sum('amount');
+
+        // 3. Capital entries (money coming in from outside)
+        $capitalIn = CapitalEntry::where('user_id', $userId)
+            ->whereDate('entry_date', $date)
+            ->sum('amount');
+
+        // Total Cash In
+        $totalCashIn = $salesCashIn + $customerPaymentsIn + $capitalIn;
+
+        // Cash Out:
+        // 1. Supplier payments (actual payments to suppliers)
+        $supplierPaymentsOut = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+            ->whereDate('payment_date', $date)
+            ->where('amount', '>', 0)
+            ->sum('amount');
+
+        // 2. Employee payments (salaries, etc.)
+        $employeePaymentsOut = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
+            $q->where('shop_owner_id', $userId);
+        })
+            ->whereDate('payment_date', $date)
+            ->sum('amount');
+
+        // 3. Expenses (operational expenses)
+        $expensesOut = Expense::where('user_id', $userId)
+            ->whereDate('expense_date', $date)
+            ->sum('amount');
+
+        // 4. Minus payments (new customer debt - negative amounts)
+        // This represents sales on credit (customer owes us money)
+        $minusPaymentsOut = abs(CustomerPayment::where('user_id', $userId)
+            ->whereDate('created_at', $date)
+            ->where('amount', '<', 0)
+            ->sum('amount'));
+
+        // Note: Purchase bills are NOT included because they represent debt to suppliers,
+        // not actual cash out. Only actual supplier payments are counted.
+
+        // Total Cash Out
+        $totalCashOut = $supplierPaymentsOut + $employeePaymentsOut + $expensesOut + $minusPaymentsOut;
+
+        // Net Cash Flow
+        $netCashFlow = $totalCashIn - $totalCashOut;
+
+        return [
+            'date' => $date,
+            'cashIn' => [
+                'sales' => $salesCashIn,
+                'customerPayments' => $customerPaymentsIn,
+                'capital' => $capitalIn,
+                'total' => $totalCashIn
+            ],
+            'cashOut' => [
+                'supplierPayments' => $supplierPaymentsOut,
+                'employeePayments' => $employeePaymentsOut,
+                'expenses' => $expensesOut,
+                'minusPayments' => $minusPaymentsOut,
+                'total' => $totalCashOut
+            ],
+            'netCashFlow' => $netCashFlow
+        ];
+    }
+
     private function getRevenueData($startDate, $endDate, $userId)
     {
         $bills = Bill::where('user_id', $userId)
@@ -421,7 +527,8 @@ class FinancialDashboardController extends Controller
             'received' => $received,
             'paid' => $paid,
             'totalReceived' => $totalReceived,
-            'totalPaid' => $totalPaid
+            'totalPaid' => $totalPaid,
+            'total' => $totalReceived - $totalPaid
         ];
     }
 

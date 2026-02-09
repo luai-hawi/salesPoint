@@ -285,9 +285,13 @@
                                             Auth::user()->role === 'employee')
                                         @if (auth()->user()->role !== 'employee' ||
                                                 auth()->user()->hasPermission('manage_employees') ||
-                                                (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses')) ||
-                                                (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial')) ||
-                                                (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_settings')))
+                                                auth()->user()->hasPermission('manage_expenses') ||
+                                                auth()->user()->hasPermission('view_financial') ||
+                                                auth()->user()->hasPermission('manage_settings') ||
+                                                auth()->user()->hasPermission('view_expenses') ||
+                                                auth()->user()->hasPermission('create_expenses') ||
+                                                auth()->user()->hasPermission('edit_expenses') ||
+                                                auth()->user()->hasPermission('delete_expenses'))
                                             <!-- Management Section -->
                                             <div class="px-4 py-2 border-t border-gray-100">
                                                 <h3
@@ -616,7 +620,11 @@
                         </x-responsive-nav-link>
                     @endif
 
-                    @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_expenses'))
+                    @if (auth()->user()->role !== 'employee' ||
+                            auth()->user()->hasPermission('view_expenses') ||
+                            auth()->user()->hasPermission('create_expenses') ||
+                            auth()->user()->hasPermission('edit_expenses') ||
+                            auth()->user()->hasPermission('delete_expenses'))
                         <x-responsive-nav-link :href="route('shopowner.expenses.index')" :active="request()->routeIs('shopowner.expenses.index')" class="flex items-center">
                             <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
