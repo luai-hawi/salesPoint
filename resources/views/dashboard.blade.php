@@ -80,7 +80,7 @@
                                 {{ __('messages.Out of Stock Products Warning') }}
                             </h3>
                             <div class="mt-2 text-sm text-yellow-700">
-                                <p>{{ __('messages.You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.', ['count' => $warningProducts->count(), 'months' => $warningMonths, 'remaining' => $deactivationMonths - $warningMonths]) }}
+                                <p>{{ __('messages.You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.', ['count' => $warningProducts->count(), 'months' => $warningMonths, 'remaining' => $deactivationMonths - $warningMonths]) }}
                                 </p>
                                 <div class="mt-3 flex flex-wrap gap-2">
                                     @foreach ($warningProducts as $product)
