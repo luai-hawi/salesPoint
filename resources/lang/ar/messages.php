@@ -48,6 +48,7 @@ return [
     'Error loading suppliers' => 'خطأ في تحميل الموردين',
     'Cost' => 'التكلفة',
     'Selling' => 'البيع',
+    'Install App' => 'تثبيت التطبيق',
     'Unit' => 'الوحدة',
     'No barcode' => 'لا يوجد باركود',
     'deleting' => 'جارٍ الحذف...',

@@ -168,7 +168,12 @@ class BillsController extends Controller
 
         // Get the custom date or use now()
         $billDateInput = $request->input('bill_date');
-        $billDate = $billDateInput ? \Carbon\Carbon::parse($billDateInput) : now();
+        if ($billDateInput) {
+            // Parse the date and add current time
+            $billDate = \Carbon\Carbon::parse($billDateInput)->setTime(now()->hour, now()->minute, now()->second);
+        } else {
+            $billDate = now();
+        }
 
         $bill = new Bill([
             'note' => $noteText,
