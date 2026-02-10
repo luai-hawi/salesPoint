@@ -1407,7 +1407,7 @@ return [
     'Deactivate' => 'Deactivate',
     'Activate' => 'Activate',
     'Out of Stock Products Warning' => 'Out of Stock Products Warning',
-    'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.' => 'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.',
+    'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.' => 'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.',
     'Manage Out of Stock Products' => 'Manage Out of Stock Products',
     'months' => 'months',
     'Out of Stock Products' => 'Out of Stock Products',
@@ -1510,7 +1510,7 @@ return [
 
     // Dashboard Warning Keys
     'Out of Stock Products Warning' => 'Out of Stock Products Warning',
-    'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.' => 'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.',
+    'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.' => 'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.',
     'Manage Out of Stock Products' => 'Manage Out of Stock Products',
     'months' => 'months',
     'Dismiss' => 'Dismiss',

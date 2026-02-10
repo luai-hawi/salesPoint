@@ -1524,7 +1524,7 @@ return [
     'Deactivate' => 'إلغاء التفعيل',
     'Activate' => 'تفعيل',
     'Out of Stock Products Warning' => 'تحذير منتجات غير متوفرة',
-    'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.' => 'لديك {count} منتجات غير متوفرة منذ {months} أشهر أو أكثر. سيتم إلغاء تفعيل هذه المنتجات تلقائياً خلال {remaining} أشهر إذا لم يتم إعادة تخزينها.',
+    'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.' => 'لديك :count منتجات غير متوفرة منذ :months أشهر أو أكثر. سيتم إلغاء تفعيل هذه المنتجات تلقائياً خلال :remaining أشهر إذا لم يتم إعادة تخزينها.',
     'Manage Out of Stock Products' => 'إدارة المنتجات غير المتوفرة',
     'months' => 'أشهر',
     'Out of Stock Products' => 'المنتجات غير المتوفرة',
@@ -1627,7 +1627,7 @@ return [
 
     // Dashboard Warning Keys
     'Out of Stock Products Warning' => 'تحذير منتجات غير متوفرة',
-    'You have {count} products that have been out of stock for {months} months or more. These products will be automatically deactivated in {remaining} months if not restocked.' => 'لديك {count} منتجات غير متوفرة منذ {months} أشهر أو أكثر. سيتم إلغاء تفعيل هذه المنتجات تلقائياً خلال {remaining} أشهر إذا لم يتم إعادة التخزين.',
+    'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.' => 'لديك :count منتجات غير متوفرة منذ :months أشهر أو أكثر. سيتم إلغاء تفعيل هذه المنتجات تلقائياً خلال :remaining أشهر إذا لم يتم إعادة التخزين.',
     'Manage Out of Stock Products' => 'إدارة المنتجات غير المتوفرة',
     'months' => 'أشهر',
     'Dismiss' => 'إغلاق',

@@ -25,15 +25,22 @@ class ProductsController extends Controller
 
         if ($search = $request->query('search')) {
             $search = strtolower($search);
-            $query->where(function ($q) use ($search) {
-                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"])
-                    ->orWhere('cost_price', 'like', "%{$search}%")
-                    ->orWhere('selling_price', 'like', "%{$search}%")
-                    ->orWhereHas('barcodes', function ($qb) use ($search) {
-                        $qb->whereRaw('LOWER(barcode) LIKE ?', ["%{$search}%"]);
+            // Split search into words and use AND logic - all words must match
+            $searchTerms = array_filter(explode(' ', $search));
+            foreach ($searchTerms as $term) {
+                $term = trim($term);
+                if ($term) {
+                    $query->where(function ($q) use ($term) {
+                        $q->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"])
+                            ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"])
+                            ->orWhere('cost_price', 'like', "%{$term}%")
+                            ->orWhere('selling_price', 'like', "%{$term}%")
+                            ->orWhereHas('barcodes', function ($qb) use ($term) {
+                                $qb->whereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
+                            });
                     });
-            });
+                }
+            }
         }
 
         if ($request->query('low_stock')) {
