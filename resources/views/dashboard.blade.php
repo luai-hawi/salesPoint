@@ -1709,15 +1709,18 @@
             const searchInput = document.getElementById('customer_search');
             const suggestionsDiv = document.getElementById('customer_suggestions');
             const customerIdInput = document.getElementById('customer_id_hidden');
+            let lastQuery = '';
 
             searchInput.addEventListener('input', function() {
                 const query = this.value.trim();
+                lastQuery = query;
 
                 clearTimeout(customerDebounceTimeout);
                 customerDebounceTimeout = setTimeout(() => {
                     if (query.length === 0) {
                         suggestionsDiv.classList.add('hidden');
                         customerIdInput.value = '';
+                        hideUnidentifiedCustomerNotification();
                         return;
                     }
 
@@ -1728,11 +1731,31 @@
 
                     if (filteredCustomers.length > 0) {
                         showCustomerSuggestions(filteredCustomers);
+                        hideUnidentifiedCustomerNotification();
                     } else {
                         suggestionsDiv.classList.add('hidden');
                         customerIdInput.value = '';
                     }
                 }, 300);
+            });
+
+            // Show notification on focus out (blur) if customer not found
+            searchInput.addEventListener('blur', function() {
+                const query = this.value.trim();
+
+                // Small delay to allow click events on suggestions to fire first
+                setTimeout(() => {
+                    if (query.length > 0 && query === lastQuery) {
+                        const filteredCustomers = customers.filter(customer =>
+                            customer.name.toLowerCase().includes(query.toLowerCase()) ||
+                            (customer.phone && customer.phone.includes(query))
+                        );
+
+                        if (filteredCustomers.length === 0) {
+                            showUnidentifiedCustomerNotification(query);
+                        }
+                    }
+                }, 200);
             });
 
             // Hide suggestions when clicking outside
@@ -1741,6 +1764,93 @@
                     suggestionsDiv.classList.add('hidden');
                 }
             });
+        }
+
+        // Show notification for unidentified customer with action button
+        let unidentifiedCustomerNotification = null;
+
+        function showUnidentifiedCustomerNotification(customerName) {
+            hideUnidentifiedCustomerNotification();
+
+            unidentifiedCustomerNotification = document.createElement('div');
+            unidentifiedCustomerNotification.id = 'unidentified-customer-notification';
+            unidentifiedCustomerNotification.className =
+                'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-4 max-w-md transition-all duration-300';
+            unidentifiedCustomerNotification.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-medium text-yellow-800">{{ __('messages.Customer not identified') }}</h4>
+                        <p class="text-sm text-yellow-700 mt-1">{{ __('messages.This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.') }}</p>
+                        <p class="text-sm font-medium text-yellow-800 mt-2">${customerName}</p>
+                        <button type="button" id="add-customer-to-notes" class="mt-3 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            {{ __('messages.Add to notes') }}
+                        </button>
+                    </div>
+                    <button type="button" onclick="hideUnidentifiedCustomerNotification()" class="text-yellow-500 hover:text-yellow-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(unidentifiedCustomerNotification);
+
+            // Add event listener to the button
+            document.getElementById('add-customer-to-notes').addEventListener('click', function() {
+                addCustomerNameToNotes(customerName);
+            });
+
+            // Auto-hide after 15 seconds if not interacted with
+            setTimeout(() => {
+                if (unidentifiedCustomerNotification && unidentifiedCustomerNotification.parentNode) {
+                    hideUnidentifiedCustomerNotification();
+                }
+            }, 15000);
+        }
+
+        function hideUnidentifiedCustomerNotification() {
+            if (unidentifiedCustomerNotification) {
+                // Clear the customer name field
+                const searchInput = document.getElementById('customer_search');
+                const customerIdInput = document.getElementById('customer_id_hidden');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                if (customerIdInput) {
+                    customerIdInput.value = '';
+                }
+
+                unidentifiedCustomerNotification.remove();
+                unidentifiedCustomerNotification = null;
+            }
+        }
+
+        function addCustomerNameToNotes(customerName) {
+            const noteField = document.getElementById('note');
+            if (noteField) {
+                const currentNote = noteField.value.trim();
+                const prefix = currentNote ? currentNote + ' | ' : '';
+                noteField.value = prefix + customerName;
+            }
+
+            // Clear the customer name field
+            const searchInput = document.getElementById('customer_search');
+            const customerIdInput = document.getElementById('customer_id_hidden');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            if (customerIdInput) {
+                customerIdInput.value = '';
+            }
+
+            hideUnidentifiedCustomerNotification();
+            showNotification('{{ __('messages.Customer name added to bill notes') }}', 'success');
         }
 
         function showCustomerSuggestions(filteredCustomers) {
@@ -1765,6 +1875,7 @@
             document.getElementById('customer_search').value = customer.name;
             document.getElementById('customer_id_hidden').value = customer.id;
             document.getElementById('customer_suggestions').classList.add('hidden');
+            hideUnidentifiedCustomerNotification();
             if (!isRestaurant) {
                 document.getElementById('barcode_input').focus();
             }
@@ -2365,14 +2476,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3216,9 +3327,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

@@ -1742,4 +1742,11 @@ return [
     'Error adding capital' => 'Error adding capital',
     'An error occurred' => 'An error occurred',
     'Manage Capital' => 'Manage Capital',
+
+    // Customer Validation Notifications
+    'Customer not identified' => 'Customer not identified',
+    'This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.' => 'This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.',
+    'Add to notes' => 'Add to notes',
+    'Customer name added to bill notes' => 'Customer name added to bill notes',
+    'Enter customer name to search...' => 'Enter customer name to search...',
 ];

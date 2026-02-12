@@ -1837,4 +1837,11 @@ return [
     'Top Suppliers' => 'أفضل الموردين',
     'Adding...' => 'جاري الإضافة...',
     'Are you sure?' => 'هل أنت متأكد؟',
+
+    // Customer Validation Notifications
+    'Customer not identified' => 'العميل غير معروف',
+    'This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.' => 'اسم هذا العميل غير مسجل في النظام. إذا كنت لا تريد حفظ هذا العميل، سيتم إضافة الاسم إلى ملاحظات الفاتورة.',
+    'Add to notes' => 'إضافة إلى الملاحظات',
+    'Customer name added to bill notes' => 'تمت إضافة اسم العميل إلى ملاحظات الفاتورة',
+    'Enter customer name to search...' => 'أدخل اسم العميل للبحث...',
 ];
