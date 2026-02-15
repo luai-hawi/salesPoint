@@ -1481,6 +1481,8 @@ return [
     'Negative cash flow' => 'تدفق نقدي سلبي',
     'View' => 'عرض',
     'Customer Debt' => 'ديون العملاء',
+    'Cash Flow Start Date' => 'تاريخ البداية',
+    'Cash Flow End Date' => 'تاريخ النهاية',
 
     'Please add at least one product to the bill' => 'يرجى إضافة منتج واحد على الأقل للفاتورة',
     'Some products exceed available stock' => 'بعض المنتجات تتجاوز المخزون المتاح',

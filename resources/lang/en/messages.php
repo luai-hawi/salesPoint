@@ -985,6 +985,8 @@ return [
     'Negative cash flow' => 'Negative cash flow',
     'View' => 'View',
     'Customer Debt' => 'Customer Debt',
+    'Cash Flow Start Date' => 'Start Date',
+    'Cash Flow End Date' => 'End Date',
 
     // Common Actions & Messages
     'Home' => 'Home',

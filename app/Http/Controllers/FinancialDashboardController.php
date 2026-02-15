@@ -87,8 +87,9 @@ class FinancialDashboardController extends Controller
         $capitalData = $this->getCapitalData($shopOwnerId);
 
         // Daily Cash Flow Data - NEW
-        $cashFlowDate = $request->get('cash_flow_date', Carbon::now()->format('Y-m-d'));
-        $dailyCashFlowData = $this->getDailyCashFlowData($shopOwnerId, $cashFlowDate);
+        $cashFlowStartDate = $request->get('cash_flow_start_date', Carbon::now()->format('Y-m-d'));
+        $cashFlowEndDate = $request->get('cash_flow_end_date', Carbon::now()->format('Y-m-d'));
+        $dailyCashFlowData = $this->getDailyCashFlowData($shopOwnerId, $cashFlowStartDate, $cashFlowEndDate);
 
         return view('dashboard.financial', compact(
             'summaryData',
@@ -108,7 +109,8 @@ class FinancialDashboardController extends Controller
             'growthData',
             'capitalData',
             'dailyCashFlowData',
-            'cashFlowDate',
+            'cashFlowStartDate',
+            'cashFlowEndDate',
             'startDate',
             'endDate'
         ));
@@ -323,25 +325,25 @@ class FinancialDashboardController extends Controller
         ];
     }
 
-    // NEW: Daily Cash Flow Data - Get cash in and out for a specific date
-    private function getDailyCashFlowData($userId, $date)
+    // NEW: Daily Cash Flow Data - Get cash in and out for a date range
+    private function getDailyCashFlowData($userId, $startDate, $endDate)
     {
         // Cash In:
         // 1. Total sales from bills (completed sales)
         $salesCashIn = Bill::where('user_id', $userId)
-            ->whereDate('created_at', $date)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('is_damaged', false)
             ->sum('total_price');
 
         // 2. Customer payments received (positive amounts)
         $customerPaymentsIn = CustomerPayment::where('user_id', $userId)
-            ->whereDate('created_at', $date)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('amount', '>', 0)
             ->sum('amount');
 
         // 3. Capital entries (money coming in from outside)
         $capitalIn = CapitalEntry::where('user_id', $userId)
-            ->whereDate('entry_date', $date)
+            ->whereBetween('entry_date', [$startDate, $endDate])
             ->sum('amount');
 
         // Total Cash In
@@ -352,7 +354,7 @@ class FinancialDashboardController extends Controller
         $supplierPaymentsOut = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-            ->whereDate('payment_date', $date)
+            ->whereBetween('payment_date', [$startDate, $endDate])
             ->where('amount', '>', 0)
             ->sum('amount');
 
@@ -360,18 +362,18 @@ class FinancialDashboardController extends Controller
         $employeePaymentsOut = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-            ->whereDate('payment_date', $date)
+            ->whereBetween('payment_date', [$startDate, $endDate])
             ->sum('amount');
 
         // 3. Expenses (operational expenses)
         $expensesOut = Expense::where('user_id', $userId)
-            ->whereDate('expense_date', $date)
+            ->whereBetween('expense_date', [$startDate, $endDate])
             ->sum('amount');
 
         // 4. Minus payments (new customer debt - negative amounts)
         // This represents sales on credit (customer owes us money)
         $minusPaymentsOut = abs(CustomerPayment::where('user_id', $userId)
-            ->whereDate('created_at', $date)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('amount', '<', 0)
             ->sum('amount'));
 
@@ -385,7 +387,8 @@ class FinancialDashboardController extends Controller
         $netCashFlow = $totalCashIn - $totalCashOut;
 
         return [
-            'date' => $date,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
             'cashIn' => [
                 'sales' => $salesCashIn,
                 'customerPayments' => $customerPaymentsIn,

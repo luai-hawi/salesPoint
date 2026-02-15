@@ -94,8 +94,19 @@
                         </h3>
                         <form method="GET" action="{{ route('dashboard.financial') }}"
                             class="flex items-center gap-2">
-                            <input type="date" name="cash_flow_date" value="{{ $cashFlowDate }}"
-                                class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent">
+                            <div class="flex items-center gap-2">
+                                <label
+                                    class="text-white text-xs opacity-80">{{ __('messages.Cash Flow Start Date') }}</label>
+                                <input type="date" name="cash_flow_start_date" value="{{ $cashFlowStartDate }}"
+                                    class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                                    placeholder="{{ __('messages.Cash Flow Start Date') }}">
+                                <span class="text-white opacity-70">-</span>
+                                <label
+                                    class="text-white text-xs opacity-80">{{ __('messages.Cash Flow End Date') }}</label>
+                                <input type="date" name="cash_flow_end_date" value="{{ $cashFlowEndDate }}"
+                                    class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                                    placeholder="{{ __('messages.Cash Flow End Date') }}">
+                            </div>
                             <button type="submit"
                                 class="px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
                                 {{ __('messages.View') }}
@@ -132,7 +143,8 @@
                         <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
                             <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 12H4">
                                     </path>
                                 </svg>
                                 {{ __('messages.Cash Out') }}
