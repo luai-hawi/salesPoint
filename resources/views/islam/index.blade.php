@@ -643,26 +643,30 @@
 
             #printContentWrapper {
                 display: block !important;
-                position: fixed;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 20px;
-                background: white;
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: 100% !important;
+                padding: 10px !important;
+                background: white !important;
             }
 
             #printContentWrapper table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 display: table !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
 
             #printContentWrapper table th,
             #printContentWrapper table td {
-                padding: 8px !important;
+                padding: 6px !important;
                 border-bottom: 1px solid #e2e8f0 !important;
                 text-align: right !important;
                 display: table-cell !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
 
             #printContentWrapper table th {
@@ -672,6 +676,8 @@
 
             #printContentWrapper table tr {
                 display: table-row !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
 
             #printContentWrapper table tbody {
@@ -680,6 +686,7 @@
 
             #printContentWrapper table thead {
                 display: table-header-group !important;
+                page-break-after: auto !important;
             }
 
             #printContentWrapper .print-total {
@@ -689,6 +696,8 @@
                 border-radius: 12px !important;
                 display: flex !important;
                 justify-content: space-between !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
         }
 
