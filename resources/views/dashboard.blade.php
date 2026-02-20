@@ -1088,13 +1088,19 @@
                         const errorData = await response.json();
                         showNotification(errorData.message || '{{ __('messages.Failed to create bill') }}',
                             'error');
+                        // Refresh page on failed submission (likely logged out)
+                        setTimeout(() => location.reload(), 2000);
                     } catch (parseError) {
                         const textResponse = await response.text();
                         showNotification('{{ __('messages.Failed to create bill - server error') }}', 'error');
+                        // Refresh page on failed submission (likely logged out)
+                        setTimeout(() => location.reload(), 2000);
                     }
                 }
             } catch (error) {
                 showNotification('{{ __('messages.Failed to create bill - network error') }}', 'error');
+                // Refresh page on failed submission (likely logged out)
+                setTimeout(() => location.reload(), 2000);
             } finally {
                 // Reset button state
                 submitButton.disabled = false;
@@ -2394,12 +2400,6 @@
                 const qty = row.querySelector('.quantity');
                 const currentQty = parseInt(qty.value);
 
-                if (currentQty >= product.quantity) {
-                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace(
-                        '{product}', product.name).replace('{quantity}', product.quantity), 'warning');
-                    return;
-                }
-
                 qty.value = currentQty + 1;
                 calculateTotal();
                 return;
@@ -2476,14 +2476,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2546,12 +2546,6 @@
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
                 const currentQty = parseInt(qty.value);
-
-                if (currentQty >= product.quantity) {
-                    showNotification(`{{ __('messages.Cannot add more {product}. Only {quantity} in stock.') }}`.replace(
-                        '{product}', product.name).replace('{quantity}', product.quantity), 'warning');
-                    return;
-                }
 
                 qty.value = currentQty + 1;
                 calculateTotal();
@@ -2773,7 +2767,8 @@
                 addProductRow(product);
                 showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
                     .name), 'success');
-                if (!isRestaurant) {
+                // Only focus on barcode input for non-phone devices (tablet/desktop)
+                if (!isRestaurant && window.innerWidth >= 768) {
                     document.getElementById('barcode_input').focus();
                 }
             }
@@ -3327,9 +3322,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
