@@ -88,4 +88,7 @@ return [
     'Home' => 'Home',
     'Analytics' => 'Analytics',
     'Tags' => 'Tags',
+
+    // Payments and Receipts
+    'Payments and Receipts' => 'Payments and Receipts',
 ];

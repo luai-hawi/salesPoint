@@ -10,9 +10,21 @@ use Illuminate\Support\Facades\Auth;
 
 class EmployeeController extends Controller
 {
+    /**
+     * Get the owner ID - works for both shop owners and employees
+     */
+    private function getOwnerId()
+    {
+        $user = Auth::user();
+        // If user is a shop owner, use their ID
+        // If user is an employee, use their shop_owner_id
+        return $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+    }
+
     public function index()
     {
-        $employees = Employee::where('shop_owner_id', Auth::id())->paginate(10);
+        $ownerId = $this->getOwnerId();
+        $employees = Employee::where('shop_owner_id', $ownerId)->paginate(10);
         return view('shopowner.employees.index', compact('employees'));
     }
 
@@ -29,8 +41,9 @@ class EmployeeController extends Controller
             'monthly_salary' => 'required|numeric|min:0',
         ]);
 
+        $ownerId = $this->getOwnerId();
         Employee::create([
-            'shop_owner_id'  => Auth::id(),
+            'shop_owner_id'  => $ownerId,
             'name'           => $request->name,
             'job_title'      => $request->job_title,
             'monthly_salary' => $request->monthly_salary,
@@ -69,28 +82,28 @@ class EmployeeController extends Controller
     }
 
     public function payments(Request $request, Employee $employee)
-{
-    $this->authorizeOwner($employee);
+    {
+        $this->authorizeOwner($employee);
 
-    $query = $employee->payments()->latest('payment_date');
+        $query = $employee->payments()->latest('payment_date');
 
-    // 🔍 Filter by date range
-    if ($request->filled('from')) {
-        $query->whereDate('payment_date', '>=', $request->from);
+        // 🔍 Filter by date range
+        if ($request->filled('from')) {
+            $query->whereDate('payment_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('payment_date', '<=', $request->to);
+        }
+
+        // ✅ Paginate instead of get()
+        $payments = $query->paginate(10);
+
+        if ($request->ajax()) {
+            return view('shopowner.employees.partials.payments_table', compact('payments'))->render();
+        }
+
+        return view('shopowner.employees.payments', compact('employee', 'payments'));
     }
-    if ($request->filled('to')) {
-        $query->whereDate('payment_date', '<=', $request->to);
-    }
-
-    // ✅ Paginate instead of get()
-    $payments = $query->paginate(10);
-
-    if ($request->ajax()) {
-        return view('shopowner.employees.partials.payments_table', compact('payments'))->render();
-    }
-
-    return view('shopowner.employees.payments', compact('employee', 'payments'));
-}
 
 
     public function storePayment(Request $request, Employee $employee)
@@ -111,19 +124,20 @@ class EmployeeController extends Controller
         return redirect()->route('shopowner.employees.payments', $employee->id)->with('success', 'Payment recorded successfully.');
     }
     public function destroyPayment($paymentId)
-{
-    
-    $payment = EmployeePayment::findOrFail($paymentId);
-    $this->authorizeOwner($payment->employee);
-    $payment->delete();
+    {
 
-    return back()->with('success', 'Payment removed successfully.');
-}
+        $payment = EmployeePayment::findOrFail($paymentId);
+        $this->authorizeOwner($payment->employee);
+        $payment->delete();
+
+        return back()->with('success', 'Payment removed successfully.');
+    }
 
 
     private function authorizeOwner($employee)
     {
-        if ($employee->shop_owner_id !== Auth::id()) {
+        $ownerId = $this->getOwnerId();
+        if ($employee->shop_owner_id !== $ownerId) {
             abort(403, 'Unauthorized');
         }
     }

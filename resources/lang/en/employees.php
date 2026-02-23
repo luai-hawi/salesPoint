@@ -18,12 +18,13 @@ return [
     'Partially Paid' => 'Partially Paid',
     'Pending Payment' => 'Pending Payment',
     'Edit' => 'Edit',
+    'Notes' => 'Notes',
     'Payments' => 'Payments',
     'Delete' => 'Delete',
     'No employees found' => 'No employees found',
     'Get started by adding your first employee to begin managing your team and payroll.' => 'Get started by adding your first employee to begin managing your team and payroll.',
     'Add Your First Employee' => 'Add Your First Employee',
-    
+
     // Add/Edit Employee Page
     'Add New Employee' => 'Add New Employee',
     'Edit Employee' => 'Edit Employee',
@@ -39,7 +40,7 @@ return [
     'Cancel' => 'Cancel',
     'Add Employee' => 'Add Employee',
     'Update Employee' => 'Update Employee',
-    
+
     // Payment History Page
     'Payment History' => 'Payment History',
     'View Payments' => 'View Payments',

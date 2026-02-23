@@ -36,24 +36,24 @@ return [
     'Bills' => 'الفواتير',
     'Customers' => 'العملاء',
     'More' => 'المزيد',
-    
+
     // Admin Specific
     'Shop Owners' => 'أصحاب المتاجر',
     'All Employees' => 'جميع الموظفين',
-    
+
     // Inventory Section
     'Inventory' => 'المخزون',
     'Products' => 'المنتجات',
     'Out of Stock' => 'المنتجات النافدة',
     'Tags' => 'العلامات',
-    
+
     // Suppliers Section
     'Suppliers' => 'الموردين',
     'Manage Suppliers' => 'إدارة الموردين',
     'Add Supplier' => 'إضافة مورد',
     'Purchase Bills' => 'فواتير الشراء',
     'New Purchase Bill' => 'فاتورة شراء جديدة',
-    
+
     // Management Section
     'Management' => 'الإدارة',
     'Employees' => 'الموظفين',
@@ -69,21 +69,24 @@ return [
     'EN' => 'EN',
     'AR' => 'ع',
     'Log Out' => 'تسجيل الخروج',
-    
+
     // User Roles
     'Admin' => 'مدير',
     'Administrator' => 'المدير',
     'Owner' => 'المالك',
     'Shop Owner' => 'صاحب المتجر',
     'Employee' => 'موظف',
-    
+
     // Quick Actions
     'Add Product' => 'إضافة منتج',
     'Add Customer' => 'إضافة عميل',
     'New Purchase' => 'شراء جديد',
-    
+
     // Additional Links
     'Home' => 'الرئيسية',
     'Analytics' => 'التحليلات',
     'Tags' => 'العلامات',
+
+    // Payments and Receipts
+    'Payments and Receipts' => 'المدفوعات والمقبوضات',
 ];

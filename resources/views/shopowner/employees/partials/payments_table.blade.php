@@ -78,8 +78,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
-                                <div class="text-lg font-bold text-gray-900">
-                                    ₪{{ number_format($payment->amount, 2) }}
+                                <div class="text-lg font-bold {{ $payment->amount < 0 ? 'text-red-600' : 'text-green-600' }}">
+                                    {{ $payment->amount < 0 ? '-' : '' }}₪{{ number_format(abs($payment->amount), 2) }}
                                 </div>
                                 @if($payment->amount >= 1000)
                                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">

@@ -22,6 +22,7 @@ use App\Http\Controllers\PurchaseBillController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\IslamicSalesController;
 use App\Http\Controllers\CapitalController;
+use App\Http\Controllers\PaymentReceiptController;
 
 
 
@@ -619,6 +620,13 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         // API endpoints for AJAX calls
         Route::get('/api/suppliers/search', [SupplierController::class, 'search'])->name('api.suppliers.search');
         Route::get('/api/purchase-bills/search', [PurchaseBillController::class, 'search'])->name('api.purchase-bills.search');
+
+        // Payments and Receipts
+        Route::get('/payments-receipts', [PaymentReceiptController::class, 'index'])->name('payments-receipts.index');
+        Route::post('/payments-receipts', [PaymentReceiptController::class, 'store'])->name('payments-receipts.store');
+        Route::get('/api/customers/search', [PaymentReceiptController::class, 'getCustomers'])->name('api.customers.search');
+        Route::get('/api/employees/search', [PaymentReceiptController::class, 'getEmployees'])->name('api.employees.search');
+        Route::get('/api/suppliers/search-payment', [PaymentReceiptController::class, 'getSuppliers'])->name('api.suppliers.search-payment');
     });
 
 // ------------------- ISLAMIC SALES PWA -------------------

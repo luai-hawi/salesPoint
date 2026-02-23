@@ -9,7 +9,7 @@ class EmployeePayment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['employee_id', 'amount', 'payment_date'];
+    protected $fillable = ['employee_id', 'amount', 'payment_date', 'type', 'note'];
 
     public function employee()
     {

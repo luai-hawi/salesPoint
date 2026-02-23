@@ -27,6 +27,7 @@ return [
     'Total Sales:' => 'Total Sales:',
     'Bills Created:' => 'Bills Created:',
     'Quick Actions' => 'Quick Actions',
+    'Creating Bill...' => 'Creating Bill...',
     'View All Bills' => 'View All Bills',
     'Manage Products' => 'Manage Products',
     'Manage Customers' => 'Manage Customers',

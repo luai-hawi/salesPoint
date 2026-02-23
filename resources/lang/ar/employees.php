@@ -19,11 +19,12 @@ return [
     'Pending Payment' => 'في انتظار الدفع',
     'Edit' => 'تعديل',
     'Payments' => 'الدفعات',
+    'Notes' => 'ملاحظات',
     'Delete' => 'حذف',
     'No employees found' => 'لم يتم العثور على موظفين',
     'Get started by adding your first employee to begin managing your team and payroll.' => 'ابدأ بإضافة أول موظف لك لبدء إدارة فريقك وكشوف المرتبات.',
     'Add Your First Employee' => 'إضافة أول موظف',
-    
+
     // Add/Edit Employee Page
     'Add New Employee' => 'إضافة موظف جديد',
     'Edit Employee' => 'تعديل الموظف',
@@ -39,7 +40,7 @@ return [
     'Cancel' => 'إلغاء',
     'Add Employee' => 'إضافة موظف',
     'Update Employee' => 'تحديث الموظف',
-    
+
     // Payment History Page
     'Payment History' => 'سجل الدفعات',
     'View Payments' => 'عرض الدفعات',
