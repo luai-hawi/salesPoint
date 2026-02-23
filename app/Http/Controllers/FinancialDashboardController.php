@@ -1049,7 +1049,7 @@ class FinancialDashboardController extends Controller
             $row++;
         }
 
-        // 8. Employee Payments Sheet (NEW)
+        // 8. Employee Payments Sheet (Updated with type and note columns)
         $employeePaymentsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Employee Payments');
         $spreadsheet->addSheet($employeePaymentsSheet);
 
@@ -1058,7 +1058,7 @@ class FinancialDashboardController extends Controller
         })->with('employee')->get();
 
         $employeePaymentsSheet->fromArray([
-            ['ID', 'Employee Name', 'Amount', 'Payment Date', 'Created At']
+            ['ID', 'Employee Name', 'Amount', 'Type', 'Note', 'Payment Date', 'Created At']
         ]);
 
         $row = 2;
@@ -1068,6 +1068,8 @@ class FinancialDashboardController extends Controller
                     $payment->id,
                     $payment->employee->name ?? 'N/A',
                     $payment->amount,
+                    ucfirst($payment->type),
+                    $payment->note,
                     $payment->payment_date,
                     $payment->created_at->format('Y-m-d H:i:s')
                 ]
@@ -1255,6 +1257,30 @@ class FinancialDashboardController extends Controller
                     $barcode->product->name ?? 'N/A',
                     $barcode->barcode,
                     $barcode->created_at->format('Y-m-d H:i:s')
+                ]
+            ], null, 'A' . $row);
+            $row++;
+        }
+
+        // 16. Capital Entries Sheet (NEW)
+        $capitalSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Capital Entries');
+        $spreadsheet->addSheet($capitalSheet);
+
+        $capitalEntries = CapitalEntry::where('user_id', $shopOwnerId)->get();
+
+        $capitalSheet->fromArray([
+            ['ID', 'Amount', 'Note', 'Entry Date', 'Created At']
+        ]);
+
+        $row = 2;
+        foreach ($capitalEntries as $entry) {
+            $capitalSheet->fromArray([
+                [
+                    $entry->id,
+                    $entry->amount,
+                    $entry->note,
+                    $entry->entry_date,
+                    $entry->created_at->format('Y-m-d H:i:s')
                 ]
             ], null, 'A' . $row);
             $row++;
