@@ -322,30 +322,630 @@
                     </div>
                 </div>
 
-                <!-- Sales Chart Placeholder -->
+                <!-- Sales Chart -->
                 <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Sales Overview') }}</h3>
                     </div>
                     <div class="p-6">
-                        <div class="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-                            <div class="text-center text-gray-500">
-                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                                <p class="text-lg font-medium">{{ __('messages.Chart Coming Soon') }}</p>
-                                <p class="text-sm">{{ __('messages.Sales visualization will be available here') }}</p>
-                            </div>
-                        </div>
+                        <canvas id="salesChart" height="300"></canvas>
                     </div>
                 </div>
+
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const ctx = document.getElementById('salesChart').getContext('2d');
+                        const salesData = @json($salesChartData);
+
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: salesData.map(item => item.date),
+                                datasets: [{
+                                    label: '{{ __('messages.Sales') }}',
+                                    data: salesData.map(item => item.sales),
+                                    borderColor: 'rgb(79, 70, 229)',
+                                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointBackgroundColor: 'rgb(79, 70, 229)',
+                                    pointBorderColor: '#fff',
+                                    pointHoverBackgroundColor: '#fff',
+                                    pointHoverBorderColor: 'rgb(79, 70, 229)'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: 'top',
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return ' <
+                                                    /div>
+
+                                                    <
+                                                    !--Shop Owners List-- >
+                                                    <
+                                                    div class = "bg-white shadow-lg rounded-xl overflow-visible" >
+                                                    <
+                                                    div class = "px-6 py-4 border-b border-gray-200" >
+                                                    <
+                                                    div class = "flex items-center justify-between" >
+                                                    <
+                                                    h3 class = "text-lg font-semibold text-gray-900" >
+                                                    {{ __('messages.Shop Owners Management') }} <
+                                                    /h3> <
+                                                    a href = "{{ route('admin.shop-owners.create') }}"
+                                                class =
+                                                "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200" >
+                                                {{ __('messages.Add Shop Owner') }}
+                                                    <
+                                                    /a> <
+                                                    /div> <
+                                                    /div>
+
+                                                @if (session('success'))
+                                                    <
+                                                    div class =
+                                                    "mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded" >
+                                                    {{ session('success') }}
+                                                        <
+                                                        /div>
+                                                @endif
+
+                                                <
+                                                div class = "overflow-x-auto" >
+                                                <
+                                                table class = "min-w-full divide-y divide-gray-200" >
+                                                <
+                                                thead class = "bg-gray-50" >
+                                                <
+                                                tr >
+                                                    <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Shop Owner') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Products') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Customers') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Employees') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Sales Today') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Profit Today') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Sales This Month') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Profit This Month') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Bills') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Last Activity') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Actions') }} < /th> <
+                                                    /tr> <
+                                                    /thead> <
+                                                    tbody class = "bg-white divide-y divide-gray-200" >
+                                                    @forelse($shopOwners as $shopOwner)
+                                                        <
+                                                        tr class =
+                                                        "hover:bg-gray-50 transition-colors duration-200" >
+                                                        <
+                                                        td class = "px-4 py-4 whitespace-nowrap" >
+                                                        <
+                                                        div class = "flex items-center" >
+                                                        <
+                                                        div
+                                                        class =
+                                                        "w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center" >
+                                                        <
+                                                        span
+                                                        class = "text-white font-bold text-sm" >
+                                                        {{ strtoupper(substr($shopOwner->name, 0, 2)) }} < /span> <
+                                                            /div> <
+                                                            div class = "ml-3" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            {{ $shopOwner->name }} <
+                                                            /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->email }} < /div> <
+                                                            /div> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" >
+                                                        {{ $shopOwner->products_count ?? 0 }} {{ __('messages.products') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" >
+                                                        {{ $shopOwner->customers_count ?? 0 }} {{ __('messages.Customers') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800" >
+                                                        {{ $shopOwner->employees_count }} {{ __('messages.employees') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            ${{ number_format($shopOwner->sales_today, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-green-600" >
+                                                            ${{ number_format($shopOwner->profit_today, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            ${{ number_format($shopOwner->sales_this_month, 2) }} <
+                                                            /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->products_sold_this_month }}
+                                                        {{ __('messages.sold') }} < /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-green-600" >
+                                                            ${{ number_format($shopOwner->profit_this_month, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm text-gray-900" >
+                                                            {{ $shopOwner->bills_count_today }}
+                                                        {{ __('messages.today') }} < /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->bills_count_this_month }}
+                                                        {{ __('messages.this month') }} < /div> <
+                                                            /td> <
+                                                            td class =
+                                                            "px-4 py-4 whitespace-nowrap text-sm text-gray-500" >
+                                                            @if ($shopOwner->last_activity)
+                                                                {{ $shopOwner->last_activity->diffForHumans() }}
+                                                            @else
+                                                                {{ __('messages.Never') }}
+                                                            @endif <
+                                                            /td> <
+                                                        td class =
+                                                        "px-4 py-4 whitespace-nowrap text-sm font-medium" >
+                                                        <
+                                                        div class = "flex items-center space-x-3" >
+                                                        <
+                                                        a href =
+                                                            "{{ route('admin.shop-owners.show', $shopOwner->id) }}"
+                                                        class =
+                                                        "text-indigo-600 hover:text-indigo-900 transition-colors duration-200" >
+                                                        {{ __('View Details') }}
+                                                            <
+                                                            /a> <
+                                                            a href =
+                                                            "{{ route('admin.shop-owners.edit', $shopOwner->id) }}"
+                                                        class =
+                                                        "text-blue-600 hover:text-blue-900 transition-colors duration-200" >
+                                                        {{ __('Edit') }}
+                                                            <
+                                                            /a> <
+                                                            form action =
+                                                            "{{ route('admin.shop-owners.destroy', $shopOwner->id) }}"
+                                                        method = "POST"
+                                                        class = "inline"
+                                                        onsubmit =
+                                                            "return confirm('{{ __('messages.Are you sure you want to delete this shop owner and all associated data?') }}');" >
+                                                            @csrf
+                                                        @method('DELETE')
+                                                            <
+                                                            button type = "submit"
+                                                        class =
+                                                        "text-red-600 hover:text-red-900 transition-colors duration-200" >
+                                                        {{ __('messages.Delete') }}
+                                                            <
+                                                            /button> <
+                                                            /form> <
+                                                            /div> <
+                                                            /td> <
+                                                            /tr>
+                                                    @empty
+                                                        <
+                                                        tr >
+                                                            <
+                                                            td colspan = "11"
+                                                        class = "px-6 py-12 text-center" >
+                                                        <
+                                                        div class = "text-gray-500" >
+                                                        <
+                                                        svg class = "w-12 h-12 mx-auto mb-4 text-gray-400"
+                                                        fill = "none"
+                                                        stroke = "currentColor"
+                                                        viewBox = "0 0 24 24" >
+                                                            <
+                                                            path stroke - linecap = "round"
+                                                        stroke - linejoin = "round"
+                                                        stroke - width = "2"
+                                                        d = "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" >
+                                                            <
+                                                            /path> <
+                                                            /svg> <
+                                                            p class = "text-lg font-medium" >
+                                                            {{ __('messages.No shop owners found') }} <
+                                                            /p> <
+                                                            p class = "text-sm text-gray-400 mt-1" >
+                                                            {{ __('messages.Get started by creating your first shop owner') }} <
+                                                            /p> <
+                                                            a href = "{{ route('admin.shop-owners.create') }}"
+                                                        class =
+                                                        "mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" >
+                                                        {{ __('messages.Add Shop Owner') }}
+                                                            <
+                                                            /a> <
+                                                            /div> <
+                                                            /td> <
+                                                            /tr>
+                                                    @endforelse <
+                                                    /tbody> <
+                                                    /table> <
+                                                    /div> <
+                                                    /div> <
+                                                    /div> <
+                                                    /div> <
+                                                    /x-app-layout> +
+                                                context.parsed.y.toFixed(2);
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return ' <
+                                                    /div>
+
+                                                    <
+                                                    !--Shop Owners List-- >
+                                                    <
+                                                    div class = "bg-white shadow-lg rounded-xl overflow-visible" >
+                                                    <
+                                                    div class = "px-6 py-4 border-b border-gray-200" >
+                                                    <
+                                                    div class = "flex items-center justify-between" >
+                                                    <
+                                                    h3 class = "text-lg font-semibold text-gray-900" >
+                                                    {{ __('messages.Shop Owners Management') }} <
+                                                    /h3> <
+                                                    a href = "{{ route('admin.shop-owners.create') }}"
+                                                class =
+                                                "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200" >
+                                                {{ __('messages.Add Shop Owner') }}
+                                                    <
+                                                    /a> <
+                                                    /div> <
+                                                    /div>
+
+                                                @if (session('success'))
+                                                    <
+                                                    div class =
+                                                    "mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded" >
+                                                    {{ session('success') }}
+                                                        <
+                                                        /div>
+                                                @endif
+
+                                                <
+                                                div class = "overflow-x-auto" >
+                                                <
+                                                table class = "min-w-full divide-y divide-gray-200" >
+                                                <
+                                                thead class = "bg-gray-50" >
+                                                <
+                                                tr >
+                                                    <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Shop Owner') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Products') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Customers') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Employees') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Sales Today') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Profit Today') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Sales This Month') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Profit This Month') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Bills') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Last Activity') }} < /th> <
+                                                    th
+                                                class =
+                                                "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >
+                                                {{ __('messages.Actions') }} < /th> <
+                                                    /tr> <
+                                                    /thead> <
+                                                    tbody class = "bg-white divide-y divide-gray-200" >
+                                                    @forelse($shopOwners as $shopOwner)
+                                                        <
+                                                        tr class =
+                                                        "hover:bg-gray-50 transition-colors duration-200" >
+                                                        <
+                                                        td class = "px-4 py-4 whitespace-nowrap" >
+                                                        <
+                                                        div class = "flex items-center" >
+                                                        <
+                                                        div
+                                                        class =
+                                                        "w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center" >
+                                                        <
+                                                        span
+                                                        class = "text-white font-bold text-sm" >
+                                                        {{ strtoupper(substr($shopOwner->name, 0, 2)) }} <
+                                                            /span> <
+                                                            /div> <
+                                                            div class = "ml-3" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            {{ $shopOwner->name }} <
+                                                            /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->email }} < /div> <
+                                                            /div> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" >
+                                                        {{ $shopOwner->products_count ?? 0 }} {{ __('messages.products') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" >
+                                                        {{ $shopOwner->customers_count ?? 0 }} {{ __('messages.Customers') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "flex items-center" >
+                                                            <
+                                                            span
+                                                        class =
+                                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800" >
+                                                        {{ $shopOwner->employees_count }} {{ __('messages.employees') }}
+                                                            <
+                                                            /span> <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            ${{ number_format($shopOwner->sales_today, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-green-600" >
+                                                            ${{ number_format($shopOwner->profit_today, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-gray-900" >
+                                                            ${{ number_format($shopOwner->sales_this_month, 2) }} <
+                                                            /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->products_sold_this_month }}
+                                                        {{ __('messages.sold') }} < /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm font-medium text-green-600" >
+                                                            ${{ number_format($shopOwner->profit_this_month, 2) }} <
+                                                            /div> <
+                                                            /td> <
+                                                            td class = "px-4 py-4 whitespace-nowrap" >
+                                                            <
+                                                            div class = "text-sm text-gray-900" >
+                                                            {{ $shopOwner->bills_count_today }}
+                                                        {{ __('messages.today') }} < /div> <
+                                                            div class = "text-xs text-gray-500" >
+                                                            {{ $shopOwner->bills_count_this_month }}
+                                                        {{ __('messages.this month') }} < /div> <
+                                                            /td> <
+                                                            td class =
+                                                            "px-4 py-4 whitespace-nowrap text-sm text-gray-500" >
+                                                            @if ($shopOwner->last_activity)
+                                                                {{ $shopOwner->last_activity->diffForHumans() }}
+                                                            @else
+                                                                {{ __('messages.Never') }}
+                                                            @endif <
+                                                            /td> <
+                                                        td class =
+                                                        "px-4 py-4 whitespace-nowrap text-sm font-medium" >
+                                                        <
+                                                        div class = "flex items-center space-x-3" >
+                                                        <
+                                                        a href =
+                                                            "{{ route('admin.shop-owners.show', $shopOwner->id) }}"
+                                                        class =
+                                                        "text-indigo-600 hover:text-indigo-900 transition-colors duration-200" >
+                                                        {{ __('View Details') }}
+                                                            <
+                                                            /a> <
+                                                            a href =
+                                                            "{{ route('admin.shop-owners.edit', $shopOwner->id) }}"
+                                                        class =
+                                                        "text-blue-600 hover:text-blue-900 transition-colors duration-200" >
+                                                        {{ __('Edit') }}
+                                                            <
+                                                            /a> <
+                                                            form action =
+                                                            "{{ route('admin.shop-owners.destroy', $shopOwner->id) }}"
+                                                        method = "POST"
+                                                        class = "inline"
+                                                        onsubmit =
+                                                            "return confirm('{{ __('messages.Are you sure you want to delete this shop owner and all associated data?') }}');" >
+                                                            @csrf
+                                                        @method('DELETE')
+                                                            <
+                                                            button type = "submit"
+                                                        class =
+                                                        "text-red-600 hover:text-red-900 transition-colors duration-200" >
+                                                        {{ __('messages.Delete') }}
+                                                            <
+                                                            /button> <
+                                                            /form> <
+                                                            /div> <
+                                                            /td> <
+                                                            /tr>
+                                                    @empty
+                                                        <
+                                                        tr >
+                                                            <
+                                                            td colspan = "11"
+                                                        class = "px-6 py-12 text-center" >
+                                                        <
+                                                        div class = "text-gray-500" >
+                                                        <
+                                                        svg class = "w-12 h-12 mx-auto mb-4 text-gray-400"
+                                                        fill = "none"
+                                                        stroke = "currentColor"
+                                                        viewBox = "0 0 24 24" >
+                                                            <
+                                                            path stroke - linecap = "round"
+                                                        stroke - linejoin = "round"
+                                                        stroke - width = "2"
+                                                        d = "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" >
+                                                            <
+                                                            /path> <
+                                                            /svg> <
+                                                            p class = "text-lg font-medium" >
+                                                            {{ __('messages.No shop owners found') }} <
+                                                            /p> <
+                                                            p class = "text-sm text-gray-400 mt-1" >
+                                                            {{ __('messages.Get started by creating your first shop owner') }} <
+                                                            /p> <
+                                                            a href = "{{ route('admin.shop-owners.create') }}"
+                                                        class =
+                                                        "mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" >
+                                                        {{ __('messages.Add Shop Owner') }}
+                                                            <
+                                                            /a> <
+                                                            /div> <
+                                                            /td> <
+                                                            /tr>
+                                                    @endforelse <
+                                                    /tbody> <
+                                                    /table> <
+                                                    /div> <
+                                                    /div> <
+                                                    /div> <
+                                                    /div> <
+                                                    /x-app-layout> +
+                                                value;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                </script>
             </div>
 
             <!-- Shop Owners List -->
-            <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+            <div class="bg-white shadow-lg rounded-xl overflow-visible">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Shop Owners Management') }}
@@ -368,52 +968,75 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Shop Owner') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Products') }}</th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Customers') }}</th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Employees') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Sales Today') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Profit Today') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Sales This Month') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Profit This Month') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Bills') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Last Activity') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($shopOwners as $shopOwner)
                                 <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-4 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div
                                                 class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                                                 <span
                                                     class="text-white font-bold text-sm">{{ strtoupper(substr($shopOwner->name, 0, 2)) }}</span>
                                             </div>
-                                            <div class="ml-4">
+                                            <div class="ml-3">
                                                 <div class="text-sm font-medium text-gray-900">{{ $shopOwner->name }}
                                                 </div>
-                                                <div class="text-sm text-gray-500">{{ $shopOwner->email }}</div>
+                                                <div class="text-xs text-gray-500">{{ $shopOwner->email }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                {{ $shopOwner->products_count ?? 0 }} {{ __('messages.products') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                {{ $shopOwner->customers_count ?? 0 }}
+                                                {{ __('messages.Customers') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -421,31 +1044,38 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">${{ number_format($shopOwner->sales_today, 2) }}</div>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            ${{ number_format($shopOwner->sales_today, 2) }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-green-600">${{ number_format($shopOwner->profit_today, 2) }}</div>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-green-600">
+                                            ${{ number_format($shopOwner->profit_today, 2) }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">${{ number_format($shopOwner->sales_this_month, 2) }}</div>
-                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_this_month }} {{ __('messages.products') }}</div>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            ${{ number_format($shopOwner->sales_this_month, 2) }}</div>
+                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_this_month }}
+                                            {{ __('messages.sold') }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-green-600">${{ number_format($shopOwner->profit_this_month, 2) }}</div>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-green-600">
+                                            ${{ number_format($shopOwner->profit_this_month, 2) }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $shopOwner->bills_count_today }} {{ __('messages.today') }}</div>
-                                        <div class="text-xs text-gray-500">{{ $shopOwner->bills_count_this_month }} {{ __('messages.this month') }}</div>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ $shopOwner->bills_count_today }}
+                                            {{ __('messages.today') }}</div>
+                                        <div class="text-xs text-gray-500">{{ $shopOwner->bills_count_this_month }}
+                                            {{ __('messages.this month') }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if ($shopOwner->last_activity)
                                             {{ $shopOwner->last_activity->diffForHumans() }}
                                         @else
                                             {{ __('messages.Never') }}
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center space-x-3">
                                             <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}"
                                                 class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
@@ -470,7 +1100,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-6 py-12 text-center">
+                                    <td colspan="11" class="px-6 py-12 text-center">
                                         <div class="text-gray-500">
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">

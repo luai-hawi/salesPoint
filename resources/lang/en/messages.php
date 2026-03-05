@@ -984,6 +984,7 @@ return [
     'today' => 'today',
     'this month' => 'this month',
     'products' => 'products',
+    'sold' => 'sold',
     'Rank' => 'Rank',
     'Qty Sold' => 'Qty Sold',
     'Items:' => 'Items:',
