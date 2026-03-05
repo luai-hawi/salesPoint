@@ -1055,36 +1055,33 @@
 
             const inputElement = document.getElementById(inputId);
             let hasScanned = false;
-            let html5QrcodeScanner = null;
+            let html5Qrcode = null;
 
-            // Use HTML5 QR Code scanner
+            // Use HTML5 QR Code - Direct camera start
             try {
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "scanner-container", {
+                const scannerContainer = document.getElementById('scanner-container');
+
+                // Create video element for camera
+                const videoElement = document.createElement('video');
+                videoElement.style.width = '100%';
+                videoElement.style.height = '100%';
+                videoElement.style.objectFit = 'cover';
+                videoElement.setAttribute('playsinline', 'true');
+                scannerContainer.appendChild(videoElement);
+
+                html5Qrcode = new Html5Qrcode("scanner-container");
+
+                // Start camera directly
+                html5Qrcode.start({
+                        facingMode: "environment"
+                    }, {
                         fps: 10,
                         qrbox: {
                             width: 250,
                             height: 150
                         },
-                        aspectRatio: 1.0,
-                        formatsToSupport: [
-                            Html5QrcodeSupportedFormats.QR_CODE,
-                            Html5QrcodeSupportedFormats.CODE_128,
-                            Html5QrcodeSupportedFormats.CODE_39,
-                            Html5QrcodeSupportedFormats.CODE_93,
-                            Html5QrcodeSupportedFormats.CODABAR,
-                            Html5QrcodeSupportedFormats.ITF,
-                            Html5QrcodeSupportedFormats.EAN_13,
-                            Html5QrcodeSupportedFormats.EAN_8,
-                            Html5QrcodeSupportedFormats.UPC_A,
-                            Html5QrcodeSupportedFormats.UPC_E,
-                            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION
-                        ]
+                        aspectRatio: 1.0
                     },
-                    false
-                );
-
-                html5QrcodeScanner.render(
                     (decodedText, decodedResult) => {
                         if (hasScanned) return;
 
@@ -1098,7 +1095,7 @@
                         hasScanned = true;
 
                         // Stop scanner
-                        html5QrcodeScanner.clear().then(() => {
+                        html5Qrcode.stop().then(() => {
                             scannerModal.remove();
                             inputElement.value = code;
                             inputElement.dispatchEvent(new Event('input', {
@@ -1115,7 +1112,12 @@
                     (errorMessage) => {
                         // Parse error, ignore
                     }
-                );
+                ).catch(err => {
+                    console.error('Camera start error:', err);
+                    alert('{{ __('messages.Camera access denied or not available') }}');
+                    scannerModal.remove();
+                });
+
             } catch (err) {
                 console.error('HTML5 QR Code scanner error:', err);
                 alert('{{ __('messages.Camera access denied or not available') }}');
@@ -1123,8 +1125,8 @@
             }
 
             document.getElementById('close-scanner').addEventListener('click', function() {
-                if (html5QrcodeScanner) {
-                    html5QrcodeScanner.clear().then(() => {
+                if (html5Qrcode) {
+                    html5Qrcode.stop().then(() => {
                         scannerModal.remove();
                     }).catch(err => {
                         scannerModal.remove();
@@ -1136,8 +1138,8 @@
 
             scannerModal.addEventListener('click', function(e) {
                 if (e.target === scannerModal) {
-                    if (html5QrcodeScanner) {
-                        html5QrcodeScanner.clear().then(() => {
+                    if (html5Qrcode) {
+                        html5Qrcode.stop().then(() => {
                             scannerModal.remove();
                         }).catch(err => {
                             scannerModal.remove();

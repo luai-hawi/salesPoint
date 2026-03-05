@@ -2487,14 +2487,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3333,9 +3333,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -4145,38 +4145,33 @@
 
             const inputElement = document.getElementById(inputId);
             let hasScanned = false;
-            let html5QrcodeScanner = null;
+            let html5Qrcode = null;
 
-            // Use HTML5 QR Code scanner
+            // Use HTML5 QR Code - Direct camera start
             try {
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "scanner-container", {
+                const scannerContainer = document.getElementById('scanner-container');
+
+                // Create video element for camera
+                const videoElement = document.createElement('video');
+                videoElement.style.width = '100%';
+                videoElement.style.height = '100%';
+                videoElement.style.objectFit = 'cover';
+                videoElement.setAttribute('playsinline', 'true');
+                scannerContainer.appendChild(videoElement);
+
+                html5Qrcode = new Html5Qrcode("scanner-container");
+
+                // Start camera directly
+                html5Qrcode.start({
+                        facingMode: "environment"
+                    }, {
                         fps: 10,
                         qrbox: {
                             width: 250,
                             height: 150
                         },
-                        aspectRatio: 1.0,
-                        // All format support
-                        formatsToSupport: [
-                            Html5QrcodeSupportedFormats.QR_CODE,
-                            Html5QrcodeSupportedFormats.CODE_128,
-                            Html5QrcodeSupportedFormats.CODE_39,
-                            Html5QrcodeSupportedFormats.CODE_93,
-                            Html5QrcodeSupportedFormats.CODABAR,
-                            Html5QrcodeSupportedFormats.ITF,
-                            Html5QrcodeSupportedFormats.EAN_13,
-                            Html5QrcodeSupportedFormats.EAN_8,
-                            Html5QrcodeSupportedFormats.UPC_A,
-                            Html5QrcodeSupportedFormats.UPC_E,
-                            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION
-                        ]
+                        aspectRatio: 1.0
                     },
-                    /* verbose= */
-                    false
-                );
-
-                html5QrcodeScanner.render(
                     (decodedText, decodedResult) => {
                         if (hasScanned) return;
 
@@ -4190,7 +4185,7 @@
                         hasScanned = true;
 
                         // Stop scanner
-                        html5QrcodeScanner.clear().then(() => {
+                        html5Qrcode.stop().then(() => {
                             scannerModal.remove();
 
                             // Set value and trigger input event
@@ -4225,7 +4220,12 @@
                     (errorMessage) => {
                         // Parse error, ignore - this is called for every frame
                     }
-                );
+                ).catch(err => {
+                    console.error('Camera start error:', err);
+                    alert('{{ __('messages.Camera access denied or not available') }}');
+                    scannerModal.remove();
+                });
+
             } catch (err) {
                 console.error('HTML5 QR Code scanner error:', err);
                 alert('{{ __('messages.Camera access denied or not available') }}');
@@ -4233,8 +4233,8 @@
             }
 
             document.getElementById('close-scanner').addEventListener('click', function() {
-                if (html5QrcodeScanner) {
-                    html5QrcodeScanner.clear().then(() => {
+                if (html5Qrcode) {
+                    html5Qrcode.stop().then(() => {
                         scannerModal.remove();
                     }).catch(err => {
                         scannerModal.remove();
@@ -4246,8 +4246,8 @@
 
             scannerModal.addEventListener('click', function(e) {
                 if (e.target === scannerModal) {
-                    if (html5QrcodeScanner) {
-                        html5QrcodeScanner.clear().then(() => {
+                    if (html5Qrcode) {
+                        html5Qrcode.stop().then(() => {
                             scannerModal.remove();
                         }).catch(err => {
                             scannerModal.remove();
