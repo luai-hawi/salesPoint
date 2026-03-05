@@ -2487,14 +2487,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3333,9 +3333,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -4191,27 +4191,57 @@
 
             Quagga.onDetected(function(result) {
                 if (hasScanned) return;
-                const code = result.codeResult.code;
-                if (code) {
-                    hasScanned = true;
-                    Quagga.stop();
-                    scannerModal.remove();
 
-                    // Set value and trigger input event
-                    inputElement.value = code;
-                    inputElement.dispatchEvent(new Event('input', {
-                        bubbles: true
-                    }));
+                const codeResult = result.codeResult;
+                if (!codeResult || !codeResult.code) return;
 
-                    // Trigger Enter key event
-                    const enterEvent = new KeyboardEvent('keydown', {
-                        key: 'Enter',
-                        keyCode: 13,
-                        which: 13,
-                        bubbles: true
-                    });
-                    inputElement.dispatchEvent(enterEvent);
+                // Get detection quality/accuracy
+                const errors = codeResult.decodedCodes ?
+                    codeResult.decodedCodes.filter(d => d.error !== undefined).map(d => d.error) :
+                    [];
+                const avgError = errors.length > 0 ?
+                    errors.reduce((a, b) => a + b, 0) / errors.length :
+                    1;
+
+                // Only accept codes with low error rate (high confidence)
+                if (avgError > 0.25) {
+                    console.log('Low confidence scan, ignoring:', avgError);
+                    return;
                 }
+
+                const code = codeResult.code.trim();
+
+                // Validate: code should be at least 4 characters
+                if (code.length < 4) {
+                    console.log('Code too short:', code.length);
+                    return;
+                }
+
+                // Validate: code should only contain valid characters
+                // Allow alphanumeric, common punctuation
+                if (!/^[a-zA-Z0-9@#$%&*\-_./]+$/.test(code)) {
+                    console.log('Invalid characters in code:', code);
+                    return;
+                }
+
+                hasScanned = true;
+                Quagga.stop();
+                scannerModal.remove();
+
+                // Set value and trigger input event
+                inputElement.value = code;
+                inputElement.dispatchEvent(new Event('input', {
+                    bubbles: true
+                }));
+
+                // Trigger Enter key event
+                const enterEvent = new KeyboardEvent('keydown', {
+                    key: 'Enter',
+                    keyCode: 13,
+                    which: 13,
+                    bubbles: true
+                });
+                inputElement.dispatchEvent(enterEvent);
             });
 
             document.getElementById('close-scanner').addEventListener('click', function() {

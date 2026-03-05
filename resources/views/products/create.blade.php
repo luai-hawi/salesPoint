@@ -1101,18 +1101,47 @@
 
             Quagga.onDetected(function(result) {
                 if (hasScanned) return;
-                const code = result.codeResult.code;
-                if (code) {
-                    hasScanned = true;
-                    Quagga.stop();
-                    scannerModal.remove();
 
-                    // Set value and trigger input event
-                    inputElement.value = code;
-                    inputElement.dispatchEvent(new Event('input', {
-                        bubbles: true
-                    }));
+                const codeResult = result.codeResult;
+                if (!codeResult || !codeResult.code) return;
+
+                // Get detection quality/accuracy
+                const errors = codeResult.decodedCodes ?
+                    codeResult.decodedCodes.filter(d => d.error !== undefined).map(d => d.error) :
+                    [];
+                const avgError = errors.length > 0 ?
+                    errors.reduce((a, b) => a + b, 0) / errors.length :
+                    1;
+
+                // Only accept codes with low error rate (high confidence)
+                if (avgError > 0.25) {
+                    console.log('Low confidence scan, ignoring:', avgError);
+                    return;
                 }
+
+                const code = codeResult.code.trim();
+
+                // Validate: code should be at least 4 characters
+                if (code.length < 4) {
+                    console.log('Code too short:', code.length);
+                    return;
+                }
+
+                // Validate: code should only contain valid characters
+                if (!/^[a-zA-Z0-9@#$%&*\-_./]+$/.test(code)) {
+                    console.log('Invalid characters in code:', code);
+                    return;
+                }
+
+                hasScanned = true;
+                Quagga.stop();
+                scannerModal.remove();
+
+                // Set value and trigger input event
+                inputElement.value = code;
+                inputElement.dispatchEvent(new Event('input', {
+                    bubbles: true
+                }));
             });
 
             document.getElementById('close-scanner').addEventListener('click', function() {
