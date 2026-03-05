@@ -164,8 +164,8 @@
                                             </svg>
                                             <!-- Camera Scanner Icon -->
                                             <button type="button" id="scan-barcode-btn"
-                                                class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-                                                title="{{ __('messages.Scan with camera') }}">
+                                                class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                disabled title="{{ __('messages.Scan with camera') }}">
                                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2"
