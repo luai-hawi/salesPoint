@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\Bill;
 use App\Models\Customer;
+use App\Models\Expense;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -18,21 +19,60 @@ class AdminDashboardController extends Controller
         try {
             // Cache expensive queries for 5 minutes
             $stats = Cache::remember('admin_dashboard_stats', 300, function () {
+                $today = Carbon::today();
+                $startOfMonth = Carbon::now()->startOfMonth();
+                $endOfMonth = Carbon::now()->endOfMonth();
+
+                // Get today's and month's bills
+                $todayBills = Bill::whereDate('created_at', $today);
+                $monthBills = Bill::whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+
+                // Calculate total sales today and this month
+                $totalSalesToday = $todayBills->sum('total_price') ?? 0;
+                $totalSalesMonth = $monthBills->sum('total_price') ?? 0;
+
+                // Calculate profit (difference between selling and cost price)
+                $profitToday = $this->calculateProfit($todayBills);
+                $profitMonth = $this->calculateProfit($monthBills);
+
+                // Bill counts
+                $billsCountToday = $todayBills->count() ?? 0;
+                $billsCountMonth = $monthBills->count() ?? 0;
+
+                // Products sold today and this month
+                $productsSoldToday = $this->getProductsSoldCount($todayBills);
+                $productsSoldMonth = $this->getProductsSoldCount($monthBills);
+
+                // Average bill value
+                $avgBillValueToday = $billsCountToday > 0 ? $totalSalesToday / $billsCountToday : 0;
+                $avgBillValueMonth = $billsCountMonth > 0 ? $totalSalesMonth / $billsCountMonth : 0;
+
+                // Get total expenses this month
+                $totalExpensesMonth = Expense::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                    ->sum('amount') ?? 0;
+
                 return [
                     'total_shop_owners' => User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])->count(),
                     'disabled_shop_owners' => User::where('role', 'disabled')->count(),
                     'total_employees' => User::where('role', 'employee')->count(),
                     'total_admins' => User::where('role', 'admin')->count(),
-                    'total_sales_today' => Bill::whereDate('created_at', Carbon::today())->sum('total_price') ?? 0,
-                    'total_sales_month' => Bill::whereMonth('created_at', Carbon::now()->month)
-                                             ->whereYear('created_at', Carbon::now()->year)
-                                             ->sum('total_price') ?? 0,
+                    'total_sales_today' => $totalSalesToday,
+                    'total_sales_month' => $totalSalesMonth,
+                    'profit_today' => $profitToday,
+                    'profit_month' => $profitMonth,
+                    'bills_count_today' => $billsCountToday,
+                    'bills_count_month' => $billsCountMonth,
+                    'products_sold_today' => $productsSoldToday,
+                    'products_sold_month' => $productsSoldMonth,
+                    'avg_bill_value_today' => $avgBillValueToday,
+                    'avg_bill_value_month' => $avgBillValueMonth,
+                    'total_expenses_month' => $totalExpensesMonth,
                     'total_products' => Product::count(),
                     'total_customers' => Customer::count(),
                 ];
             });
 
-            // Get shop owners with performance metrics
+            // Get shop owners with performance metrics (no limit)
             $shopOwners = $this->getShopOwnersWithMetrics();
 
             // Get sales chart data for the last 7 days
@@ -42,16 +82,16 @@ class AdminDashboardController extends Controller
             $topShopOwners = $shopOwners->sortByDesc('sales_this_month')->take(5);
 
             return view('admin.dashboard', compact(
-                'stats', 
-                'shopOwners', 
+                'stats',
+                'shopOwners',
                 'salesChartData',
                 'topShopOwners'
             ));
-            
+
         } catch (\Exception $e) {
             // Log error and return with empty data
             \Log::error('Dashboard error: ' . $e->getMessage());
-            
+
             $stats = [
                 'total_shop_owners' => 0,
                 'disabled_shop_owners' => 0,
@@ -59,17 +99,26 @@ class AdminDashboardController extends Controller
                 'total_admins' => 0,
                 'total_sales_today' => 0,
                 'total_sales_month' => 0,
+                'profit_today' => 0,
+                'profit_month' => 0,
+                'bills_count_today' => 0,
+                'bills_count_month' => 0,
+                'products_sold_today' => 0,
+                'products_sold_month' => 0,
+                'avg_bill_value_today' => 0,
+                'avg_bill_value_month' => 0,
+                'total_expenses_month' => 0,
                 'total_products' => 0,
                 'total_customers' => 0,
             ];
-            
+
             $shopOwners = collect();
             $salesChartData = [];
             $topShopOwners = collect();
-            
+
             return view('admin.dashboard', compact(
-                'stats', 
-                'shopOwners', 
+                'stats',
+                'shopOwners',
                 'salesChartData',
                 'topShopOwners'
             ))->with('error', 'Some dashboard data could not be loaded.');
@@ -77,7 +126,48 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     * Get shop owners with their performance metrics
+     * Calculate total profit from bills
+     */
+    private function calculateProfit($bills)
+    {
+        try {
+            $billIds = $bills->pluck('id');
+            if ($billIds->isEmpty()) {
+                return 0;
+            }
+
+            $profit = DB::table('bill_product')
+                ->whereIn('bill_id', $billIds)
+                ->selectRaw('SUM((selling_price - cost_price) * quantity) as total_profit')
+                ->value('total_profit');
+
+            return $profit ?? 0;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get total products sold count
+     */
+    private function getProductsSoldCount($bills)
+    {
+        try {
+            $billIds = $bills->pluck('id');
+            if ($billIds->isEmpty()) {
+                return 0;
+            }
+
+            return DB::table('bill_product')
+                ->whereIn('bill_id', $billIds)
+                ->sum('quantity') ?? 0;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get shop owners with their performance metrics (no limit)
      */
     private function getShopOwnersWithMetrics()
     {
@@ -89,7 +179,6 @@ class AdminDashboardController extends Controller
                       ->take(10); // Limit for performance
             }])
             ->latest()
-            ->take(20) // Limit for dashboard performance
             ->get()
             ->map(function($shopOwner) {
                 try {
@@ -98,28 +187,52 @@ class AdminDashboardController extends Controller
                         ->merge($shopOwner->employees->pluck('id'))
                         ->filter()
                         ->unique();
-                    
+
                     if ($userIds->isEmpty()) {
                         $userIds = collect([$shopOwner->id]);
                     }
-                    
+
+                    // Get today's and month's date ranges
+                    $today = Carbon::today();
+                    $startOfMonth = Carbon::now()->startOfMonth();
+                    $endOfMonth = Carbon::now()->endOfMonth();
+
+                    // Get all bills for this shop
+                    $allBills = Bill::whereIn('user_id', $userIds);
+                    $todayBills = Bill::whereIn('user_id', $userIds)->whereDate('created_at', $today);
+                    $monthBills = Bill::whereIn('user_id', $userIds)->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+
                     // Get shop owner's metrics with error handling
                     $shopOwner->total_sales = $this->getSafeSum(
-                        Bill::whereIn('user_id', $userIds), 'total_price'
+                        $allBills, 'total_price'
                     );
-                    
+
                     $shopOwner->sales_this_month = $this->getSafeSum(
-                        Bill::whereIn('user_id', $userIds)
-                            ->whereMonth('created_at', Carbon::now()->month)
-                            ->whereYear('created_at', Carbon::now()->year),
+                        $monthBills,
                         'total_price'
                     );
 
                     $shopOwner->sales_today = $this->getSafeSum(
-                        Bill::whereIn('user_id', $userIds)
-                            ->whereDate('created_at', Carbon::today()),
+                        $todayBills,
                         'total_price'
                     );
+
+                    // Profit calculations
+                    $shopOwner->profit_this_month = $this->calculateProfit($monthBills);
+                    $shopOwner->profit_today = $this->calculateProfit($todayBills);
+
+                    // Bill counts
+                    $shopOwner->bills_count_this_month = $monthBills->count() ?? 0;
+                    $shopOwner->bills_count_today = $todayBills->count() ?? 0;
+
+                    // Products sold
+                    $shopOwner->products_sold_this_month = $this->getProductsSoldCount($monthBills);
+                    $shopOwner->products_sold_today = $this->getProductsSoldCount($todayBills);
+
+                    // Average bill value
+                    $shopOwner->avg_bill_value_this_month = $shopOwner->bills_count_this_month > 0
+                        ? $shopOwner->sales_this_month / $shopOwner->bills_count_this_month
+                        : 0;
 
                     // Get counts with error handling
                     $shopOwner->products_count = Product::where('user_id', $shopOwner->id)->count() ?? 0;
@@ -135,6 +248,13 @@ class AdminDashboardController extends Controller
                     $shopOwner->total_sales = 0;
                     $shopOwner->sales_this_month = 0;
                     $shopOwner->sales_today = 0;
+                    $shopOwner->profit_this_month = 0;
+                    $shopOwner->profit_today = 0;
+                    $shopOwner->bills_count_this_month = 0;
+                    $shopOwner->bills_count_today = 0;
+                    $shopOwner->products_sold_this_month = 0;
+                    $shopOwner->products_sold_today = 0;
+                    $shopOwner->avg_bill_value_this_month = 0;
                     $shopOwner->products_count = 0;
                     $shopOwner->customers_count = 0;
                     $shopOwner->last_activity = null;
@@ -150,13 +270,13 @@ class AdminDashboardController extends Controller
     private function getSalesChartData()
     {
         $salesChartData = [];
-        
+
         try {
             for ($i = 6; $i >= 0; $i--) {
                 $date = Carbon::now()->subDays($i);
                 $sales = Bill::whereDate('created_at', $date->toDateString())
                     ->sum('total_price') ?? 0;
-                    
+
                 $salesChartData[] = [
                     'date' => $date->format('M d'),
                     'sales' => (float) $sales
