@@ -658,8 +658,8 @@
         </main>
     </div>
 
-    <!-- QuaggaJS Barcode Scanner Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+    <!-- HTML5 QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <!-- Add this line to include pushed scripts -->
     @stack('scripts')

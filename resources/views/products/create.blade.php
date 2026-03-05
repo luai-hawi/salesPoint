@@ -1027,7 +1027,7 @@
 
     <!-- Barcode Scanner for Products Create -->
     <script>
-        // Reuse the same scanner function from dashboard
+        // Barcode Scanner Function using HTML5 QR Code
         function initBarcodeScanner(inputId) {
             // Check if scanner modal already exists
             if (document.getElementById('barcode-scanner-modal')) {
@@ -1036,7 +1036,7 @@
 
             const scannerModal = document.createElement('div');
             scannerModal.id = 'barcode-scanner-modal';
-            scannerModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75';
+            scannerModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90';
             scannerModal.innerHTML = `
                 <div class="bg-white rounded-lg p-4 w-full max-w-lg mx-4">
                     <div class="flex justify-between items-center mb-4">
@@ -1047,7 +1047,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 300px;"></div>
+                    <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 350px;"></div>
                     <p class="text-sm text-gray-500 mt-2 text-center">{{ __('messages.Point camera at barcode') }}</p>
                 </div>
             `;
@@ -1055,104 +1055,96 @@
 
             const inputElement = document.getElementById(inputId);
             let hasScanned = false;
+            let html5QrcodeScanner = null;
 
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scanner-container'),
-                    constraints: {
-                        facingMode: "environment",
-                        width: {
-                            ideal: 1280
+            // Use HTML5 QR Code scanner
+            try {
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "scanner-container", {
+                        fps: 10,
+                        qrbox: {
+                            width: 250,
+                            height: 150
                         },
-                        height: {
-                            ideal: 720
+                        aspectRatio: 1.0,
+                        formatsToSupport: [
+                            Html5QrcodeSupportedFormats.QR_CODE,
+                            Html5QrcodeSupportedFormats.CODE_128,
+                            Html5QrcodeSupportedFormats.CODE_39,
+                            Html5QrcodeSupportedFormats.CODE_93,
+                            Html5QrcodeSupportedFormats.CODABAR,
+                            Html5QrcodeSupportedFormats.ITF,
+                            Html5QrcodeSupportedFormats.EAN_13,
+                            Html5QrcodeSupportedFormats.EAN_8,
+                            Html5QrcodeSupportedFormats.UPC_A,
+                            Html5QrcodeSupportedFormats.UPC_E,
+                            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION
+                        ]
+                    },
+                    false
+                );
+
+                html5QrcodeScanner.render(
+                    (decodedText, decodedResult) => {
+                        if (hasScanned) return;
+
+                        const code = decodedText.trim();
+
+                        // Validate: code should be at least 4 characters
+                        if (code.length < 4) {
+                            return;
                         }
+
+                        hasScanned = true;
+
+                        // Stop scanner
+                        html5QrcodeScanner.clear().then(() => {
+                            scannerModal.remove();
+                            inputElement.value = code;
+                            inputElement.dispatchEvent(new Event('input', {
+                                bubbles: true
+                            }));
+                        }).catch(err => {
+                            scannerModal.remove();
+                            inputElement.value = code;
+                            inputElement.dispatchEvent(new Event('input', {
+                                bubbles: true
+                            }));
+                        });
+                    },
+                    (errorMessage) => {
+                        // Parse error, ignore
                     }
-                },
-                decoder: {
-                    readers: [
-                        "code_128_reader",
-                        "ean_reader",
-                        "ean_8_reader",
-                        "upc_reader",
-                        "upc_e_reader",
-                        "code_39_reader",
-                        "code_93_reader",
-                        "codabar_reader",
-                        "i2of5_reader"
-                    ]
-                },
-                locator: {
-                    patchSize: "medium",
-                    halfSample: true
-                },
-                frequency: 10
-            }, function(err) {
-                if (err) {
-                    console.error('Quagga init error:', err);
-                    scannerModal.remove();
-                    alert('{{ __('messages.Camera access denied or not available') }}');
-                    return;
-                }
-                Quagga.start();
-            });
-
-            Quagga.onDetected(function(result) {
-                if (hasScanned) return;
-
-                const codeResult = result.codeResult;
-                if (!codeResult || !codeResult.code) return;
-
-                // Get detection quality/accuracy
-                const errors = codeResult.decodedCodes ?
-                    codeResult.decodedCodes.filter(d => d.error !== undefined).map(d => d.error) :
-                    [];
-                const avgError = errors.length > 0 ?
-                    errors.reduce((a, b) => a + b, 0) / errors.length :
-                    1;
-
-                // Only accept codes with low error rate (high confidence)
-                if (avgError > 0.25) {
-                    console.log('Low confidence scan, ignoring:', avgError);
-                    return;
-                }
-
-                const code = codeResult.code.trim();
-
-                // Validate: code should be at least 4 characters
-                if (code.length < 4) {
-                    console.log('Code too short:', code.length);
-                    return;
-                }
-
-                // Validate: code should only contain valid characters
-                if (!/^[a-zA-Z0-9@#$%&*\-_./]+$/.test(code)) {
-                    console.log('Invalid characters in code:', code);
-                    return;
-                }
-
-                hasScanned = true;
-                Quagga.stop();
+                );
+            } catch (err) {
+                console.error('HTML5 QR Code scanner error:', err);
+                alert('{{ __('messages.Camera access denied or not available') }}');
                 scannerModal.remove();
-
-                // Set value and trigger input event
-                inputElement.value = code;
-                inputElement.dispatchEvent(new Event('input', {
-                    bubbles: true
-                }));
-            });
+            }
 
             document.getElementById('close-scanner').addEventListener('click', function() {
-                Quagga.stop();
-                scannerModal.remove();
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.clear().then(() => {
+                        scannerModal.remove();
+                    }).catch(err => {
+                        scannerModal.remove();
+                    });
+                } else {
+                    scannerModal.remove();
+                }
             });
 
             scannerModal.addEventListener('click', function(e) {
                 if (e.target === scannerModal) {
-                    Quagga.stop();
-                    scannerModal.remove();
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.clear().then(() => {
+                            scannerModal.remove();
+                        }).catch(err => {
+                            scannerModal.remove();
+                        });
+                    } else {
+                        scannerModal.remove();
+                    }
                 }
             });
         }
