@@ -153,7 +153,7 @@
                                     <div class="flex">
                                         <div class="relative flex-1">
                                             <input type="text" name="barcode" id="barcode"
-                                                class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
+                                                class="w-full px-4 py-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
                                                 value="{{ old('barcode') }}"
                                                 placeholder="{{ __('messages.Optional barcode or product code...') }}">
                                             <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
@@ -162,6 +162,18 @@
                                                     d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z">
                                                 </path>
                                             </svg>
+                                            <!-- Camera Scanner Icon -->
+                                            <button type="button" id="scan-barcode-btn"
+                                                class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                                                title="{{ __('messages.Scan with camera') }}">
+                                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                            </button>
                                         </div>
                                         <button type="button" id="generate-barcode"
                                             class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center">
@@ -1010,6 +1022,113 @@
     </html>
     `);
             printWindow.document.close();
+        });
+    </script>
+
+    <!-- Barcode Scanner for Products Create -->
+    <script>
+        // Reuse the same scanner function from dashboard
+        function initBarcodeScanner(inputId) {
+            // Check if scanner modal already exists
+            if (document.getElementById('barcode-scanner-modal')) {
+                return;
+            }
+
+            const scannerModal = document.createElement('div');
+            scannerModal.id = 'barcode-scanner-modal';
+            scannerModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75';
+            scannerModal.innerHTML = `
+                <div class="bg-white rounded-lg p-4 w-full max-w-lg mx-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">{{ __('messages.Scan Barcode') }}</h3>
+                        <button type="button" id="close-scanner" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 300px;"></div>
+                    <p class="text-sm text-gray-500 mt-2 text-center">{{ __('messages.Point camera at barcode') }}</p>
+                </div>
+            `;
+            document.body.appendChild(scannerModal);
+
+            const inputElement = document.getElementById(inputId);
+            let hasScanned = false;
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner-container'),
+                    constraints: {
+                        facingMode: "environment",
+                        width: {
+                            ideal: 640
+                        },
+                        height: {
+                            ideal: 480
+                        }
+                    }
+                },
+                decoder: {
+                    readers: [
+                        "ean_reader",
+                        "ean_8_reader",
+                        "upc_reader",
+                        "upc_e_reader",
+                        "code_128_reader",
+                        "code_39_reader"
+                    ]
+                },
+                locate: true
+            }, function(err) {
+                if (err) {
+                    console.error('Quagga init error:', err);
+                    scannerModal.remove();
+                    alert('{{ __('messages.Camera access denied or not available') }}');
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected(function(result) {
+                if (hasScanned) return;
+                const code = result.codeResult.code;
+                if (code) {
+                    hasScanned = true;
+                    Quagga.stop();
+                    scannerModal.remove();
+
+                    // Set value and trigger input event
+                    inputElement.value = code;
+                    inputElement.dispatchEvent(new Event('input', {
+                        bubbles: true
+                    }));
+                }
+            });
+
+            document.getElementById('close-scanner').addEventListener('click', function() {
+                Quagga.stop();
+                scannerModal.remove();
+            });
+
+            scannerModal.addEventListener('click', function(e) {
+                if (e.target === scannerModal) {
+                    Quagga.stop();
+                    scannerModal.remove();
+                }
+            });
+        }
+
+        // Initialize scanner button for products create
+        document.addEventListener('DOMContentLoaded', function() {
+            const scanBtn = document.getElementById('scan-barcode-btn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', function() {
+                    initBarcodeScanner('barcode');
+                });
+            }
         });
     </script>
 </x-app-layout>

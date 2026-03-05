@@ -12,6 +12,7 @@ return [
     'Loading products...' => 'Loading products...',
     'Quick Scanner' => 'Quick Scanner',
     'Scan or enter barcode...' => 'Scan or enter barcode...',
+    'Scan with camera' => 'Scan with camera',
     'Create New Bill' => 'Create New Bill',
     'Customer (Optional)' => 'Customer (Optional)',
     'Search customer by name or enter new customer...' => 'Search customer by name...',

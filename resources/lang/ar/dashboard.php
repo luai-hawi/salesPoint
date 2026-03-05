@@ -12,6 +12,7 @@ return [
     'Loading products...' => 'جاري تحميل المنتجات...',
     'Quick Scanner' => 'الماسح السريع',
     'Scan or enter barcode...' => 'امسح الباركود أو أدخله...',
+    'Scan with camera' => 'امسح بالكاميرا',
     'Create New Bill' => 'إنشاء فاتورة جديدة',
     'Customer (Optional)' => 'العميل (اختياري)',
     'Search customer by name or enter new customer...' => 'البحث عن العميل بالاسم...',
