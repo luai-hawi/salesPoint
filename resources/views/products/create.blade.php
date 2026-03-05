@@ -1064,24 +1064,31 @@
                     constraints: {
                         facingMode: "environment",
                         width: {
-                            ideal: 640
+                            ideal: 1280
                         },
                         height: {
-                            ideal: 480
+                            ideal: 720
                         }
                     }
                 },
                 decoder: {
                     readers: [
+                        "code_128_reader",
                         "ean_reader",
                         "ean_8_reader",
                         "upc_reader",
                         "upc_e_reader",
-                        "code_128_reader",
-                        "code_39_reader"
+                        "code_39_reader",
+                        "code_93_reader",
+                        "codabar_reader",
+                        "i2of5_reader"
                     ]
                 },
-                locate: true
+                locator: {
+                    patchSize: "medium",
+                    halfSample: true
+                },
+                frequency: 10
             }, function(err) {
                 if (err) {
                     console.error('Quagga init error:', err);
