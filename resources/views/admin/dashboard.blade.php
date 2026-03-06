@@ -109,6 +109,188 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Profit Today -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit Today') }}</p>
+                                <p class="text-2xl font-bold text-emerald-600">
+                                    ${{ number_format($stats['profit_today'], 2) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profit This Month -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit This Month') }}</p>
+                                <p class="text-2xl font-bold text-teal-600">
+                                    ${{ number_format($stats['profit_month'], 2) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bills Today -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Bills Today') }}</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ $stats['bills_count_today'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bills This Month -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Bills This Month') }}</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ $stats['bills_count_month'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Sold Today -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Products Sold Today') }}
+                                </p>
+                                <p class="text-2xl font-bold text-gray-900">{{ $stats['products_sold_today'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Sold This Month -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Products Sold Month') }}
+                                </p>
+                                <p class="text-2xl font-bold text-gray-900">{{ $stats['products_sold_month'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Bill Today -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Avg Bill Today') }}</p>
+                                <p class="text-2xl font-bold text-gray-900">
+                                    ${{ number_format($stats['avg_bill_value_today'], 2) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Bill This Month -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Avg Bill Month') }}</p>
+                                <p class="text-2xl font-bold text-gray-900">
+                                    ${{ number_format($stats['avg_bill_value_month'], 2) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Top Performers and Chart -->
@@ -137,6 +319,9 @@
                                 <div class="text-right">
                                     <p class="text-sm font-bold text-green-600">
                                         ${{ number_format($shopOwner->sales_this_month, 2) }}</p>
+                                    <p class="text-xs text-emerald-500">
+                                        ${{ number_format($shopOwner->profit_this_month, 2) }}
+                                        {{ __('messages.Profit') }}</p>
                                 </div>
                             </div>
                         @empty
@@ -232,40 +417,61 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Shop Owner') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Employees') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Products') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Customers') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.today') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Profit Today') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Bills Today') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Sales This Month') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Profit This Month') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Bills This Month') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Last Activity') }}</th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($shopOwners as $shopOwner)
                                 <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-3 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div
                                                 class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                                                 <span
                                                     class="text-white font-bold text-sm">{{ strtoupper(substr($shopOwner->name, 0, 2)) }}</span>
                                             </div>
-                                            <div class="ml-4">
+                                            <div class="ml-3">
                                                 <div class="text-sm font-medium text-gray-900">{{ $shopOwner->name }}
                                                 </div>
-                                                <div class="text-sm text-gray-500">{{ $shopOwner->email }}</div>
+                                                <div class="text-xs text-gray-500">{{ $shopOwner->email }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-3 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -273,22 +479,47 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            ${{ number_format($shopOwner->sales_this_month, 2) }}</div>
-                                        <div class="text-sm text-gray-500">{{ $shopOwner->products_count }}
-                                            {{ __('messages.Products') }}, {{ $shopOwner->customers_count }}
-                                            {{ __('messages.Customers') }}</div>
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ $shopOwner->products_count }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ $shopOwner->customers_count }}
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            ${{ number_format($shopOwner->sales_today, 2) }}</div>
+                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_today }}
+                                            {{ __('messages.sold') }}</div>
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-emerald-600">
+                                            ${{ number_format($shopOwner->profit_today, 2) }}</div>
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ $shopOwner->bills_count_today }}
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            ${{ number_format($shopOwner->sales_this_month, 2) }}</div>
+                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_this_month }}
+                                            {{ __('messages.sold') }}</div>
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-emerald-600">
+                                            ${{ number_format($shopOwner->profit_this_month, 2) }}</div>
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ $shopOwner->bills_count_this_month }}
+                                    </td>
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if ($shopOwner->last_activity)
                                             {{ $shopOwner->last_activity->diffForHumans() }}
                                         @else
                                             {{ __('messages.Never') }}
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex items-center space-x-3">
+                                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex items-center space-x-2">
                                             <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}"
                                                 class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
                                                 {{ __('View Details') }}
@@ -312,7 +543,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center">
+                                    <td colspan="12" class="px-6 py-12 text-center">
                                         <div class="text-gray-500">
                                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">

@@ -974,6 +974,7 @@ return [
     'Sales Today' => 'Sales Today',
     'Profit Today' => 'Profit Today',
     'Profit This Month' => 'Profit This Month',
+    'Profit' => 'Profit',
     'Bills Today' => 'Bills Today',
     'Bills This Month' => 'Bills This Month',
     'Products Sold Today' => 'Products Sold Today',

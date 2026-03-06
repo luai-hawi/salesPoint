@@ -533,6 +533,7 @@ return [
     'Sales Today' => 'المبيعات اليوم',
     'Profit Today' => 'الربح اليوم',
     'Profit This Month' => 'الربح هذا الشهر',
+    'Profit' => 'ربح',
     'Bills Today' => 'الفواتير اليوم',
     'Bills This Month' => 'الفواتير هذا الشهر',
     'Products Sold Today' => 'المنتجات المباعة اليوم',
