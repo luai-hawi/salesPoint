@@ -32,13 +32,24 @@
                     <div class="relative flex-1 max-w-md">
                         <input type="text" id="product-search" name="search"
                             placeholder="{{ __('messages.Search by name, barcode, or price...') }}"
-                            class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            class="w-full px-8 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                             value="{{ request('search') }}" />
                         <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
+                        <!-- Camera Scanner Icon -->
+                        <button type="button" id="scan-barcode-btn"
+                            class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                            title="{{ __('messages.Scan with camera') }}">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
                     </div>
 
                     <!-- Low Stock Filter -->
@@ -577,7 +588,7 @@
         function confirmDelete(productId, productName) {
             if (confirm(
                     `{{ __('messages.Are you sure you want to delete') }} "${productName}"? {{ __('messages.This action cannot be undone.') }}`
-                    )) {
+                )) {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/products/${productId}`;
@@ -915,6 +926,144 @@
             attachEventListeners();
             attachPaginationLinks();
             updateOrderBadge();
+
+            // Barcode Scanner Function using HTML5 QR Code
+            function initBarcodeScanner(inputId) {
+                // Check if scanner modal already exists
+                if (document.getElementById('barcode-scanner-modal')) {
+                    return;
+                }
+
+                const scannerModal = document.createElement('div');
+                scannerModal.id = 'barcode-scanner-modal';
+                scannerModal.className =
+                    'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90';
+                scannerModal.innerHTML = `
+                    <div class="bg-white rounded-lg p-4 w-full max-w-lg mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">{{ __('messages.Scan Barcode') }}</h3>
+                            <button type="button" id="close-scanner" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 350px;"></div>
+                        <p class="text-sm text-gray-500 mt-2 text-center">{{ __('messages.Point camera at barcode') }}</p>
+                    </div>
+                `;
+                document.body.appendChild(scannerModal);
+
+                const inputElement = document.getElementById(inputId);
+                let hasScanned = false;
+                let html5Qrcode = null;
+
+                // Use HTML5 QR Code - Direct camera start
+                try {
+                    const scannerContainer = document.getElementById('scanner-container');
+
+                    // Create video element for camera
+                    const videoElement = document.createElement('video');
+                    videoElement.style.width = '100%';
+                    videoElement.style.height = '100%';
+                    videoElement.style.objectFit = 'cover';
+                    videoElement.setAttribute('playsinline', 'true');
+                    scannerContainer.appendChild(videoElement);
+
+                    html5Qrcode = new Html5Qrcode("scanner-container");
+
+                    // Start camera directly
+                    html5Qrcode.start({
+                            facingMode: "environment"
+                        }, {
+                            fps: 10,
+                            qrbox: {
+                                width: 250,
+                                height: 150
+                            },
+                            aspectRatio: 1.0
+                        },
+                        (decodedText, decodedResult) => {
+                            if (hasScanned) return;
+
+                            const code = decodedText.trim();
+
+                            // Validate: code should be at least 4 characters
+                            if (code.length < 4) {
+                                return;
+                            }
+
+                            hasScanned = true;
+
+                            // Stop scanner
+                            html5Qrcode.stop().then(() => {
+                                scannerModal.remove();
+                                inputElement.value = code;
+                                inputElement.dispatchEvent(new Event('input', {
+                                    bubbles: true
+                                }));
+                                // Trigger search
+                                const event = new Event('input');
+                                inputElement.dispatchEvent(event);
+                            }).catch(err => {
+                                scannerModal.remove();
+                                inputElement.value = code;
+                                inputElement.dispatchEvent(new Event('input', {
+                                    bubbles: true
+                                }));
+                                const event = new Event('input');
+                                inputElement.dispatchEvent(event);
+                            });
+                        },
+                        (errorMessage) => {
+                            // Parse error, ignore
+                        }
+                    ).catch(err => {
+                        console.error('Camera start error:', err);
+                        alert('{{ __('messages.Camera access denied or not available') }}');
+                        scannerModal.remove();
+                    });
+
+                } catch (err) {
+                    console.error('HTML5 QR Code scanner error:', err);
+                    alert('{{ __('messages.Camera access denied or not available') }}');
+                    scannerModal.remove();
+                }
+
+                document.getElementById('close-scanner').addEventListener('click', function() {
+                    if (html5Qrcode) {
+                        html5Qrcode.stop().then(() => {
+                            scannerModal.remove();
+                        }).catch(err => {
+                            scannerModal.remove();
+                        });
+                    } else {
+                        scannerModal.remove();
+                    }
+                });
+
+                scannerModal.addEventListener('click', function(e) {
+                    if (e.target === scannerModal) {
+                        if (html5Qrcode) {
+                            html5Qrcode.stop().then(() => {
+                                scannerModal.remove();
+                            }).catch(err => {
+                                scannerModal.remove();
+                            });
+                        } else {
+                            scannerModal.remove();
+                        }
+                    }
+                });
+            }
+
+            // Initialize scanner button
+            const scanBtn = document.getElementById('scan-barcode-btn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', function() {
+                    initBarcodeScanner('product-search');
+                });
+            }
         });
     </script>
 </x-app-layout>

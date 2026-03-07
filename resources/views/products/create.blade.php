@@ -164,8 +164,8 @@
                                             </svg>
                                             <!-- Camera Scanner Icon -->
                                             <button type="button" id="scan-barcode-btn"
-                                                class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                disabled title="{{ __('messages.Scan with camera') }}">
+                                                class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                                                title="{{ __('messages.Scan with camera') }}">
                                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2"
@@ -518,10 +518,20 @@
             const div = document.createElement('div');
             div.className = 'flex items-center mb-2';
             div.innerHTML = `
-                <input type="text" name="additional_barcodes[]" value="${value}"
-                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mr-2"
-                       placeholder="Enter barcode">
-                <button type="button" class="remove-barcode-btn bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg">
+                <div class="relative flex-1">
+                    <input type="text" name="additional_barcodes[]" value="${value}"
+                           class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mr-2"
+                           placeholder="{{ __('messages.Enter barcode') }}">
+                    <button type="button" class="scan-additional-barcode-btn absolute right-2 top-2.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                            title="{{ __('messages.Scan with camera') }}">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+                <button type="button" class="remove-barcode-btn bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg ml-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -532,6 +542,111 @@
             // Add event listener to remove button
             div.querySelector('.remove-barcode-btn').addEventListener('click', function() {
                 div.remove();
+            });
+
+            // Add event listener to scan button
+            div.querySelector('.scan-additional-barcode-btn').addEventListener('click', function() {
+                const input = div.querySelector('input[name="additional_barcodes[]"]');
+                initBarcodeScannerForAdditionalBarcode(input);
+            });
+        }
+
+        // Scanner function for additional barcodes
+        function initBarcodeScannerForAdditionalBarcode(inputElement) {
+            if (document.getElementById('barcode-scanner-modal')) {
+                return;
+            }
+
+            const scannerModal = document.createElement('div');
+            scannerModal.id = 'barcode-scanner-modal';
+            scannerModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90';
+            scannerModal.innerHTML = `
+                <div class="bg-white rounded-lg p-4 w-full max-w-lg mx-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">{{ __('messages.Scan Barcode') }}</h3>
+                        <button type="button" id="close-scanner" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 350px;"></div>
+                    <p class="text-sm text-gray-500 mt-2 text-center">{{ __('messages.Point camera at barcode') }}</p>
+                </div>
+            `;
+            document.body.appendChild(scannerModal);
+
+            let hasScanned = false;
+            let html5Qrcode = null;
+
+            try {
+                const scannerContainer = document.getElementById('scanner-container');
+                const videoElement = document.createElement('video');
+                videoElement.style.width = '100%';
+                videoElement.style.height = '100%';
+                videoElement.style.objectFit = 'cover';
+                videoElement.setAttribute('playsinline', 'true');
+                scannerContainer.appendChild(videoElement);
+
+                html5Qrcode = new Html5Qrcode("scanner-container");
+
+                html5Qrcode.start({
+                        facingMode: "environment"
+                    }, {
+                        fps: 10,
+                        qrbox: {
+                            width: 250,
+                            height: 150
+                        },
+                        aspectRatio: 1.0
+                    },
+                    (decodedText, decodedResult) => {
+                        if (hasScanned) return;
+                        const code = decodedText.trim();
+                        if (code.length < 4) return;
+                        hasScanned = true;
+                        html5Qrcode.stop().then(() => {
+                            scannerModal.remove();
+                            inputElement.value = code;
+                            inputElement.dispatchEvent(new Event('input', {
+                                bubbles: true
+                            }));
+                        }).catch(err => {
+                            scannerModal.remove();
+                            inputElement.value = code;
+                            inputElement.dispatchEvent(new Event('input', {
+                                bubbles: true
+                            }));
+                        });
+                    },
+                    (errorMessage) => {}
+                ).catch(err => {
+                    console.error('Camera start error:', err);
+                    alert('{{ __('messages.Camera access denied or not available') }}');
+                    scannerModal.remove();
+                });
+            } catch (err) {
+                console.error('HTML5 QR Code scanner error:', err);
+                alert('{{ __('messages.Camera access denied or not available') }}');
+                scannerModal.remove();
+            }
+
+            document.getElementById('close-scanner').addEventListener('click', function() {
+                if (html5Qrcode) {
+                    html5Qrcode.stop().then(() => scannerModal.remove()).catch(() => scannerModal.remove());
+                } else {
+                    scannerModal.remove();
+                }
+            });
+
+            scannerModal.addEventListener('click', function(e) {
+                if (e.target === scannerModal) {
+                    if (html5Qrcode) {
+                        html5Qrcode.stop().then(() => scannerModal.remove()).catch(() => scannerModal.remove());
+                    } else {
+                        scannerModal.remove();
+                    }
+                }
             });
         }
 
