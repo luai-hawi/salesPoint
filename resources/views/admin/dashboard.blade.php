@@ -13,6 +13,13 @@
             </h2>
             <div class="flex items-center space-x-4">
                 <span class="text-sm text-gray-600">{{ now()->format('F j, Y') }}</span>
+                @if ($expiredTempAccounts->count() > 0)
+                    <button type="button"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                        onclick="document.getElementById('deleteExpiredModal').classList.remove('hidden');">
+                        {{ __('messages.Delete All Expired') }} ({{ $expiredTempAccounts->count() }})
+                    </button>
+                @endif
                 <a href="{{ route('admin.shop-owners.create') }}"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
                     {{ __('messages.Add New User') }}
@@ -20,6 +27,58 @@
             </div>
         </div>
     </x-slot>
+
+    <!-- Delete Expired Modal -->
+    @if ($expiredTempAccounts->count() > 0)
+        <div id="deleteExpiredModal"
+            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                <div class="flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-red-600">{{ __('messages.Confirm Delete Expired Accounts') }}
+                        </h3>
+                        <button onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                            class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        {{ __('messages.You are about to delete the following expired accounts:') }}
+                    </p>
+                    <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            @foreach ($expiredTempAccounts as $account)
+                                <li class="py-1">
+                                    <span class="font-medium">{{ $account->name }}</span>
+                                    <span class="text-gray-500 text-xs">({{ $account->email }})</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">
+                        {{ __('messages.This will also delete all employees and data associated with these accounts.') }}
+                    </p>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                            {{ __('messages.Cancel') }}
+                        </button>
+                        <form action="{{ route('admin.shop-owners.delete-expired') }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                {{ __('messages.Delete All') }} ({{ $expiredTempAccounts->count() }})
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="py-8">
         <div class="max-w-8xl mx-auto sm:px-6 lg:px-8">
@@ -148,9 +207,102 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit This Month') }}</p>
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit This Month') }}
+                                </p>
                                 <p class="text-2xl font-bold text-teal-600">
                                     ${{ number_format($stats['profit_month'], 2) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Accounts -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Full Accounts') }}</p>
+                                <p class="text-2xl font-bold text-green-600">{{ $stats['full_accounts_count'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Full Accounts (Shop Owners Only) -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Active Full Accounts') }}
+                                </p>
+                                <p class="text-2xl font-bold text-emerald-600">
+                                    {{ $stats['active_full_accounts_count'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temp Accounts -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Temp Accounts') }}</p>
+                                <p class="text-2xl font-bold text-yellow-600">{{ $stats['temp_accounts_count'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expired Temp Accounts -->
+                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                        </path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">
+                                    {{ __('messages.Expired Temp Accounts') }}</p>
+                                <p class="text-2xl font-bold text-red-600">{{ $stats['expired_temp_accounts_count'] }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -424,6 +576,9 @@
                                     {{ __('messages.Employees') }}</th>
                                 <th
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Account Type') }}</th>
+                                <th
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Products') }}</th>
                                 <th
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -479,6 +634,28 @@
                                             </span>
                                         </div>
                                     </td>
+                                    <td class="px-3 py-4 whitespace-nowrap">
+                                        @php
+                                            $isExpired = $shopOwner->isTempExpired();
+                                        @endphp
+                                        @if ($shopOwner->account_type === 'temp')
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                {{ $isExpired ? 'bg-red-600 text-white' : 'bg-yellow-100 text-yellow-800' }}">
+                                                {{ $isExpired ? __('messages.Expired') : __('messages.Temporary') }}
+                                            </span>
+                                        @elseif($shopOwner->account_type === 'full')
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                {{ __('messages.Full Account') }}
+                                            </span>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                -
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $shopOwner->products_count }}
                                     </td>
@@ -520,13 +697,25 @@
                                     </td>
                                     <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center space-x-2">
+                                            @if ($shopOwner->account_type === 'temp')
+                                                <form
+                                                    action="{{ route('admin.shop-owners.convert-to-full', $shopOwner->id) }}"
+                                                    method="POST" class="inline"
+                                                    onsubmit="return confirm('{{ __('messages.Convert to full account?') }}');">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="text-green-600 hover:text-green-900 transition-colors duration-200">
+                                                        {{ __('messages.Convert to Full') }}
+                                                    </button>
+                                                </form>
+                                            @endif
                                             <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}"
                                                 class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
-                                                {{ __('View Details') }}
+                                                {{ __('messages.View Details') }}
                                             </a>
                                             <a href="{{ route('admin.shop-owners.edit', $shopOwner->id) }}"
                                                 class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                {{ __('Edit') }}
+                                                {{ __('messages.Edit') }}
                                             </a>
                                             <form action="{{ route('admin.shop-owners.destroy', $shopOwner->id) }}"
                                                 method="POST" class="inline"

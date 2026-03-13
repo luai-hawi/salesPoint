@@ -374,16 +374,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                                                    <div class="flex-1">
-                                                                                                                        <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                                                        <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
-                                                                                                                    </div>
-                                                                                                                    <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                                                        {{ __('messages.Select') }}
-                                                                                                                    </button>
-                                                                                                                </div>
-                                                                                                            `).join('')}
+                                                                                                                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                                            <div class="flex-1">
+                                                                                                                                <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                                                <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                            </div>
+                                                                                                                            <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                                                {{ __('messages.Select') }}
+                                                                                                                            </button>
+                                                                                                                        </div>
+                                                                                                                    `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -664,8 +664,8 @@
                     name: nameElement.textContent,
                     cost_price: parseFloat(card.dataset.cost_price),
                     selling_price: parseFloat(card.dataset.selling_price),
-                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
-                        /\d+/)?.[0] || 0)
+                    quantity: parseFloat(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
+                        /\d+\.?\d*/)?.[0] || 0)
                 };
 
                 addProductToTable(product);
@@ -690,7 +690,7 @@
             if (existingRow) {
                 const row = existingRow.closest('tr');
                 const quantityInput = row.querySelector('.quantity-input');
-                const currentQty = parseInt(quantityInput.value);
+                const currentQty = parseFloat(quantityInput.value);
                 quantityInput.value = currentQty + quantity;
 
                 // Update row total
@@ -711,7 +711,7 @@
                     <input type="hidden" name="product_ids[]" value="${productId}">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="number" name="quantities[]" min="1"
+                    <input type="number" name="quantities[]" min="0.01" step="0.01"
                             class="w-20 border border-gray-300 rounded px-2 py-1 quantity-input">
                 </td>
                 <td class="px-4 py-3">

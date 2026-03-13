@@ -207,7 +207,8 @@
                                     <div>
                                         <label
                                             class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Quantity to Add') }}</label>
-                                        <input type="number" id="add-quantity" min="1" value="1"
+                                        <input type="number" id="add-quantity" min="0.01" step="0.01"
+                                            value="1"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
 
@@ -526,7 +527,7 @@
 
         // Add stock functionality
         document.getElementById('confirm-add-stock').addEventListener('click', function() {
-            const quantity = parseInt(document.getElementById('add-quantity').value);
+            const quantity = parseFloat(document.getElementById('add-quantity').value);
             const costPrice = parseFloat(document.getElementById('add-cost-price').value);
 
             if (!quantity || quantity < 1) {

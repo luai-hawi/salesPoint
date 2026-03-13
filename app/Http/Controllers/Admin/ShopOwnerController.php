@@ -55,17 +55,38 @@ class ShopOwnerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'required|in:shop_owner,admin,restaurant,merchant',
             'phone_number' => 'nullable|string|max:20',
             'subscription_cost' => 'nullable|numeric|min:0',
+            'image_limit' => 'nullable|integer|min:0|max:10000',
+            'account_type' => 'nullable|in:full,temp',
+            'temp_period_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         try {
             DB::beginTransaction();
 
             $validated['password'] = Hash::make($validated['password']);
+
+            // Set default values
+            if (!isset($validated['account_type'])) {
+                $validated['account_type'] = 'temp';
+            }
+            if (!isset($validated['subscription_cost'])) {
+                $validated['subscription_cost'] = 300;
+            }
+            if (!isset($validated['image_limit'])) {
+                $validated['image_limit'] = 100;
+            }
+
+            // Calculate temp_expires_at if temp account and period is set
+            if ($validated['account_type'] === 'temp' && !empty($validated['temp_period_days'])) {
+                $validated['temp_expires_at'] = now()->addDays($validated['temp_period_days']);
+            }
+
             $user = User::create($validated);
 
             DB::commit();
@@ -153,12 +174,16 @@ class ShopOwnerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($shopOwner->id)],
             'password' => 'nullable|string|min:8',
             'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
             'phone_number' => 'nullable|string|max:20',
             'subscription_cost' => 'nullable|numeric|min:0',
             'image_limit' => 'nullable|integer|min:0|max:10000',
+            'account_type' => 'nullable|in:full,temp',
+            'temp_period_days' => 'nullable|integer|min:1|max:365',
+            'extend_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         try {
@@ -169,6 +194,38 @@ class ShopOwnerController extends Controller
             } else {
                 unset($validated['password']);
             }
+
+            // Handle account type and temp period
+            if (isset($validated['account_type'])) {
+                if ($validated['account_type'] === 'temp' && !empty($validated['temp_period_days'])) {
+                    // Set or extend expiry date
+                    $currentExpiry = $shopOwner->temp_expires_at;
+                    if ($currentExpiry && $currentExpiry->isFuture()) {
+                        // Extend from current expiry
+                        $validated['temp_expires_at'] = $currentExpiry->addDays($validated['temp_period_days']);
+                    } else {
+                        // Set new expiry from now
+                        $validated['temp_expires_at'] = now()->addDays($validated['temp_period_days']);
+                    }
+                } elseif ($validated['account_type'] === 'full') {
+                    $validated['temp_expires_at'] = null;
+                    $validated['temp_period_days'] = null;
+                }
+            }
+
+            // Handle extend expiry单独button
+            if ($request->filled('extend_days') && $shopOwner->account_type === 'temp') {
+                $currentExpiry = $shopOwner->temp_expires_at;
+                if ($currentExpiry && $currentExpiry->isFuture()) {
+                    $validated['temp_expires_at'] = $currentExpiry->addDays($request->extend_days);
+                } else {
+                    $validated['temp_expires_at'] = now()->addDays($request->extend_days);
+                }
+                $validated['temp_period_days'] = $request->extend_days;
+            }
+
+            // Remove extend_days from validated data as it's not a column
+            unset($validated['extend_days']);
 
             $shopOwner->update($validated);
 
@@ -290,10 +347,24 @@ class ShopOwnerController extends Controller
     public function toggleStatus(User $shopOwner)
     {
         try {
-            $newRole = $shopOwner->role;
+            // Toggle between enabled roles and disabled
+            $currentRole = $shopOwner->role;
+
+            // Define enabled roles
+            $enabledRoles = ['shop_owner', 'restaurant', 'merchant'];
+
+            if (in_array($currentRole, $enabledRoles)) {
+                // Disable the shop
+                $newRole = 'disabled';
+                $status = 'disabled';
+            } else {
+                // Enable the shop (restore to shop_owner)
+                $newRole = 'shop_owner';
+                $status = 'activated';
+            }
+
             $shopOwner->update(['role' => $newRole]);
 
-            $status = ($newRole === 'shop_owner' || $newRole === 'restaurant' || $newRole === 'merchant') ? 'activated' : 'disabled';
             return redirect()->back()
                 ->with('success', "Shop owner has been {$status} successfully.");
         } catch (\Exception $e) {
@@ -308,13 +379,117 @@ class ShopOwnerController extends Controller
     public function markPaid(User $shopOwner)
     {
         try {
-            $shopOwner->update(['subscription_paid' => true]);
+            $shopOwner->update([
+                'subscription_paid' => true,
+                'account_type' => 'full'
+            ]);
 
             return redirect()->back()
-                ->with('success', 'Subscription marked as paid successfully.');
+                ->with('success', 'Subscription marked as paid and account converted to full successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to mark subscription as paid. Please try again.']);
+        }
+    }
+
+    /**
+     * Convert a temp account to full account.
+     */
+    public function convertToFull(User $shopOwner)
+    {
+        try {
+            $shopOwner->update([
+                'account_type' => 'full',
+                'temp_expires_at' => null,
+                'temp_period_days' => null
+            ]);
+
+            return redirect()->back()
+                ->with('success', __('messages.Account converted to full successfully.'));
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => __('messages.Failed to convert account.')]);
+        }
+    }
+
+    /**
+     * Delete all expired temporary accounts.
+     */
+    public function deleteExpiredTempAccounts()
+    {
+        try {
+            // Get all expired temp accounts (only shop owners, not employees)
+            $expiredAccounts = User::expiredTempAccounts()
+                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
+                ->get();
+
+            $count = $expiredAccounts->count();
+
+            if ($count === 0) {
+                return redirect()->back()
+                    ->with('info', __('messages.No expired temporary accounts found.'));
+            }
+
+            // Delete each expired account (this will handle all related data through the destroy method)
+            foreach ($expiredAccounts as $account) {
+                // Get all employee IDs for this shop owner
+                $employeeIds = Employee::where('shop_owner_id', $account->id)->pluck('id');
+
+                // Delete employee payments
+                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
+
+                // Delete employees
+                Employee::where('shop_owner_id', $account->id)->delete();
+
+                // Delete product-related data
+                $productIds = Product::where('user_id', $account->id)->pluck('id');
+                ProductBarcode::whereIn('product_id', $productIds)->delete();
+                Batch::whereIn('product_id', $productIds)->delete();
+                ProductVariantGroup::where('user_id', $account->id)->delete();
+
+                // Delete product images from storage
+                $products = Product::where('user_id', $account->id)->get();
+                foreach ($products as $product) {
+                    $pictures = json_decode($product->pictures, true);
+                    if (is_array($pictures)) {
+                        foreach ($pictures as $picture) {
+                            if ($picture && Storage::disk('public')->exists($picture)) {
+                                Storage::disk('public')->delete($picture);
+                            }
+                        }
+                    }
+                }
+
+                // Delete products
+                Product::where('user_id', $account->id)->delete();
+
+                // Delete customer-related data
+                $customerIds = Customer::where('user_id', $account->id)->pluck('id');
+                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
+                Bill::whereIn('customer_id', $customerIds)->delete();
+                Bill::where('user_id', $account->id)->delete();
+                Customer::where('user_id', $account->id)->delete();
+
+                // Delete supplier-related data
+                $supplierIds = Supplier::where('user_id', $account->id)->pluck('id');
+                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::where('user_id', $account->id)->delete();
+                Supplier::where('user_id', $account->id)->delete();
+
+                // Delete other user-related data
+                Expense::where('user_id', $account->id)->delete();
+                Tag::where('user_id', $account->id)->delete();
+
+                // Delete the account
+                $account->delete();
+            }
+
+            return redirect()->route('admin.shop-owners.index')
+                ->with('success', __('messages.Expired accounts deleted successfully.', ['count' => $count]));
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => __('messages.Failed to delete expired accounts.')]);
         }
     }
 

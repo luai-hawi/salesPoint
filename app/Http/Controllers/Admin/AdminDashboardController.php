@@ -52,10 +52,14 @@ class AdminDashboardController extends Controller
                     ->sum('amount') ?? 0;
 
                 return [
-                    'total_shop_owners' => User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])->count(),
+                    'total_shop_owners' => User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])->count(),
                     'disabled_shop_owners' => User::where('role', 'disabled')->count(),
                     'total_employees' => User::where('role', 'employee')->count(),
                     'total_admins' => User::where('role', 'admin')->count(),
+                    'full_accounts_count' => User::where('account_type', 'full')->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])->count(),
+                    'active_full_accounts_count' => User::where('account_type', 'full')->where('role', 'shop_owner')->count(),
+                    'temp_accounts_count' => User::where('account_type', 'temp')->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])->count(),
+                    'expired_temp_accounts_count' => User::expiredTempAccounts()->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])->count(),
                     'total_sales_today' => $totalSalesToday,
                     'total_sales_month' => $totalSalesMonth,
                     'profit_today' => $profitToday,
@@ -81,13 +85,18 @@ class AdminDashboardController extends Controller
             // Get top performing shop owners (by monthly sales)
             $topShopOwners = $shopOwners->sortByDesc('sales_this_month')->take(5);
 
+            // Get expired temp accounts for deletion confirmation (only shop owners, not employees)
+            $expiredTempAccounts = User::expiredTempAccounts()
+                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
+                ->get(['id', 'name', 'email']);
+
             return view('admin.dashboard', compact(
                 'stats',
                 'shopOwners',
                 'salesChartData',
-                'topShopOwners'
+                'topShopOwners',
+                'expiredTempAccounts'
             ));
-
         } catch (\Exception $e) {
             // Log error and return with empty data
             \Log::error('Dashboard error: ' . $e->getMessage());
@@ -115,12 +124,14 @@ class AdminDashboardController extends Controller
             $shopOwners = collect();
             $salesChartData = [];
             $topShopOwners = collect();
+            $expiredTempAccounts = collect();
 
             return view('admin.dashboard', compact(
                 'stats',
                 'shopOwners',
                 'salesChartData',
-                'topShopOwners'
+                'topShopOwners',
+                'expiredTempAccounts'
             ))->with('error', 'Some dashboard data could not be loaded.');
         }
     }
@@ -171,16 +182,16 @@ class AdminDashboardController extends Controller
      */
     private function getShopOwnersWithMetrics()
     {
-        return User::whereIn('role', ['shop_owner','disabled','restaurant','merchant'])
+        return User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
             ->withCount(['employees'])
-            ->with(['employees' => function($query) {
+            ->with(['employees' => function ($query) {
                 $query->select('id', 'name', 'email', 'shop_owner_id', 'created_at')
-                      ->latest()
-                      ->take(10); // Limit for performance
+                    ->latest()
+                    ->take(10); // Limit for performance
             }])
             ->latest()
             ->get()
-            ->map(function($shopOwner) {
+            ->map(function ($shopOwner) {
                 try {
                     // Get all user IDs for this shop (owner + employees)
                     $userIds = collect([$shopOwner->id])
@@ -204,7 +215,8 @@ class AdminDashboardController extends Controller
 
                     // Get shop owner's metrics with error handling
                     $shopOwner->total_sales = $this->getSafeSum(
-                        $allBills, 'total_price'
+                        $allBills,
+                        'total_price'
                     );
 
                     $shopOwner->sales_this_month = $this->getSafeSum(
@@ -242,7 +254,6 @@ class AdminDashboardController extends Controller
                     $shopOwner->last_activity = Bill::whereIn('user_id', $userIds)
                         ->latest()
                         ->value('created_at');
-
                 } catch (\Exception $e) {
                     // Set default values if any query fails
                     $shopOwner->total_sales = 0;

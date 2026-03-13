@@ -194,7 +194,7 @@ class BillsController extends Controller
         foreach ($request->product_ids as $index => $productId) {
             if (empty($productId)) continue;
 
-            $qty = (int) $request->quantities[$index];
+            $qty = (float) $request->quantities[$index];
             $costPrice = (float) $request->cost_prices[$index];
             $sellingPrice = (float) $request->selling_prices[$index];
             $discountType = $request->discount_types[$index] ?? 'total';
@@ -351,7 +351,7 @@ class BillsController extends Controller
             'note' => 'nullable|string|max:1000',
             'remove_products' => 'array',
             'new_product_id' => 'nullable|exists:products,id,user_id,' . $ownerId,
-            'new_quantity' => 'nullable|integer|min:1',
+            'new_quantity' => 'nullable|numeric|min:0.01',
             'dynamic_product_ids' => 'array',
             'dynamic_quantities' => 'array',
             'dynamic_discounts' => 'array',
@@ -445,7 +445,7 @@ class BillsController extends Controller
             $pivotRecord = $pivotQuery->first();
 
             if ($pivotRecord) {
-                $newQuantity = (int)$quantity;
+                $newQuantity = (float)$quantity;
                 $newDiscount = isset($discounts[$uniqueKey]) ? (float)$discounts[$uniqueKey] : $pivotRecord->discount;
                 $quantityDiff = $newQuantity - $pivotRecord->quantity;
 
@@ -513,7 +513,7 @@ class BillsController extends Controller
                 continue;
             }
 
-            $quantity = (int)($dynamicQuantities[$uniqueKey] ?? 1);
+            $quantity = (float)($dynamicQuantities[$uniqueKey] ?? 1);
             $discount = (float)($dynamicDiscounts[$uniqueKey] ?? 0);
             $tags = $dynamicProductTags[$uniqueKey] ?? '';
 
@@ -555,7 +555,7 @@ class BillsController extends Controller
 
         // Handle dropdown product addition
         $newProductId = $request->input('new_product_id');
-        $newQty = (int)$request->input('new_quantity');
+        $newQty = (float)$request->input('new_quantity');
 
         if ($newProductId && $newQty > 0) {
             $product = Product::find($newProductId);

@@ -49,6 +49,16 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Check if the user's role is disabled
+        $user = Auth::user();
+        if ($user && $user->role === 'disabled') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.disabled'),
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

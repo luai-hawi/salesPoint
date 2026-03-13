@@ -270,7 +270,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <input type="number" name="quantities[]" class="quantity w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                           min="1" value="1" required>
+                           min="0.01" step="0.01" value="1" required>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <span class="unit-price">${product ? formatPrice(product.price) : '0.00'}</span>

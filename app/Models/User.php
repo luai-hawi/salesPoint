@@ -20,6 +20,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'owner_name',
         'email',
         'password',
         'role',
@@ -33,10 +34,13 @@ class User extends Authenticatable
         'product_deactivation_period',
         'permissions',
         'image_limit',
+        'account_type',
+        'temp_period_days',
+        'temp_expires_at',
     ];
 
 
-     /**
+    /**
      * Logout all other sessions for this user
      */
     public function logoutOtherSessions($currentSessionId)
@@ -86,14 +90,70 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'temp_expires_at' => 'date',
         ];
     }
 
-    public function employees() {
+    /**
+     * Check if this is a temporary account
+     */
+    public function isTempAccount(): bool
+    {
+        return $this->account_type === 'temp';
+    }
+
+    /**
+     * Check if the temporary account has expired
+     */
+    public function isTempExpired(): bool
+    {
+        if (!$this->isTempAccount() || !$this->temp_expires_at) {
+            return false;
+        }
+        return now()->greaterThan($this->temp_expires_at);
+    }
+
+    /**
+     * Get the status label for temp accounts
+     */
+    public function getTempStatusLabel(): ?string
+    {
+        if ($this->account_type !== 'temp') {
+            return null;
+        }
+
+        if ($this->isTempExpired()) {
+            return 'expired';
+        }
+
+        if ($this->temp_expires_at) {
+            $daysLeft = now()->diffInDays($this->temp_expires_at, false);
+            if ($daysLeft <= 7 && $daysLeft > 0) {
+                return 'expiring_soon';
+            }
+            return 'active';
+        }
+
+        return 'active';
+    }
+
+    /**
+     * Scope to get only expired temp accounts
+     */
+    public function scopeExpiredTempAccounts($query)
+    {
+        return $query->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->where('temp_expires_at', '<', now());
+    }
+
+    public function employees()
+    {
         return $this->hasMany(User::class, 'shop_owner_id');
     }
 
-    public function shopOwner() {
+    public function shopOwner()
+    {
         return $this->belongsTo(User::class, 'shop_owner_id');
     }
 

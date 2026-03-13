@@ -111,7 +111,7 @@ class PurchaseBillController extends Controller
                 'product_ids' => 'required|array|min:1',
                 'product_ids.*' => 'required|exists:products,id,user_id,' . $ownerId,
                 'quantities' => 'required|array',
-                'quantities.*' => 'required|integer|min:1',
+                'quantities.*' => 'required|numeric|min:0.01',
                 'unit_costs' => 'required|array',
                 'unit_costs.*' => 'required|numeric|min:0',
                 'barcodes' => 'nullable|array',
@@ -133,7 +133,7 @@ class PurchaseBillController extends Controller
             $totalAmount = 0;
 
             foreach ($request->product_ids as $index => $productId) {
-                $quantity = (int) $request->quantities[$index];
+                $quantity = (float) $request->quantities[$index];
                 $unitCost = (float) $request->unit_costs[$index];
                 $barcodes = $request->input("barcodes_{$productId}", []);
                 $totalCost = $quantity * $unitCost;
@@ -271,7 +271,7 @@ class PurchaseBillController extends Controller
             'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'required|exists:products,id,user_id,' . $ownerId,
             'quantities' => 'required|array',
-            'quantities.*' => 'required|integer|min:1',
+            'quantities.*' => 'required|numeric|min:0.01',
             'unit_costs' => 'required|array',
             'unit_costs.*' => 'required|numeric|min:0',
             'barcodes' => 'nullable|array',
@@ -319,7 +319,7 @@ class PurchaseBillController extends Controller
 
         // Step 5: Process new products (ADDING TO STORAGE - affects average cost)
         foreach ($request->product_ids as $index => $productId) {
-            $quantity = (int) $request->quantities[$index];
+            $quantity = (float) $request->quantities[$index];
             $unitCost = (float) $request->unit_costs[$index];
             $barcodes = $request->input("barcodes_{$productId}", []);
             $totalCost = $quantity * $unitCost;

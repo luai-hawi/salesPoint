@@ -711,7 +711,7 @@
                     <input type="hidden" name="product_ids[]" value="${productId}">
                 </td>
                 <td class="px-4 py-3">
-                    <input type="number" name="quantities[]" min="1"
+                    <input type="number" name="quantities[]" min="0.01" step="0.01"
                             class="w-20 border border-gray-300 rounded px-2 py-1 quantity-input">
                 </td>
                 <td class="px-4 py-3">

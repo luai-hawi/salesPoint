@@ -265,7 +265,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <input type="number" name="quantities[{{ $uniqueKey }}]"
                                             value="{{ old("quantities.$uniqueKey", $product->pivot->quantity) }}"
-                                            min="1"
+                                            min="0.01" step="0.01"
                                             class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent quantity"
                                             required>
                                         <input type="hidden" name="product_ids[]" value="{{ $product->id }}">
@@ -743,7 +743,7 @@
             </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">
-            <input type="number" name="quantities[${uniqueKey}]" value="1" min="1"
+            <input type="number" name="quantities[${uniqueKey}]" value="1" min="0.01" step="0.01"
                    class="w-20 px-3 py-2 border border-gray-300 rounded-md quantity" required>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">

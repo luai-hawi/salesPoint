@@ -91,6 +91,9 @@ class FinancialDashboardController extends Controller
         $cashFlowEndDate = $request->get('cash_flow_end_date', Carbon::now()->format('Y-m-d'));
         $dailyCashFlowData = $this->getDailyCashFlowData($shopOwnerId, $cashFlowStartDate, $cashFlowEndDate);
 
+        // Sales by User - NEW
+        $salesByUserData = $this->getSalesByUser($shopOwnerId);
+
         return view('dashboard.financial', compact(
             'summaryData',
             'storeValueData',
@@ -111,6 +114,7 @@ class FinancialDashboardController extends Controller
             'dailyCashFlowData',
             'cashFlowStartDate',
             'cashFlowEndDate',
+            'salesByUserData',
             'startDate',
             'endDate'
         ));
@@ -403,6 +407,54 @@ class FinancialDashboardController extends Controller
                 'total' => $totalCashOut
             ],
             'netCashFlow' => $netCashFlow
+        ];
+    }
+
+    // NEW: Sales by User - Get sales for each user (shop owner + employees) for today
+    private function getSalesByUser($shopOwnerId)
+    {
+        $today = Carbon::today();
+
+        // Get shop owner
+        $shopOwner = User::find($shopOwnerId);
+
+        // Get employees
+        $employees = User::where('shop_owner_id', $shopOwnerId)
+            ->where('role', 'employee')
+            ->get();
+
+        $users = collect([$shopOwner])->concat($employees);
+
+        $salesByUser = [];
+        $totalSales = 0;
+
+        foreach ($users as $user) {
+            $sales = Bill::where('user_id', $shopOwnerId)
+                ->where('created_by', $user->id)
+                ->whereDate('created_at', $today)
+                ->where('is_damaged', false)
+                ->sum('total_price');
+
+            $billCount = Bill::where('user_id', $shopOwnerId)
+                ->where('created_by', $user->id)
+                ->whereDate('created_at', $today)
+                ->where('is_damaged', false)
+                ->count();
+
+            $salesByUser[] = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'sales' => $sales,
+                'bill_count' => $billCount
+            ];
+
+            $totalSales += $sales;
+        }
+
+        return [
+            'users' => $salesByUser,
+            'total' => $totalSales
         ];
     }
 

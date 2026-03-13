@@ -157,11 +157,10 @@
                                 class="absolute right-3 top-3.5 h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
                                 title="{{ __('dashboard.Scan with camera') }}">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        stroke-width="2"
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                             </button>
                         </div>
@@ -1139,7 +1138,7 @@
                 productRows.forEach(row => {
                     const productId = row.querySelector('input[name="product_ids[]"]').value;
                     const quantityInput = row.querySelector('.quantity');
-                    const quantitySold = parseInt(quantityInput.value);
+                    const quantitySold = parseFloat(quantityInput.value);
 
                     // Update the allProducts array with new quantities
                     const productIndex = allProducts.findIndex(p => p.id == productId);
@@ -1166,9 +1165,9 @@
                         if (quantitySpan) {
                             const currentText = quantitySpan.textContent.trim();
 
-                            // Extract current quantity from text
-                            const qtyMatch = currentText.match(/(\d+)/);
-                            const currentQty = qtyMatch ? parseInt(qtyMatch[1]) : 0;
+                            // Extract current quantity from text (supports decimals)
+                            const qtyMatch = currentText.match(/(\d+\.?\d*)/);
+                            const currentQty = qtyMatch ? parseFloat(qtyMatch[1]) : 0;
                             const newQty = Math.max(0, currentQty - quantitySold);
 
                             // Update the span text and styling
@@ -2421,7 +2420,7 @@
             if (existing) {
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
-                const currentQty = parseInt(qty.value);
+                const currentQty = parseFloat(qty.value);
 
                 qty.value = currentQty + 1;
                 calculateTotal();
@@ -2446,7 +2445,7 @@
                     <div class="text-xs text-gray-500">${maxStock} in stock</div>
                 </td>
                 <td>
-                    <input type="number" name="quantities[]" class="quantity" min="1" value="1" required>
+                    <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="1" required>
                 </td>
                 <td>
                     <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${price}" required>
@@ -2499,14 +2498,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2568,7 +2567,7 @@
             if (existing) {
                 const row = existing.closest('.product-row');
                 const qty = row.querySelector('.quantity');
-                const currentQty = parseInt(qty.value);
+                const currentQty = parseFloat(qty.value);
 
                 qty.value = currentQty + 1;
                 calculateTotal();
@@ -2596,7 +2595,7 @@
                     ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
                 </td>
                 <td>
-                    <input type="number" name="quantities[]" class="quantity" min="1" value="1" required>
+                    <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="1" required>
                 </td>
                 <td>
                     <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${product.selling_price}" required>
@@ -2782,8 +2781,8 @@
                     name: nameElement.textContent,
                     cost_price: parseFloat(card.dataset.cost_price),
                     selling_price: parseFloat(card.dataset.selling_price),
-                    quantity: parseInt(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
-                        /\d+/)?.[0] || 0),
+                    quantity: parseFloat(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
+                        /\d+\.?\d*/)?.[0] || 0),
                     has_tags: card.dataset.has_tags === 'true'
                 };
 
@@ -3345,9 +3344,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

@@ -90,7 +90,7 @@ class ProductsController extends Controller
                 'has_tags' => 'boolean',
                 'variants' => 'required|array|min:1',
                 'variants.*.name' => 'required|string|max:255',
-                'variants.*.quantity' => 'required|integer|min:0',
+                'variants.*.quantity' => 'required|numeric|min:0',
                 'variants.*.barcode' => 'nullable|string|max:255',
             ]);
 
@@ -123,7 +123,7 @@ class ProductsController extends Controller
                 $product->name = $request->name . ' - ' . $variantData['name'];
                 $product->category = $request->category;
                 $product->barcode = isset($variantData['barcode']) ? trim($variantData['barcode']) : null;
-                $product->quantity = (int) $variantData['quantity'];
+                $product->quantity = (float) $variantData['quantity'];
                 $product->cost_price = round($request->cost_price, 2);
                 $product->selling_price = $request->selling_price;
                 $product->user_id = $ownerId;
@@ -156,6 +156,7 @@ class ProductsController extends Controller
                 'additional_barcodes.*' => 'nullable|string|max:255',
                 'pictures' => 'nullable|array',
                 'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'quantity' => 'nullable|numeric|min:0',
                 'cost_price' => 'required|numeric',
                 'selling_price' => 'required|numeric',
                 'has_tags' => 'boolean',
@@ -175,7 +176,7 @@ class ProductsController extends Controller
             $product->name = $request->name;
             $product->category = $request->category;
             $product->barcode = trim($request->barcode);
-            $product->quantity = (int) $request->quantity;
+            $product->quantity = (float) $request->quantity;
             $product->cost_price = round($request->cost_price, 2);
             $product->selling_price = $request->selling_price;
             $product->user_id = $ownerId;
@@ -328,7 +329,7 @@ class ProductsController extends Controller
     {
         $this->authorizeProduct($product);
 
-        $request->validate(['amount' => 'required|integer|min:1']);
+        $request->validate(['amount' => 'required|numeric|min:0.01']);
         $product->increment('quantity', $request->amount);
 
         return response()->json(['success' => true, 'new_quantity' => $product->quantity]);
@@ -964,7 +965,7 @@ class ProductsController extends Controller
         $request->validate([
             'new_variants' => 'required|array|min:1',
             'new_variants.*.name' => 'required|string|max:255',
-            'new_variants.*.quantity' => 'required|integer|min:0',
+            'new_variants.*.quantity' => 'required|numeric|min:0',
             'new_variants.*.barcode' => 'nullable|string|max:255',
         ]);
 
@@ -978,7 +979,7 @@ class ProductsController extends Controller
             $newProduct->name = $variantGroup->name . ' - ' . $variantData['name'];
             $newProduct->category = $product->category;
             $newProduct->barcode = isset($variantData['barcode']) ? trim($variantData['barcode']) : null;
-            $newProduct->quantity = (int) $variantData['quantity'];
+            $newProduct->quantity = (float) $variantData['quantity'];
             $newProduct->cost_price = $product->cost_price;
             $newProduct->selling_price = $product->selling_price;
             $newProduct->user_id = $ownerId;

@@ -25,7 +25,7 @@
         <td class="py-3 px-6 border-b text-left">{{ $product->selling_price }}</td>
         <td class="py-3 px-6 border-b text-left">
             <div class="flex gap-2 items-center">
-                <input type="number" min="1" value="1" class="w-16 px-2 py-1 border rounded quantity-input">
+                <input type="number" min="0.01" step="0.01" value="1" class="w-16 px-2 py-1 border rounded quantity-input">
                 <button
                     type="button"
                     class="bg-green-500 text-white px-2 py-1 rounded add-quantity-btn"

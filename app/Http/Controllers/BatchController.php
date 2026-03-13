@@ -31,7 +31,7 @@ class BatchController extends Controller
 
             $data = $request->validate([
                 'product_id' => 'required|exists:products,id',
-                'quantity' => 'required|integer|min:1',
+                'quantity' => 'required|numeric|min:0.01',
                 'cost_price' => 'required|numeric|min:0',
             ]);
 
@@ -142,7 +142,7 @@ class BatchController extends Controller
             }
 
             $data = $request->validate([
-                'quantity' => 'required|integer|min:0',
+                'quantity' => 'required|numeric|min:0',
                 'cost_price' => 'required|numeric|min:0',
             ]);
 

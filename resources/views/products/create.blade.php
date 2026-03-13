@@ -224,7 +224,7 @@
                                         {{ __('messages.Initial Stock Quantity') }} *
                                     </label>
                                     <div class="relative">
-                                        <input type="number" step="1" name="quantity" id="quantity"
+                                        <input type="number" step="0.01" name="quantity" id="quantity"
                                             tabindex="4"
                                             class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                             value="{{ old('quantity', 0) }}" required min="0"
@@ -799,19 +799,19 @@
                         <div class="flex-1 grid grid-cols-3 gap-2">
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Variant Name') }} *</label>
-                                <input type="text" name="variants[${variantCounter}][name]" value="${name}"
+                                <input type="text" step="0.01" min="0" name="variants[${variantCounter}][name]" value="${name}"
                                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="e.g., S, M, L" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Quantity') }} *</label>
-                                <input type="number" name="variants[${variantCounter}][quantity]" value="${quantity}"
+                                <input type="number" step="0.01" min="0" name="variants[${variantCounter}][quantity]" value="${quantity}"
                                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="0" min="0" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('messages.Barcode') }}</label>
-                                <input type="text" name="variants[${variantCounter}][barcode]" value="${barcode}"
+                                <input type="text" step="0.01" min="0" name="variants[${variantCounter}][barcode]" value="${barcode}"
                                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="{{ __('messages.Optional') }}">
                             </div>

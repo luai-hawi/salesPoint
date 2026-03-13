@@ -1084,7 +1084,7 @@
                     <div class="grid grid-cols-2 gap-1 col-span-2">
                         <div>
                             <label class="block text-gray-600 mb-1">Qty</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
+                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0.01" step="0.01" value="1" required>
                         </div>
                         <div>
                             <label class="block text-gray-600 mb-1">Price</label>
@@ -1247,7 +1247,7 @@
                     <div class="grid grid-cols-2 gap-1 col-span-2">
                         <div>
                             <label class="block text-gray-600 mb-1">Qty</label>
-                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="1" value="1" required>
+                            <input type="number" name="quantities[]" class="quantity w-full px-2 py-1 border border-gray-300 rounded text-xs h-7" min="0.01" step="0.01" value="1" required>
                         </div>
                         <div>
                             <label class="block text-gray-600 mb-1">Price</label>
