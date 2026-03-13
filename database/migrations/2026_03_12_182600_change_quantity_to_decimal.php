@@ -13,17 +13,24 @@ return new class extends Migration
      */
     public function up()
     {
-        // bill_product - Sales transactions (most important for selling half boxes)
-        DB::statement('ALTER TABLE bill_product MODIFY quantity DECIMAL(8,2)');
+        // Disable strict mode for this session to handle conversions on shared hosting
+        DB::statement('SET SESSION sql_mode = ""');
+
+        // Convert from INT to DECIMAL(20,2) - this can hold any integer value safely
+        // We keep it at 20,2 (up to 99,999,999,999,999,999.99) which is plenty for any quantity
+        // Disabling strict mode avoids issues with out-of-range values during conversion
+
+        // bill_product - Sales transactions
+        DB::statement('ALTER TABLE bill_product MODIFY quantity DECIMAL(20,2)');
 
         // products - Current stock
-        DB::statement('ALTER TABLE products MODIFY quantity DECIMAL(8,2)');
+        DB::statement('ALTER TABLE products MODIFY quantity DECIMAL(20,2)');
 
         // batches - Inventory batches
-        DB::statement('ALTER TABLE batches MODIFY quantity DECIMAL(8,2)');
+        DB::statement('ALTER TABLE batches MODIFY quantity DECIMAL(20,2)');
 
         // purchase_bill_product - Purchases
-        DB::statement('ALTER TABLE purchase_bill_product MODIFY quantity DECIMAL(8,2)');
+        DB::statement('ALTER TABLE purchase_bill_product MODIFY quantity DECIMAL(20,2)');
     }
 
     /**
