@@ -84,7 +84,7 @@ class ShopOwnerController extends Controller
 
             // Calculate temp_expires_at if temp account and period is set
             if ($validated['account_type'] === 'temp' && !empty($validated['temp_period_days'])) {
-                $validated['temp_expires_at'] = now()->addDays($validated['temp_period_days']);
+                $validated['temp_expires_at'] = now()->addDays((int) $validated['temp_period_days']);
             }
 
             $user = User::create($validated);
