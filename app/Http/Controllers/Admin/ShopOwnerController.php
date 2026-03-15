@@ -236,7 +236,7 @@ class ShopOwnerController extends Controller
                 : 'admin.shop-owners.index';
 
             return redirect()->route($redirectRoute, $shopOwner->id)
-                ->with('success', 'User updated successfully.');
+                ->with('success', __('messages.User updated successfully.'));
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()

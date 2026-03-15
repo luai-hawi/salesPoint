@@ -352,6 +352,7 @@ return [
     'Delete' => 'Delete',
     'Status' => 'Status',
     'Created' => 'Created',
+    'User updated successfully.' => 'User updated successfully.',
     'Created By' => 'Created By',
     'Amount' => 'Amount',
     'Date' => 'Date',

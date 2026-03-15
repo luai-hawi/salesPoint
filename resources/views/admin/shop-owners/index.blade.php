@@ -88,11 +88,6 @@
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     {{ __('messages.Actions') }}</th>
                             </tr>
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {{ __('messages.Joined') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {{ __('messages.Actions') }}</th>
-                            </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($users as $user)
