@@ -119,6 +119,8 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin'
     Route::post('shop-owners/{shopOwner}/mark-paid', [ShopOwnerController::class, 'markPaid'])->name('shop-owners.mark-paid');
     Route::post('shop-owners/{shopOwner}/convert-to-full', [ShopOwnerController::class, 'convertToFull'])->name('shop-owners.convert-to-full');
     Route::delete('shop-owners/delete-expired', [ShopOwnerController::class, 'deleteExpiredTempAccounts'])->name('shop-owners.delete-expired');
+    Route::post('shop-owners/disable-expired', [ShopOwnerController::class, 'disableExpiredTempAccounts'])->name('shop-owners.disable-expired');
+    Route::delete('shop-owners/delete-disabled-expired', [ShopOwnerController::class, 'deleteDisabledExpiredAccounts'])->name('shop-owners.delete-disabled-expired');
 
     // Employee Management Routes
     Route::prefix('employees')->name('employees.')->group(function () {

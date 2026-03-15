@@ -202,10 +202,10 @@ class ShopOwnerController extends Controller
                     $currentExpiry = $shopOwner->temp_expires_at;
                     if ($currentExpiry && $currentExpiry->isFuture()) {
                         // Extend from current expiry
-                        $validated['temp_expires_at'] = $currentExpiry->addDays($validated['temp_period_days']);
+                        $validated['temp_expires_at'] = $currentExpiry->addDays((int) $validated['temp_period_days']);
                     } else {
                         // Set new expiry from now
-                        $validated['temp_expires_at'] = now()->addDays($validated['temp_period_days']);
+                        $validated['temp_expires_at'] = now()->addDays((int) $validated['temp_period_days']);
                     }
                 } elseif ($validated['account_type'] === 'full') {
                     $validated['temp_expires_at'] = null;
@@ -217,11 +217,11 @@ class ShopOwnerController extends Controller
             if ($request->filled('extend_days') && $shopOwner->account_type === 'temp') {
                 $currentExpiry = $shopOwner->temp_expires_at;
                 if ($currentExpiry && $currentExpiry->isFuture()) {
-                    $validated['temp_expires_at'] = $currentExpiry->addDays($request->extend_days);
+                    $validated['temp_expires_at'] = $currentExpiry->addDays((int) $request->extend_days);
                 } else {
-                    $validated['temp_expires_at'] = now()->addDays($request->extend_days);
+                    $validated['temp_expires_at'] = now()->addDays((int) $request->extend_days);
                 }
-                $validated['temp_period_days'] = $request->extend_days;
+                $validated['temp_period_days'] = (int) $request->extend_days;
             }
 
             // Remove extend_days from validated data as it's not a column
@@ -490,6 +490,120 @@ class ShopOwnerController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => __('messages.Failed to delete expired accounts.')]);
+        }
+    }
+
+    /**
+     * Disable all expired temporary accounts.
+     */
+    public function disableExpiredTempAccounts()
+    {
+        try {
+            // Get all expired temp accounts that are not already disabled (only shop owners, not employees)
+            $expiredAccounts = User::expiredTempAccounts()
+                ->whereIn('role', ['shop_owner', 'restaurant', 'merchant'])
+                ->get();
+
+            $count = $expiredAccounts->count();
+
+            if ($count === 0) {
+                return redirect()->back()
+                    ->with('info', __('messages.No expired temporary accounts found to disable.'));
+            }
+
+            // Disable each expired account by changing role to 'disabled'
+            foreach ($expiredAccounts as $account) {
+                $account->update(['role' => 'disabled']);
+            }
+
+            return redirect()->route('admin.dashboard')
+                ->with('success', __('messages.Expired accounts disabled successfully.', ['count' => $count]));
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => __('messages.Failed to disable expired accounts.')]);
+        }
+    }
+
+    /**
+     * Delete all disabled expired accounts.
+     */
+    public function deleteDisabledExpiredAccounts()
+    {
+        try {
+            // Get all disabled expired temp accounts (only shop owners, not employees)
+            $disabledAccounts = User::where('account_type', 'temp')
+                ->whereNotNull('temp_expires_at')
+                ->where('temp_expires_at', '<')
+                ->where('role', 'disabled')
+                ->get();
+
+            $count = $disabledAccounts->count();
+
+            if ($count === 0) {
+                return redirect()->back()
+                    ->with('info', __('messages.No disabled expired accounts found to delete.'));
+            }
+
+            // Delete each disabled account (this will handle all related data through the destroy method)
+            foreach ($disabledAccounts as $account) {
+                // Get all employee IDs for this shop owner
+                $employeeIds = Employee::where('shop_owner_id', $account->id)->pluck('id');
+
+                // Delete employee payments
+                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
+
+                // Delete employees
+                Employee::where('shop_owner_id', $account->id)->delete();
+
+                // Delete product-related data
+                $productIds = Product::where('user_id', $account->id)->pluck('id');
+                ProductBarcode::whereIn('product_id', $productIds)->delete();
+                Batch::whereIn('product_id', $productIds)->delete();
+                ProductVariantGroup::where('user_id', $account->id)->delete();
+
+                // Delete product images from storage
+                $products = Product::where('user_id', $account->id)->get();
+                foreach ($products as $product) {
+                    $pictures = json_decode($product->pictures, true);
+                    if (is_array($pictures)) {
+                        foreach ($pictures as $picture) {
+                            if ($picture && Storage::disk('public')->exists($picture)) {
+                                Storage::disk('public')->delete($picture);
+                            }
+                        }
+                    }
+                }
+
+                // Delete products
+                Product::where('user_id', $account->id)->delete();
+
+                // Delete customer-related data
+                $customerIds = Customer::where('user_id', $account->id)->pluck('id');
+                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
+                Bill::whereIn('customer_id', $customerIds)->delete();
+                Bill::where('user_id', $account->id)->delete();
+                Customer::where('user_id', $account->id)->delete();
+
+                // Delete supplier-related data
+                $supplierIds = Supplier::where('user_id', $account->id)->pluck('id');
+                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::where('user_id', $account->id)->delete();
+                Supplier::where('user_id', $account->id)->delete();
+
+                // Delete other user-related data
+                Expense::where('user_id', $account->id)->delete();
+                Tag::where('user_id', $account->id)->delete();
+
+                // Delete the account
+                $account->delete();
+            }
+
+            return redirect()->route('admin.dashboard')
+                ->with('success', __('messages.Disabled expired accounts deleted successfully.', ['count' => $count]));
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => __('messages.Failed to delete disabled expired accounts.')]);
         }
     }
 

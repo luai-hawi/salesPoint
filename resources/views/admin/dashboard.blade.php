@@ -15,9 +15,16 @@
                 <span class="text-sm text-gray-600">{{ now()->format('F j, Y') }}</span>
                 @if ($expiredTempAccounts->count() > 0)
                     <button type="button"
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                        onclick="document.getElementById('disableExpiredModal').classList.remove('hidden');">
+                        {{ __('messages.Disable All Expired') }} ({{ $expiredTempAccounts->count() }})
+                    </button>
+                @endif
+                @if ($stats['disabled_expired_accounts_count'] > 0)
+                    <button type="button"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                        onclick="document.getElementById('deleteExpiredModal').classList.remove('hidden');">
-                        {{ __('messages.Delete All Expired') }} ({{ $expiredTempAccounts->count() }})
+                        onclick="document.getElementById('deleteDisabledModal').classList.remove('hidden');">
+                        {{ __('messages.Delete Disabled') }} ({{ $stats['disabled_expired_accounts_count'] }})
                     </button>
                 @endif
                 <a href="{{ route('admin.shop-owners.create') }}"
@@ -28,16 +35,17 @@
         </div>
     </x-slot>
 
-    <!-- Delete Expired Modal -->
+    <!-- Disable Expired Modal -->
     @if ($expiredTempAccounts->count() > 0)
-        <div id="deleteExpiredModal"
+        <div id="disableExpiredModal"
             class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
                 <div class="flex flex-col">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-red-600">{{ __('messages.Confirm Delete Expired Accounts') }}
+                        <h3 class="text-lg font-bold text-orange-600">
+                            {{ __('messages.Confirm Disable Expired Accounts') }}
                         </h3>
-                        <button onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                        <button onclick="document.getElementById('disableExpiredModal').classList.add('hidden');"
                             class="text-gray-400 hover:text-gray-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -46,7 +54,7 @@
                         </button>
                     </div>
                     <p class="text-gray-600 mb-4">
-                        {{ __('messages.You are about to delete the following expired accounts:') }}
+                        {{ __('messages.You are about to disable the following expired accounts:') }}
                     </p>
                     <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
                         <ul class="list-disc list-inside text-sm text-gray-700">
@@ -59,19 +67,61 @@
                         </ul>
                     </div>
                     <p class="text-sm text-gray-500 mb-4">
-                        {{ __('messages.This will also delete all employees and data associated with these accounts.') }}
+                        {{ __('messages.Disabling will prevent them from logging in but their data will be preserved.') }}
                     </p>
                     <div class="flex justify-end space-x-3">
-                        <button onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                        <button onclick="document.getElementById('disableExpiredModal').classList.add('hidden');"
                             class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
                             {{ __('messages.Cancel') }}
                         </button>
-                        <form action="{{ route('admin.shop-owners.delete-expired') }}" method="POST">
+                        <form action="{{ route('admin.shop-owners.disable-expired') }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                                {{ __('messages.Disable All') }} ({{ $expiredTempAccounts->count() }})
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Delete Disabled Modal -->
+    @if ($stats['disabled_expired_accounts_count'] > 0)
+        <div id="deleteDisabledModal"
+            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                <div class="flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-red-600">
+                            {{ __('messages.Confirm Delete Disabled Accounts') }}
+                        </h3>
+                        <button onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
+                            class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        {{ __('messages.You are about to permanently delete the following disabled expired accounts:') }}
+                    </p>
+                    <p class="text-sm text-red-500 mb-4">
+                        {{ __('messages.This action cannot be undone!') }}
+                    </p>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                            {{ __('messages.Cancel') }}
+                        </button>
+                        <form action="{{ route('admin.shop-owners.delete-disabled-expired') }}" method="POST">
                             @csrf
                             @method('DELETE')
                             <button type="submit"
                                 class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                                {{ __('messages.Delete All') }} ({{ $expiredTempAccounts->count() }})
+                                {{ __('messages.Delete Disabled') }} ({{ $stats['disabled_expired_accounts_count'] }})
                             </button>
                         </form>
                     </div>

@@ -147,6 +147,17 @@ class User extends Authenticatable
             ->where('temp_expires_at', '<', now());
     }
 
+    /**
+     * Scope to get disabled expired temp accounts (ready for deletion)
+     */
+    public function scopeDisabledExpiredAccounts($query)
+    {
+        return $query->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->where('temp_expires_at', '<')
+            ->where('role', 'disabled');
+    }
+
     public function employees()
     {
         return $this->hasMany(User::class, 'shop_owner_id');
