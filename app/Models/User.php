@@ -114,6 +114,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Calculate the trial period days based on created_at and temp_expires_at
+     */
+    public function getCalculatedTrialPeriod(): ?int
+    {
+        if (!$this->isTempAccount() || !$this->temp_expires_at || !$this->created_at) {
+            return null;
+        }
+        return (int) $this->created_at->diffInDays($this->temp_expires_at);
+    }
+
+    /**
      * Get the status label for temp accounts
      */
     public function getTempStatusLabel(): ?string

@@ -180,7 +180,7 @@
                         <label for="temp_period_days"
                             class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Trial Period (Days)') }}</label>
                         <input type="number" name="temp_period_days" id="temp_period_days"
-                            value="{{ old('temp_period_days', $shopOwner->temp_period_days ?? 7) }}" min="1"
+                            value="{{ old('temp_period_days', $calculatedTrialPeriod ?? 7) }}" min="0"
                             max="365"
                             class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                             placeholder="7">
@@ -199,8 +199,8 @@
                                 <div class="flex-1">
                                     <label for="extend_days"
                                         class="block text-sm font-medium text-gray-700 mb-2">{{ __('messages.Extend Expiry By (Days)') }}</label>
-                                    <input type="number" name="extend_days" id="extend_days" value=""
-                                        min="1" max="365"
+                                    <input type="number" name="extend_days" id="extend_days" value="0"
+                                        min="-365" max="365"
                                         class="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                                         placeholder="7">
                                 </div>

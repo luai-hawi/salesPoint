@@ -164,7 +164,9 @@ class ShopOwnerController extends Controller
     public function edit(User $shopOwner)
     {
         $shopOwner->loadCount('employees');
-        return view('admin.shop-owners.edit', compact('shopOwner'));
+        // Calculate the trial period based on created_at and temp_expires_at
+        $calculatedTrialPeriod = $shopOwner->getCalculatedTrialPeriod();
+        return view('admin.shop-owners.edit', compact('shopOwner', 'calculatedTrialPeriod'));
     }
 
     /**
@@ -182,8 +184,8 @@ class ShopOwnerController extends Controller
             'subscription_cost' => 'nullable|numeric|min:0',
             'image_limit' => 'nullable|integer|min:0|max:10000',
             'account_type' => 'nullable|in:full,temp',
-            'temp_period_days' => 'nullable|integer|min:1|max:365',
-            'extend_days' => 'nullable|integer|min:1|max:365',
+            'temp_period_days' => 'nullable|integer|min:0|max:365',
+            'extend_days' => 'nullable|integer|min:-365|max:365',
         ]);
 
         try {
@@ -197,15 +199,16 @@ class ShopOwnerController extends Controller
 
             // Handle account type and temp period
             if (isset($validated['account_type'])) {
-                if ($validated['account_type'] === 'temp' && !empty($validated['temp_period_days'])) {
-                    // Set or extend expiry date
-                    $currentExpiry = $shopOwner->temp_expires_at;
-                    if ($currentExpiry && $currentExpiry->isFuture()) {
-                        // Extend from current expiry
-                        $validated['temp_expires_at'] = $currentExpiry->addDays((int) $validated['temp_period_days']);
-                    } else {
-                        // Set new expiry from now
-                        $validated['temp_expires_at'] = now()->addDays((int) $validated['temp_period_days']);
+                if ($validated['account_type'] === 'temp') {
+                    // If temp_period_days is provided and > 0, recalculate expiration from creation date
+                    if (!empty($validated['temp_period_days']) && $validated['temp_period_days'] > 0) {
+                        $validated['temp_period_days'] = (int) $validated['temp_period_days'];
+                        $validated['temp_expires_at'] = $shopOwner->created_at->addDays($validated['temp_period_days']);
+                    }
+                    // If temp_period_days is 0 or empty, keep the current value (don't update temp_period_days or temp_expires_at)
+                    elseif (empty($validated['temp_period_days']) || $validated['temp_period_days'] == 0) {
+                        unset($validated['temp_period_days']);
+                        unset($validated['temp_expires_at']);
                     }
                 } elseif ($validated['account_type'] === 'full') {
                     $validated['temp_expires_at'] = null;
@@ -213,15 +216,35 @@ class ShopOwnerController extends Controller
                 }
             }
 
-            // Handle extend expiry单独button
+            // Handle extend expiry - adds to trial period and extends expiration
             if ($request->filled('extend_days') && $shopOwner->account_type === 'temp') {
-                $currentExpiry = $shopOwner->temp_expires_at;
-                if ($currentExpiry && $currentExpiry->isFuture()) {
-                    $validated['temp_expires_at'] = $currentExpiry->addDays((int) $request->extend_days);
-                } else {
-                    $validated['temp_expires_at'] = now()->addDays((int) $request->extend_days);
+                $extendDays = (int) $request->extend_days;
+                if ($extendDays != 0) {
+                    // Get current trial period or calculate from expiration
+                    $currentPeriod = $shopOwner->temp_period_days;
+                    if (!$currentPeriod && $shopOwner->temp_expires_at) {
+                        $currentPeriod = (int) $shopOwner->created_at->diffInDays($shopOwner->temp_expires_at);
+                    }
+                    if (!$currentPeriod) {
+                        $currentPeriod = 0;
+                    }
+
+                    // New total trial period (can be negative, but we cap at minimum 1)
+                    $newPeriod = $currentPeriod + $extendDays;
+                    if ($newPeriod < 1) {
+                        $newPeriod = 1;
+                    }
+                    $validated['temp_period_days'] = $newPeriod;
+
+                    // Extend/subtract expiration by extend_days from current expiration
+                    $currentExpiry = $shopOwner->temp_expires_at;
+                    if ($currentExpiry) {
+                        $validated['temp_expires_at'] = $currentExpiry->addDays($extendDays);
+                    } else {
+                        // If no valid expiry, set from now
+                        $validated['temp_expires_at'] = now()->addDays($extendDays);
+                    }
                 }
-                $validated['temp_period_days'] = (int) $request->extend_days;
             }
 
             // Remove extend_days from validated data as it's not a column
