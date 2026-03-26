@@ -94,10 +94,21 @@ class BillsController extends Controller
 
         $bills = $baseQuery->paginate(20);
 
+        // Load products for each bill (needed for view details modal)
+        $bills->each(function ($bill) {
+            $bill->load('products');
+        });
+
         // Handle AJAX requests
         if ($request->ajax()) {
+            // Load products relationship for each bill
+            $billsWithProducts = $bills->map(function ($bill) {
+                $bill->load('products');
+                return $bill;
+            });
+
             return response()->json([
-                'bills' => $bills->items(),
+                'bills' => $billsWithProducts->items(),
                 'pagination' => [
                     'current_page' => $bills->currentPage(),
                     'last_page' => $bills->lastPage(),

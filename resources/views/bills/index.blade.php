@@ -712,32 +712,38 @@
             // Set basic info
             document.getElementById('bill-id').textContent = '#' + bill.id;
             document.getElementById('bill-date').textContent = new Date(bill.created_at).toLocaleDateString();
-            document.getElementById('bill-total').textContent = '₪' + parseFloat(bill.total_price).toFixed(2);
+            document.getElementById('bill-total').textContent = '₪' + parseFloat(bill.total_price || 0).toFixed(2);
             document.getElementById('bill-note').textContent = bill.note || '-';
 
             // Build products table
             const tbody = document.getElementById('bill-products-body');
             tbody.innerHTML = '';
 
-            bill.products.forEach(product => {
-                const quantity = product.pivot.quantity;
-                const unitPrice = parseFloat(product.pivot.unit_price);
-                const discount = parseFloat(product.pivot.discount || 0);
-                const subtotal = (quantity * unitPrice) - discount;
+            if (bill.products && bill.products.length > 0) {
+                bill.products.forEach(product => {
+                    // Get values from pivot with fallback
+                    const quantity = parseFloat(product.pivot?.quantity || product.pivot?.qty || 0);
+                    const unitPrice = parseFloat(product.pivot?.selling_price || 0);
+                    const discount = parseFloat(product.pivot?.discount || 0);
+                    const subtotal = (quantity * unitPrice) - discount;
 
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-3 py-2">
-                        <div class="text-sm font-medium text-gray-900">${product.name}</div>
-                        <div class="text-xs text-gray-500">${product.barcode || ''}</div>
-                    </td>
-                    <td class="px-3 py-2 text-right text-sm text-gray-900">${quantity}</td>
-                    <td class="px-3 py-2 text-right text-sm text-gray-900">₪${unitPrice.toFixed(2)}</td>
-                    <td class="px-3 py-2 text-right text-sm text-gray-900">₪${discount.toFixed(2)}</td>
-                    <td class="px-3 py-2 text-right text-sm font-medium text-gray-900">₪${subtotal.toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-3 py-2">
+                            <div class="text-sm font-medium text-gray-900">${product.name}</div>
+                            <div class="text-xs text-gray-500">${product.barcode || ''}</div>
+                        </td>
+                        <td class="px-3 py-2 text-right text-sm text-gray-900">${quantity}</td>
+                        <td class="px-3 py-2 text-right text-sm text-gray-900">₪${unitPrice.toFixed(2)}</td>
+                        <td class="px-3 py-2 text-right text-sm text-gray-900">₪${discount.toFixed(2)}</td>
+                        <td class="px-3 py-2 text-right text-sm font-medium text-gray-900">₪${subtotal.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML =
+                    '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-500">No products found</td></tr>';
+            }
 
             // Show modal
             document.getElementById('bill-details-modal').classList.remove('hidden');
