@@ -153,7 +153,7 @@
                                     <div class="flex">
                                         <div class="relative flex-1">
                                             <input type="text" name="barcode" id="barcode"
-                                                class="w-full px-4 py-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
+                                                class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors @error('barcode') border-red-500 @enderror"
                                                 value="{{ old('barcode') }}"
                                                 placeholder="{{ __('messages.Optional barcode or product code...') }}">
                                             <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"

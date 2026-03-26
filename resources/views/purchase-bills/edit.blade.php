@@ -93,7 +93,7 @@
                                 <div class="relative">
                                     <input type="text" id="barcode_input"
                                         placeholder="{{ __('messages.Scan or enter barcode...') }}"
-                                        class="w-full px-8 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
+                                        class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors font-mono"
                                         autocomplete="off" />
                                     <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">
@@ -374,16 +374,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                                                    <div class="flex-1">
-                                                                                                                        <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                                                        <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                                        <div class="flex-1">
+                                                                                                                            <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                                            <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                        </div>
+                                                                                                                        <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                                            {{ __('messages.Select') }}
+                                                                                                                        </button>
                                                                                                                     </div>
-                                                                                                                    <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                                                        {{ __('messages.Select') }}
-                                                                                                                    </button>
-                                                                                                                </div>
-                                                                                                            `).join('')}
+                                                                                                                `).join('')}
                                     </div>
                                 </div>
                             </div>

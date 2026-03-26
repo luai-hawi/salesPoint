@@ -32,7 +32,7 @@
                     <div class="relative flex-1 max-w-md">
                         <input type="text" id="product-search" name="search"
                             placeholder="{{ __('messages.Search by name, barcode, or price...') }}"
-                            class="w-full px-8 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            class="w-full px-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                             value="{{ request('search') }}" />
                         <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -74,7 +74,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex gap-3">
+                    <div class="flex flex-col md:flex-row gap-1 ">
                         <a href="{{ route('products.create') }}"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +171,8 @@
 
                 <!-- Pagination -->
                 @if ($products->hasPages())
-                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-100" id="pagination-links">
+                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 overflow-x-auto scrollbar-thin"
+                        id="pagination-links">
                         {{ $products->links('vendor.pagination.custom-light') }}
                     </div>
                 @endif

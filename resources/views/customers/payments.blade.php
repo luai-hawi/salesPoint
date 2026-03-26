@@ -21,7 +21,7 @@
                 <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     {{ __('messages.Customer') }}: <span class="font-bold text-green-600">{{ $customer->name }}</span>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex flex-col md:flex-row gap-2">
                     <a href="{{ route('customers.index') }}"
                         class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,7 +335,7 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <select
-                                                    class="edit-type w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                                    class="edit-type px-8 w-full min-w-[90px] px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                                     <option value="cash"
                                                         {{ $payment->type == 'cash' ? 'selected' : '' }}>
                                                         {{ __('messages.Cash') }}</option>
@@ -704,11 +704,11 @@
                     <span>{{ $customer->name }}</span>
                 </div>
                 ${customerPhone ? `
-                        <div class="info-row">
-                            <span class="info-label">{{ __('messages.Phone') }}:</span>
-                            <span>${customerPhone}</span>
-                        </div>
-                        ` : ''}
+                                                                                <div class="info-row">
+                                                                                    <span class="info-label">{{ __('messages.Phone') }}:</span>
+                                                                                    <span>${customerPhone}</span>
+                                                                                </div>
+                                                                                ` : ''}
                 <div class="info-row">
                     <span class="info-label">{{ __('messages.Report Generated') }}:</span>
                     <span>${new Date().toLocaleString()}</span>
@@ -728,13 +728,13 @@
             </div>
 
             ${fromDate || toDate ? `
-                    <div class="date-range">
-                        {{ __('messages.Date Range') }}:
-                        ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                        {{ __('messages.to') }}
-                        ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                    </div>
-                    ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
+                                                                            <div class="date-range">
+                                                                                {{ __('messages.Date Range') }}:
+                                                                                ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                                {{ __('messages.to') }}
+                                                                                ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                            </div>
+                                                                            ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
 
             <table>
                 <thead>
@@ -748,16 +748,16 @@
                 </thead>
                 <tbody>
                     ${filteredPayments.map(payment => `
-                                <tr>
-                                    <td>${payment.id}</td>
-                                    <td>${payment.date}</td>
-                                    <td>${payment.time}</td>
-                                    <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                        ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
-                                    </td>
-                                    <td>${payment.note}</td>
-                                </tr>
-                            `).join('')}
+                                                                                        <tr>
+                                                                                            <td>${payment.id}</td>
+                                                                                            <td>${payment.date}</td>
+                                                                                            <td>${payment.time}</td>
+                                                                                            <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                                                                                ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
+                                                                                            </td>
+                                                                                            <td>${payment.note}</td>
+                                                                                        </tr>
+                                                                                    `).join('')}
                 </tbody>
             </table>
 

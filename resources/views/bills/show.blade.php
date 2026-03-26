@@ -17,7 +17,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Edit Bill Header --}}
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-col md:flex-row gap-4">
             <h2 class="font-bold text-2xl text-gray-800 leading-tight flex items-center">
                 <svg class="w-8 h-8 mr-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -31,7 +31,7 @@
                     {{ __('bills.Status') }}: <span
                         class="font-bold text-orange-600">{{ ucfirst($bill->status ?? __('bills.Draft')) }}</span>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex space-x-3 flex-col md:flex-row gap-2">
                     <a href="{{ route('bills.index') }}"
                         class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -635,14 +635,14 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ __('messages.Select Tags for') }} ${product.name}</h3>
                     <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                         ${availableTags.map(tag => `
-                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                            <div class="flex-1">
-                                                                                                                                                <div class="font-medium">${tag.name}</div>
-                                                                                                                                                <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                            </div>
-                                                                                                                                        </label>
-                                                                                                                                    `).join('')}
+                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                            <div class="flex-1">
+                                                                                                                                                                <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                            </div>
+                                                                                                                                                        </label>
+                                                                                                                                                    `).join('')}
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
@@ -1944,9 +1944,9 @@
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                     ${product.actualDiscount > 0 ? `
-                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                ` : '-'}
+                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                ` : '-'}
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
             </tr>

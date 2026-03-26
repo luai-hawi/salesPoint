@@ -149,7 +149,7 @@
                                         <div class="relative flex-1">
                                             <input type="text" name="barcode" id="barcode"
                                                 value="{{ old('barcode', $product->barcode) }}"
-                                                class="w-full px-4 py-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors">
+                                                class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors">
                                             <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

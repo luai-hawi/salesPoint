@@ -65,7 +65,7 @@
                 <!-- Search Box -->
                 <div class="relative">
                     <input type="text" id="searchInput" placeholder="{{ __('messages.Search...') }}"
-                        class="w-full px-8 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -218,6 +218,17 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
+                                        <button type="button" onclick="viewBillDetails({{ $bill->id }})"
+                                            class="inline-flex items-center px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-md hover:bg-purple-200 transition-colors">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            {{ __('messages.View') }}
+                                        </button>
                                         <a href="{{ route('bills.show', $bill->id) }}"
                                             class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
@@ -273,7 +284,8 @@
 
             <!-- Pagination -->
             @if ($bills->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 overflow-x-auto scrollbar-thin"
+                    id="pagination-links">
                     {{ $bills->appends(['date' => $selectedDate])->links('vendor.pagination.custom-light') }}
                 </div>
             @endif
@@ -393,6 +405,15 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
+                            <button type="button"
+                                onclick="viewBillDetails(${bill.id})"
+                                class="inline-flex items-center px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-md hover:bg-purple-200 transition-colors">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View
+                            </button>
                             <a href="/bills/${bill.id}"
                                class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -578,6 +599,158 @@
                 scanBtn.addEventListener('click', function() {
                     initBarcodeScanner('searchInput');
                 });
+            }
+        });
+    </script>
+
+    <!-- Bill Details Modal -->
+    <div id="bill-details-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeBillModal()"></div>
+
+            <!-- Modal Panel -->
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                {{ __('messages.Bill Details') }}
+                            </h3>
+                            <div class="mt-4">
+                                <!-- Bill Info Header -->
+                                <div class="flex justify-between mb-4 pb-4 border-b">
+                                    <div>
+                                        <p class="text-sm text-gray-500">{{ __('messages.Bill ID') }}: <span
+                                                id="bill-id" class="font-medium text-gray-900"></span></p>
+                                        <p class="text-sm text-gray-500">{{ __('messages.Date') }}: <span
+                                                id="bill-date" class="font-medium text-gray-900"></span></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-500">{{ __('messages.Total') }}:</p>
+                                        <p class="text-xl font-bold text-green-600" id="bill-total"></p>
+                                    </div>
+                                </div>
+
+                                <!-- Products Table -->
+                                <div class="max-h-64 overflow-y-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th
+                                                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('messages.Product') }}</th>
+                                                <th
+                                                    class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('messages.Quantity') }}</th>
+                                                <th
+                                                    class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('messages.Price') }}</th>
+                                                <th
+                                                    class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('messages.Discount') }}</th>
+                                                <th
+                                                    class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('messages.Subtotal') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bill-products-body" class="divide-y divide-gray-200">
+                                            <!-- Products will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Note -->
+                                <div class="mt-4 pt-4 border-t" id="bill-note-container">
+                                    <p class="text-sm text-gray-500">{{ __('messages.Note') }}: <span id="bill-note"
+                                            class="text-gray-900"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="closeBillModal()"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        {{ __('messages.Close') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // View Bill Details Function
+        function viewBillDetails(billId) {
+            // Find the bill in the current data
+            const bills = @json($bills->items());
+            const bill = bills.find(b => b.id === billId);
+
+            if (!bill) {
+                // If not found in current page, fetch from server
+                fetch(`/bills/${billId}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        showBillModal(data.bill);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching bill:', error);
+                        alert('Error loading bill details');
+                    });
+            } else {
+                showBillModal(bill);
+            }
+        }
+
+        function showBillModal(bill) {
+            // Set basic info
+            document.getElementById('bill-id').textContent = '#' + bill.id;
+            document.getElementById('bill-date').textContent = new Date(bill.created_at).toLocaleDateString();
+            document.getElementById('bill-total').textContent = '₪' + parseFloat(bill.total_price).toFixed(2);
+            document.getElementById('bill-note').textContent = bill.note || '-';
+
+            // Build products table
+            const tbody = document.getElementById('bill-products-body');
+            tbody.innerHTML = '';
+
+            bill.products.forEach(product => {
+                const quantity = product.pivot.quantity;
+                const unitPrice = parseFloat(product.pivot.unit_price);
+                const discount = parseFloat(product.pivot.discount || 0);
+                const subtotal = (quantity * unitPrice) - discount;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-3 py-2">
+                        <div class="text-sm font-medium text-gray-900">${product.name}</div>
+                        <div class="text-xs text-gray-500">${product.barcode || ''}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right text-sm text-gray-900">${quantity}</td>
+                    <td class="px-3 py-2 text-right text-sm text-gray-900">₪${unitPrice.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right text-sm text-gray-900">₪${discount.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right text-sm font-medium text-gray-900">₪${subtotal.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Show modal
+            document.getElementById('bill-details-modal').classList.remove('hidden');
+        }
+
+        function closeBillModal() {
+            document.getElementById('bill-details-modal').classList.add('hidden');
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeBillModal();
             }
         });
     </script>

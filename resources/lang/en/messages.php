@@ -556,6 +556,7 @@ return [
     'Save' => 'Save',
     'Cancel' => 'Cancel',
     'View' => 'View',
+    'Bill Details' => 'Bill Details',
     'Create' => 'Create',
     'Update' => 'Update',
     'Back' => 'Back',

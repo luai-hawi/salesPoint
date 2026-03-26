@@ -842,6 +842,7 @@ return [
     'Save' => 'حفظ',
     'Cancel' => 'إلغاء',
     'View' => 'عرض',
+    'Bill Details' => 'تفاصيل الفاتورة',
     'Create' => 'إنشاء',
     'Update' => 'تحديث',
     'Back' => 'رجوع',

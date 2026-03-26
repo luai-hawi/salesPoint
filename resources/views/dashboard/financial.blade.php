@@ -153,19 +153,23 @@
                             {{ __('messages.Daily Cash Flow') }}
                         </h3>
                         <form method="GET" action="{{ route('dashboard.financial') }}"
-                            class="flex items-center gap-2">
-                            <div class="flex items-center gap-2">
-                                <label
-                                    class="text-white text-xs opacity-80">{{ __('messages.Cash Flow Start Date') }}</label>
-                                <input type="date" name="cash_flow_start_date" value="{{ $cashFlowStartDate }}"
-                                    class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-                                    placeholder="{{ __('messages.Cash Flow Start Date') }}">
-                                <span class="text-white opacity-70">-</span>
-                                <label
-                                    class="text-white text-xs opacity-80">{{ __('messages.Cash Flow End Date') }}</label>
-                                <input type="date" name="cash_flow_end_date" value="{{ $cashFlowEndDate }}"
-                                    class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-                                    placeholder="{{ __('messages.Cash Flow End Date') }}">
+                            class="flex items-center gap-2 flex-wrap">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div>
+                                    <label
+                                        class="text-white text-xs opacity-80">{{ __('messages.Cash Flow Start Date') }}</label>
+                                    <input type="date" name="cash_flow_start_date" value="{{ $cashFlowStartDate }}"
+                                        class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                                        placeholder="{{ __('messages.Cash Flow Start Date') }}">
+                                    <span class="text-white opacity-70">-</span>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-white text-xs opacity-80">{{ __('messages.Cash Flow End Date') }}</label>
+                                    <input type="date" name="cash_flow_end_date" value="{{ $cashFlowEndDate }}"
+                                        class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                                        placeholder="{{ __('messages.Cash Flow End Date') }}">
+                                </div>
                             </div>
                             <button type="submit"
                                 class="px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
