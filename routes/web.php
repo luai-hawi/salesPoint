@@ -292,7 +292,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 });
 
 
-
+// Hisba Analytics Dashboard
+Route::get('/hisba', function () {
+    return view('hisba');
+})->name('hisba');
 
 
 

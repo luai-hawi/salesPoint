@@ -466,18 +466,42 @@
             let filteredPayments = [];
 
             allRows.forEach(row => {
-                const dateCell = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
-                const paymentDate = new Date(dateCell);
+                const dateCellElement = row.querySelector('td:nth-child(5) div:first-child');
+                if (!dateCellElement) return;
 
-                const isInRange = (!fromDate || paymentDate >= new Date(fromDate)) &&
-                    (!toDate || paymentDate <= new Date(toDate));
+                const dateCell = dateCellElement.textContent.trim();
+
+                // Parse date in format "M d, Y" (e.g., "Apr 4, 2026")
+                const dateParts = dateCell.match(/(\w+)\s+(\d+),\s+(\d+)/);
+                if (!dateParts) return;
+
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov',
+                    'Dec'
+                ];
+                const monthIndex = monthNames.findIndex(m => m === dateParts[1]);
+                const day = parseInt(dateParts[2]);
+                const year = parseInt(dateParts[3]);
+
+                if (monthIndex === -1) return;
+
+                const paymentDate = new Date(year, monthIndex, day);
+
+                // Parse fromDate and toDate as local time (not UTC)
+                const fromDateObj = fromDate ? new Date(fromDate + 'T00:00:00') : null;
+                const toDateObj = toDate ? new Date(toDate + 'T23:59:59') : null;
+
+                const isInRange = (!fromDateObj || paymentDate >= fromDateObj) &&
+                    (!toDateObj || paymentDate <= toDateObj);
 
                 if (isInRange) {
-                    const paymentId = row.querySelector('td:nth-child(1) .text-sm.font-medium').textContent.trim();
+                    const paymentIdElement = row.querySelector('td:nth-child(1) .text-sm.font-medium');
+                    if (!paymentIdElement) return;
+
+                    const paymentId = paymentIdElement.textContent.trim();
                     const amount = parseFloat(row.querySelector('.edit-amount').value);
                     const note = row.querySelector('.edit-note').value || '{{ __('messages.No note') }}';
-                    const dateText = row.querySelector('td:nth-child(4) div:first-child').textContent.trim();
-                    const timeText = row.querySelector('td:nth-child(4) div:last-child').textContent.trim();
+                    const dateText = row.querySelector('td:nth-child(5) div:first-child').textContent.trim();
+                    const timeText = row.querySelector('td:nth-child(5) div:last-child').textContent.trim();
 
                     filteredPayments.push({
                         id: paymentId,
@@ -704,11 +728,11 @@
                     <span>{{ $customer->name }}</span>
                 </div>
                 ${customerPhone ? `
-                                                                                <div class="info-row">
-                                                                                    <span class="info-label">{{ __('messages.Phone') }}:</span>
-                                                                                    <span>${customerPhone}</span>
-                                                                                </div>
-                                                                                ` : ''}
+                                                                                                            <div class="info-row">
+                                                                                                                <span class="info-label">{{ __('messages.Phone') }}:</span>
+                                                                                                                <span>${customerPhone}</span>
+                                                                                                            </div>
+                                                                                                            ` : ''}
                 <div class="info-row">
                     <span class="info-label">{{ __('messages.Report Generated') }}:</span>
                     <span>${new Date().toLocaleString()}</span>
@@ -728,13 +752,13 @@
             </div>
 
             ${fromDate || toDate ? `
-                                                                            <div class="date-range">
-                                                                                {{ __('messages.Date Range') }}:
-                                                                                ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                                                                                {{ __('messages.to') }}
-                                                                                ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                                                                            </div>
-                                                                            ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
+                                                                                                        <div class="date-range">
+                                                                                                            {{ __('messages.Date Range') }}:
+                                                                                                            ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                                                            {{ __('messages.to') }}
+                                                                                                            ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                                                        </div>
+                                                                                                        ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
 
             <table>
                 <thead>
@@ -748,16 +772,16 @@
                 </thead>
                 <tbody>
                     ${filteredPayments.map(payment => `
-                                                                                        <tr>
-                                                                                            <td>${payment.id}</td>
-                                                                                            <td>${payment.date}</td>
-                                                                                            <td>${payment.time}</td>
-                                                                                            <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                                                                                ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
-                                                                                            </td>
-                                                                                            <td>${payment.note}</td>
-                                                                                        </tr>
-                                                                                    `).join('')}
+                                                                                                                    <tr>
+                                                                                                                        <td>${payment.id}</td>
+                                                                                                                        <td>${payment.date}</td>
+                                                                                                                        <td>${payment.time}</td>
+                                                                                                                        <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                                                                                                            ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
+                                                                                                                        </td>
+                                                                                                                        <td>${payment.note}</td>
+                                                                                                                    </tr>
+                                                                                                                `).join('')}
                 </tbody>
             </table>
 
