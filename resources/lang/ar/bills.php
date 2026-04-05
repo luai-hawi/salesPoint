@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'View' => 'عرض',
     'Edit Bill #' => 'تعديل الفاتورة #',
     'Back to Bills' => 'العودة إلى الفواتير',
     'Print Bill' => 'طباعة الفاتورة',

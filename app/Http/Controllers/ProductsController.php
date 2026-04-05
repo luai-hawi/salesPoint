@@ -35,6 +35,7 @@ class ProductsController extends Controller
                             ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"])
                             ->orWhere('cost_price', 'like', "%{$term}%")
                             ->orWhere('selling_price', 'like', "%{$term}%")
+                            ->orWhereRaw('LOWER(category) LIKE ?', ["%{$term}%"])
                             ->orWhereHas('barcodes', function ($qb) use ($term) {
                                 $qb->whereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
                             });

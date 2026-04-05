@@ -32,38 +32,34 @@ class BillsController extends Controller
         $date = $request->input('date');
 
         $baseQuery = Bill::where('user_id', $ownerId)
-            ->with(['products' => function ($q) use ($ownerId) {
-                $q->where('user_id', $ownerId);
-            }, 'customer', 'creator'])
+            ->with('products', 'customer', 'creator')
             ->orderBy('created_at', 'desc');
 
         if ($date) {
             $baseQuery->whereDate('created_at', $date);
         }
 
-        // Handle search
-        if ($request->filled('search')) {
-            $search = strtolower($request->search);
+        // Handle search - restored with product name/barcode search
+        $searchTerm = $request->query('search');
+        if ($searchTerm) {
+            $search = strtolower($searchTerm);
             $searchTerms = explode(' ', $search);
             foreach ($searchTerms as $term) {
                 $term = trim($term);
                 if ($term) {
                     $baseQuery->where(function ($q) use ($term) {
-                        $q->whereRaw('LOWER(CAST(id AS CHAR)) LIKE ?', ["%{$term}%"])
-                            ->orWhereRaw('LOWER(note) LIKE ?', ["%{$term}%"])
-                            ->orWhereRaw('LOWER(CAST(total_price AS CHAR)) LIKE ?', ["%{$term}%"])
+                        $q->where('id', 'like', "%{$term}%")
+                            ->orWhere('note', 'like', "%{$term}%")
+                            ->orWhere('total_price', 'like', "%{$term}%")
                             ->orWhereHas('customer', function ($customerQuery) use ($term) {
-                                $customerQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"]);
+                                $customerQuery->where('name', 'like', "%{$term}%");
                             })
                             ->orWhereHas('creator', function ($creatorQuery) use ($term) {
-                                $creatorQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"]);
+                                $creatorQuery->where('name', 'like', "%{$term}%");
                             })
                             ->orWhereHas('products', function ($productQuery) use ($term) {
-                                $productQuery->whereRaw('LOWER(name) LIKE ?', ["%{$term}%"])
-                                    ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
-                            })
-                            ->orWhereHas('products.barcodes', function ($barcodeQuery) use ($term) {
-                                $barcodeQuery->whereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
+                                $productQuery->where('name', 'like', "%{$term}%")
+                                    ->orWhere('barcode', 'like', "%{$term}%");
                             });
                     });
                 }
@@ -92,7 +88,7 @@ class BillsController extends Controller
             });
         });
 
-        $bills = $baseQuery->paginate(20);
+        $bills = $baseQuery->paginate(50);
 
         // Load products for each bill (needed for view details modal)
         $bills->each(function ($bill) {
@@ -101,14 +97,13 @@ class BillsController extends Controller
 
         // Handle AJAX requests
         if ($request->ajax()) {
-            // Load products relationship for each bill
             $billsWithProducts = $bills->map(function ($bill) {
                 $bill->load('products');
                 return $bill;
             });
 
             return response()->json([
-                'bills' => $billsWithProducts->items(),
+                'bills' => $billsWithProducts->all(),
                 'pagination' => [
                     'current_page' => $bills->currentPage(),
                     'last_page' => $bills->lastPage(),
@@ -312,11 +307,16 @@ class BillsController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $bill->load(['products', 'customer', 'creator']);
+
+        if (request()->expectsJson()) {
+            return response()->json(['bill' => $bill]);
+        }
+
         $products = Product::where('user_id', $ownerId)
             ->where('is_active', true)
             ->with('barcodes')
             ->get();
-        $bill->load(['products', 'customer', 'creator']);
 
         return view('bills.show', compact('bill', 'products'));
     }

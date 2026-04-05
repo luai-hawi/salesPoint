@@ -335,13 +335,13 @@ class FinancialDashboardController extends Controller
         // Cash In:
         // 1. Total sales from bills (completed sales)
         $salesCashIn = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->sum('total_price');
 
         // 2. Customer payments received (positive amounts)
         $customerPaymentsIn = CustomerPayment::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('amount', '>', 0)
             ->sum('amount');
 
@@ -377,7 +377,7 @@ class FinancialDashboardController extends Controller
         // 4. Minus payments (new customer debt - negative amounts)
         // This represents sales on credit (customer owes us money)
         $minusPaymentsOut = abs(CustomerPayment::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('amount', '<', 0)
             ->sum('amount'));
 

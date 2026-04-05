@@ -650,10 +650,27 @@
 
         // Attach pagination links
         function attachPaginationLinks() {
+            const currentSearch = document.getElementById('product-search').value.trim();
+            const lowStockChecked = document.getElementById('low-stock-filter').checked;
+            
             document.querySelectorAll('#pagination-links a').forEach(link => {
                 link.onclick = function(e) {
                     e.preventDefault();
-                    loadProducts(this.href);
+                    let url = this.href;
+                    
+                    // Preserve search and filter params if they exist
+                    if (currentSearch || lowStockChecked) {
+                        const urlObj = new URL(url, window.location.origin);
+                        if (currentSearch) {
+                            urlObj.searchParams.set('search', currentSearch);
+                        }
+                        if (lowStockChecked) {
+                            urlObj.searchParams.set('low_stock', '1');
+                        }
+                        url = urlObj.toString();
+                    }
+                    
+                    loadProducts(url);
                 };
             });
         }

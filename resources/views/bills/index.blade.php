@@ -65,7 +65,8 @@
                 <!-- Search Box -->
                 <div class="relative">
                     <input type="text" id="searchInput" placeholder="{{ __('messages.Search...') }}"
-                        class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        class="w-full px-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value="{{ request('search') }}">
                     <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -286,7 +287,7 @@
             @if ($bills->hasPages())
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 overflow-x-auto scrollbar-thin"
                     id="pagination-links">
-                    {{ $bills->appends(['date' => $selectedDate])->links('vendor.pagination.custom-light') }}
+                    {{ $bills->appends(['date' => $selectedDate, 'search' => request('search')])->links('vendor.pagination.custom-light') }}
                 </div>
             @endif
         </div>
@@ -309,17 +310,37 @@
             }, 300); // 300ms debounce
         });
 
+        // Preserve search on pagination click
+        document.getElementById('pagination-links')?.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (!link) return;
+            
+            e.preventDefault();
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            let url = link.href;
+            
+            if (searchTerm) {
+                url = new URL(link.href);
+                url.searchParams.set('search', searchTerm);
+                const dateInput = document.getElementById('dateFilterInput');
+                if (dateInput && dateInput.value) {
+                    url.searchParams.set('date', dateInput.value);
+                }
+                url = url.toString();
+            }
+            
+            window.location.href = url;
+        });
+
         function performSearch(searchTerm) {
             const url = new URL(window.location);
 
-            // Only set search param if searchTerm is not empty
             if (searchTerm) {
                 url.searchParams.set('search', searchTerm);
             } else {
                 url.searchParams.delete('search');
             }
 
-            // Include current date filter
             const dateInput = document.getElementById('dateFilterInput');
             if (dateInput && dateInput.value) {
                 url.searchParams.set('date', dateInput.value);
@@ -364,7 +385,8 @@
             }
 
             bills.forEach(bill => {
-                const costTotal = bill.products.reduce((sum, product) => {
+                const products = bill.products || [];
+                const costTotal = products.reduce((sum, product) => {
                     return sum + (product.pivot.quantity * product.pivot.cost_price);
                 }, 0);
                 const profit = bill.total_price - costTotal;
@@ -383,7 +405,7 @@
                             </div>
                             <div class="ml-4">
                                 <div class="text-sm font-medium text-gray-900">#${bill.id}</div>
-                                <div class="text-sm text-gray-500">${bill.products.length} items</div>
+                                <div class="text-sm text-gray-500">${products.length} items</div>
                             </div>
                         </div>
                     </td>
@@ -412,25 +434,25 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                                View
+                                {{ __('bills.View') }}
                             </button>
                             <a href="/bills/${bill.id}"
                                class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                 </svg>
-                                Edit
+                                {{ __('bills.Edit') }}
                             </a>
                             <form action="/bills/${bill.id}" method="POST" class="inline">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]').getAttribute('content')}">
                                 <button type="submit"
-                                        onclick="return confirm('Are you sure you want to delete this bill? This will restore product quantities.')"
+                                        onclick="return confirm('{{ __('bills.Are you sure you want to delete this bill? This will restore product quantities.') }}')"
                                         class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition-colors">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                     </svg>
-                                    Delete
+                                    {{ __('bills.Delete') }}
                                 </button>
                             </form>
                         </div>
