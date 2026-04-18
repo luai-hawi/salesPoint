@@ -1567,6 +1567,11 @@ return [
     'Quick Stats' => 'إحصائيات سريعة',
     'Profit Margin' => 'هامش الربح',
     'Customer Credit' => 'رصيد العميل',
+    'Net Income' => 'صافي الدخل',
+    'Damaged Bills Loss' => 'خسائر الفواتير التالفة',
+    'Profit includes returned losses' => 'يشمل خسائر المرتجعات',
+    'Damaged bills excluded from profit' => 'خسائر الفواتير التالفة مستثناة من الربح',
+    'Profit includes all losses' => 'يشمل جميع خسائر (تالفة ومرتجعات)',
 
     // Daily Cash Flow Section - NEW
     'Daily Cash Flow' => 'تدفق النقدية اليومي',

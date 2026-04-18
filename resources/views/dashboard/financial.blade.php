@@ -282,7 +282,11 @@
 
             <!-- Enhanced Summary Cards - Including Supplier Data -->
             <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3"
+                    style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));" x-data="{ screenSize: window.innerWidth }"
+                    @resize.window="screenSize = window.innerWidth"
+                    :style="screenSize >= 1280 ? 'grid-template-columns: repeat(7, minmax(0, 1fr))' :
+                        'grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))'">
                     <div
                         class="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition duration-300">
                         <div class="flex items-center justify-between">
@@ -297,13 +301,28 @@
                     </div>
 
                     <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition duration-300">
+                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition duration-300 group">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈
-                                    {{ __('messages.Profit') }}</p>
+                                <div class="flex items-center gap-1">
+                                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈
+                                        {{ __('messages.Profit') }}</p>
+                                    <svg class="w-4 h-4 text-gray-400 cursor-help" fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                        title="Includes returned bills losses. Damaged bills losses are shown separately.">
+                                        <path fill-rule="evenodd"
+                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
                                 <p class="text-xl lg:text-2xl font-bold text-gray-900">
                                     ₪{{ number_format($summaryData['totalProfit'], 0) }}</p>
+                                <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                                    <span class="text-green-600 font-medium">✓</span>
+                                    {{ __('messages.Profit includes returned losses') }}<br>
+                                    <span class="text-red-600 font-medium">✗</span>
+                                    {{ __('messages.Damaged bills excluded from profit') }}
+                                </p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-blue-500">📈</div>
                         </div>
@@ -348,6 +367,25 @@
                                     ₪{{ number_format($summaryData['totalSupplierPayments'], 0) }}</p>
                             </div>
                             <div class="text-2xl lg:text-3xl text-indigo-500">🏢</div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Damaged Bills Loss Card -->
+                    <div
+                        class="bg-white p-4 rounded-lg shadow-md border-l-4 {{ $summaryData['damagedBillsLoss'] > 0 ? 'border-red-500' : 'border-gray-300' }} hover:shadow-lg transition duration-300">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">⚠️
+                                    {{ __('messages.Damaged Bills Loss') }}</p>
+                                <p
+                                    class="text-xl lg:text-2xl font-bold {{ $summaryData['damagedBillsLoss'] > 0 ? 'text-red-600' : 'text-gray-900' }}">
+                                    ₪{{ number_format($summaryData['damagedBillsLoss'], 0) }}
+                                </p>
+                            </div>
+                            <div
+                                class="text-2xl lg:text-3xl {{ $summaryData['damagedBillsLoss'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
+                                {{ $summaryData['damagedBillsLoss'] > 0 ? '❌' : '✓' }}
+                            </div>
                         </div>
                     </div>
 

@@ -169,7 +169,20 @@ class FinancialDashboardController extends Controller
             ->where('amount', '>', 0) // Only outgoing payments
             ->sum('amount');
 
-        $netIncome = $totalProfit - $totalExpenses - $totalEmployeePayments;
+        // NEW: Calculate losses from damaged bills (cost price of products with 100% discount)
+        $damagedBillsLoss = Bill::where('user_id', $userId)
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->where('is_damaged', true)
+            ->with('products')
+            ->get()
+            ->sum(function ($bill) {
+                return $bill->products->sum(function ($product) {
+                    return $product->pivot->cost_price * $product->pivot->quantity;
+                });
+            });
+
+        // Calculate net income including damaged bills losses
+        $netIncome = $totalProfit - $damagedBillsLoss - $totalExpenses - $totalEmployeePayments;
 
         return [
             'totalRevenue' => $totalRevenue,
@@ -178,6 +191,7 @@ class FinancialDashboardController extends Controller
             'totalEmployeePayments' => $totalEmployeePayments,
             'totalPurchases' => $totalPurchases,
             'totalSupplierPayments' => $totalSupplierPayments,
+            'damagedBillsLoss' => $damagedBillsLoss,
             'netIncome' => $netIncome
         ];
     }

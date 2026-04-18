@@ -119,6 +119,9 @@
                         class="text-2xl font-bold {{ $summary['financial_dashboard_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                         ₪{{ number_format($summary['financial_dashboard_profit'], 0) }}
                     </p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        {{ __('messages.Profit includes all losses') }}
+                    </p>
                 </div>
 
                 <div class="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
@@ -384,7 +387,7 @@
 
         <!-- Expenses Section
         @if ($expenses->count() > 0)
-            <div class="section-card p-6 mb-8 page-break">
+<div class="section-card p-6 mb-8 page-break">
                 <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">💸 {{ __('messages.Expenses') }}
                     ({{ $expenses->count() }} entries)</h2>
 
@@ -427,7 +430,7 @@
                     </table>
                 </div>
             </div>
-        @endif
+@endif
 
         <!-- Customer Payments Section -->
         @if ($customer_payments->count() > 0)
@@ -596,6 +599,9 @@
                     <p
                         class="text-2xl font-bold {{ $summary['financial_dashboard_profit'] >= 0 ? 'text-green-400' : 'text-red-400' }}">
                         ₪{{ number_format($summary['financial_dashboard_profit'], 0) }}
+                    </p>
+                    <p class="text-xs text-gray-300 mt-2 opacity-75">
+                        {{ __('messages.Profit includes all losses') }}
                     </p>
                 </div>
 
