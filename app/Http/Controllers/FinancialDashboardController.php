@@ -62,6 +62,9 @@ class FinancialDashboardController extends Controller
         // Damaged Products Data
         $damagedData = $this->getDamagedData($startDate, $endDate, $userId);
 
+        // NEW: Returned Bills Data
+        $returnedData = $this->getReturnedData($startDate, $endDate, $userId);
+
         // Customer Balance Data
         $customerBalanceData = $this->getCustomerBalanceData($userId);
 
@@ -103,6 +106,7 @@ class FinancialDashboardController extends Controller
             'customerPaymentData',
             'employeePaymentData',
             'damagedData',
+            'returnedData',
             'customerBalanceData',
             'purchaseData',
             'supplierPaymentData',
@@ -124,13 +128,13 @@ class FinancialDashboardController extends Controller
     {
         // Calculate total revenue
         $totalRevenue = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->sum('total_price');
 
         // Calculate total profit
         $totalProfit = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->with('products')
             ->get()
@@ -142,26 +146,26 @@ class FinancialDashboardController extends Controller
 
         // Calculate total expenses
         $totalExpenses = Expense::where('user_id', $userId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->whereBetween('expense_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // Calculate total employee payments
         $totalEmployeePayments = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // NEW: Calculate total purchases
         $totalPurchases = PurchaseBill::where('created_by', $userId)
-            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->whereBetween('purchase_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('total_amount');
 
         // NEW: Calculate total supplier payments
         $totalSupplierPayments = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('amount', '>', 0) // Only outgoing payments
             ->sum('amount');
 
@@ -211,7 +215,7 @@ class FinancialDashboardController extends Controller
     private function getPurchaseData($startDate, $endDate, $userId)
     {
         $purchases = PurchaseBill::where('created_by', $userId)
-            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->whereBetween('purchase_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->selectRaw('DATE(purchase_date) as date, SUM(total_amount) as total')
             ->groupBy('date')
             ->orderBy('date')
@@ -240,7 +244,7 @@ class FinancialDashboardController extends Controller
         $payments = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('amount', '>', 0) // Only outgoing payments
             ->selectRaw('DATE(payment_date) as date, SUM(amount) as total')
             ->groupBy('date')
@@ -302,7 +306,7 @@ class FinancialDashboardController extends Controller
         return DB::table('purchase_bills')
             ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
             ->where('purchase_bills.created_by', $userId)
-            ->whereBetween('purchase_bills.purchase_date', [$startDate, $endDate])
+            ->whereBetween('purchase_bills.purchase_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 'suppliers.name',
                 DB::raw('COUNT(purchase_bills.id) as total_bills'),
@@ -347,7 +351,7 @@ class FinancialDashboardController extends Controller
 
         // 3. Capital entries (money coming in from outside)
         $capitalIn = CapitalEntry::where('user_id', $userId)
-            ->whereBetween('entry_date', [$startDate, $endDate])
+            ->whereBetween('entry_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // Total Cash In
@@ -358,7 +362,7 @@ class FinancialDashboardController extends Controller
         $supplierPaymentsOut = SupplierPayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('amount', '>', 0)
             ->sum('amount');
 
@@ -366,12 +370,12 @@ class FinancialDashboardController extends Controller
         $employeePaymentsOut = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // 3. Expenses (operational expenses)
         $expensesOut = Expense::where('user_id', $userId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->whereBetween('expense_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // 4. Minus payments (new customer debt - negative amounts)
@@ -461,7 +465,7 @@ class FinancialDashboardController extends Controller
     private function getRevenueData($startDate, $endDate, $userId)
     {
         $bills = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->selectRaw('DATE(created_at) as date, SUM(total_price) as total')
             ->groupBy('date')
@@ -488,7 +492,7 @@ class FinancialDashboardController extends Controller
     private function getProfitData($startDate, $endDate, $userId)
     {
         $bills = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->with('products')
             ->get()
@@ -522,7 +526,7 @@ class FinancialDashboardController extends Controller
     private function getExpenseData($startDate, $endDate, $userId)
     {
         $expenses = Expense::where('user_id', $userId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->whereBetween('expense_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->get();
 
         $total = $expenses->sum('amount');
@@ -544,7 +548,7 @@ class FinancialDashboardController extends Controller
     private function getCustomerPaymentData($startDate, $endDate, $userId)
     {
         $payments = CustomerPayment::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->selectRaw('DATE(created_at) as date, amount')
             ->orderBy('created_at')
             ->get();
@@ -592,7 +596,7 @@ class FinancialDashboardController extends Controller
         $payments = EmployeePayment::whereHas('employee', function ($q) use ($userId) {
             $q->where('shop_owner_id', $userId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with('employee')
             ->get();
 
@@ -615,7 +619,7 @@ class FinancialDashboardController extends Controller
     private function getDamagedData($startDate, $endDate, $userId)
     {
         $damagedBills = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', true)
             ->with('products')
             ->get();
@@ -703,7 +707,7 @@ class FinancialDashboardController extends Controller
             ->join('products', 'bill_product.product_id', '=', 'products.id')
             ->where('bills.user_id', $userId)
             ->where('bills.is_damaged', false)
-            ->whereBetween('bills.created_at', [$startDate, $endDate])
+            ->whereBetween('bills.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 'products.name',
                 DB::raw('SUM(bill_product.quantity) as total_quantity'),
@@ -727,12 +731,12 @@ class FinancialDashboardController extends Controller
 
         // Current period data
         $currentRevenue = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->sum('total_price');
 
         $currentProfit = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
             ->with('products')
             ->get()
@@ -743,22 +747,22 @@ class FinancialDashboardController extends Controller
             });
 
         $currentExpenses = Expense::where('user_id', $userId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->whereBetween('expense_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('amount');
 
         // NEW: Current purchases
         $currentPurchases = PurchaseBill::where('created_by', $userId)
-            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->whereBetween('purchase_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->sum('total_amount');
 
         // Previous period data
         $previousRevenue = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$previousStart, $previousEnd])
+            ->whereBetween('created_at', [$previousStart->format('Y-m-d') . ' 00:00:00', $previousEnd->format('Y-m-d') . ' 23:59:59'])
             ->where('is_damaged', false)
             ->sum('total_price');
 
         $previousProfit = Bill::where('user_id', $userId)
-            ->whereBetween('created_at', [$previousStart, $previousEnd])
+            ->whereBetween('created_at', [$previousStart->format('Y-m-d') . ' 00:00:00', $previousEnd->format('Y-m-d') . ' 23:59:59'])
             ->where('is_damaged', false)
             ->with('products')
             ->get()
@@ -769,12 +773,12 @@ class FinancialDashboardController extends Controller
             });
 
         $previousExpenses = Expense::where('user_id', $userId)
-            ->whereBetween('expense_date', [$previousStart, $previousEnd])
+            ->whereBetween('expense_date', [$previousStart->format('Y-m-d') . ' 00:00:00', $previousEnd->format('Y-m-d') . ' 23:59:59'])
             ->sum('amount');
 
         // NEW: Previous purchases
         $previousPurchases = PurchaseBill::where('created_by', $userId)
-            ->whereBetween('purchase_date', [$previousStart, $previousEnd])
+            ->whereBetween('purchase_date', [$previousStart->format('Y-m-d') . ' 00:00:00', $previousEnd->format('Y-m-d') . ' 23:59:59'])
             ->sum('total_amount');
 
         return [
@@ -820,36 +824,87 @@ class FinancialDashboardController extends Controller
 
         // 1. Sales Bills (Selling Bills)
         $data['sales_bills'] = Bill::where('user_id', $shopOwnerId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', false)
+            ->where('is_returned', false)
             ->with(['products', 'customer', 'creator'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 2. Purchase Bills
         $data['purchase_bills'] = PurchaseBill::where('user_id', $shopOwnerId)
-            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->whereBetween('purchase_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with(['supplier', 'products', 'creator'])
             ->orderBy('purchase_date', 'desc')
             ->get();
 
         // 3. Damaged Bills
         $data['damaged_bills'] = Bill::where('user_id', $shopOwnerId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('is_damaged', true)
             ->with(['products', 'customer', 'creator'])
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // 3b. Returned Bills (NEW)
+        $returnedBills = Bill::where('user_id', $shopOwnerId)
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->where('is_returned', true)
+            ->with('products')
+            ->get();
+
+        $data['returnedData'] = [
+            'count' => 0,
+            'total_bill_value' => 0,
+            'inventory_return_value' => 0,
+            'lost_profit' => 0,
+            'products' => ['labels' => [], 'data' => []]
+        ];
+
+        $products = collect();
+        foreach ($returnedBills as $bill) {
+            $data['returnedData']['total_bill_value'] += $bill->total_price;
+
+            foreach ($bill->products as $product) {
+                $quantity = abs($product->pivot->quantity);
+
+                $data['returnedData']['inventory_return_value'] += $product->pivot->cost_price * $quantity;
+                $productProfit = ($product->pivot->selling_price - $product->pivot->cost_price) * $quantity;
+                $data['returnedData']['lost_profit'] += $productProfit;
+                $data['returnedData']['count'] += $quantity;
+
+                $existing = $products->where('name', $product->name)->first();
+                if ($existing) {
+                    $existingIndex = $products->search(function ($item) use ($product) {
+                        return $item['name'] === $product->name;
+                    });
+                    $existingItem = $products->get($existingIndex);
+                    $existingItem['value'] += $product->pivot->cost_price * $quantity;
+                    $products->put($existingIndex, $existingItem);
+                } else {
+                    $products->push([
+                        'name' => $product->name,
+                        'value' => $product->pivot->cost_price * $quantity
+                    ]);
+                }
+            }
+        }
+
+        $products = $products->sortByDesc('value')->take(10);
+        $data['returnedData']['products'] = [
+            'labels' => $products->pluck('name')->toArray(),
+            'data' => $products->pluck('value')->toArray()
+        ];
+
         // 4. Expenses
         $data['expenses'] = Expense::where('user_id', $shopOwnerId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->whereBetween('expense_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->orderBy('expense_date', 'desc')
             ->get();
 
         // 5. Customer Payments
         $data['customer_payments'] = CustomerPayment::where('user_id', $shopOwnerId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with('customer')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -858,7 +913,7 @@ class FinancialDashboardController extends Controller
         $data['supplier_payments'] = SupplierPayment::whereHas('supplier', function ($q) use ($shopOwnerId) {
             $q->where('user_id', $shopOwnerId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with('supplier')
             ->orderBy('payment_date', 'desc')
             ->get();
@@ -867,43 +922,97 @@ class FinancialDashboardController extends Controller
         $data['employee_payments'] = EmployeePayment::whereHas('employee', function ($q) use ($shopOwnerId) {
             $q->where('shop_owner_id', $shopOwnerId);
         })
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereBetween('payment_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with('employee')
             ->orderBy('payment_date', 'desc')
             ->get();
 
         // Calculate summary statistics
-        $data['summary'] = [
-            'total_sales' => $data['sales_bills']->sum('total_price'),
-            'total_purchases' => $data['purchase_bills']->sum('total_amount'),
-            'total_expenses' => $data['expenses']->sum('amount'),
-            'total_customer_payments' => $data['customer_payments']->sum('amount'),
-            'total_supplier_payments' => $data['supplier_payments']->sum('amount'),
-            'total_employee_payments' => $data['employee_payments']->sum('amount'),
-            'total_damaged_loss' => $data['damaged_bills']->sum(function ($bill) {
-                return $bill->products->sum(function ($product) {
-                    return $product->pivot->cost_price * $product->pivot->quantity;
-                });
-            }),
-        ];
+        $total_returned_bill_value = isset($data['returnedData']) ? $data['returnedData']['total_bill_value'] : 0;
+        $total_returned_profit_loss = isset($data['returnedData']) ? $data['returnedData']['lost_profit'] : 0;
 
-        // Calculate profit exactly as shown in financial dashboard (gross profit from sales)
-        $financialDashboardProfit = $data['sales_bills']->sum(function ($bill) {
+        // Calculate revenue from ALL bills (sales + damaged + returned)
+        $totalRevenue = $data['sales_bills']->sum('total_price') +
+            $data['damaged_bills']->sum('total_price') +
+            $returnedBills->sum('total_price');
+
+        // Calculate profit from ALL bills (sales + damaged + returned)
+        $allBillsProfit = $data['sales_bills']->sum(function ($bill) {
             return $bill->products->sum(function ($product) {
                 return (($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity) - $product->pivot->discount;
             });
         });
 
-        // Calculate profit/loss
-        $totalRevenue = $data['summary']['total_sales'];
-        $totalCosts = $data['summary']['total_purchases'] + $data['summary']['total_expenses'] + $data['summary']['total_employee_payments'] + $data['summary']['total_damaged_loss'];
-        $netCashFlow = $data['summary']['total_customer_payments'] - $data['summary']['total_supplier_payments'];
+        // Add damaged bills profit (which should be negative/loss)
+        $allBillsProfit += $data['damaged_bills']->sum(function ($bill) {
+            return $bill->products->sum(function ($product) {
+                return (($product->pivot->selling_price - $product->pivot->cost_price) * $product->pivot->quantity) - $product->pivot->discount;
+            });
+        });
 
-        $data['summary']['total_revenue'] = $totalRevenue;
-        $data['summary']['total_costs'] = $totalCosts;
-        $data['summary']['net_profit'] = $totalRevenue - $totalCosts;
-        $data['summary']['net_cash_flow'] = $netCashFlow;
-        $data['summary']['financial_dashboard_profit'] = $financialDashboardProfit;
+        // Subtract returned bills loss
+        $allBillsProfit -= abs($total_returned_profit_loss);
+
+        // Calculate total expenses and salaries (same as "Expenses and Salaries" in financial dashboard)
+        $totalExpenses = $data['expenses']->sum('amount');
+        $totalEmployeePayments = $data['employee_payments']->sum('amount');
+        $expensesAndSalaries = $totalExpenses + $totalEmployeePayments;
+
+        // Calculate net cash flow using the same formula as money flow section in financial dashboard
+        // Cash In:
+        // 1. Total sales from bills (including returned bills)
+        $salesCashIn = $data['sales_bills']->sum('total_price') + $returnedBills->sum('total_price');
+
+        // 2. Customer payments received (positive amounts)
+        $customerPaymentsIn = $data['customer_payments']->where('amount', '>', 0)->sum('amount');
+
+        // 3. Capital entries (money coming in from outside)
+        $capitalIn = CapitalEntry::where('user_id', $shopOwnerId)
+            ->whereBetween('entry_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->sum('amount');
+
+        // Total Cash In
+        $totalCashIn = $salesCashIn + $customerPaymentsIn + $capitalIn;
+
+        // Cash Out:
+        // 1. Supplier payments (actual payments to suppliers)
+        $supplierPaymentsOut = $data['supplier_payments']->where('amount', '>', 0)->sum('amount');
+
+        // 2. Employee payments (salaries, etc.)
+        $employeePaymentsOut = $data['employee_payments']->sum('amount');
+
+        // 3. Expenses (operational expenses)
+        $expensesOut = $data['expenses']->sum('amount');
+
+        // 4. Minus payments (negative customer payments - representing sales on credit)
+        $minusPaymentsOut = abs($data['customer_payments']->where('amount', '<', 0)->sum('amount'));
+
+        // Total Cash Out
+        $totalCashOut = $supplierPaymentsOut + $employeePaymentsOut + $expensesOut + $minusPaymentsOut;
+
+        // Net Cash Flow
+        $netCashFlow = $totalCashIn - $totalCashOut;
+
+        // Summary data structure
+        $data['summary'] = [
+            'total_sales' => $data['sales_bills']->sum('total_price'),
+            'total_purchases' => $data['purchase_bills']->sum('total_amount'),
+            'total_expenses' => $totalExpenses,
+            'total_customer_payments' => $data['customer_payments']->sum('amount'),
+            'total_supplier_payments' => $data['supplier_payments']->where('amount', '>', 0)->sum('amount'),
+            'total_employee_payments' => $totalEmployeePayments,
+            'total_damaged_loss' => $data['damaged_bills']->sum(function ($bill) {
+                return $bill->products->sum(function ($product) {
+                    return $product->pivot->cost_price * $product->pivot->quantity;
+                });
+            }),
+            'total_returned_loss' => $total_returned_profit_loss,
+            // Financial dashboard metrics
+            'total_revenue' => $totalRevenue,
+            'expenses_and_salaries' => $expensesAndSalaries,
+            'financial_dashboard_profit' => $allBillsProfit,
+            'net_cash_flow' => $netCashFlow,
+        ];
 
         return view('dashboard.comprehensive-report', $data);
     }
@@ -1348,5 +1457,66 @@ class FinancialDashboardController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
             'Cache-Control' => 'max-age=0',
         ]);
+    }
+
+    private function getReturnedData($startDate, $endDate, $userId)
+    {
+        // Get all returned bills
+        $returnedBills = Bill::where('user_id', $userId)
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->where('is_returned', true)
+            ->with('products')
+            ->get();
+
+        $totalBillValue = 0;        // Sum of bill->total_price
+        $inventoryReturnValue = 0;  // Sum of cost_price × abs(quantity)
+        $lostProfit = 0;            // Sum of (selling_price - cost_price) × abs(quantity)
+        $count = 0;
+        $products = collect();
+
+        foreach ($returnedBills as $bill) {
+            // 1. Total bill value (what customer paid initially) - negative because money goes back
+            $totalBillValue -= $bill->total_price;
+
+            foreach ($bill->products as $product) {
+                $quantity = abs($product->pivot->quantity);
+
+                // 2. Inventory return value (cost price of returned items) - negative because inventory goes back out
+                $inventoryReturnValue -= $product->pivot->cost_price * $quantity;
+
+                // 3. Lost profit (profit that was reversed by returning) - negative because profit is lost
+                $productProfit = ($product->pivot->selling_price - $product->pivot->cost_price) * $quantity;
+                $lostProfit -= $productProfit;
+                // Group by product name for the chart
+                $existing = $products->where('name', $product->name)->first();
+                if ($existing) {
+                    $existingIndex = $products->search(function ($item) use ($product) {
+                        return $item['name'] === $product->name;
+                    });
+                    $existingItem = $products->get($existingIndex);
+                    $existingItem['value'] += $product->pivot->cost_price * $quantity;
+                    $products->put($existingIndex, $existingItem);
+                } else {
+                    $products->push([
+                        'name' => $product->name,
+                        'value' => $product->pivot->cost_price * $quantity
+                    ]);
+                }
+            }
+        }
+
+        // Sort by value (highest first) and take top 10
+        $products = $products->sortByDesc('value')->take(10);
+
+        return [
+            'total_bill_value' => $totalBillValue,
+            'inventory_return_value' => $inventoryReturnValue,
+            'lost_profit' => $lostProfit,
+            'count' => $count,
+            'products' => [
+                'labels' => $products->pluck('name')->toArray(),
+                'data' => $products->pluck('value')->toArray()
+            ]
+        ];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\ShopOwner;
 
 use App\Http\Controllers\Controller;
@@ -19,7 +20,7 @@ class ExpenseController extends Controller
 
         // 🔍 Search by date range
         if ($request->filled('from') && $request->filled('to')) {
-            $query->whereBetween('expense_date', [$request->from, $request->to]);
+            $query->whereBetween('expense_date', [$request->from . ' 00:00:00', $request->to . ' 23:59:59']);
         }
 
         $expenses = $query->latest('expense_date')->paginate(10);

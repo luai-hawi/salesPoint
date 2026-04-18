@@ -16,6 +16,7 @@ class Bill extends Model
         'user_id',
         'created_by', // New field to store the creator's ID
         'is_damaged',
+        'is_returned',
     ];
 
     public function products()

@@ -37,6 +37,11 @@ class SettingsController extends Controller
 
     public function updateImageLimit(Request $request)
     {
+        // Only admin can update image limits
+        if (Auth::user()->role !== 'admin') {
+            abort(403, __('messages.Unauthorized action.'));
+        }
+
         $request->validate([
             'image_limit' => 'required|integer|min:0|max:10000',
         ]);

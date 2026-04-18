@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     /*
@@ -986,6 +986,16 @@ return [
     'Supplier' => 'المورد',
     'Bills' => 'الفواتير',
 
+    // Dashboard Formulas & Notes
+    'Formula' => 'الصيغة',
+    'Operational Expenses' => 'نفقات التشغيل',
+    'Employee Salaries' => 'رواتب الموظفين',
+    'Expenses and Salaries' => 'المصروفات والرواتب',
+
+    // Comprehensive Report - Returned Bills
+    'Top Returned Products' => 'أفضل المنتجات المرتجعة',
+    'Return Value' => 'قيمة الإرجاع',
+
     // جديد: مصطلحات مالية إضافية
     'Store Value' => 'قيمة المتجر',
     'Inventory Analysis' => 'تحليل المخزون',
@@ -1961,10 +1971,264 @@ return [
     'Adding...' => 'جاري الإضافة...',
     'Are you sure?' => 'هل أنت متأكد؟',
 
+    // === MISSING PRODUCT CREATE PAGE TRANSLATIONS (USER PRIORITY) ===
+    'Enter product name' => 'أدخل اسم المنتج',
+    'Optional barcode or product code' => 'باركود أو كود منتج اختياري',
+    'How much you paid for this product' => 'كم دفعت مقابل هذا المنتج',
+    'Price you\'ll sell this product for' => 'السعر الذي ستبيع به هذا المنتج',
+    'Enter quantity' => 'أدخل الكمية',
+    'Enter initial stock quantity' => 'أدخل كمية المخزون الأولية',
+    'Enter cost price' => 'أدخل سعر التكلفة',
+    'Enter selling price' => 'أدخل سعر البيع',
+
+    // === ADMIN SHOP-OWNERS FORMS (HIGH PRIORITY) ===
+    'Enter shop owner name' => 'أدخل اسم صاحب المتجر',
+    'Enter shop owner email' => 'أدخل بريد صاحب المتجر الإلكتروني',
+    'Enter password' => 'أدخل كلمة المرور',
+    'Confirm your password' => 'أكد كلمة المرور',
+    'Select role for this user' => 'اختر الدور لهذا المستخدم',
+    'Enter full name' => 'أدخل الاسم الكامل',
+    'Re-enter password' => 'أعد إدخال كلمة المرور',
+
+    // === FORM PLACEHOLDERS & HINTS ===
+    'Enter here' => 'أدخل هنا',
+    'Select an option' => 'اختر خيار',
+    'Choose from the list' => 'اختر من القائمة',
+    'Type to search' => 'اكتب للبحث',
+    'Search by name' => 'ابحث بالاسم',
+    'Search by email' => 'ابحث بالبريد الإلكتروني',
+    'Leave empty to keep current' => 'اترك فارغاً للاحتفاظ بالحالي',
+    'This field is required' => 'هذا الحقل مطلوب',
+    'Please fill in all required fields' => 'يرجى ملء جميع الحقول المطلوبة',
+
+    // === PORTFOLIO / ALT TEXT TRANSLATIONS ===
+    'Gallery item image' => 'صورة عنصر المعرض',
+    'Portfolio showcase image' => 'صورة عرض المحفظة',
+    'Product showcase' => 'عرض المنتج',
+    'Business image' => 'صورة العمل',
+    'Team image' => 'صورة الفريق',
+    'Service image' => 'صورة الخدمة',
+    'Feature image' => 'صورة الميزة',
+
+    // === ISLAM / DASHBOARD SHORTCUTS ===
+    'Create Bill' => 'إنشاء فاتورة',
+    'Add Product' => 'إضافة منتج',
+    'Add Customer' => 'إضافة عميل',
+    'View Reports' => 'عرض التقارير',
+    'Confirm Delete' => 'تأكيد الحذف',
+    'Yes, Delete' => 'نعم، احذف',
+    'Cancel Delete' => 'إلغاء الحذف',
+    'Deleted Successfully' => 'تم الحذف بنجاح',
+    'Undo' => 'تراجع',
+    'Keyboard Shortcuts' => 'اختصارات لوحة المفاتيح',
+    'Press F2 to create a new bill' => 'اضغط F2 لإنشاء فاتورة جديدة',
+    'Press F3 to add a new product' => 'اضغط F3 لإضافة منتج جديد',
+    'Press F4 to add a new customer' => 'اضغط F4 لإضافة عميل جديد',
+    'Press Esc to close the current window' => 'اضغط Esc لإغلاق النافذة الحالية',
+
+    // === PURCHASE BILL FORM TRANSLATIONS ===
+    'Enter purchase date' => 'أدخل تاريخ الشراء',
+    'Enter reference number' => 'أدخل رقم المرجع',
+    'Enter supplier name' => 'أدخل اسم المورد',
+    'Select supplier' => 'اختر المورد',
+    'Enter unit cost' => 'أدخل تكلفة الوحدة',
+    'Enter quantity purchased' => 'أدخل الكمية المشتراة',
+    'Add purchase bill notes' => 'أضف ملاحظات لفاتورة الشراء',
+
+    // === CUSTOMER FORM TRANSLATIONS ===
+    'Enter customer full name' => 'أدخل الاسم الكامل للعميل',
+    'Enter customer phone' => 'أدخل هاتف العميل',
+    'Enter initial balance' => 'أدخل الرصيد الأولي',
+    'Set credit or debt for this customer' => 'اضبط الائتمان أو الدين لهذا العميل',
+
+    // === SUPPLIER FORM TRANSLATIONS ===
+    'Enter supplier name' => 'أدخل اسم المورد',
+    'Enter supplier phone' => 'أدخل هاتف المورد',
+    'Enter supplier balance' => 'أدخل رصيد المورد',
+    'Enter supplier address' => 'أدخل عنوان المورد',
+
+    // === EMPLOYEE FORM TRANSLATIONS ===
+    'Enter employee full name' => 'أدخل الاسم الكامل للموظف',
+    'Enter job title' => 'أدخل المسمى الوظيفي',
+    'Enter monthly salary' => 'أدخل الراتب الشهري',
+    'Enter employee email' => 'أدخل بريد الموظف الإلكتروني',
+    'Enter employee phone' => 'أدخل هاتف الموظف',
+
+    // === EXPENSE FORM TRANSLATIONS ===
+    'Enter expense title' => 'أدخل عنوان المصروف',
+    'Enter expense amount' => 'أدخل مبلغ المصروف',
+    'Enter expense date' => 'أدخل تاريخ المصروف',
+    'Add expense notes' => 'أضف ملاحظات المصروف',
+    'Select expense category' => 'اختر فئة المصروف',
+
+    // === TAGS MANAGEMENT ===
+    'Enter tag name' => 'أدخل اسم العلامة',
+    'Enter tag price' => 'أدخل سعر العلامة',
+
+    // === BUTTON & ACTION LABELS ===
+    'Create' => 'إنشاء',
+    'Add' => 'إضافة',
+    'Save' => 'حفظ',
+    'Update' => 'تحديث',
+    'Delete' => 'حذف',
+    'Edit' => 'تعديل',
+    'View' => 'عرض',
+    'Print' => 'طباعة',
+    'Export' => 'تصدير',
+    'Import' => 'استيراد',
+    'Search' => 'بحث',
+    'Filter' => 'تصفية',
+    'Reset' => 'إعادة تعيين',
+    'Refresh' => 'تحديث',
+    'Close' => 'إغلاق',
+    'Submit' => 'إرسال',
+    'Cancel' => 'إلغاء',
+    'Back' => 'رجوع',
+    'Next' => 'التالي',
+    'Previous' => 'السابق',
+    'Finish' => 'إنهاء',
+
+    // === SUCCESS & ERROR MESSAGES ===
+    'Successfully created' => 'تم الإنشاء بنجاح',
+    'Successfully updated' => 'تم التحديث بنجاح',
+    'Successfully deleted' => 'تم الحذف بنجاح',
+    'Operation completed' => 'اكتملت العملية',
+    'An error occurred' => 'حدث خطأ',
+    'Please try again' => 'يرجى المحاولة مرة أخرى',
+    'Validation error' => 'خطأ في التحقق',
+    'Required field' => 'حقل مطلوب',
+    'Invalid input' => 'إدخال غير صحيح',
+    'Network error' => 'خطأ في الشبكة',
+
+    // === CONFIRMATION MESSAGES ===
+    'Are you sure?' => 'هل أنت متأكد؟',
+    'This action cannot be undone' => 'لا يمكن التراجع عن هذا الإجراء',
+    'Proceed?' => 'هل تريد المتابعة؟',
+    'Confirm action' => 'تأكيد الإجراء',
+
+    // === EMPTY STATE MESSAGES ===
+    'No data available' => 'لا توجد بيانات متاحة',
+    'No results found' => 'لم يتم العثور على نتائج',
+    'Start by adding your first item' => 'ابدأ بإضافة أول عنصر',
+    'Nothing to display' => 'لا يوجد شيء للعرض',
+
+    // === LOADING & PROCESSING ===
+    'Loading...' => 'جاري التحميل...',
+    'Processing...' => 'جاري المعالجة...',
+    'Saving...' => 'جاري الحفظ...',
+    'Deleting...' => 'جاري الحذف...',
+    'Updating...' => 'جاري التحديث...',
+    'Please wait' => 'يرجى الانتظار',
+
+    // === ADDITIONAL MISSING KEYS ===
+    'Enter an amount' => 'أدخل مبلغ',
+    'Enter a note' => 'أدخل ملاحظة',
+    'Select a date' => 'اختر تاريخ',
+    'Select a time' => 'اختر وقت',
+    'No permission' => 'لا توجد صلاحية',
+    'Access denied' => 'تم رفض الوصول',
+    'Unauthorized' => 'غير مصرح',
+    'Session expired' => 'انتهت صلاحية الجلسة',
+    'Please log in again' => 'يرجى تسجيل الدخول مرة أخرى',
+
     // Customer Validation Notifications
     'Customer not identified' => 'العميل غير معروف',
     'This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.' => 'اسم هذا العميل غير مسجل في النظام. إذا كنت لا تريد حفظ هذا العميل، سيتم إضافة الاسم إلى ملاحظات الفاتورة.',
     'Add to notes' => 'إضافة إلى الملاحظات',
     'Customer name added to bill notes' => 'تمت إضافة اسم العميل إلى ملاحظات الفاتورة',
     'Enter customer name to search...' => 'أدخل اسم العميل للبحث...',
+
+    // Returned Bills
+    'Returned Bills' => 'فواتير المرتجعات',
+    'Returned' => 'مرتجعة',
+    'Returns & Reversals' => 'المرتجعات والعكس',
+    'Total Bill Value' => 'إجمالي قيمة الفاتورة',
+    'Inventory Return Value' => 'قيمة إرجاع المخزون',
+    'Lost Profit' => 'الربح المفقود',
+    'Returned bills cannot be edited. You can only view or delete them.' => 'لا يمكن تعديل فواتير المرتجعات. يمكنك فقط عرضها أو حذفها.',
+    'Returned bills cannot be edited' => 'لا يمكن تعديل فواتير المرتجعات',
+
+    // Dialog & Modal Messages (جديد)
+    'Form not found. Please refresh the page.' => 'لم يتم العثور على النموذج. يرجى تحديث الصفحة.',
+    'Security token missing. Please refresh the page.' => 'رمز الأمان مفقود. يرجى تحديث الصفحة.',
+    'Multiple products were found with barcode' => 'تم العثور على عدة منتجات بنفس الباركود',
+    'Please select which product you want to add' => 'يرجى اختيار المنتج الذي تريد إضافته',
+    'Customer not identified' => 'العميل لم يتم تحديده',
+    'This customer name is not registered in the system. If you do not want to save this customer, the name will be added to the bill notes.' => 'اسم هذا العميل غير مسجل في النظام. إذا لم ترغب في حفظ هذا العميل، سيتم إضافة الاسم إلى ملاحظات الفاتورة.',
+    'Add to notes' => 'إضافة إلى الملاحظات',
+
+    // Return/Refund Operations (جديد)
+    'Specify return cost for' => 'حدد تكلفة الإرجاع ل',
+    'Current average cost' => 'متوسط التكلفة الحالي',
+    'Return value' => 'قيمة الإرجاع',
+    'Enter the value at which this product is being returned' => 'أدخل القيمة التي يتم بها إرجاع هذا المنتج',
+    'Return value must be positive' => 'يجب أن تكون قيمة الإرجاع موجبة',
+    'Confirm Return' => 'تأكيد الإرجاع',
+
+    // Bill Operations (جديد)
+    'Bill not found' => 'الفاتورة غير موجودة',
+    'Cannot edit returned bills' => 'لا يمكن تعديل الفواتير المرتجعة',
+    'Cannot delete returned bills' => 'لا يمكن حذف الفواتير المرتجعة',
+    'Bill successfully marked as returned' => 'تم تحديد الفاتورة كمرتجعة بنجاح',
+    'Failed to mark bill as returned' => 'فشل تحديد الفاتورة كمرتجعة',
+
+    // Financial Dashboard Dialog Messages (جديد)
+    'Filter Bills' => 'تصفية الفواتير',
+    'Select Bill Type' => 'اختر نوع الفاتورة',
+    'All Bills' => 'جميع الفواتير',
+    'Sales Only' => 'المبيعات فقط',
+    'Damaged Only' => 'التالفة فقط',
+    'Returned Only' => 'المرتجعة فقط',
+    'Date Range' => 'نطاق التاريخ',
+    'No data available for selected period' => 'لا توجد بيانات متاحة للفترة المحددة',
+
+    // Barcode Dialogs (جديد)
+    'Barcode Scan' => 'مسح الباركود',
+    'Barcode already exists. Do you want to continue?' => 'الباركود موجود بالفعل. هل تريد المتابعة؟',
+    'Continue Anyway' => 'تابع على أي حال',
+    'Conflicting barcodes' => 'باركودات متعارضة',
+    'Failed to verify barcodes. Please try again.' => 'فشل التحقق من الباركود. يرجى المحاولة مرة أخرى.',
+    'Barcode not found, showing suppliers who purchased this product' => 'الباركود غير موجود، عرض الموردين الذين باعونا هذا المنتج',
+
+    // Bill Notifications (جديد)
+    'Bill created successfully!' => 'تم إنشاء الفاتورة بنجاح!',
+    'Failed to create bill' => 'فشل إنشاء الفاتورة',
+    'Bill saved successfully!' => 'تم حفظ الفاتورة بنجاح!',
+    'Failed to save bill - server error' => 'فشل حفظ الفاتورة - خطأ في الخادم',
+    'Failed to save bill - network error' => 'فشل حفظ الفاتورة - خطأ في الشبكة',
+    'Bill updated successfully!' => 'تم تحديث الفاتورة بنجاح!',
+
+    // Payment Notifications (جديد)
+    'Payment added successfully!' => 'تمت إضافة الدفعة بنجاح!',
+    'Failed to add payment' => 'فشل في إضافة الدفعة',
+    'Customer name added to bill notes' => 'تم إضافة اسم العميل إلى ملاحظات الفاتورة',
+
+    // Out of Stock Warnings (جديد)
+    'Out of Stock Products Warning' => 'تحذير المنتجات غير المتاحة',
+    'You have :count products that have been out of stock for :months months or more. These products will be automatically deactivated in :remaining months if not restocked.' => 'لديك :count منتج غير متاح لمدة :months شهر أو أكثر. سيتم إلغاء تفعيل هذه المنتجات تلقائياً في غضون :remaining أشهر إذا لم يتم إعادة تخزينها.',
+    'Manage Out of Stock Products' => 'إدارة المنتجات غير المتاحة',
+
+    // Cash Flow Messages (جديد)
+    'Cash In' => 'النقد الوارد',
+    'Cash Out' => 'النقد الصادر',
+    'Net Cash Flow' => 'صافي التدفق النقدي',
+    'Positive cash flow' => 'تدفق نقدي موجب',
+    'Negative cash flow' => 'تدفق نقدي سالب',
+    'Cash Flow Start Date' => 'تاريخ بداية التدفق النقدي',
+    'Cash Flow End Date' => 'تاريخ نهاية التدفق النقدي',
+
+    // Bills Index Page (جديد)
+    'Bills List' => 'قائمة الفواتير',
+    'Bill Number' => 'رقم الفاتورة',
+    'Customer Name' => 'اسم العميل',
+    'Bill Date' => 'تاريخ الفاتورة',
+    'Bill Total' => 'إجمالي الفاتورة',
+    'Bill Status' => 'حالة الفاتورة',
+    'View Bill' => 'عرض الفاتورة',
+    'Edit Bill' => 'تعديل الفاتورة',
+    'Delete Bill' => 'حذف الفاتورة',
+    'Mark as Damaged' => 'وضع علامة تالفة',
+    'Mark as Returned' => 'وضع علامة مرتجعة',
+    'No bills found' => 'لم يتم العثور على فواتير',
+    'Create your first bill' => 'إنشاء أول فاتورة لك',
 ];

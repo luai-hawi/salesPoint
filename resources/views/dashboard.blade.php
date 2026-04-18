@@ -315,6 +315,20 @@
                                                 class="ml-2 text-sm text-gray-600">{{ __('dashboard.100% discount') }}</span>
                                         </div>
                                     </div>
+
+                                    <!-- Returned Bill Toggle -->
+                                    <div class="mx-1">
+                                        <label for="is_returned"
+                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Return Bill') }}</label>
+                                        <div class="flex items-center">
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" name="is_returned" id="is_returned">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                            <span
+                                                class="ml-2 text-sm text-gray-600">{{ __('dashboard.Negative qty') }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1056,7 +1070,18 @@
                 return;
             }
 
-            const formData = new FormData(form);
+            // Populate return_costs from map into hidden inputs
+            const productIds = [...form.querySelectorAll('input[name="product_ids[]"]')];
+            const returnCostInputs = [...form.querySelectorAll('input[name="return_costs[]"]')];
+
+            productIds.forEach((pidInput, index) => {
+                const productId = parseInt(pidInput.value);
+                if (returnCostsMap.has(productId)) {
+                    returnCostInputs[index].value = returnCostsMap.get(productId);
+                    console.log(
+                        `Set return cost for product ${productId}: ${returnCostInputs[index].value}`);
+                }
+            });
 
             // Get CSRF token safely
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -1083,6 +1108,30 @@
 
             // Show loading notification
             showNotification('{{ __('messages.Creating bill...') }}', 'info');
+
+            // Create FormData after populating return costs
+            const formData = new FormData(form);
+
+            // Validate returned bills have return costs
+            const isReturnedBill = document.getElementById('is_returned')?.checked || false;
+            if (isReturnedBill) {
+                const billProductIds = formData.getAll('product_ids[]');
+
+                const hasProductWithoutReturnCost = billProductIds.some(productId => {
+                    if (productId) {
+                        return !returnCostsMap.has(parseInt(productId));
+                    }
+                    return false;
+                });
+
+                if (hasProductWithoutReturnCost) {
+                    showNotification('{{ __('messages.Please specify return cost for all returned products') }}',
+                        'error');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                    return;
+                }
+            }
 
             try {
                 const response = await fetch(form.action, {
@@ -1133,12 +1182,20 @@
         // Function to update UI after bill creation
         async function updateUIAfterBillCreation(bill) {
             try {
+                // Check if this is a returned bill
+                const isReturnedBill = bill.is_returned || false;
+
                 // Update product quantities in the displayed cards and allProducts array
                 const productRows = document.querySelectorAll('.product-row');
                 productRows.forEach(row => {
                     const productId = row.querySelector('input[name="product_ids[]"]').value;
                     const quantityInput = row.querySelector('.quantity');
-                    const quantitySold = parseFloat(quantityInput.value);
+                    let quantitySold = parseFloat(quantityInput.value);
+
+                    // For returned bills, quantities are stored as negative, so we add them back to inventory
+                    if (isReturnedBill) {
+                        quantitySold = -1 * Math.abs(quantitySold); // Make it negative to add back
+                    }
 
                     // Update the allProducts array with new quantities
                     const productIndex = allProducts.findIndex(p => p.id == productId);
@@ -1296,6 +1353,9 @@
             const productsList = document.getElementById('products-list');
             productsList.innerHTML = '';
 
+            // Clear return costs map
+            returnCostsMap.clear();
+
             // Reset totals
             document.getElementById('total_price_display').textContent = '0.00';
             document.getElementById('total_discount_display').textContent = '0.00';
@@ -1328,6 +1388,12 @@
             const isDamagedCheckbox = document.getElementById('is_damaged');
             if (isDamagedCheckbox) {
                 isDamagedCheckbox.checked = false;
+            }
+
+            // Reset returned toggle
+            const isReturnedCheckbox = document.getElementById('is_returned');
+            if (isReturnedCheckbox) {
+                isReturnedCheckbox.checked = false;
             }
 
             // Clear customer suggestions
@@ -2399,8 +2465,102 @@
         }
 
         // Add product row
+        // Show return cost dialog for returned bills
+        function showReturnCostDialog(product) {
+            console.log('Opening return cost dialog for product:', product.id, product.name);
+
+            const modal = document.createElement('div');
+            modal.id = 'return-cost-modal';
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" id="modal-overlay"></div>
+                <div class="relative z-50 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <div class="px-6 py-5 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">
+                            {{ __('messages.Specify return cost for') }} ${product.name}
+                        </h3>
+                    </div>
+
+                    <div class="px-6 py-4 space-y-4">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <p class="text-sm text-gray-700">
+                                <strong>{{ __('messages.Current average cost') }}:</strong>
+                                <span class="text-blue-600 font-semibold text-lg">₪${parseFloat(product.cost_price).toFixed(2)}</span>
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                {{ __('messages.Return value') }}
+                            </label>
+                            <input type="number" id="return-cost-input" min="0" step="0.01" value="${parseFloat(product.cost_price).toFixed(2)}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg" required>
+                            <p class="text-xs text-gray-500 mt-2">{{ __('messages.Enter the value at which this product is being returned') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex gap-3 justify-end rounded-b-lg">
+                        <button type="button" id="cancel-return-cost" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+                            {{ __('messages.Cancel') }}
+                        </button>
+                        <button type="button" id="confirm-return-cost" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium">
+                            {{ __('messages.Confirm Return') }}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const overlay = document.getElementById('modal-overlay');
+            const confirmBtn = document.getElementById('confirm-return-cost');
+            const cancelBtn = document.getElementById('cancel-return-cost');
+            const input = document.getElementById('return-cost-input');
+
+            const closeDialog = () => {
+                console.log('Closing return cost dialog');
+                document.body.removeChild(modal);
+                if (!isRestaurant) {
+                    document.getElementById('barcode_input').focus();
+                }
+            };
+
+            confirmBtn.addEventListener('click', () => {
+                const returnCost = parseFloat(input.value);
+                if (returnCost < 0 || isNaN(returnCost)) {
+                    showNotification('{{ __('messages.Return value must be positive') }}', 'error');
+                    return;
+                }
+                console.log('Storing return cost:', product.id, returnCost);
+                // Store the return cost in the map by product ID
+                returnCostsMap.set(product.id, returnCost);
+                addProductRow(product);
+                closeDialog();
+            });
+
+            cancelBtn.addEventListener('click', closeDialog);
+            overlay.addEventListener('click', closeDialog);
+
+            // Focus on input
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 100);
+        }
+
+        // Global map to store return costs by product ID
+        const returnCostsMap = new Map();
+
         function addProductRow(product) {
-            if (!product) return;
+            if (!product) return false;
+
+            // Check if this is a returned bill
+            const isReturnedBill = document.getElementById('is_returned')?.checked || false;
+
+            // If it's a returned bill and no return cost was set, show the dialog
+            if (isReturnedBill && !returnCostsMap.has(product.id)) {
+                showReturnCostDialog(product);
+                return false; // Dialog will handle adding the product
+            }
 
             if (product.quantity === 0) {
                 showNotification(`{{ __('messages.{product} is out of stock!') }}`.replace('{product}', product.name),
@@ -2409,7 +2569,7 @@
 
             if (product.has_tags && availableTags.length > 0) {
                 showTagsDialog(product);
-                return;
+                return false; // Dialog will handle adding the product
             }
 
             const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
@@ -2425,20 +2585,22 @@
 
                 qty.value = currentQty + 1;
                 calculateTotal();
-                return;
+                return true; // Product was incremented
             }
 
             const row = document.createElement('tr');
             row.className = 'product-row';
 
             const id = product.id;
-            const cost = product.cost_price;
+            const returnCost = returnCostsMap.get(id);
+            const cost = returnCost || product.cost_price;
             const price = product.selling_price;
             const maxStock = product.quantity;
 
             row.innerHTML = `
                 <input type="hidden" name="product_ids[]" value="${id}">
                 <input type="hidden" name="cost_prices[]" value="${cost}">
+                <input type="hidden" name="return_costs[]" value="${returnCost || ''}">
                 <input type="hidden" name="product_tags[]" value="">
 
                 <td class="product-name-cell">
@@ -2473,6 +2635,13 @@
 
             productsList.appendChild(row);
             calculateTotal();
+
+            // Clear return_cost after adding so the next product won't use the same cost
+            if (product.return_cost) {
+                delete product.return_cost;
+            }
+
+            return true; // Product was successfully added
         }
 
         // Show tags selection dialog
@@ -2499,14 +2668,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2753,7 +2922,14 @@
         // Event delegation
         document.addEventListener('click', e => {
             if (e.target.closest('.remove-row')) {
-                e.target.closest('.product-row').remove();
+                const row = e.target.closest('.product-row');
+                // Get product ID from the hidden input
+                const productIdInput = row.querySelector('input[name="product_ids[]"]');
+                if (productIdInput) {
+                    const productId = parseInt(productIdInput.value);
+                    returnCostsMap.delete(productId);
+                }
+                row.remove();
                 calculateTotal();
                 showNotification('{{ __('messages.Product removed') }}', 'info');
                 return;
@@ -2787,12 +2963,24 @@
                     has_tags: card.dataset.has_tags === 'true'
                 };
 
-                addProductRow(product);
-                showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
-                    .name), 'success');
-                // Only focus on barcode input for non-phone devices (tablet/desktop)
-                if (!isRestaurant && window.innerWidth >= 768) {
-                    document.getElementById('barcode_input').focus();
+                const isReturnedBill = document.getElementById('is_returned')?.checked || false;
+                console.log('Product clicked:', product.id, product.name, 'Returned bill:', isReturnedBill);
+
+                // Check if this will show the return dialog
+                const willShowDialog = isReturnedBill && !returnCostsMap.has(product.id);
+
+                const wasAdded = addProductRow(product);
+
+                // Only show success message if product was actually added (not if dialog is showing)
+                if (wasAdded) {
+                    showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
+                        .name), 'success');
+                    // Only focus on barcode input for non-phone devices (tablet/desktop)
+                    if (!isRestaurant && window.innerWidth >= 768) {
+                        document.getElementById('barcode_input').focus();
+                    }
+                } else if (willShowDialog) {
+                    console.log('Dialog will appear for return cost');
                 }
             }
         });
@@ -3345,9 +3533,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -3786,6 +3974,32 @@
         }
 
         // Form validation and AJAX submission
+        // Handle Return Bill checkbox changes
+        document.getElementById('is_returned')?.addEventListener('change', function() {
+            const isReturnedBill = this.checked;
+            const productRows = document.querySelectorAll('.product-row');
+
+            if (isReturnedBill && productRows.length > 0) {
+                // When activating Return Bill, clear existing products and require re-adding with return costs
+                showNotification('{{ __('messages.Clearing existing products to set return costs') }}', 'info');
+
+                // Remove all product rows
+                productRows.forEach(row => row.remove());
+
+                // Clear the return costs map
+                returnCostsMap.clear();
+
+                // Reset totals
+                calculateTotal();
+
+                console.log('Cleared products to require return cost assignment');
+            } else if (!isReturnedBill && productRows.length > 0) {
+                // When deactivating Return Bill, also clear the return costs map
+                returnCostsMap.clear();
+                console.log('Deactivated Return Bill mode, cleared return costs map');
+            }
+        });
+
         document.getElementById('create-bill').addEventListener('submit', async (e) => {
             e.preventDefault();
 

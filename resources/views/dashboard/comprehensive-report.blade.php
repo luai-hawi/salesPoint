@@ -108,15 +108,16 @@
                 </div>
 
                 <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h3 class="font-semibold text-blue-800">{{ __('messages.Total Costs') }}</h3>
-                    <p class="text-2xl font-bold text-blue-600">₪{{ number_format($summary['total_costs'], 0) }}</p>
+                    <h3 class="font-semibold text-blue-800">{{ __('messages.Expenses and Salaries') }}</h3>
+                    <p class="text-2xl font-bold text-blue-600">
+                        ₪{{ number_format($summary['expenses_and_salaries'], 0) }}</p>
                 </div>
 
                 <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-                    <h3 class="font-semibold text-purple-800">{{ __('messages.Net Profit') }}</h3>
+                    <h3 class="font-semibold text-purple-800">{{ __('messages.Profit') }}</h3>
                     <p
-                        class="text-2xl font-bold {{ $summary['net_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        ₪{{ number_format($summary['net_profit'], 0) }}
+                        class="text-2xl font-bold {{ $summary['financial_dashboard_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                        ₪{{ number_format($summary['financial_dashboard_profit'], 0) }}
                     </p>
                 </div>
 
@@ -129,10 +130,8 @@
                 </div>
 
                 <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h3 class="font-semibold text-blue-800">{{ __('messages.Profit') }}</h3>
-                    <p
-                        class="text-2xl font-bold {{ $summary['financial_dashboard_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        ₪{{ number_format($summary['financial_dashboard_profit'], 0) }}
+                    <h3 class="font-semibold text-blue-800">{{ __('messages.Purchases') }}</h3>
+                    <p class="text-2xl font-bold text-blue-600">₪{{ number_format($summary['total_purchases'], 0) }}
                     </p>
                 </div>
             </div>
@@ -172,7 +171,8 @@
                                     <td class="px-4 py-3">
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
-                                                ({{ $product->pivot->quantity }}×)</div>
+                                                ({{ $product->pivot->quantity }}×)
+                                            </div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-positive">
@@ -230,7 +230,8 @@
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
                                                 ({{ $product->pivot->quantity }}× @
-                                                ₪{{ number_format($product->pivot->unit_cost, 2) }})</div>
+                                                ₪{{ number_format($product->pivot->unit_cost, 2) }})
+                                            </div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-negative">
@@ -283,7 +284,8 @@
                                     <td class="px-4 py-3">
                                         @foreach ($bill->products as $product)
                                             <div class="text-sm">{{ $product->name }}
-                                                ({{ $product->pivot->quantity }}×)</div>
+                                                ({{ $product->pivot->quantity }}×)
+                                            </div>
                                         @endforeach
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap font-semibold amount-negative">
@@ -310,7 +312,77 @@
             </div>
         @endif
 
-        <!-- Expenses Section -->
+        <!-- Returned Bills Section -->
+        @if (isset($returnedData) && $returnedData['count'] > 0)
+            <div class="section-card p-6 mb-8 page-break">
+                <h2 class="text-3xl font-bold mb-6 text-purple-800 border-b-2 border-purple-300 pb-2">✓
+                    {{ __('messages.Returned Bills') }} - {{ __('messages.Returns & Reversals') }}
+                    ({{ $returnedData['count'] }} items)</h2>
+
+                <!-- Returned Bills Metrics Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div
+                        class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200">
+                        <div class="text-sm text-purple-700 font-semibold">{{ __('messages.Total Bill Value') }}</div>
+                        <div class="text-2xl font-bold text-purple-900">
+                            ₪{{ number_format($returnedData['total_bill_value'] ?? 0, 2) }}</div>
+                    </div>
+                    <div
+                        class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border-2 border-indigo-200">
+                        <div class="text-sm text-indigo-700 font-semibold">{{ __('messages.Inventory Return Value') }}
+                        </div>
+                        <div class="text-2xl font-bold text-indigo-900">
+                            ₪{{ number_format($returnedData['inventory_return_value'] ?? 0, 2) }}</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border-2 border-red-200">
+                        <div class="text-sm text-red-700 font-semibold">{{ __('messages.Lost Profit') }}</div>
+                        <div class="text-2xl font-bold text-red-900">
+                            ₪{{ number_format($returnedData['lost_profit'] ?? 0, 2) }}</div>
+                    </div>
+                </div>
+
+                <!-- Returned Products Breakdown -->
+                @if (!empty($returnedData['products']['labels']) && count($returnedData['products']['labels']) > 0)
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">📦
+                            {{ __('messages.Top Returned Products') }}</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                            {{ __('messages.Product') }}</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                            {{ __('messages.Return Value') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach ($returnedData['products']['labels'] as $index => $label)
+                                        <tr>
+                                            <td class="px-4 py-3 font-medium text-gray-800">{{ $label }}</td>
+                                            <td class="px-4 py-3 text-right font-semibold text-purple-600">
+                                                ₪{{ number_format($returnedData['products']['data'][$index] ?? 0, 2) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="bg-gray-50">
+                                    <tr>
+                                        <td class="px-4 py-3 font-semibold text-right">{{ __('messages.Total') }}:
+                                        </td>
+                                        <td class="px-4 py-3 font-bold text-lg text-purple-600">
+                                            ₪{{ number_format(array_sum($returnedData['products']['data'] ?? []), 2) }}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        <!-- Expenses Section
         @if ($expenses->count() > 0)
             <div class="section-card p-6 mb-8 page-break">
                 <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">💸 {{ __('messages.Expenses') }}
@@ -332,7 +404,7 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($expenses as $expense)
-                                <tr>
+<tr>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {{ \Carbon\Carbon::parse($expense->expense_date)->format('M d, Y') }}</td>
                                     <td class="px-4 py-3 font-medium">{{ $expense->title }}</td>
@@ -340,7 +412,7 @@
                                         ₪{{ number_format($expense->amount, 2) }}</td>
                                     <td class="px-4 py-3">{{ $expense->notes ?? '-' }}</td>
                                 </tr>
-                            @endforeach
+@endforeach
                         </tbody>
                         <tfoot class="bg-gray-50">
                             <tr>
@@ -350,6 +422,7 @@
                                     ₪{{ number_format($summary['total_expenses'], 2) }}</td>
                                 <td></td>
                             </tr>
+
                         </tfoot>
                     </table>
                 </div>
@@ -401,6 +474,7 @@
                                     ₪{{ number_format($summary['total_customer_payments'], 2) }}</td>
                                 <td></td>
                             </tr>
+
                         </tfoot>
                     </table>
                 </div>
@@ -450,6 +524,7 @@
                                     ₪{{ number_format($summary['total_supplier_payments'], 2) }}</td>
                                 <td></td>
                             </tr>
+
                         </tfoot>
                     </table>
                 </div>
@@ -511,15 +586,16 @@
                 </div>
 
                 <div class="bg-white bg-opacity-10 p-4 rounded-lg">
-                    <h3 class="font-semibold mb-2">{{ __('messages.Total Expenses') }}</h3>
-                    <p class="text-2xl font-bold text-red-400">₪{{ number_format($summary['total_costs'], 0) }}</p>
+                    <h3 class="font-semibold mb-2">{{ __('messages.Expenses and Salaries') }}</h3>
+                    <p class="text-2xl font-bold text-orange-400">
+                        ₪{{ number_format($summary['expenses_and_salaries'], 0) }}</p>
                 </div>
 
                 <div class="bg-white bg-opacity-10 p-4 rounded-lg">
-                    <h3 class="font-semibold mb-2">{{ __('messages.Net Profit') }}</h3>
+                    <h3 class="font-semibold mb-2">{{ __('messages.Profit') }}</h3>
                     <p
-                        class="text-2xl font-bold {{ $summary['net_profit'] >= 0 ? 'text-green-400' : 'text-red-400' }}">
-                        ₪{{ number_format($summary['net_profit'], 0) }}
+                        class="text-2xl font-bold {{ $summary['financial_dashboard_profit'] >= 0 ? 'text-green-400' : 'text-red-400' }}">
+                        ₪{{ number_format($summary['financial_dashboard_profit'], 0) }}
                     </p>
                 </div>
 

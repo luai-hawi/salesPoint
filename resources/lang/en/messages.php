@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     /*
@@ -717,6 +717,16 @@ return [
     'Purchase Volume' => 'Purchase Volume',
     'Supplier' => 'Supplier',
     'Bills' => 'Bills',
+
+    // Dashboard Formulas & Notes
+    'Formula' => 'Formula',
+    'Operational Expenses' => 'Operational Expenses',
+    'Employee Salaries' => 'Employee Salaries',
+    'Expenses and Salaries' => 'Expenses and Salaries',
+
+    // Comprehensive Report - Returned Bills
+    'Top Returned Products' => 'Top Returned Products',
+    'Return Value' => 'Return Value',
 
     // NEW: Additional Financial Terms
     'Store Value' => 'Store Value',
@@ -1870,4 +1880,180 @@ return [
     'Add to notes' => 'Add to notes',
     'Customer name added to bill notes' => 'Customer name added to bill notes',
     'Enter customer name to search...' => 'Enter customer name to search...',
+
+    // Returned Bills
+    'Returned Bills' => 'Returned Bills',
+    'Returned' => 'Returned',
+    'Returns & Reversals' => 'Returns & Reversals',
+    'Total Bill Value' => 'Total Bill Value',
+    'Inventory Return Value' => 'Inventory Return Value',
+    'Lost Profit' => 'Lost Profit',
+    'Returned bills cannot be edited. You can only view or delete them.' => 'Returned bills cannot be edited. You can only view or delete them.',
+    'Returned bills cannot be edited' => 'Returned bills cannot be edited',
+
+    // === MISSING PRODUCT CREATE PAGE TRANSLATIONS ===
+    'Create Product with Variants' => 'Create Product with Variants',
+    'Enable this to create multiple variants (e.g., S, M, L, XL) as separate products' => 'Enable this to create multiple variants (e.g., S, M, L, XL) as separate products',
+    'Product Variants' => 'Product Variants',
+    'Add Variant' => 'Add Variant',
+    'Add variants like S, M, L, XL. Each will be saved as a separate product.' => 'Add variants like S, M, L, XL. Each will be saved as a separate product.',
+    'Variant Name' => 'Variant Name',
+    'Enter product name' => 'Enter product name',
+    'Optional barcode or product code' => 'Optional barcode or product code',
+    'How much you paid for this product' => 'How much you paid for this product',
+    'Price you\'ll sell this product for' => 'Price you\'ll sell this product for',
+    'Enter quantity' => 'Enter quantity',
+    'Enter initial stock quantity' => 'Enter initial stock quantity',
+    'Enter cost price' => 'Enter cost price',
+    'Enter selling price' => 'Enter selling price',
+
+    // === ADMIN SHOP-OWNERS FORMS ===
+    'Enter shop owner name' => 'Enter shop owner name',
+    'Enter shop owner email' => 'Enter shop owner email',
+    'Enter password' => 'Enter password',
+    'Confirm your password' => 'Confirm your password',
+    'Select role for this user' => 'Select role for this user',
+    'Enter full name' => 'Enter full name',
+    'Re-enter password' => 'Re-enter password',
+
+    // === FORM PLACEHOLDERS & HINTS ===
+    'Enter here' => 'Enter here',
+    'Select an option' => 'Select an option',
+    'Choose from the list' => 'Choose from the list',
+    'Type to search' => 'Type to search',
+    'Search by name' => 'Search by name',
+    'Search by email' => 'Search by email',
+    'Leave empty to keep current' => 'Leave empty to keep current',
+    'This field is required' => 'This field is required',
+    'Please fill in all required fields' => 'Please fill in all required fields',
+
+    // === PORTFOLIO / ALT TEXT TRANSLATIONS ===
+    'Gallery item image' => 'Gallery item image',
+    'Portfolio showcase image' => 'Portfolio showcase image',
+    'Product showcase' => 'Product showcase',
+    'Business image' => 'Business image',
+    'Team image' => 'Team image',
+    'Service image' => 'Service image',
+    'Feature image' => 'Feature image',
+
+    // === FORM LABELS ===
+    'Create Bill' => 'Create Bill',
+    'Add Product' => 'Add Product',
+    'Add Customer' => 'Add Customer',
+    'View Reports' => 'View Reports',
+    'Confirm Delete' => 'Confirm Delete',
+    'Yes, Delete' => 'Yes, Delete',
+    'Cancel Delete' => 'Cancel Delete',
+    'Deleted Successfully' => 'Deleted Successfully',
+    'Undo' => 'Undo',
+    'Keyboard Shortcuts' => 'Keyboard Shortcuts',
+    'Press F2 to create a new bill' => 'Press F2 to create a new bill',
+    'Press F3 to add a new product' => 'Press F3 to add a new product',
+    'Press F4 to add a new customer' => 'Press F4 to add a new customer',
+    'Press Esc to close the current window' => 'Press Esc to close the current window',
+
+    // === PURCHASE BILL FORM ===
+    'Enter purchase date' => 'Enter purchase date',
+    'Enter reference number' => 'Enter reference number',
+    'Enter supplier name' => 'Enter supplier name',
+    'Select supplier' => 'Select supplier',
+    'Enter unit cost' => 'Enter unit cost',
+    'Enter quantity purchased' => 'Enter quantity purchased',
+    'Add purchase bill notes' => 'Add purchase bill notes',
+
+    // === CUSTOMER FORM ===
+    'Enter customer full name' => 'Enter customer full name',
+    'Enter customer phone' => 'Enter customer phone',
+    'Enter initial balance' => 'Enter initial balance',
+    'Set credit or debt for this customer' => 'Set credit or debt for this customer',
+
+    // === SUPPLIER FORM ===
+    'Enter supplier name' => 'Enter supplier name',
+    'Enter supplier phone' => 'Enter supplier phone',
+    'Enter supplier balance' => 'Enter supplier balance',
+    'Enter supplier address' => 'Enter supplier address',
+
+    // === EMPLOYEE FORM ===
+    'Enter employee full name' => 'Enter employee full name',
+    'Enter job title' => 'Enter job title',
+    'Enter monthly salary' => 'Enter monthly salary',
+    'Enter employee email' => 'Enter employee email',
+    'Enter employee phone' => 'Enter employee phone',
+
+    // === EXPENSE FORM ===
+    'Enter expense title' => 'Enter expense title',
+    'Enter expense amount' => 'Enter expense amount',
+    'Enter expense date' => 'Enter expense date',
+    'Add expense notes' => 'Add expense notes',
+    'Select expense category' => 'Select expense category',
+
+    // === TAGS MANAGEMENT ===
+    'Enter tag name' => 'Enter tag name',
+    'Enter tag price' => 'Enter tag price',
+
+    // === BUTTON & ACTION LABELS ===
+    'Create' => 'Create',
+    'Add' => 'Add',
+    'Save' => 'Save',
+    'Update' => 'Update',
+    'Delete' => 'Delete',
+    'Edit' => 'Edit',
+    'View' => 'View',
+    'Print' => 'Print',
+    'Export' => 'Export',
+    'Import' => 'Import',
+    'Search' => 'Search',
+    'Filter' => 'Filter',
+    'Reset' => 'Reset',
+    'Refresh' => 'Refresh',
+    'Close' => 'Close',
+    'Submit' => 'Submit',
+    'Cancel' => 'Cancel',
+    'Back' => 'Back',
+    'Next' => 'Next',
+    'Previous' => 'Previous',
+    'Finish' => 'Finish',
+
+    // === SUCCESS & ERROR MESSAGES ===
+    'Successfully created' => 'Successfully created',
+    'Successfully updated' => 'Successfully updated',
+    'Successfully deleted' => 'Successfully deleted',
+    'Operation completed' => 'Operation completed',
+    'An error occurred' => 'An error occurred',
+    'Please try again' => 'Please try again',
+    'Validation error' => 'Validation error',
+    'Required field' => 'Required field',
+    'Invalid input' => 'Invalid input',
+    'Network error' => 'Network error',
+
+    // === CONFIRMATION ===
+    'Are you sure?' => 'Are you sure?',
+    'This action cannot be undone' => 'This action cannot be undone',
+    'Proceed?' => 'Proceed?',
+    'Confirm action' => 'Confirm action',
+
+    // === EMPTY STATE ===
+    'No data available' => 'No data available',
+    'No results found' => 'No results found',
+    'Start by adding your first item' => 'Start by adding your first item',
+    'Nothing to display' => 'Nothing to display',
+
+    // === LOADING & PROCESSING ===
+    'Loading...' => 'Loading...',
+    'Processing...' => 'Processing...',
+    'Saving...' => 'Saving...',
+    'Deleting...' => 'Deleting...',
+    'Updating...' => 'Updating...',
+    'Please wait' => 'Please wait',
+
+    // === ADDITIONAL KEYS ===
+    'Enter an amount' => 'Enter an amount',
+    'Enter a note' => 'Enter a note',
+    'Select a date' => 'Select a date',
+    'Select a time' => 'Select a time',
+    'No permission' => 'No permission',
+    'Access denied' => 'Access denied',
+    'Unauthorized' => 'Unauthorized',
+    'Session expired' => 'Session expired',
+    'Please log in again' => 'Please log in again',
 ];

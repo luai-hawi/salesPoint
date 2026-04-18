@@ -526,7 +526,7 @@ class SupplierController extends Controller
         if ($reportType === 'both' || $reportType === 'bills') {
             $data['purchase_bills'] = $supplier->purchaseBills()
                 ->where('user_id', $ownerId)
-                ->whereBetween('purchase_date', [$dateFrom, $dateTo])
+                ->whereBetween('purchase_date', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
                 ->orderBy('purchase_date')
                 ->get();
 
@@ -537,7 +537,7 @@ class SupplierController extends Controller
         if ($reportType === 'both' || $reportType === 'payments') {
             $data['payments'] = $supplier->payments()
                 ->where('user_id', $ownerId)
-                ->whereBetween('payment_date', [$dateFrom, $dateTo])
+                ->whereBetween('payment_date', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
                 ->orderBy('payment_date')
                 ->get();
 

@@ -1,4 +1,4 @@
-@php
+﻿@php
     // FORCE locale setting - this is a temporary fix to test
     $sessionLocale = session('locale', 'en');
     if (in_array($sessionLocale, ['en', 'ar'])) {
@@ -314,7 +314,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💸
-                                    {{ __('messages.Expenses') }}</p>
+                                    {{ __('messages.Expenses and Salaries') }}</p>
                                 <p class="text-xl lg:text-2xl font-bold text-gray-900">
                                     ₪{{ number_format($summaryData['totalExpenses'] + $summaryData['totalEmployeePayments'], 0) }}
                                 </p>
@@ -737,6 +737,53 @@
                     </div>
                 </div>
             </div>
+
+            <!-- NEW: Returned Bills Metrics Section -->
+            @if (isset($returnedData) && $returnedData['count'] > 0)
+                <div class="w-full mb-4 lg:mb-6">
+                    <div
+                        class="bg-gradient-to-r from-purple-500 to-indigo-600 p-4 lg:p-6 rounded-lg shadow-lg text-white">
+                        <h3 class="text-lg lg:text-xl font-bold mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ __('messages.Returned Bills') }}
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
+                                <div class="text-sm opacity-90">{{ __('messages.Total Bill Value') }}</div>
+                                <div class="text-2xl font-bold">
+                                    ₪{{ number_format($returnedData['total_bill_value'], 0) }}</div>
+                            </div>
+                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
+                                <div class="text-sm opacity-90">{{ __('messages.Inventory Return Value') }}</div>
+                                <div class="text-2xl font-bold">
+                                    ₪{{ number_format($returnedData['inventory_return_value'], 0) }}</div>
+                            </div>
+                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
+                                <div class="text-sm opacity-90">{{ __('messages.Lost Profit') }}</div>
+                                <div class="text-2xl font-bold text-red-200">
+                                    ₪{{ number_format($returnedData['lost_profit'], 0) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Returned Products Chart -->
+                <div class="w-full mb-4 lg:mb-6">
+                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">📦
+                                {{ __('messages.Returns & Reversals') }}</h3>
+                            <span class="text-sm text-gray-600">{{ $returnedData['count'] }} items</span>
+                        </div>
+                        <div class="h-48 lg:h-56">
+                            <canvas id="returnedProductsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- Top Products Section -->
             @if (isset($topProducts) && count($topProducts) > 0)
@@ -1232,6 +1279,44 @@
                     }
                 }
             });
+
+            // Returned Products Chart
+            @if (isset($returnedData) && $returnedData['count'] > 0)
+                const returnedProductsCtx = document.getElementById('returnedProductsChart').getContext('2d');
+                new Chart(returnedProductsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {!! json_encode($returnedData['products']['labels']) !!},
+                        datasets: [{
+                            label: '{{ __('messages.Returns & Reversals') }}',
+                            data: {!! json_encode($returnedData['products']['data']) !!},
+                            backgroundColor: [
+                                '#A78BFA',
+                                '#C4B5FD',
+                                '#DDD6FE',
+                                '#EDE9FE',
+                                '#F3E8FF',
+                                '#8B5CF6',
+                                '#7C3AED',
+                                '#6D28D9',
+                                '#5B21B6',
+                                '#4C1D95'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            @endif
 
             // Supplier Owed Chart
             const supplierOwedCtx = document.getElementById('supplierOwedChart').getContext('2d');

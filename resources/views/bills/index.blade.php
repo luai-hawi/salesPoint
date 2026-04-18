@@ -212,6 +212,12 @@
                                             {{ __('bills.Damaged') }}
                                         </span>
                                     @endif
+                                    @if ($bill->is_returned)
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ __('messages.Returned') }}
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div>{{ $bill->created_at->format('M d, Y') }}</div>
@@ -230,16 +236,32 @@
                                             </svg>
                                             {{ __('messages.View') }}
                                         </button>
-                                        <a href="{{ route('bills.show', $bill->id) }}"
-                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
-                                                </path>
-                                            </svg>
-                                            {{ __('bills.Edit') }}
-                                        </a>
+                                        @if (!$bill->is_returned)
+                                            <a href="{{ route('bills.show', $bill->id) }}"
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-200 transition-colors">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                                    </path>
+                                                </svg>
+                                                {{ __('bills.Edit') }}
+                                            </a>
+                                        @else
+                                            <button type="button" disabled
+                                                class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-md cursor-not-allowed"
+                                                title="{{ __('messages.Returned bills cannot be edited') }}">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                                    </path>
+                                                </svg>
+                                                {{ __('bills.Edit') }}
+                                            </button>
+                                        @endif
                                         <form action="{{ route('bills.destroy', $bill->id) }}" method="POST"
                                             class="inline">
                                             @csrf
@@ -314,11 +336,11 @@
         document.getElementById('pagination-links')?.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link) return;
-            
+
             e.preventDefault();
             const searchTerm = document.getElementById('searchInput').value.trim();
             let url = link.href;
-            
+
             if (searchTerm) {
                 url = new URL(link.href);
                 url.searchParams.set('search', searchTerm);
@@ -328,7 +350,7 @@
                 }
                 url = url.toString();
             }
-            
+
             window.location.href = url;
         });
 

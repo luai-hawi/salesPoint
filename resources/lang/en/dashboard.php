@@ -87,4 +87,13 @@ return [
     '100% discount' => '100% discount',
     'Damaged Bill' => 'Damaged Bill',
     'Date' => 'Date',
+    'Return Bill' => 'Return Bill',
+    'Negative qty' => 'Negative qty',
+    'Returned Bill' => 'Returned Bill',
+    'Return Cost' => 'Return Cost',
+    'Specify return cost for' => 'Specify return cost for',
+    'Current average cost' => 'Current average cost',
+    'Return value' => 'Return value',
+    'Confirm Return' => 'Confirm Return',
+    'Returned' => 'Returned',
 ];

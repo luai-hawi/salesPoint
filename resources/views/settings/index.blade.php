@@ -24,7 +24,7 @@
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <!-- Image Limit Settings -->
+            <!-- Image Limit Information (Read-Only) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
                 <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
                     <h3 class="text-lg font-semibold text-gray-800 flex items-center">
@@ -37,87 +37,36 @@
                         {{ __('messages.Image Upload Limit') }}
                     </h3>
                     <p class="text-sm text-gray-600 mt-1">
-                        {{ __('messages.Set the maximum number of images that can be uploaded across all products.') }}
+                        {{ __('messages.Your current image upload limit set by the administrator') }}
                     </p>
                 </div>
 
-                <form action="{{ route('settings.update-image-limit') }}" method="POST" class="p-6">
-                    @csrf
-
-                    @if ($errors->any())
-                        <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                            <div class="flex items-center mb-2">
-                                <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <strong
-                                    class="text-red-800">{{ __('messages.Please fix the following errors:') }}</strong>
-                            </div>
-                            <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    @if (session('success'))
-                        <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <span class="text-green-800">{{ session('success') }}</span>
+                <div class="p-6">
+                    <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <svg class="w-6 h-6 text-green-600 mr-3" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            <div>
+                                <p class="text-sm text-green-700">{{ __('messages.Maximum Images') }}</p>
+                                <p class="text-xs text-green-600 mt-1">
+                                    {{ __('messages.Total number of images allowed across all products') }}
+                                </p>
                             </div>
                         </div>
-                    @endif
-
-                    <div class="grid grid-cols-1 gap-6">
-                        <!-- Image Limit -->
-                        <div>
-                            <label for="image_limit" class="block text-sm font-semibold text-gray-700 mb-2">
-                                {{ __('messages.Maximum Images') }}
-                            </label>
-                            <div class="relative">
-                                <input type="number" name="image_limit" id="image_limit"
-                                    value="{{ old('image_limit', auth()->user()->image_limit ?? 1000) }}"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                    min="0" max="10000" required />
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                    <span class="text-gray-400 text-sm">{{ __('messages.images') }}</span>
-                                </div>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">
-                                {{ __('messages.Total number of images allowed across all products. Default is 1000.') }}
-                            </p>
+                        <div class="text-right">
+                            <p class="text-2xl font-bold text-green-800">{{ auth()->user()->image_limit ?? 1000 }}</p>
+                            <p class="text-xs text-green-600 mt-1">{{ __('messages.images') }}</p>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="mt-8 flex items-center justify-between">
-                        <a href="{{ route('dashboard') }}"
-                            class="text-gray-600 hover:text-gray-800 font-medium flex items-center transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
-                            {{ __('messages.Back to Dashboard') }}
-                        </a>
-
-                        <button type="submit"
-                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center shadow-sm">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            {{ __('messages.Save Settings') }}
-                        </button>
-                    </div>
-                </form>
+                    <p class="text-xs text-gray-500 mt-4">
+                        {{ __('messages.To change this limit, please contact the administrator') }}
+                    </p>
+                </div>
             </div>
 
             <!-- Product Deactivation Settings -->
@@ -174,8 +123,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Warning Period -->
                         <div>
-                            <label for="product_warning_period"
-                                class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="product_warning_period" class="block text-sm font-semibold text-gray-700 mb-2">
                                 {{ __('messages.Warning Period (Months)') }}
                             </label>
                             <div class="relative">

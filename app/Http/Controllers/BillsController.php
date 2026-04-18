@@ -162,14 +162,20 @@ class BillsController extends Controller
             'selling_prices' => 'required|array',
             'discount_types' => 'array',
             'bill_date' => 'nullable|date',
+            'return_costs' => 'nullable|array', // New: return costs
         ]);
 
-        // Check if it's a damaged bill
+        // Check if it's a damaged bill or returned bill
         $isDamaged = $request->has('is_damaged');
+        $isReturned = $request->has('is_returned');
         $noteText = $request->input('note', '');
 
         if ($isDamaged) {
             $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
+        }
+
+        if ($isReturned) {
+            $noteText .= ($noteText ? ' - ' : '') . 'Returned Bill';
         }
 
         // Get the custom date or use now()
@@ -188,6 +194,7 @@ class BillsController extends Controller
             'user_id' => $ownerId,
             'created_by' => $user->id,
             'is_damaged' => $isDamaged,
+            'is_returned' => $isReturned,
         ]);
 
         // Set timestamps manually
@@ -196,6 +203,7 @@ class BillsController extends Controller
         $bill->save();
 
         $total = 0;
+        $returnCosts = $request->input('return_costs', []);
 
         foreach ($request->product_ids as $index => $productId) {
             if (empty($productId)) continue;
@@ -205,10 +213,20 @@ class BillsController extends Controller
             $sellingPrice = (float) $request->selling_prices[$index];
             $discountType = $request->discount_types[$index] ?? 'total';
             $discount = $isDamaged ? ($qty * $sellingPrice) : (float) $request->discounts[$index];
-            $tags = $request->product_tags[$index] ?? null; // New tags field
+            $tags = $request->product_tags[$index] ?? null;
+
+            // Handle returned bills: negate quantities and discounts, use return cost
+            if ($isReturned) {
+                $qty = -1 * abs($qty);
+                $discount = -1 * abs($discount);
+                // Use specified return cost if provided, otherwise use existing cost_price
+                if (isset($returnCosts[$index]) && $returnCosts[$index] !== '') {
+                    $costPrice = (float) $returnCosts[$index];
+                }
+            }
 
             if ($discountType === 'per-unit' && !$isDamaged) {
-                $discount = $discount * $qty;
+                $discount = $discount * abs($qty);
             }
 
             $product = Product::where('id', $productId)
@@ -216,11 +234,11 @@ class BillsController extends Controller
                 ->firstOrFail();
 
             // Update product quantity only if not restaurant role
-            $isRestaurant = $user->role === 'restaurant' ||
+            $isRestaurantRole = $user->role === 'restaurant' ||
                 ($user->role === 'employee' && $user->shop_owner_id &&
                     $user->shopOwner && $user->shopOwner->role === 'restaurant');
 
-            if (!$isRestaurant) {
+            if (!$isRestaurantRole) {
                 // Update product quantity
                 $product->quantity -= $qty;
                 // Update last sale date when product is sold
@@ -240,7 +258,7 @@ class BillsController extends Controller
                     $remainingQty -= $consume;
                 }
 
-                // If still remaining quantity, create negative batch
+                // If still remaining quantity, create negative batch or handle returns
                 if ($remainingQty > 0) {
                     $lastBatch = $product->batches()->latest()->first();
                     if ($lastBatch) {
@@ -253,6 +271,14 @@ class BillsController extends Controller
                             'user_id' => $ownerId,
                         ]);
                     }
+                } elseif ($remainingQty < 0 && $isReturned) {
+                    // For returns with remaining negative quantity, recalculate average cost
+                    // Create batch for returned inventory at specified return cost
+                    $product->batches()->create([
+                        'quantity' => abs($remainingQty),
+                        'cost_price' => $costPrice,
+                        'user_id' => $ownerId,
+                    ]);
                 }
             }
 
@@ -264,13 +290,55 @@ class BillsController extends Controller
                 'discount' => $discount,
                 'cost_price' => $costPrice,
                 'selling_price' => $sellingPrice,
-                'tags' => $tags, // Add tags to pivot
+                'tags' => $tags,
             ]);
 
-            $total += max(0, $lineTotal);
+            // For returned bills, allow negative totals. For normal bills, ensure non-negative.
+            if ($isReturned) {
+                $total += $lineTotal;
+            } else {
+                $total += max(0, $lineTotal);
+            }
         }
 
         $bill->update(['total_price' => $total]);
+
+        // For returned bills: recalculate product cost prices based on return quantities and costs
+        if ($isReturned) {
+            foreach ($request->product_ids as $index => $productId) {
+                if (empty($productId)) continue;
+
+                $product = Product::where('id', $productId)
+                    ->where('user_id', $ownerId)
+                    ->first();
+
+                if ($product) {
+                    $returnQty = (float) $request->quantities[$index];
+                    $returnCostPrice = isset($returnCosts[$index]) && $returnCosts[$index] !== ''
+                        ? (float) $returnCosts[$index]
+                        : (float) $request->cost_prices[$index];
+
+                    // Calculate weighted average cost price
+                    // Current inventory quantity (positive) + returned quantity (positive, we use abs)
+                    // NOTE: $product->quantity has already been updated in the first loop, so we subtract the return qty to get original qty
+                    $originalQty = $product->quantity - $returnQty;  // Get original qty before return
+                    $currentQty = max(0, $originalQty);  // Ensure non-negative
+                    $currentCostPrice = $product->cost_price;
+                    $returnAbsQty = abs($returnQty);
+
+                    // New average cost price = (current_qty * current_cost + return_qty * return_cost) / (current_qty + return_qty)
+                    if ($currentQty >= 0) {
+                        $newCostPrice = ($currentQty * $currentCostPrice + $returnAbsQty * $returnCostPrice) / ($currentQty + $returnAbsQty);
+                    } else {
+                        // If current qty is negative, just use return cost
+                        $newCostPrice = $returnCostPrice;
+                    }
+
+                    $product->cost_price = round($newCostPrice, 2);
+                    $product->save();
+                }
+            }
+        }
 
         // Handle customer payment if customer is selected
         if ($bill->customer_id && $total > 0) {
@@ -323,6 +391,10 @@ class BillsController extends Controller
 
     public function edit(Bill $bill)
     {
+        // Block editing of returned bills
+        if ($bill->is_returned) {
+            abort(403, __('messages.Returned bills cannot be edited. You can only view or delete them.'));
+        }
         return $this->show($bill);
     }
 
@@ -347,6 +419,11 @@ class BillsController extends Controller
 
     public function update(Request $request, Bill $bill)
     {
+        // Block editing of returned bills
+        if ($bill->is_returned) {
+            abort(403, __('messages.Returned bills cannot be edited. You can only view or delete them.'));
+        }
+
         $user = auth()->user();
         if ($user->role === 'employee' && !$user->hasPermission('edit_bills')) {
             abort(403, 'Unauthorized');
@@ -766,15 +843,32 @@ class BillsController extends Controller
                 ]);
             }
 
-            if ($oldQty <= 0) {
-                $product->cost_price = $costPrice;
-            } else {
-                // Recalculate average cost price using weighted average
-                $product->cost_price =
-                    ($oldAvg * $oldQty + $costPrice * $restoredQty)
-                    / max(1, ($oldQty + $restoredQty));
+            // Recalculate cost price based on bill type
+            if ($bill->is_returned) {
+                // For deleted returned bills: recalculate using formula
+                // newAvg = (current_qty × current_cost - returned_qty × returned_cost) / new_qty
+                $newQty = $product->quantity;
+                if ($newQty > 0) {
+                    $returnedAbsQty = abs($restoredQty);
+                    $newCostPrice = ($oldQty * $oldAvg - $returnedAbsQty * $costPrice) / $newQty;
+                    $product->cost_price = round($newCostPrice, 2);
+                } else {
+                    // If new quantity is 0 or negative, keep the old cost
+                    $product->cost_price = $oldAvg;
+                }
+            } elseif (!$bill->is_damaged) {
+                // Only recalculate cost price for normal bills (not for damaged bills)
+                if ($oldQty <= 0) {
+                    $product->cost_price = $costPrice;
+                } else {
+                    // Recalculate average cost price using weighted average
+                    $product->cost_price =
+                        ($oldAvg * $oldQty + $costPrice * $restoredQty)
+                        / max(1, ($oldQty + $restoredQty));
+                }
+                $product->cost_price = round($product->cost_price, 2);
             }
-            $product->cost_price = round($product->cost_price, 2);
+            // For damaged bills, just restore quantities without changing cost price
             $product->save();
         }
 

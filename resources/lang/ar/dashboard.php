@@ -87,4 +87,13 @@ return [
     'Damaged Bill' => 'فاتورة تالفة',
     'Date' => 'التاريخ',
     'Creating Bill...' => 'جارٍ إنشاء الفاتورة...',
+    'Return Bill' => 'فاتورة مرتجعات',
+    'Negative qty' => 'كمية سالبة',
+    'Returned Bill' => 'فاتورة مرتجعات',
+    'Return Cost' => 'تكلفة الاسترجاع',
+    'Specify return cost for' => 'حدد تكلفة الاسترجاع ل',
+    'Current average cost' => 'متوسط التكلفة الحالية',
+    'Return value' => 'قيمة المرتجعات',
+    'Confirm Return' => 'تأكيد الاسترجاع',
+    'Returned' => 'مرتجع',
 ];
