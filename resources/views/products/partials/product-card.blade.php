@@ -2,7 +2,8 @@
     $images = is_array($product->pictures) ? $product->pictures : json_decode($product->pictures, true);
     $firstImage = $images[0] ?? null;
     $isOutOfStock = $product->quantity <= 0;
-    $isLowStock = $product->quantity > 0 && $product->quantity <= 10;
+    $lowStockThreshold = $product->low_stock_threshold ?? 10;
+    $isLowStock = $product->quantity > 0 && $product->quantity <= $lowStockThreshold;
 
     // Check if the user is a restaurant owner or an employee of a restaurant owner
     $isRestaurant =

@@ -45,7 +45,7 @@ class ProductsController extends Controller
         }
 
         if ($request->query('low_stock')) {
-            $query->where('quantity', '<=', 5);
+            $query->whereRaw('quantity > 0 AND quantity <= low_stock_threshold');
         }
 
         $products = $query->paginate(20)->appends($request->query());
@@ -89,6 +89,7 @@ class ProductsController extends Controller
                 'cost_price' => 'required|numeric',
                 'selling_price' => 'required|numeric',
                 'has_tags' => 'boolean',
+                'low_stock_threshold' => 'nullable|numeric|min:1',
                 'variants' => 'required|array|min:1',
                 'variants.*.name' => 'required|string|max:255',
                 'variants.*.quantity' => 'required|numeric|min:0',
@@ -125,6 +126,7 @@ class ProductsController extends Controller
                 $product->category = $request->category;
                 $product->barcode = isset($variantData['barcode']) ? trim($variantData['barcode']) : null;
                 $product->quantity = (float) $variantData['quantity'];
+                $product->low_stock_threshold = $request->low_stock_threshold ?? 10;
                 $product->cost_price = round($request->cost_price, 2);
                 $product->selling_price = $request->selling_price;
                 $product->user_id = $ownerId;
@@ -158,6 +160,7 @@ class ProductsController extends Controller
                 'pictures' => 'nullable|array',
                 'pictures.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'quantity' => 'nullable|numeric|min:0',
+                'low_stock_threshold' => 'nullable|numeric|min:1',
                 'cost_price' => 'required|numeric',
                 'selling_price' => 'required|numeric',
                 'has_tags' => 'boolean',
@@ -178,6 +181,7 @@ class ProductsController extends Controller
             $product->category = $request->category;
             $product->barcode = trim($request->barcode);
             $product->quantity = (float) $request->quantity;
+            $product->low_stock_threshold = $request->low_stock_threshold ?? 10;
             $product->cost_price = round($request->cost_price, 2);
             $product->selling_price = $request->selling_price;
             $product->user_id = $ownerId;
@@ -252,6 +256,7 @@ class ProductsController extends Controller
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
             'has_tags' => 'boolean',
+            'low_stock_threshold' => 'nullable|numeric|min:1',
         ]);
 
         // Check image limit for updates
@@ -268,6 +273,7 @@ class ProductsController extends Controller
         $product->name = $request->name;
         $product->category = $request->category; // Add category
         $product->barcode = trim($request->barcode);
+        $product->low_stock_threshold = $request->low_stock_threshold ?? 10;
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
         $product->has_tags = $request->has('has_tags');

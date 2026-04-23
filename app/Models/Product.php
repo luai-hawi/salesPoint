@@ -14,6 +14,7 @@ class Product extends Model
         'category',
         'barcode',
         'quantity',
+        'low_stock_threshold',
         'pictures',
         'cost_price',
         'selling_price',

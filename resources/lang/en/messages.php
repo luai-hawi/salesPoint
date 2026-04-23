@@ -2060,4 +2060,10 @@ return [
     'Unauthorized' => 'Unauthorized',
     'Session expired' => 'Session expired',
     'Please log in again' => 'Please log in again',
+
+    // === LOW STOCK THRESHOLD ===
+    'Low Stock Warning Threshold' => 'Low Stock Warning Threshold',
+    'Enter low stock threshold' => 'Enter low stock threshold',
+    'When stock reaches this number or below, a low stock badge will appear. Default is 10.' => 'When stock reaches this number or below, a low stock badge will appear. Default is 10.',
+    'When stock reaches this number or below, a low stock badge will appear.' => 'When stock reaches this number or below, a low stock badge will appear.',
 ];

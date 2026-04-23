@@ -2236,4 +2236,10 @@ return [
     'Mark as Returned' => 'وضع علامة مرتجعة',
     'No bills found' => 'لم يتم العثور على فواتير',
     'Create your first bill' => 'إنشاء أول فاتورة لك',
+
+    // === LOW STOCK THRESHOLD ===
+    'Low Stock Warning Threshold' => 'عتبة تحذير المخزون المنخفض',
+    'Enter low stock threshold' => 'أدخل عتبة المخزون المنخفض',
+    'When stock reaches this number or below, a low stock badge will appear. Default is 10.' => 'عندما يصل المخزون إلى هذا الرقم أو أقل منه، ستظهر شارة المخزون المنخفض. الافتراضي هو 10.',
+    'When stock reaches this number or below, a low stock badge will appear.' => 'عندما يصل المخزون إلى هذا الرقم أو أقل منه، ستظهر شارة المخزون المنخفض.',
 ];

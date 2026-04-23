@@ -237,6 +237,26 @@
                                         class="text-gray-500">{{ __('messages.Managed automatically through batches') }}</small>
                                 </div>
 
+                                <!-- Low Stock Threshold -->
+                                <div>
+                                    <label
+                                        class="block text-sm font-semibold text-gray-700 mb-2">{{ __('messages.Low Stock Warning Threshold') }}</label>
+                                    <div class="relative">
+                                        <input type="number" name="low_stock_threshold"
+                                            value="{{ old('low_stock_threshold', $product->low_stock_threshold ?? 10) }}"
+                                            class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
+                                            min="1" required>
+                                        <svg class="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 9v2m0 4v2m0 0v2m0 0a9 9 0 1118 0 9 9 0 01-18 0z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <small
+                                        class="text-gray-500">{{ __('messages.When stock reaches this number or below, a low stock badge will appear.') }}</small>
+                                </div>
+
                                 <!-- Cost Price -->
                                 <div>
                                     <label
