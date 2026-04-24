@@ -2,7 +2,7 @@
 
 return [
     'Admin Dashboard' => 'لوحة تحكم المدير',
-    'Dashboard' => 'لوحة التحكم',
+    'Dashboard' => 'نقطة المبيعات',
     'Home' => 'الرئيسية',
     'Shop Owners' => 'أصحاب المتاجر',
     'All Employees' => 'جميع الموظفين',
@@ -31,7 +31,7 @@ return [
     'EN' => 'الإنجليزية',
     'Arabic' => 'العربية',
     'English' => 'الإنجليزية',
-    'Dashboard' => 'لوحة التحكم',
+    'Dashboard' => 'نقطة المبيعات',
     'Admin Dashboard' => 'لوحة تحكم المدير',
     'Bills' => 'الفواتير',
     'Customers' => 'العملاء',
@@ -55,6 +55,7 @@ return [
     'New Purchase Bill' => 'فاتورة شراء جديدة',
 
     // Management Section
+    'Commerce' => 'التجارة',
     'Management' => 'الإدارة',
     'Employees' => 'الموظفين',
     'Expenses' => 'المصروفات',

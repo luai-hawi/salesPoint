@@ -635,6 +635,102 @@
         </style>
     @endif
 
+    <!-- Sidebar: hide x-cloak elements until Alpine initialises -->
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .app-shell {
+            min-height: 100vh;
+        }
+
+        @media (min-width: 1024px) {
+            .app-shell {
+                width: calc(100% - var(--sidebar-width, 4rem));
+                margin-left: var(--sidebar-width, 4rem);
+                margin-right: 0;
+            }
+
+            [dir="rtl"] .app-shell {
+                margin-left: 0;
+                margin-right: var(--sidebar-width, 4rem);
+            }
+        }
+    </style>
+
+    <!-- Alpine Sidebar Store — must run before Alpine.start() -->
+    <script>
+        const getCookieValue = (name) => {
+            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const match = document.cookie.match(new RegExp('(?:^|; )' + escapedName + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        };
+
+        const setCookieValue = (name, value, maxAgeSeconds = 31536000) => {
+            document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+        };
+
+        const isDesktopViewport = () => window.matchMedia('(min-width: 1024px)').matches;
+
+        document.addEventListener('alpine:init', () => {
+            const cookieValue = getCookieValue('sidebar_expanded');
+            const initialExpanded = cookieValue !== null ? cookieValue === 'true' : isDesktopViewport();
+
+            Alpine.store('sidebar', {
+                expanded: initialExpanded,
+                mobileOpen: false,
+                preMobileExpanded: null,
+                isDesktop() {
+                    return isDesktopViewport();
+                },
+                openMobile() {
+                    if (this.mobileOpen) {
+                        return;
+                    }
+
+                    this.preMobileExpanded = this.expanded;
+                    this.expanded = true;
+                    this.mobileOpen = true;
+                },
+                closeMobile() {
+                    if (this.preMobileExpanded !== null) {
+                        this.expanded = this.preMobileExpanded;
+                        this.preMobileExpanded = null;
+                    }
+
+                    this.mobileOpen = false;
+                },
+                toggle() {
+                    if (this.isDesktop()) {
+                        this.expanded = !this.expanded;
+                        setCookieValue('sidebar_expanded', this.expanded ? 'true' : 'false');
+                        return;
+                    }
+
+                    if (this.mobileOpen) {
+                        this.closeMobile();
+                        return;
+                    }
+
+                    this.openMobile();
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                const sidebar = Alpine.store('sidebar');
+
+                if (!sidebar) {
+                    return;
+                }
+
+                if (sidebar.isDesktop()) {
+                    sidebar.closeMobile();
+                }
+            });
+        });
+    </script>
+
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -643,19 +739,24 @@
     <div class="min-h-screen bg-gray-100">
         @include('layouts.navigation')
 
-        <!-- Page Heading -->
-        @isset($header)
-            <header class="bg-white shadow">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    {{ $header }}
-                </div>
-            </header>
-        @endisset
+        {{-- Main content area — offset by the actual sidebar width on one side only --}}
+        <div x-data="{}" class="app-shell min-w-0 pt-16 lg:pt-0 transition-all duration-300 ease-in-out"
+            :style="'--sidebar-width: ' + ($store.sidebar.expanded ? '14rem' : '4rem')">
 
-        <!-- Page Content -->
-        <main>
-            {{ $slot }}
-        </main>
+            <!-- Page Heading -->
+            @isset($header)
+                <header class="bg-white shadow">
+                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {{ $header }}
+                    </div>
+                </header>
+            @endisset
+
+            <!-- Page Content -->
+            <main>
+                {{ $slot }}
+            </main>
+        </div>
     </div>
 
     <!-- HTML5 QR Code Scanner Library -->

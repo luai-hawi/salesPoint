@@ -2,7 +2,7 @@
 
 return [
     'Admin Dashboard' => 'Admin Dashboard',
-    'Dashboard' => 'Dashboard',
+    'Dashboard' => 'Sale Point',
     'Home' => 'Home',
     'Shop Owners' => 'Shop Owners',
     'All Employees' => 'All Employees',
@@ -32,7 +32,7 @@ return [
     'Arabic' => 'Arabic',
     'English' => 'English',
     // Main Navigation
-    'Dashboard' => 'Dashboard',
+    'Dashboard' => 'Sale Point',
     'Admin Dashboard' => 'Admin Dashboard',
     'Bills' => 'Bills',
     'Customers' => 'Customers',
@@ -55,6 +55,9 @@ return [
     'Add Supplier' => 'Add Supplier',
     'Purchase Bills' => 'Purchase Bills',
     'New Purchase Bill' => 'New Purchase Bill',
+
+    // Section Dividers
+    'Commerce' => 'Commerce',
 
     // Management Section
     'Management' => 'Management',
