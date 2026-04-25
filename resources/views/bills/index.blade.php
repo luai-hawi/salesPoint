@@ -88,56 +88,62 @@
 
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-6 text-white">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-green-100 text-sm font-medium">{{ __('bills.Total Sales') }}</p>
-                            <p class="text-2xl font-bold">₪{{ number_format($totalSales, 2) }}</p>
-                        </div>
-                        <div class="bg-green-500 bg-opacity-30 rounded-full p-3">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z">
-                                </path>
-                            </svg>
+                @if (auth()->user()->getVisibilitySetting('show_bills_total_sales'))
+                    <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-100 text-sm font-medium">{{ __('bills.Total Sales') }}</p>
+                                <p class="text-2xl font-bold">₪{{ number_format($totalSales, 2) }}</p>
+                            </div>
+                            <div class="bg-green-500 bg-opacity-30 rounded-full p-3">
+                                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z">
+                                    </path>
+                                </svg>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
 
-                <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl p-6 text-white">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-blue-100 text-sm font-medium">{{ __('bills.Total Profit') }}</p>
-                            <p class="text-2xl font-bold">₪{{ number_format($totalProfit, 2) }}</p>
-                        </div>
-                        <div class="bg-blue-500 bg-opacity-30 rounded-full p-3">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
+                @if (auth()->user()->getVisibilitySetting('show_bills_total_profit'))
+                    <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-blue-100 text-sm font-medium">{{ __('bills.Total Profit') }}</p>
+                                <p class="text-2xl font-bold">₪{{ number_format($totalProfit, 2) }}</p>
+                            </div>
+                            <div class="bg-blue-500 bg-opacity-30 rounded-full p-3">
+                                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
 
-                <div class="bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl p-6 text-white">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-purple-100 text-sm font-medium">{{ __('bills.Total Bills') }}</p>
-                            <p class="text-2xl font-bold">{{ $bills->total() }}</p>
-                            <p class="text-purple-100 text-xs">
-                                {{ $selectedDate ? __('bills.Today') : __('bills.All time') }}</p>
-                        </div>
-                        <div class="bg-purple-500 bg-opacity-30 rounded-full p-3">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-                                <path fill-rule="evenodd"
-                                    d="M4 5a2 2 0 012-2v1a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 012 2v6.5a1.5 1.5 0 01-1.5 1.5H9.207a1 1 0 00-.707.293L6 17.586 3.5 15.086A1 1 0 002.793 15H1.5A1.5 1.5 0 010 13.5V5a2 2 0 012-2h2zm6 9a1 1 0 100-2 1 1 0 000 2z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
+                @if (auth()->user()->getVisibilitySetting('show_bills_count'))
+                    <div class="bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-purple-100 text-sm font-medium">{{ __('bills.Total Bills') }}</p>
+                                <p class="text-2xl font-bold">{{ $bills->total() }}</p>
+                                <p class="text-purple-100 text-xs">
+                                    {{ $selectedDate ? __('bills.Today') : __('bills.All time') }}</p>
+                            </div>
+                            <div class="bg-purple-500 bg-opacity-30 rounded-full p-3">
+                                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M4 5a2 2 0 012-2v1a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 012 2v6.5a1.5 1.5 0 01-1.5 1.5H9.207a1 1 0 00-.707.293L6 17.586 3.5 15.086A1 1 0 002.793 15H1.5A1.5 1.5 0 010 13.5V5a2 2 0 012-2h2zm6 9a1 1 0 100-2 1 1 0 000 2z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
 
@@ -153,8 +159,12 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {{ __('bills.Bill Info') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {{ __('messages.Amount') }}</th>
+                            @if (auth()->user()->getVisibilitySetting('show_bill_total_value') ||
+                                    auth()->user()->getVisibilitySetting('show_bill_profit_column'))
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {{ __('messages.Amount') }}</th>
+                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {{ __('bills.Note') }}</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -194,14 +204,21 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-semibold text-gray-900">
-                                        ₪{{ number_format($bill->total_price, 2) }}</div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ __('bills.Profit') }}: <span
-                                            class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($profit, 2) }}</span>
-                                    </div>
-                                </td>
+                                @if (auth()->user()->getVisibilitySetting('show_bill_total_value') ||
+                                        auth()->user()->getVisibilitySetting('show_bill_profit_column'))
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if (auth()->user()->getVisibilitySetting('show_bill_total_value'))
+                                            <div class="text-sm font-semibold text-gray-900">
+                                                ₪{{ number_format($bill->total_price, 2) }}</div>
+                                        @endif
+                                        @if (auth()->user()->getVisibilitySetting('show_bill_profit_column'))
+                                            <div class="text-sm text-gray-500">
+                                                {{ __('bills.Profit') }}: <span
+                                                    class="{{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($profit, 2) }}</span>
+                                            </div>
+                                        @endif
+                                    </td>
+                                @endif
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ $bill->note }}">
                                         {{ $bill->note ?: __('bills.No note') }}

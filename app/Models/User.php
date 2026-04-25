@@ -37,6 +37,7 @@ class User extends Authenticatable
         'account_type',
         'temp_period_days',
         'temp_expires_at',
+        'visibility_settings',
     ];
 
 
@@ -91,7 +92,17 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'temp_expires_at' => 'date',
+            'visibility_settings' => 'array',
         ];
+    }
+
+    /**
+     * Get a visibility setting with a default of true (show by default)
+     */
+    public function getVisibilitySetting(string $key): bool
+    {
+        $settings = $this->visibility_settings ?? [];
+        return isset($settings[$key]) ? (bool) $settings[$key] : true;
     }
 
     /**

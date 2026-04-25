@@ -9,7 +9,18 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        return view('settings.index');
+        $user = Auth::user();
+
+        // If shop owner, load their employee users for the visibility management section
+        $employeeUsers = collect();
+        if (in_array($user->role, ['shop_owner', 'restaurant', 'merchant'])) {
+            $employeeUsers = \App\Models\User::where('role', 'employee')
+                ->where('shop_owner_id', $user->id)
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view('settings.index', compact('employeeUsers'));
     }
 
     public function updateProductSettings(Request $request)
@@ -33,6 +44,63 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('success', __('messages.Product deactivation settings updated successfully.'));
+    }
+
+    public function updateVisibilitySettings(Request $request)
+    {
+        $keys = [
+            'show_bills_total_sales',
+            'show_bills_total_profit',
+            'show_bills_count',
+            'show_bill_total_value',
+            'show_bill_profit_column',
+            'show_dashboard_total_sales',
+            'show_product_cost_price',
+        ];
+
+        $settings = [];
+        foreach ($keys as $key) {
+            $settings[$key] = $request->boolean($key, false);
+        }
+
+        $user = Auth::user();
+        $user->update(['visibility_settings' => $settings]);
+
+        return back()->with('success', __('messages.Visibility settings updated successfully.'));
+    }
+
+    public function updateEmployeeVisibilitySettings(Request $request, \App\Models\User $user)
+    {
+        $owner = Auth::user();
+
+        // Only shop owners (and admins) can update an employee's visibility settings
+        if (!in_array($owner->role, ['admin', 'shop_owner', 'restaurant', 'merchant'])) {
+            abort(403, __('messages.Unauthorized action.'));
+        }
+
+        // Ensure the target user is an employee that belongs to this owner
+        if ($user->role !== 'employee' || $user->shop_owner_id !== $owner->id) {
+            abort(403, __('messages.Unauthorized action.'));
+        }
+
+        $keys = [
+            'show_bills_total_sales',
+            'show_bills_total_profit',
+            'show_bills_count',
+            'show_bill_total_value',
+            'show_bill_profit_column',
+            'show_dashboard_total_sales',
+            'show_product_cost_price',
+        ];
+
+        $settings = [];
+        foreach ($keys as $key) {
+            $settings[$key] = $request->boolean($key, false);
+        }
+
+        $user->update(['visibility_settings' => $settings]);
+
+        return back()->with('success', __('messages.Employee visibility settings updated successfully.'));
     }
 
     public function updateImageLimit(Request $request)

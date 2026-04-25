@@ -210,6 +210,328 @@
                 </form>
             </div>
 
+            <!-- Visibility Settings -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+                <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-purple-50">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-violet-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        {{ __('messages.Visibility Settings') }}
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">
+                        {{ __('messages.Control which financial numbers are visible on different pages. These settings apply only to your account.') }}
+                    </p>
+                </div>
+
+                <form action="{{ route('settings.update-visibility') }}" method="POST" class="p-6">
+                    @csrf
+
+                    @php
+                        $vs = auth()->user();
+                    @endphp
+
+                    <div class="space-y-6">
+                        <!-- Bills Index Section -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {{ __('messages.Bills Page') }}
+                            </h4>
+                            <div class="space-y-3 pl-6">
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Total Sales summary box') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The green box showing total sales amount in Bills page') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_bills_total_sales"
+                                            id="show_bills_total_sales" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_bills_total_sales') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Total Profit summary box') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The blue box showing total profit amount in Bills page') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_bills_total_profit"
+                                            id="show_bills_total_profit" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_bills_total_profit') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Number of Bills summary box') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The purple box showing total bill count in Bills page') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_bills_count" id="show_bills_count"
+                                            class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_bills_count') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Bill total value column') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The total amount of each bill shown in the bills table') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_bill_total_value"
+                                            id="show_bill_total_value" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_bill_total_value') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Bill profit column') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The profit of each bill shown in the bills table') }}</p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_bill_profit_column"
+                                            id="show_bill_profit_column" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_bill_profit_column') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-100">
+
+                        <!-- Dashboard Section -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                {{ __('messages.Dashboard / Sales Point') }}
+                            </h4>
+                            <div class="space-y-3 pl-6">
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Total sales today') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The today\'s sales total shown in the header and performance panel') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_dashboard_total_sales"
+                                            id="show_dashboard_total_sales" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_dashboard_total_sales') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-100">
+
+                        <!-- Products Section -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                {{ __('messages.Products Page') }}
+                            </h4>
+                            <div class="space-y-3 pl-6">
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <div>
+                                        <span
+                                            class="text-sm font-medium text-gray-700">{{ __('messages.Cost price on product cards') }}</span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ __('messages.The orange cost price box shown on each product card') }}
+                                        </p>
+                                    </div>
+                                    <div class="relative ml-4 flex-shrink-0">
+                                        <input type="checkbox" name="show_product_cost_price"
+                                            id="show_product_cost_price" class="sr-only peer"
+                                            {{ $vs->getVisibilitySetting('show_product_cost_price') ? 'checked' : '' }}>
+                                        <div
+                                            class="w-11 h-6 bg-gray-200 peer-checked:bg-violet-600 rounded-full transition-colors duration-200 peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-1">
+                                        </div>
+                                        <div
+                                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button type="submit"
+                            class="bg-violet-600 hover:bg-violet-700 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center shadow-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            {{ __('messages.Save Visibility Settings') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Employee Visibility Settings (shop owners only) -->
+            @if (in_array(auth()->user()->role, ['shop_owner', 'restaurant', 'merchant']) && $employeeUsers->isNotEmpty())
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-amber-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {{ __('messages.Employee Visibility Settings') }}
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            {{ __('messages.Control which financial numbers each employee account can see. Settings apply per employee.') }}
+                        </p>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        @foreach ($employeeUsers as $emp)
+                            <div class="border border-gray-200 rounded-xl overflow-hidden">
+                                <!-- Employee Header -->
+                                <div
+                                    class="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                            {{ mb_substr($emp->name, 0, 1) }}
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-800">{{ $emp->name }}</p>
+                                            <p class="text-xs text-gray-500">{{ $emp->email }}</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                                        {{ __('messages.Employee') }}
+                                    </span>
+                                </div>
+
+                                <!-- Toggles Form -->
+                                <form action="{{ route('settings.employee-visibility', $emp->id) }}" method="POST"
+                                    class="p-5">
+                                    @csrf
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        @php
+                                            $empSettings = [
+                                                'show_bills_total_sales' => __('messages.Total Sales summary box'),
+                                                'show_bills_total_profit' => __('messages.Total Profit summary box'),
+                                                'show_bills_count' => __('messages.Number of Bills summary box'),
+                                                'show_bill_total_value' => __('messages.Bill total value column'),
+                                                'show_bill_profit_column' => __('messages.Bill profit column'),
+                                                'show_dashboard_total_sales' => __('messages.Total sales today'),
+                                                'show_product_cost_price' => __('messages.Cost price on product cards'),
+                                            ];
+                                        @endphp
+
+                                        @foreach ($empSettings as $settingKey => $settingLabel)
+                                            <label
+                                                class="flex items-center justify-between cursor-pointer bg-gray-50 rounded-lg px-3 py-2.5">
+                                                <span class="text-sm text-gray-700">{{ $settingLabel }}</span>
+                                                <div class="relative ml-3 flex-shrink-0">
+                                                    <input type="checkbox" name="{{ $settingKey }}"
+                                                        class="sr-only peer"
+                                                        {{ $emp->getVisibilitySetting($settingKey) ? 'checked' : '' }}>
+                                                    <div
+                                                        class="w-11 h-6 bg-gray-200 peer-checked:bg-amber-500 rounded-full transition-colors duration-200">
+                                                    </div>
+                                                    <div
+                                                        class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5">
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="mt-4 flex justify-end">
+                                        <button type="submit"
+                                            class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium py-2 px-5 rounded-lg transition-colors flex items-center shadow-sm">
+                                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            {{ __('messages.Save') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <!-- Current Settings Summary -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">

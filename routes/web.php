@@ -184,7 +184,11 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
             Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
             Route::post('/settings/product-settings', [SettingsController::class, 'updateProductSettings'])->name('settings.update-product');
             Route::post('/settings/image-limit', [SettingsController::class, 'updateImageLimit'])->name('settings.update-image-limit');
+            Route::post('/settings/visibility', [SettingsController::class, 'updateVisibilitySettings'])->name('settings.update-visibility');
         });
+
+        // Shop owners can manage visibility settings for their employee accounts (no manage_settings permission required)
+        Route::post('/settings/employees/{user}/visibility', [SettingsController::class, 'updateEmployeeVisibilitySettings'])->name('settings.employee-visibility');
 
         Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
         Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
