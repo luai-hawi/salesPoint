@@ -4537,7 +4537,6 @@
     </script>
 
 
-    </script>
-    @endif
+
 
 </x-app-layout>
