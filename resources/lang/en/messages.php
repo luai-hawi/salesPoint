@@ -2126,7 +2126,7 @@ return [
     'Generate Schedule' => 'Generate Schedule',
     'Skip (No Installment Plan)' => 'Skip (No Installment Plan)',
     'Save Payment Only' => 'Save Payment Only',
-    'Please enter the amount paid' => 'Please enter the amount paid',,
+    'Please enter the amount paid' => 'Please enter the amount paid',
     'Save Plan' => 'Save Plan',
     'Due Date' => 'Due Date',
     'Paid Amount' => 'Paid Amount',
