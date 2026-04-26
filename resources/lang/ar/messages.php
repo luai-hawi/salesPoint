@@ -2303,6 +2303,7 @@ return [
     'Skip (No Installment Plan)' => 'تخطي (بدون خطة أقساط)',
     'Save Payment Only' => 'حفظ الدفعة فقط',
     'Please enter the amount paid' => 'يرجى إدخال المبلغ المدفوع',
+    'Please enter a valid amount' => 'يرجى إدخال مبلغ صالح',
     'Save Plan' => 'حفظ الخطة',
     'Due Date' => 'تاريخ الاستحقاق',
     'Paid Amount' => 'المبلغ المدفوع',
