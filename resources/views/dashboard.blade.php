@@ -1154,6 +1154,7 @@
 
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
+                        window.currentBillId = currentBillId;
 
                         // Update UI after successful bill creation
                         await updateUIAfterBillCreation(result.bill);
@@ -2672,14 +2673,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3054,6 +3055,7 @@
 
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
+                        window.currentBillId = currentBillId;
                     }
 
                     showNotification('{{ __('messages.Bill saved successfully!') }}', 'success');
@@ -3537,9 +3539,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>
@@ -4076,6 +4078,7 @@
         // Set current bill ID
         window.setBillId = function(billId) {
             currentBillId = billId;
+            window.currentBillId = billId;
         };
 
 
@@ -4532,4 +4535,534 @@
             }
         });
     </script>
+
+    {{-- ═══════════════════════════════════════════════════════════════════════
+     INSTALLMENT PLAN MODAL (appears after a bill with customer is saved)
+═══════════════════════════════════════════════════════════════════════ --}}
+    @php
+        $canCreateInstallments =
+            auth()->user()->role !== 'employee' || auth()->user()->hasPermission('create_installments');
+    @endphp
+
+    @if ($canCreateInstallments)
+        <div id="installment-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4"
+            dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+            <div class="absolute inset-0 bg-black/60"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">{{ __('messages.Set Up Installment Plan') }}</h3>
+                        <p class="text-sm text-gray-500 mt-0.5" id="im-bill-ref"></p>
+                    </div>
+                    <button id="im-skip-btn"
+                        class="text-gray-400 hover:text-gray-600 text-2xl leading-none px-2">&times;</button>
+                </div>
+
+                {{-- Step 1: How much did the customer pay? --}}
+                <div id="im-step1" class="p-6 space-y-5">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <p class="text-sm text-blue-800 font-medium">
+                            {{ __('messages.How much did the customer pay today?') }}</p>
+                        <div class="mt-3 flex items-center gap-3">
+                            <span class="text-sm text-gray-600">{{ __('messages.Bill Total') }}:</span>
+                            <span id="im-bill-total" class="font-bold text-gray-900 text-lg"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Initial Payment') }}</label>
+                        <input type="number" id="im-initial-payment" step="0.01" min="0" value="0"
+                            class="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            oninput="imUpdateRemaining()">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                        <span class="text-sm text-gray-600">{{ __('messages.Remaining Amount') }}
+                            ({{ __('messages.Deferred') }}):</span>
+                        <span id="im-remaining" class="font-bold text-red-600 text-lg">0.00</span>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Plan Note') }}</label>
+                        <textarea id="im-note" rows="2"
+                            class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            placeholder="{{ __('messages.Optional note') }}"></textarea>
+                    </div>
+                    <div class="flex flex-wrap justify-between gap-3">
+                        <button id="im-skip-btn2"
+                            class="border border-gray-300 hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                            {{ __('messages.Skip (No Installment Plan)') }}
+                        </button>
+                        <div class="flex gap-2">
+                            <button id="im-pay-only-btn"
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                {{ __('messages.Save Payment Only') }}
+                            </button>
+                            <button id="im-next-btn"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                                {{ __('messages.Set Up Schedule') }} →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Step 2: Schedule builder --}}
+                <div id="im-step2" class="p-6 space-y-5 hidden">
+                    <div class="flex items-center gap-2 mb-1">
+                        <button onclick="imBackToStep1()"
+                            class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1">
+                            ← {{ __('messages.Back') }}
+                        </button>
+                        <h4 class="font-semibold text-gray-800">{{ __('messages.Schedule Builder') }}</h4>
+                    </div>
+
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex flex-wrap gap-4 text-sm">
+                        <span>{{ __('messages.Total Debt') }}: <strong id="im2-total"></strong></span>
+                        <span>{{ __('messages.Initial Payment') }}: <strong id="im2-initial"></strong></span>
+                        <span>{{ __('messages.Remaining Amount') }}: <strong id="im2-remaining"
+                                class="text-red-600"></strong></span>
+                    </div>
+
+                    {{-- Auto-generate bar --}}
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-wrap items-end gap-3">
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">{{ __('messages.Frequency') }}</label>
+                            <select id="im-gen-freq" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                                <option value="monthly">{{ __('messages.Every Month') }}</option>
+                                <option value="weekly">{{ __('messages.Every Week') }}</option>
+                                <option value="custom">{{ __('messages.Every N Days') }}</option>
+                            </select>
+                        </div>
+                        <div id="im-gen-days-wrap" class="hidden">
+                            <label class="text-xs text-gray-500 block mb-1">{{ __('messages.Days') }}</label>
+                            <input type="number" id="im-gen-days" value="30" min="1"
+                                class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-20">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">{{ __('messages.Count') }}</label>
+                            <input type="number" id="im-gen-count" value="3" min="1" max="60"
+                                class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-20">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">{{ __('messages.Start Date') }}</label>
+                            <input type="date" id="im-gen-start"
+                                class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                        </div>
+                        <button type="button" onclick="imGenerateSchedule()"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                            {{ __('messages.Generate Schedule') }}
+                        </button>
+                        <button type="button" onclick="imAddRow()"
+                            class="border border-indigo-300 text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                            + {{ __('messages.Add Installment Row') }}
+                        </button>
+                    </div>
+
+                    <div id="im-rows-container" class="space-y-2 max-h-52 overflow-y-auto">
+                        {{-- rows injected by JS --}}
+                    </div>
+
+                    <div class="flex justify-between gap-3 pt-2">
+                        <button id="im-skip-btn3"
+                            class="border border-gray-300 hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                            {{ __('messages.Skip (No Installment Plan)') }}
+                        </button>
+                        <button id="im-save-btn"
+                            class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            {{ __('messages.Save Plan') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function() {
+                // State
+                let imBillId = null;
+                let imCustomerId = null;
+                let imBillTotalValue = 0;
+                let imRowIdx = 0;
+                let imResolve = null;
+
+                // ── Helpers ───────────────────────────────────────────────────────────
+                function imGetActiveCustomerId() {
+                    // Restaurant: <select id="customer_id">
+                    const sel = document.getElementById('customer_id');
+                    if (sel && sel.value) return sel.value;
+                    // Non-restaurant: hidden <input id="customer_id_hidden">
+                    const hidden = document.getElementById('customer_id_hidden');
+                    if (hidden && hidden.value) return hidden.value;
+                    return null;
+                }
+
+                function imGetBillTotal() {
+                    try {
+                        // Collect from product rows
+                        let total = 0;
+                        document.querySelectorAll('.product-row').forEach(row => {
+                            const qty = parseFloat(row.querySelector('.quantity')?.value || 0);
+                            const price = parseFloat(row.querySelector('.selling-price')?.value || 0);
+                            const discountType = row.querySelector('.discount-type')?.value || 'total';
+                            const discountVal = parseFloat(row.querySelector('.discount')?.value || 0);
+                            let disc = discountType === 'per-unit' ? discountVal * qty : discountVal;
+                            total += Math.max(0, price * qty - disc);
+                        });
+                        return total;
+                    } catch (e) {
+                        return 0;
+                    }
+                }
+
+                function imUpdateRemaining() {
+                    const initial = parseFloat(document.getElementById('im-initial-payment').value) || 0;
+                    const remaining = Math.max(0, imBillTotalValue - initial);
+                    document.getElementById('im-remaining').textContent = remaining.toFixed(2);
+                }
+                window.imUpdateRemaining = imUpdateRemaining;
+
+                function imBackToStep1() {
+                    document.getElementById('im-step1').classList.remove('hidden');
+                    document.getElementById('im-step2').classList.add('hidden');
+                }
+                window.imBackToStep1 = imBackToStep1;
+
+                // ── Show / Hide ───────────────────────────────────────────────────────
+                function showInstallmentModal(billId, customerId, billTotal) {
+                    return new Promise(resolve => {
+                        imResolve = resolve;
+                        imBillId = billId;
+                        imCustomerId = customerId;
+                        imBillTotalValue = billTotal;
+                        imRowIdx = 0;
+
+                        document.getElementById('im-bill-ref').textContent = '{{ __('messages.Bill') }} #' +
+                            billId;
+                        document.getElementById('im-bill-total').textContent = billTotal.toFixed(2);
+                        document.getElementById('im-initial-payment').value = '0';
+                        document.getElementById('im-remaining').textContent = billTotal.toFixed(2);
+                        document.getElementById('im-note').value = '';
+                        document.getElementById('im-rows-container').innerHTML = '';
+                        document.getElementById('im-step1').classList.remove('hidden');
+                        document.getElementById('im-step2').classList.add('hidden');
+                        // Set tomorrow as default start date
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 30);
+                        document.getElementById('im-gen-start').value = tomorrow.toISOString().split('T')[0];
+                        document.getElementById('installment-modal').classList.remove('hidden');
+                    });
+                }
+
+                function closeInstallmentModal() {
+                    document.getElementById('installment-modal').classList.add('hidden');
+                    if (imResolve) {
+                        imResolve(false);
+                        imResolve = null;
+                    }
+                }
+
+                // ── Step nav ─────────────────────────────────────────────────────────
+                document.getElementById('im-next-btn').addEventListener('click', function() {
+                    const initial = parseFloat(document.getElementById('im-initial-payment').value) || 0;
+                    const remaining = Math.max(0, imBillTotalValue - initial);
+                    if (remaining <= 0) {
+                        // Fully paid — just save as initial payment record without schedule
+                        imSavePlanFullyPaid(initial);
+                        return;
+                    }
+                    // Go to step 2
+                    document.getElementById('im2-total').textContent = imBillTotalValue.toFixed(2);
+                    document.getElementById('im2-initial').textContent = initial.toFixed(2);
+                    document.getElementById('im2-remaining').textContent = remaining.toFixed(2);
+                    document.getElementById('im-step1').classList.add('hidden');
+                    document.getElementById('im-step2').classList.remove('hidden');
+                    imUpdateLastRow();
+                });
+
+                // Skip buttons
+                ['im-skip-btn', 'im-skip-btn2', 'im-skip-btn3'].forEach(id => {
+                    document.getElementById(id)?.addEventListener('click', closeInstallmentModal);
+                });
+
+                // Save payment only (no schedule)
+                document.getElementById('im-pay-only-btn')?.addEventListener('click', function() {
+                    const initial = parseFloat(document.getElementById('im-initial-payment').value) || 0;
+                    if (initial <= 0) {
+                        alert('{{ __('messages.Please enter the amount paid') }}');
+                        return;
+                    }
+                    imSavePlanFullyPaid(initial);
+                });
+
+                // Save button
+                document.getElementById('im-save-btn').addEventListener('click', imSavePlan);
+
+                // Frequency change
+                document.getElementById('im-gen-freq').addEventListener('change', function() {
+                    document.getElementById('im-gen-days-wrap').classList.toggle('hidden', this.value !== 'custom');
+                });
+
+                // ── Row helpers ───────────────────────────────────────────────────────
+                function imAddRow(date, amount) {
+                    imRowIdx++;
+                    const container = document.getElementById('im-rows-container');
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2';
+                    div.id = 'imr-' + imRowIdx;
+                    div.innerHTML = `
+            <input type="date" id="imr-date-${imRowIdx}" value="${date||''}"
+                class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[130px] focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            <input type="number" step="0.01" id="imr-amount-${imRowIdx}" value="${amount||''}"
+                placeholder="{{ __('messages.Amount') }}"
+                oninput="imUpdateLastRow()"
+                class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-28 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            <button type="button" onclick="document.getElementById('imr-${imRowIdx}').remove(); imUpdateLastRow();"
+                class="text-red-400 hover:text-red-600 text-xl leading-none">&times;</button>
+        `;
+                    container.appendChild(div);
+                    // Only auto-recalculate last row when no explicit amount was given (manual "Add Row")
+                    if (!amount) imUpdateLastRow();
+                }
+                window.imAddRow = imAddRow;
+
+                function imUpdateLastRow() {
+                    const amountInputs = document.querySelectorAll('#im-rows-container input[type="number"]');
+                    if (amountInputs.length === 0) return;
+                    const initial = parseFloat(document.getElementById('im-initial-payment')?.value) || 0;
+                    let sumPrev = 0;
+                    amountInputs.forEach((r, i) => {
+                        if (i < amountInputs.length - 1) sumPrev += parseFloat(r.value) || 0;
+                    });
+                    const remaining = Math.max(0, imBillTotalValue - initial - sumPrev);
+                    amountInputs[amountInputs.length - 1].value = remaining > 0 ? remaining.toFixed(2) : '';
+                }
+                window.imUpdateLastRow = imUpdateLastRow;
+
+                function imGenerateSchedule() {
+                    document.getElementById('im-rows-container').innerHTML = '';
+                    imRowIdx = 0;
+                    const freq = document.getElementById('im-gen-freq').value;
+                    const count = parseInt(document.getElementById('im-gen-count').value) || 1;
+                    const start = document.getElementById('im-gen-start').value;
+                    const days = parseInt(document.getElementById('im-gen-days')?.value) || 30;
+                    if (!start) return;
+
+                    // Split remaining into whole numbers; remainder goes into the last payment
+                    const initial = parseFloat(document.getElementById('im-initial-payment')?.value) || 0;
+                    const remaining = Math.max(0, imBillTotalValue - initial);
+                    const perUnit = Math.floor(remaining / count);
+                    const lastUnit = remaining - perUnit * (count - 1);
+
+                    const base = new Date(start);
+                    for (let i = 0; i < count; i++) {
+                        const d = new Date(base);
+                        if (freq === 'monthly') d.setMonth(d.getMonth() + i);
+                        else if (freq === 'weekly') d.setDate(d.getDate() + i * 7);
+                        else d.setDate(d.getDate() + i * days);
+                        const amount = (i === count - 1) ? lastUnit : perUnit;
+                        imAddRow(d.toISOString().split('T')[0], amount > 0 ? amount.toFixed(2) : '');
+                    }
+                }
+                window.imGenerateSchedule = imGenerateSchedule;
+
+                // ── Save plan ─────────────────────────────────────────────────────────
+                function imCollectPayments() {
+                    const rows = document.querySelectorAll('#im-rows-container > div');
+                    const payments = [];
+                    rows.forEach((row, i) => {
+                        const dateInp = row.querySelector('input[type="date"]');
+                        const amountInp = row.querySelector('input[type="number"]');
+                        if (dateInp && amountInp && dateInp.value && amountInp.value) {
+                            payments.push({
+                                due_date: dateInp.value,
+                                amount: amountInp.value
+                            });
+                        }
+                    });
+                    return payments;
+                }
+
+                function imSavePlanFullyPaid(initial) {
+                    // Save initial payment only — no installment schedule
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const payload = {
+                        bill_id: imBillId,
+                        customer_id: imCustomerId,
+                        total_amount: imBillTotalValue,
+                        initial_payment: initial,
+                        note: document.getElementById('im-note').value,
+                        payments: [],
+                    };
+                    const btn = document.getElementById('im-pay-only-btn');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = '...';
+                    }
+                    fetch('/installments/from-bill', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.textContent = '{{ __('messages.Save Payment Only') }}';
+                            }
+                            if (d.success) {
+                                document.getElementById('installment-modal').classList.add('hidden');
+                                document.getElementById('im-post-save-banner')?.remove();
+                                if (imResolve) {
+                                    imResolve(true);
+                                    imResolve = null;
+                                }
+                            } else {
+                                alert(d.message || d.error || '{{ __('messages.Failed to save plan') }}');
+                            }
+                        })
+                        .catch(() => {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.textContent = '{{ __('messages.Save Payment Only') }}';
+                            }
+                            alert('{{ __('messages.Failed to save plan') }}');
+                        });
+                }
+
+                function imSavePlan() {
+                    const initial = parseFloat(document.getElementById('im-initial-payment').value) || 0;
+                    const payments = imCollectPayments();
+                    if (payments.length === 0) {
+                        alert('{{ __('messages.Please add at least one payment row') }}');
+                        return;
+                    }
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const payload = {
+                        bill_id: imBillId,
+                        customer_id: imCustomerId,
+                        total_amount: imBillTotalValue,
+                        initial_payment: initial,
+                        note: document.getElementById('im-note').value,
+                        payments: payments,
+                    };
+                    const btn = document.getElementById('im-save-btn');
+                    btn.disabled = true;
+                    btn.textContent = '...';
+                    fetch('/installments/from-bill', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        })
+                        .then(r => r.json())
+                        .then(d => {
+                            btn.disabled = false;
+                            btn.innerHTML =
+                                `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> {{ __('messages.Save Plan') }}`;
+                            if (d.success) {
+                                document.getElementById('installment-modal').classList.add('hidden');
+                                if (imResolve) {
+                                    imResolve(true);
+                                    imResolve = null;
+                                }
+                            } else {
+                                alert(d.message || d.error || '{{ __('messages.Failed to save plan') }}');
+                            }
+                        })
+                        .catch(() => {
+                            btn.disabled = false;
+                            alert('{{ __('messages.Failed to save plan') }}');
+                        });
+                }
+
+                // ── Post-save banner ──────────────────────────────────────────────────
+                @if ($canCreateInstallments)
+                    let _imBannerBillId = null;
+                    let _imBannerTotal = 0;
+                    let _imBannerCustId = null;
+
+                    function imShowBanner(billId, customerId, billTotal) {
+                        _imBannerBillId = billId;
+                        _imBannerTotal = billTotal;
+                        _imBannerCustId = customerId;
+
+                        let banner = document.getElementById('im-post-save-banner');
+                        if (!banner) {
+                            banner = document.createElement('div');
+                            banner.id = 'im-post-save-banner';
+                            document.body.appendChild(banner);
+                        }
+                        banner.className =
+                            'fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 bg-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl';
+                        banner.innerHTML = `
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <span class="text-sm font-medium">{{ __('messages.Bill') }} #${billId} &mdash; {{ __('messages.Set Up Installment Plan') }}?</span>
+            <button onclick="imOpenFromBanner()" class="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">
+                {{ __('messages.Set Up Schedule') }}
+            </button>
+            <button onclick="document.getElementById('im-post-save-banner').remove()" class="text-white/70 hover:text-white text-xl leading-none ml-1">&times;</button>
+        `;
+                    }
+
+                    window.imOpenFromBanner = function() {
+                        if (!_imBannerBillId) return;
+                        document.getElementById('im-post-save-banner')?.remove();
+                        showInstallmentModal(_imBannerBillId, _imBannerCustId, _imBannerTotal);
+                    };
+
+                    // Hook into submitBillForm — capture total BEFORE form resets
+                    const _origSubmitBillForm = window.submitBillForm;
+                    if (typeof _origSubmitBillForm === 'function') {
+                        window.submitBillForm = async function() {
+                            const customerId = imGetActiveCustomerId();
+                            const billTotal = customerId ? imGetBillTotal() : 0;
+                            const billIdBefore = window.currentBillId;
+
+                            await _origSubmitBillForm.call(this);
+
+                            if (customerId && window.currentBillId && window.currentBillId !== billIdBefore) {
+                                imShowBanner(window.currentBillId, customerId, billTotal);
+                            }
+                        };
+                    }
+
+                    // Hook into saveBillBeforePrint — capture total BEFORE form resets
+                    const _origSaveBillBeforePrint = window.saveBillBeforePrint;
+                    if (typeof _origSaveBillBeforePrint === 'function') {
+                        window.saveBillBeforePrint = async function() {
+                            const customerId = imGetActiveCustomerId();
+                            const billTotal = customerId ? imGetBillTotal() : 0;
+                            const billIdBefore = window.currentBillId;
+
+                            const result = await _origSaveBillBeforePrint.call(this);
+
+                            if (result && customerId && window.currentBillId && window.currentBillId !==
+                                billIdBefore) {
+                                imShowBanner(window.currentBillId, customerId, billTotal);
+                            }
+                            return result;
+                        };
+                    }
+                @endif
+
+            })();
+        </script>
+    @endif
+
 </x-app-layout>

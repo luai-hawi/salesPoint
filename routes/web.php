@@ -23,6 +23,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\IslamicSalesController;
 use App\Http\Controllers\CapitalController;
 use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\InstallmentController;
 
 
 
@@ -638,6 +639,57 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         Route::get('/api/customers/search', [PaymentReceiptController::class, 'getCustomers'])->name('api.customers.search');
         Route::get('/api/employees/search', [PaymentReceiptController::class, 'getEmployees'])->name('api.employees.search');
         Route::get('/api/suppliers/search-payment', [PaymentReceiptController::class, 'getSuppliers'])->name('api.suppliers.search-payment');
+
+        // ─── Installments / Deferred Payments ────────────────────────────────
+        // Due-count endpoint (all authenticated users with access)
+        Route::get('/installments/due-count', [InstallmentController::class, 'dueCount'])->name('installments.due-count');
+
+        // View installments page
+        Route::get('/installments', [InstallmentController::class, 'index'])
+            ->name('installments.index')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':view_installments');
+
+        // Create standalone plan
+        Route::post('/installments', [InstallmentController::class, 'store'])
+            ->name('installments.store')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+
+        // Create plan from bill (AJAX)
+        Route::post('/installments/from-bill', [InstallmentController::class, 'storeFromBill'])
+            ->name('installments.from-bill')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+
+        // Dismiss all today
+        Route::post('/installments/dismiss-all-today', [InstallmentController::class, 'dismissAllToday'])
+            ->name('installments.dismiss-all');
+
+        // Update plan meta
+        Route::put('/installments/{plan}', [InstallmentController::class, 'update'])
+            ->name('installments.update')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+
+        // Delete plan
+        Route::delete('/installments/{plan}', [InstallmentController::class, 'destroy'])
+            ->name('installments.destroy')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
+
+        // Mark payment as paid
+        Route::post('/installments/payments/{payment}/mark-paid', [InstallmentController::class, 'markPaid'])
+            ->name('installments.mark-paid');
+
+        // Dismiss single payment for today
+        Route::post('/installments/payments/{payment}/dismiss', [InstallmentController::class, 'dismissToday'])
+            ->name('installments.dismiss');
+
+        // Update single payment (date/amount)
+        Route::put('/installments/payments/{payment}', [InstallmentController::class, 'updatePayment'])
+            ->name('installments.payments.update')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+
+        // Delete single payment row
+        Route::delete('/installments/payments/{payment}', [InstallmentController::class, 'destroyPayment'])
+            ->name('installments.payments.destroy')
+            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
     });
 
 // ------------------- ISLAMIC SALES PWA -------------------

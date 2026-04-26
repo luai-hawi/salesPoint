@@ -783,7 +783,7 @@ class ShopOwnerController extends Controller
             'password' => 'nullable|string|min:8',
             'phone_number' => 'nullable|string|max:20',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:view_products,create_products,edit_products,delete_products,view_bills,create_bills,edit_bills,delete_bills,view_customers,create_customers,edit_customers,delete_customers,view_suppliers,create_suppliers,edit_suppliers,delete_suppliers,view_purchase_bills,create_purchase_bills,edit_purchase_bills,delete_purchase_bills,view_tags,create_tags,edit_tags,delete_tags,view_expenses,create_expenses,edit_expenses,delete_expenses,manage_settings,view_financial,manage_employees,manage_payments_receipts',
+            'permissions.*' => 'string|in:view_products,create_products,edit_products,delete_products,view_bills,create_bills,edit_bills,delete_bills,view_customers,create_customers,edit_customers,delete_customers,view_suppliers,create_suppliers,edit_suppliers,delete_suppliers,view_purchase_bills,create_purchase_bills,edit_purchase_bills,delete_purchase_bills,view_tags,create_tags,edit_tags,delete_tags,view_expenses,create_expenses,edit_expenses,delete_expenses,manage_settings,view_financial,manage_employees,manage_payments_receipts,view_installments,create_installments,dismiss_installment_notifications,delete_installments',
         ];
 
         // If user is employee, don't require shop_owner_id and force it to their owner

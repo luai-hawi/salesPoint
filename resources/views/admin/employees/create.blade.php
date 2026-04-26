@@ -227,6 +227,35 @@
                                     <span
                                         class="ml-2 text-sm text-gray-700">{{ __('messages.Manage Expenses') }}</span>
                                 </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="view_installments"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span
+                                        class="ml-2 text-sm text-gray-700">{{ __('messages.View Installments') }}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="create_installments"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span
+                                        class="ml-2 text-sm text-gray-700">{{ __('messages.Create Installments') }}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]"
+                                        value="dismiss_installment_notifications"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span
+                                        class="ml-2 text-sm text-gray-700">{{ __('messages.Dismiss Installment Notifications') }}</span>
+                                </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="delete_installments"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span
+                                        class="ml-2 text-sm text-gray-700">{{ __('messages.Delete Installments') }}</span>
+                                </label>
                             </div>
                         </div>
                         @error('permissions')

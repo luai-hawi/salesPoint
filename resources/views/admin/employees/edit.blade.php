@@ -413,6 +413,43 @@
                                     </label>
                                 </div>
                             </div>
+
+                            <!-- Installments Permissions -->
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">
+                                    {{ __('messages.Installment Plans') }}</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="view_installments"
+                                            {{ in_array('view_installments', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span
+                                            class="ml-2 text-sm text-gray-700">{{ __('messages.View Installments') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="create_installments"
+                                            {{ in_array('create_installments', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span
+                                            class="ml-2 text-sm text-gray-700">{{ __('messages.Create Installments') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]"
+                                            value="dismiss_installment_notifications"
+                                            {{ in_array('dismiss_installment_notifications', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span
+                                            class="ml-2 text-sm text-gray-700">{{ __('messages.Dismiss Installment Notifications') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="delete_installments"
+                                            {{ in_array('delete_installments', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span
+                                            class="ml-2 text-sm text-gray-700">{{ __('messages.Delete Installments') }}</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         @error('permissions')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

@@ -94,4 +94,8 @@ return [
 
     // Payments and Receipts
     'Payments and Receipts' => 'Payments and Receipts',
+
+    // Installments
+    'Installments' => 'Installments',
+    'Deferred Payments' => 'Deferred Payments',
 ];

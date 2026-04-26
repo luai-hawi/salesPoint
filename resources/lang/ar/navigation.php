@@ -90,4 +90,8 @@ return [
 
     // Payments and Receipts
     'Payments and Receipts' => 'المدفوعات والمقبوضات',
+
+    // Installments
+    'Installments' => 'الأقساط',
+    'Deferred Payments' => 'المدفوعات المؤجلة',
 ];
