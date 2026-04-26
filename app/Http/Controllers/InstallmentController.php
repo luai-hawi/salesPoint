@@ -212,7 +212,7 @@ class InstallmentController extends Controller
                 ]);
             }
 
-            // Record the initial payment as a CustomerPayment
+            // Record the initial payment as a CustomerPayment and update customer balance
             if ($initialPayment > 0) {
                 CustomerPayment::create([
                     'customer_id' => $data['customer_id'],
@@ -221,6 +221,12 @@ class InstallmentController extends Controller
                     'note'        => __('messages.payment_for_bill_note', ['bill_id' => $data['bill_id']]),
                     'user_id'     => $ownerId,
                 ]);
+
+                $customer = \App\Models\Customer::find($data['customer_id']);
+                if ($customer) {
+                    $customer->balance = ($customer->balance ?? 0) + $initialPayment;
+                    $customer->save();
+                }
             }
         });
 
@@ -297,7 +303,7 @@ class InstallmentController extends Controller
                 'paid_by' => $user->id,
             ]);
 
-            // Record as CustomerPayment if linked to a customer
+            // Record as CustomerPayment if linked to a customer and update balance
             $plan = $payment->plan()->with('customer', 'bill')->first();
             if ($plan && $plan->customer_id) {
                 $billRef = $plan->bill_id ? " (#" . $plan->bill_id . ")" : '';
@@ -308,6 +314,11 @@ class InstallmentController extends Controller
                     'note'        => __('messages.installment_payment_note', ['plan_id' => $plan->id]) . $billRef,
                     'user_id'     => $ownerId,
                 ]);
+
+                if ($plan->customer) {
+                    $plan->customer->balance = ($plan->customer->balance ?? 0) + $payment->amount;
+                    $plan->customer->save();
+                }
             }
         });
 
