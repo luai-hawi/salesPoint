@@ -1,3313 +1,2927 @@
-<?php
-// hisba-analytics.php
-// Drop this file into your Laravel public/ folder or use as a standalone PHP page.
-// No backend calls — all SQL parsing and calculations happen in the browser (JavaScript).
-?>
+<!--
+=======================================================================
+  صفحة: لوحة إحصاءات الحسبة  |  Hisba Statistics Dashboard
+=======================================================================
+  الوصف:
+    صفحة ذاتية الاكتفاء (standalone) — لا تعتمد على أي خادم.
+    يقوم المستخدم برفع ملف SQL dump من قاعدة بيانات الحسبة،
+    فتقرأ الصفحة الملف في المتصفح (FileReader API)، تحلله
+    بالكتل (chunked)، تربط الجداول في الذاكرة، ثم تعرض
+    الإحصاءات الكاملة والرسوم البيانية التفاعلية.
+
+  الجداول المقروءة من ملف SQL:
+    • commons      ← المشتركون (وكلاء المزارعين / الموردون)
+    • traders      ← التجار (المشترون)
+    • products     ← أنواع المنتجات (خضار وفاكهة)
+    • dailybills   ← رأس الفاتورة (تاريخ + مشترك + تاجر)
+    • dailyorders  ← سطور الفاتورة (منتج + كمية + سعر + رسوم)
+
+  التبويبات الرئيسية:
+    🏠 نظرة عامة   — KPIs + مخططات ملخص
+    👥 المشتركون   — ترتيب وإحصاء كل مشترك
+    🔍 تفاصيل مشترك — تحليل كامل + طباعة تقرير
+    🏪 التجار      — ترتيب وإحصاء كل تاجر
+    🔍 تفاصيل تاجر — تحليل كامل
+    📦 المنتجات    — إحصاءات أسعار وكميات
+    🔍 تفاصيل منتج — اتجاهات وتوزيعات
+    📈 اتجاهات الأسعار — منحنى سعر منتج محدد
+    💰 التحليل المالي — عمولات + بلدية + نقل + صافي
+    🧠 إحصاءات متقدمة — أرقام قياسية + موسمية
+
+  التقنيات المستخدمة:
+    • Chart.js 4.4  — الرسوم البيانية
+    • FileReader API — قراءة ملف SQL كتلةً كتلة (4 MB/chunk)
+    • Vanilla JS    — بدون أي إطار عمل
+    • CSS Grid/Flex — تصميم متجاوب (RTL)
+=======================================================================
+-->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حسبة — لوحة التحليلات الشاملة</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
-        rel="stylesheet">
+    <title>لوحة إحصاءات الحسبة</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js">
-    </script>
-
     <style>
-        :root {
-            --bg: #0a0e1a;
-            --bg2: #111827;
-            --bg3: #1a2235;
-            --bg4: #1f2d44;
-            --surface: #243352;
-            --border: #2e3f5c;
-            --border2: #3d5278;
-            --text: #e8edf5;
-            --text2: #8fa3c4;
-            --text3: #5a7299;
-            --gold: #f0b429;
-            --gold2: #e09a10;
-            --teal: #1dd9b0;
-            --teal2: #0fa880;
-            --coral: #f26b5b;
-            --coral2: #d94f3d;
-            --lavender: #9b8ff7;
-            --lavender2: #7a6dd6;
-            --sky: #5bc4f5;
-            --green: #56d48a;
-            --amber: #f5a623;
-            --r: 10px;
-            --r2: 16px;
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            --font: 'IBM Plex Sans Arabic', sans-serif;
-            --mono: 'JetBrains Mono', monospace;
-        }
+        /* =======================================================================
+         *  CSS — لوحة إحصاءات الحسبة
+         *  هيكل الأقسام:
+         *   1.  CSS Reset          — إعادة التعيين العامة
+         *   2.  Upload Screen      — شاشة رفع ملف SQL
+         *   3.  Main App Layout    — التطبيق الرئيسي والهيدر
+         *   4.  Navigation Tabs    — شريط التبويبات
+         *   5.  Tab Content        — حاويات محتوى التبويبات
+         *   6.  KPI Cards          — بطاقات مؤشرات الأداء
+         *   7.  Section Cards      — البطاقات البيضاء المظللة
+         *   8.  Charts             — حاويات Chart.js
+         *   9.  Filter Rows        — صفوف فلاتر التاريخ والبحث
+         *  10.  Buttons            — أزرار التنقل والإجراءات
+         *  11.  Autocomplete       — قائمة الاقتراحات المنسدلة
+         *  12.  Data Tables        — جداول البيانات
+         *  13.  Badges             — شارات ملونة للأرقام
+         *  14.  Scrollbar          — تنسيق شريط التمرير
+         *  15.  Responsive         — استجابة الشاشات الصغيرة
+         *  16.  Print Styles       — أنماط طباعة تقرير المشترك
+         * ======================================================================= */
 
-        *,
-        *::before,
-        *::after {
+        /* ===== 1. CSS RESET — إعادة التعيين العامة ===== */
+        * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
-
         body {
-            font-family: var(--font);
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-            font-size: 14px;
-            line-height: 1.6;
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #f0f4f8;
+            color: #1a202c;
+            direction: rtl;
         }
 
-        /* ─── BACKGROUND ─── */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 80% 40% at 20% 10%, rgba(155, 143, 247, 0.07) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 30% at 80% 80%, rgba(29, 217, 176, 0.06) 0%, transparent 55%),
-                radial-gradient(ellipse 40% 50% at 50% 50%, rgba(240, 180, 41, 0.03) 0%, transparent 60%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* ─── UPLOAD SCREEN ─── */
+        /* ===== UPLOAD SCREEN ===== */
         #upload-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-            background: var(--bg);
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 32px;
+            background: linear-gradient(135deg, #1a3a5c 0%, #2d6a4f 100%);
+        }
+
+        .upload-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 60px 50px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 560px;
+            width: 90%;
+        }
+
+        .upload-box h1 {
+            font-size: 2rem;
+            color: #1a3a5c;
+            margin-bottom: 10px;
+        }
+
+        .upload-box p {
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .upload-btn-label {
+            display: inline-block;
+            background: linear-gradient(135deg, #1a3a5c, #2d6a4f);
+            color: #fff;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: opacity .2s;
+            margin-bottom: 16px;
+        }
+
+        .upload-btn-label:hover {
+            opacity: .88;
+        }
+
+        #sql-file-input {
+            display: none;
+        }
+
+        .file-info {
+            color: #64748b;
+            font-size: .9rem;
+        }
+
+        #parse-btn {
+            display: none;
+            margin-top: 20px;
+            background: #2d6a4f;
+            color: #fff;
+            border: none;
+            padding: 14px 36px;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background .2s;
+        }
+
+        #parse-btn:hover {
+            background: #1a4a35;
+        }
+
+        #progress-bar-wrap {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #progress-bar-wrap p {
+            margin-bottom: 8px;
+            color: #1a3a5c;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            background: #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1a3a5c, #2d6a4f);
+            width: 0%;
+            transition: width .3s;
+        }
+
+        /* ===== MAIN APP ===== */
+        #app {
+            display: none;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a3a5c, #2d6a4f);
+            color: #fff;
+            padding: 18px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+        }
+
+        header .meta {
+            font-size: .85rem;
+            opacity: .8;
+        }
+
+        /* ===== 4. NAVIGATION TABS — شريط التبويبات العلوي ===== */
+        .nav-tabs {
+            background: #1a3a5c;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px 20px;
+        }
+
+        .nav-tab {
+            color: #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .9rem;
+            transition: all .2s;
+            border: none;
+            background: transparent;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, .12);
+            color: #fff;
+        }
+
+        .nav-tab.active {
+            background: #2d6a4f;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* ===== 5. TAB CONTENT — محتوى التبويبات
+         *   مخفي افتراضياً (display:none)، يظهر فقط عند إضافة كلاس .active
+         * ===== */
+        .tab-content {
+            display: none;
             padding: 24px;
         }
 
-        .upload-logo {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .upload-logo-icon {
-            width: 52px;
-            height: 52px;
-            background: linear-gradient(135deg, var(--gold), var(--coral));
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 26px;
-            box-shadow: 0 0 40px rgba(240, 180, 41, 0.3);
-        }
-
-        .upload-logo-text {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(90deg, var(--gold), var(--teal));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .upload-subtitle {
-            color: var(--text2);
-            font-size: 15px;
-            text-align: center;
-            max-width: 500px;
-        }
-
-        .upload-zone {
-            width: 100%;
-            max-width: 560px;
-            border: 2px dashed var(--border2);
-            border-radius: var(--r2);
-            padding: 52px 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: var(--bg2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .upload-zone::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(155, 143, 247, 0.04), rgba(29, 217, 176, 0.04));
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .upload-zone:hover,
-        .upload-zone.drag-over {
-            border-color: var(--teal);
-            box-shadow: 0 0 40px rgba(29, 217, 176, 0.15);
-        }
-
-        .upload-zone:hover::before,
-        .upload-zone.drag-over::before {
-            opacity: 1;
-        }
-
-        .upload-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .tab-content.active {
             display: block;
         }
 
-        .upload-text-main {
-            font-size: 17px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 8px;
-        }
-
-        .upload-text-sub {
-            font-size: 13px;
-            color: var(--text3);
-        }
-
-        .upload-btn {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 12px 32px;
-            background: linear-gradient(135deg, var(--teal2), var(--teal));
-            color: #0a1a14;
-            font-weight: 700;
-            font-size: 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: none;
-            font-family: var(--font);
-            transition: all 0.2s;
-            box-shadow: 0 4px 20px rgba(29, 217, 176, 0.3);
-        }
-
-        .upload-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(29, 217, 176, 0.4);
-        }
-
-        #file-input {
-            display: none;
-        }
-
-        /* ─── PROGRESS ─── */
-        #progress-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 99;
-            background: var(--bg);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 24px;
-        }
-
-        .progress-title {
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--teal);
-        }
-
-        .progress-bar-track {
-            width: 400px;
-            height: 6px;
-            background: var(--bg3);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--teal), var(--lavender));
-            border-radius: 3px;
-            transition: width 0.3s;
-            width: 0%;
-        }
-
-        .progress-step {
-            font-size: 13px;
-            color: var(--text2);
-            font-family: var(--mono);
-        }
-
-        /* ─── MAIN LAYOUT ─── */
-        #dashboard {
-            display: none;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ─── TOP NAV ─── */
-        .topnav {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            background: rgba(10, 14, 26, 0.92);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 0 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 60px;
-        }
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(90deg, var(--gold), var(--teal));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .nav-logo-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--gold), var(--coral));
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 4px;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--text2);
-            text-decoration: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text);
-            background: var(--bg3);
-        }
-
-        .nav-badge {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text3);
-            padding: 2px 8px;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-        }
-
-        /* ─── SECTIONS ─── */
-        .section {
-            padding: 48px 32px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 28px;
-            gap: 16px;
-        }
-
-        .section-title-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .section-eyebrow {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: var(--text3);
-        }
-
-        .section-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .section-title span {
-            background: linear-gradient(90deg, var(--gold), var(--teal));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .section-desc {
-            font-size: 13px;
-            color: var(--text2);
-            max-width: 500px;
-        }
-
-        .divider {
-            height: 1px;
-            background: linear-gradient(90deg, var(--border), transparent);
-            margin: 0 32px;
-            max-width: 1400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* ─── KPI CARDS ─── */
-        .kpi-grid {
+        /* ===== 6. KPI CARDS — بطاقات مؤشرات الأداء الرئيسية
+         *   الألوان: الافتراضي=أزرق | .green=أخضر | .orange=برتقالي
+         *           .red=أحمر       | .purple=بنفسجي
+         * ===== */
+        .kpi-row {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 16px;
+            margin-bottom: 24px;
         }
 
         .kpi-card {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            border-radius: var(--r2);
-            padding: 24px 20px;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, border-color 0.2s;
+            background: #fff;
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .07);
+            border-top: 4px solid #1a3a5c;
         }
 
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            border-radius: var(--r2) var(--r2) 0 0;
+        .kpi-card.green {
+            border-top-color: #2d6a4f;
         }
 
-        .kpi-card.gold::before {
-            background: linear-gradient(90deg, var(--gold), var(--amber));
+        .kpi-card.orange {
+            border-top-color: #d97706;
         }
 
-        .kpi-card.teal::before {
-            background: linear-gradient(90deg, var(--teal), var(--sky));
+        .kpi-card.red {
+            border-top-color: #dc2626;
         }
 
-        .kpi-card.coral::before {
-            background: linear-gradient(90deg, var(--coral), var(--lavender));
+        .kpi-card.purple {
+            border-top-color: #7c3aed;
         }
 
-        .kpi-card.lav::before {
-            background: linear-gradient(90deg, var(--lavender), var(--sky));
+        .kpi-card .val {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a202c;
         }
 
-        .kpi-card.green::before {
-            background: linear-gradient(90deg, var(--green), var(--teal));
+        .kpi-card .lbl {
+            font-size: .8rem;
+            color: #64748b;
+            margin-top: 4px;
         }
 
-        .kpi-card.sky::before {
-            background: linear-gradient(90deg, var(--sky), var(--lavender));
+        /* ===== 7. SECTION CARD (.sec) — البطاقة البيضاء الأساسية
+         *   تُستخدم كحاوية لكل قسم فرعي داخل التبويبات
+         * ===== */
+        .sec {
+            background: #fff;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .07);
+            margin-bottom: 24px;
         }
 
-        .kpi-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--border2);
+        .sec h2 {
+            font-size: 1.1rem;
+            color: #1a3a5c;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
         }
 
-        .kpi-icon {
-            font-size: 28px;
-            margin-bottom: 12px;
-            display: block;
-        }
-
-        .kpi-value {
-            font-family: var(--mono);
-            font-size: 26px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 4px;
-            line-height: 1;
-        }
-
-        .kpi-label {
-            font-size: 12px;
-            color: var(--text2);
-            line-height: 1.4;
-        }
-
-        .kpi-sub {
-            font-size: 11px;
-            color: var(--text3);
-            margin-top: 6px;
-            font-family: var(--mono);
-        }
-
-        /* ─── CHART CARDS ─── */
-        .chart-grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .chart-grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-        }
-
-        .chart-grid-1-2 {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-        }
-
-        .chart-grid-2-1 {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 1100px) {
-
-            .chart-grid-2,
-            .chart-grid-3,
-            .chart-grid-1-2,
-            .chart-grid-2-1 {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .chart-card {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            border-radius: var(--r2);
-            padding: 24px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .chart-card-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            gap: 12px;
-        }
-
-        .chart-card-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .chart-card-sub {
-            font-size: 12px;
-            color: var(--text3);
-            margin-top: 3px;
-        }
-
-        .chart-badge {
-            font-size: 11px;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-family: var(--mono);
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .badge-gold {
-            background: rgba(240, 180, 41, 0.15);
-            color: var(--gold);
-            border: 1px solid rgba(240, 180, 41, 0.3);
-        }
-
-        .badge-teal {
-            background: rgba(29, 217, 176, 0.12);
-            color: var(--teal);
-            border: 1px solid rgba(29, 217, 176, 0.25);
-        }
-
-        .badge-coral {
-            background: rgba(242, 107, 91, 0.12);
-            color: var(--coral);
-            border: 1px solid rgba(242, 107, 91, 0.25);
-        }
-
-        .badge-lav {
-            background: rgba(155, 143, 247, 0.12);
-            color: var(--lavender);
-            border: 1px solid rgba(155, 143, 247, 0.25);
-        }
-
-        .badge-green {
-            background: rgba(86, 212, 138, 0.12);
-            color: var(--green);
-            border: 1px solid rgba(86, 212, 138, 0.25);
-        }
-
-        .badge-sky {
-            background: rgba(91, 196, 245, 0.12);
-            color: var(--sky);
-            border: 1px solid rgba(91, 196, 245, 0.25);
-        }
-
+        /* ===== 8. CHART WRAPPER — حاوية رسوم Chart.js البيانية ===== */
         .chart-wrap {
             position: relative;
-            width: 100%;
         }
 
         .chart-wrap canvas {
-            max-width: 100%;
+            max-height: 320px;
+            /* حد أقصى للارتفاع لمنع التمدد الزائد */
         }
 
-        /* ─── CONTROLS ─── */
-        .ctrl-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .ctrl-label {
-            font-size: 12px;
-            color: var(--text3);
-        }
-
-        .ctrl-select {
-            background: var(--bg3);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            border-radius: 8px;
-            padding: 6px 12px;
-            font-family: var(--font);
-            font-size: 13px;
-            cursor: pointer;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .ctrl-select:hover,
-        .ctrl-select:focus {
-            border-color: var(--teal);
-        }
-
-        .ctrl-btn {
-            background: var(--bg3);
-            border: 1px solid var(--border2);
-            color: var(--text2);
-            border-radius: 8px;
-            padding: 6px 14px;
-            font-family: var(--font);
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .ctrl-btn:hover,
-        .ctrl-btn.active {
-            background: var(--surface);
-            border-color: var(--teal);
-            color: var(--teal);
-        }
-
-        /* ─── TABLE ─── */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .data-table th {
-            text-align: right;
-            padding: 10px 14px;
-            color: var(--text3);
-            font-weight: 500;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-
-        .data-table td {
-            padding: 10px 14px;
-            border-bottom: 1px solid rgba(46, 63, 92, 0.5);
-            color: var(--text);
-            vertical-align: middle;
-        }
-
-        .data-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .data-table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .rank-num {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text3);
-            width: 28px;
-            display: inline-block;
-            text-align: center;
-        }
-
-        .rank-num.top1 {
-            color: var(--gold);
-        }
-
-        .rank-num.top2 {
-            color: var(--text2);
-        }
-
-        .rank-num.top3 {
-            color: var(--amber);
-        }
-
-        .bar-inline {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .bar-fill {
-            height: 6px;
-            border-radius: 3px;
-            background: linear-gradient(90deg, var(--teal2), var(--teal));
-            min-width: 4px;
-            transition: width 0.5s;
-        }
-
-        .mono-val {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--teal);
-        }
-
-        /* ─── HEATMAP ─── */
-        .heatmap-grid {
+        .chart-grid {
             display: grid;
-            grid-template-columns: 60px repeat(12, 1fr);
-            gap: 3px;
-            font-size: 11px;
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
         }
 
-        .heatmap-cell {
-            aspect-ratio: 1;
-            border-radius: 4px;
+        /* ===== 9. FILTER ROW — صف فلاتر التاريخ والبحث
+         *   يحتوي على: حقول التاريخ من/إلى + زر بحث + زر إظهار الكل
+         * ===== */
+        .filter-row {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: var(--mono);
-            font-size: 10px;
-            transition: transform 0.1s;
-            cursor: default;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+
+        .filter-row label {
+            font-size: .85rem;
+            color: #475569;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .filter-row input,
+        .filter-row select {
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: .9rem;
+            outline: none;
+            transition: border-color .2s;
+            direction: rtl;
+        }
+
+        .filter-row input:focus,
+        .filter-row select:focus {
+            border-color: #1a3a5c;
+        }
+
+        .btn-primary {
+            background: #1a3a5c;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .9rem;
+            transition: background .2s;
+        }
+
+        .btn-primary:hover {
+            background: #163052;
+        }
+
+        .btn-green {
+            background: #2d6a4f;
+        }
+
+        .btn-green:hover {
+            background: #1d4a38;
+        }
+
+        /* ===== 11. AUTOCOMPLETE — حقل البحث مع قائمة الاقتراحات المنسدلة
+         *   يُستخدم للبحث عن المشتركين / التجار / المنتجات بالاسم
+         * ===== */
+        .autocomplete-wrap {
             position: relative;
         }
 
-        .heatmap-cell:hover {
-            transform: scale(1.15);
-            z-index: 2;
+        .autocomplete-wrap input {
+            width: 100%;
+            min-width: 220px;
         }
 
-        .heatmap-label {
-            display: flex;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text3);
-            font-family: var(--mono);
-            padding-left: 4px;
+        .ac-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            left: 0;
+            background: #fff;
+            border: 1.5px solid #cbd5e1;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .1);
         }
 
-        .heatmap-month-header {
-            text-align: center;
-            color: var(--text3);
-            font-size: 10px;
-            padding-bottom: 4px;
-            font-family: var(--mono);
+        .ac-item {
+            padding: 9px 14px;
+            cursor: pointer;
+            font-size: .88rem;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        /* ─── SCATTER ─── */
-        .scatter-legend {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-top: 12px;
+        .ac-item:hover {
+            background: #eff6ff;
+            color: #1a3a5c;
+            font-weight: 600;
         }
 
-        .scatter-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text2);
-        }
-
-        .scatter-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        /* ─── GAUGE / METER ─── */
-        .gauge-row {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .gauge-item {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .gauge-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-        }
-
-        .gauge-name {
-            color: var(--text2);
-        }
-
-        .gauge-val {
-            font-family: var(--mono);
-            color: var(--text);
-        }
-
-        .gauge-track {
-            height: 8px;
-            background: var(--bg3);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .gauge-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 1s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-
-        /* ─── EMPTY STATES ─── */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text3);
-            font-size: 13px;
-        }
-
-        .empty-state-icon {
-            font-size: 36px;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        /* ─── TICKER / STATS BAR ─── */
-        .stats-ticker {
-            background: var(--bg2);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            padding: 12px 32px;
-            display: flex;
-            gap: 40px;
+        /* ===== 12. DATA TABLES — جداول عرض البيانات
+         *   .tbl-wrap: حاوية قابلة للتمرير أفقياً على الشاشات الضيقة
+         * ===== */
+        .tbl-wrap {
             overflow-x: auto;
-            scrollbar-width: none;
         }
 
-        .stats-ticker::-webkit-scrollbar {
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .88rem;
+        }
+
+        th {
+            background: #1a3a5c;
+            color: #fff;
+            padding: 10px 12px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tr:hover td {
+            background: #f8fafc;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
+        /* ===== 13. BADGES — شارات ملونة للأرقام والتصنيفات
+         *   .badge-blue   → عدد الصناديق / الكميات
+         *   .badge-green  → الصافي / المبالغ الإيجابية
+         *   .badge-orange → الرسوم / التكاليف
+         *   .badge-red    → الخصومات / العمولات المقتطعة
+         * ===== */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .78rem;
+            font-weight: 600;
+        }
+
+        .badge-blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .badge-green {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-orange {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .badge-red {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* ===== 14. SCROLLBAR — تنسيق شريط التمرير (Webkit/Chrome) ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+
+        /* ===== 15. RESPONSIVE — تكيّف الشاشات الصغيرة (< 600px)
+         *   الرسوم البيانية: من عمودين → عمود واحد
+         * ===== */
+        @media (max-width: 600px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-box {
+                padding: 36px 24px;
+            }
+        }
+
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 30px;
+            font-size: .95rem;
+        }
+
+        .loading {
+            text-align: center;
+            color: #1a3a5c;
+            padding: 20px;
+        }
+
+        .btn-print {
+            background: #0f766e;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .9rem;
+            transition: background .2s;
             display: none;
         }
 
-        .ticker-item {
-            display: flex;
-            gap: 8px;
-            align-items: baseline;
-            white-space: nowrap;
-            flex-shrink: 0;
+        .btn-print:hover {
+            background: #0d5c55;
         }
 
-        .ticker-label {
-            font-size: 11px;
-            color: var(--text3);
-        }
+        /* ===== 16. PRINT STYLES — أنماط الطباعة لتقرير المشترك
+         *   عند الطباعة: إخفاء كل محتوى الصفحة وإظهار
+         *   #print-common-overlay فقط (نافذة التقرير المطبوعة)
+         * ===== */
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
 
-        .ticker-val {
-            font-family: var(--mono);
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--teal);
-        }
+            #print-common-overlay,
+            #print-common-overlay * {
+                visibility: visible !important;
+            }
 
-        /* ─── TOOLTIP OVERRIDE ─── */
-        .chartjs-tooltip {
-            background: var(--bg3) !important;
-            border: 1px solid var(--border2) !important;
-            border-radius: 8px !important;
-            font-family: var(--font) !important;
-        }
-
-        /* ─── SCROLL FADE-IN ─── */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.5s, transform 0.5s;
-        }
-
-        .fade-in.visible {
-            opacity: 1;
-            transform: none;
-        }
-
-        /* ─── ANNOTATION ─── */
-        .annotation-note {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            background: rgba(29, 217, 176, 0.06);
-            border: 1px solid rgba(29, 217, 176, 0.2);
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 12px;
-            color: var(--text2);
-            margin-top: 12px;
-        }
-
-        .annotation-icon {
-            font-size: 16px;
-            flex-shrink: 0;
-            margin-top: 1px;
-        }
-
-        /* ─── FOOTER ─── */
-        .footer {
-            padding: 32px;
-            text-align: center;
-            color: var(--text3);
-            font-size: 12px;
-            border-top: 1px solid var(--border);
-            margin-top: 48px;
+            #print-common-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: #fff;
+                z-index: 99999;
+                padding: 30px;
+                overflow: auto;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-     UPLOAD SCREEN
-══════════════════════════════════════════════════════════════════ -->
+    <!-- ===================================================================
+         شاشة الرفع (Upload Screen)
+         الظهور: display:flex في البداية | تُخفى بعد تحليل الملف بنجاح
+         المحتوى: زر اختيار ملف SQL + زر تحليل + شريط التقدم
+    =================================================================== -->
+    <!-- UPLOAD SCREEN -->
     <div id="upload-screen">
-        <div class="upload-logo">
-            <div class="upload-logo-icon">🌿</div>
-            <div class="upload-logo-text">حسبة · Analytics</div>
+        <div class="upload-box">
+            <div style="font-size:3.5rem;margin-bottom:14px;">📊</div>
+            <h1>لوحة إحصاءات الحسبة</h1>
+            <p>قم بتحميل ملف قاعدة البيانات SQL لعرض الإحصاءات والتحليلات المالية والزراعية الشاملة</p>
+            <label class="upload-btn-label" for="sql-file-input">📂 اختر ملف SQL</label>
+            <input type="file" id="sql-file-input" accept=".sql">
+            <div class="file-info" id="file-info">لم يتم اختيار ملف</div>
+            <button id="parse-btn">🚀 تحليل قاعدة البيانات</button>
+            <div id="progress-bar-wrap">
+                <p id="progress-label">جارٍ المعالجة...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
         </div>
-        <p class="upload-subtitle">
-            ارفع ملف تصدير قاعدة البيانات (.sql) لتوليد لوحة تحليلات شاملة — كل العمليات تتم محلياً في المتصفح بدون أي
-            خادم
-        </p>
-        <div class="upload-zone" id="drop-zone">
-            <span class="upload-icon">📁</span>
-            <div class="upload-text-main">اسحب ملف SQL هنا</div>
-            <div class="upload-text-sub">أو اضغط لاختيار الملف</div>
-            <button class="upload-btn" onclick="document.getElementById('file-input').click()">
-                اختر ملف .sql
-            </button>
-            <input type="file" id="file-input" accept=".sql,.txt">
-        </div>
-        <p style="font-size:12px;color:var(--text3);text-align:center">
-            يدعم MySQL dump (mysqldump) — جميع البيانات تُعالَج داخل المتصفح فقط ولا تُرسل لأي خادم
-        </p>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-     PROGRESS SCREEN
-══════════════════════════════════════════════════════════════════ -->
-    <div id="progress-screen">
-        <div class="progress-title">⚙️ جاري تحليل البيانات...</div>
-        <div class="progress-bar-track">
-            <div class="progress-bar-fill" id="prog-fill"></div>
-        </div>
-        <div class="progress-step" id="prog-step">تهيئة المحلل...</div>
-    </div>
+    <!-- ===================================================================
+         التطبيق الرئيسي (Main App)
+         الظهور: display:none في البداية | يظهر بعد اكتمال تحليل ملف SQL
+         المحتوى: هيدر + شريط تبويبات + 10 تبويبات للتقارير
+    =================================================================== -->
+    <!-- MAIN APP -->
+    <div id="app">
+        <header>
+            <h1>📊 لوحة إحصاءات الحسبة</h1>
+            <div class="meta" id="db-meta"></div>
+        </header>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-     DASHBOARD
-══════════════════════════════════════════════════════════════════ -->
-    <div id="dashboard">
-
-        <!-- Top Nav -->
-        <nav class="topnav">
-            <div class="nav-logo">
-                <div class="nav-logo-icon" style="font-size:14px">🌿</div>
-                حسبة Analytics
-            </div>
-            <ul class="nav-links">
-                <li><a href="#sec-kpi">نظرة عامة</a></li>
-                <li><a href="#sec-prices">الأسعار</a></li>
-                <li><a href="#sec-farmers">المزارعون</a></li>
-                <li><a href="#sec-traders">التجار</a></li>
-                <li><a href="#sec-products">المنتجات</a></li>
-                <li><a href="#sec-finance">المالية</a></li>
-                <li><a href="#sec-seasonal">الموسمية</a></li>
-                <li><a href="#sec-agents">الوكلاء</a></li>
-            </ul>
-            <div class="nav-badge" id="db-info-badge">—</div>
-        </nav>
-
-        <!-- Stats Ticker -->
-        <div class="stats-ticker" id="stats-ticker">
-            <div class="ticker-item"><span class="ticker-label">إجمالي الفواتير</span><span class="ticker-val"
-                    id="tk-bills">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">إجمالي أوزان البضاعة</span><span class="ticker-val"
-                    id="tk-weight">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">متوسط سعر الكيلو</span><span class="ticker-val"
-                    id="tk-avgprice">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">إجمالي العمولات</span><span class="ticker-val"
-                    id="tk-coms">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">عدد المزارعين النشطين</span><span class="ticker-val"
-                    id="tk-farmers">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">عدد التجار النشطين</span><span class="ticker-val"
-                    id="tk-traders">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">أنواع المنتجات</span><span class="ticker-val"
-                    id="tk-prods">—</span></div>
-            <div class="ticker-item"><span class="ticker-label">الفترة الزمنية</span><span class="ticker-val"
-                    id="tk-period">—</span></div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview',this)">🏠 نظرة عامة</button>
+            <button class="nav-tab" onclick="showTab('commons',this)">👥 المشتركون</button>
+            <button class="nav-tab" onclick="showTab('common-detail',this)">🔍 تفاصيل مشترك</button>
+            <button class="nav-tab" onclick="showTab('traders',this)">🏪 التجار</button>
+            <button class="nav-tab" onclick="showTab('trader-detail',this)">🔍 تفاصيل تاجر</button>
+            <button class="nav-tab" onclick="showTab('products',this)">📦 المنتجات</button>
+            <button class="nav-tab" onclick="showTab('product-detail',this)">🔍 تفاصيل منتج</button>
+            <button class="nav-tab" onclick="showTab('price-trends',this)">📈 اتجاهات الأسعار</button>
+            <button class="nav-tab" onclick="showTab('financial',this)">💰 التحليل المالي</button>
+            <button class="nav-tab" onclick="showTab('advanced',this)">🧠 إحصاءات متقدمة</button>
         </div>
 
-        <!-- ── SECTION 1: KPIs ── -->
-        <section class="section fade-in" id="sec-kpi">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">نظرة عامة</div>
-                    <div class="section-title">مؤشرات <span>الأداء الرئيسية</span></div>
-                    <div class="section-desc">ملخص شامل لجميع النشاطات المسجّلة في قاعدة البيانات</div>
+        <!-- OVERVIEW -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="kpi-row" id="kpi-row"></div>
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>📅 الإيرادات الشهرية (آخر 18 شهر)</h2>
+                    <div class="chart-wrap"><canvas id="chart-monthly-revenue"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>📦 أكثر المنتجات تداولاً (حجم)</h2>
+                    <div class="chart-wrap"><canvas id="chart-top-products"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>👥 أفضل 10 مشتركين (صناديق)</h2>
+                    <div class="chart-wrap"><canvas id="chart-top-commons"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>🏪 أفضل 10 تجار (قيمة)</h2>
+                    <div class="chart-wrap"><canvas id="chart-top-traders"></canvas></div>
                 </div>
             </div>
-            <div class="kpi-grid" id="kpi-grid">
-                <div class="kpi-card gold"><span class="kpi-icon">📊</span>
-                    <div class="kpi-value" id="kpi-total-orders">—</div>
-                    <div class="kpi-label">إجمالي الطلبيات</div>
-                    <div class="kpi-sub" id="kpi-total-orders-sub">—</div>
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>🍩 توزيع المنتجات (صناديق)</h2>
+                    <div class="chart-wrap"><canvas id="chart-revenue-pie"></canvas></div>
                 </div>
-                <div class="kpi-card teal"><span class="kpi-icon">⚖️</span>
-                    <div class="kpi-value" id="kpi-total-weight">—</div>
-                    <div class="kpi-label">إجمالي الأوزان (كجم)</div>
-                    <div class="kpi-sub" id="kpi-total-weight-sub">—</div>
-                </div>
-                <div class="kpi-card coral"><span class="kpi-icon">💰</span>
-                    <div class="kpi-value" id="kpi-avg-price">—</div>
-                    <div class="kpi-label">متوسط السعر / كجم (₪)</div>
-                    <div class="kpi-sub" id="kpi-avg-price-sub">—</div>
-                </div>
-                <div class="kpi-card lav"><span class="kpi-icon">🤝</span>
-                    <div class="kpi-value" id="kpi-total-coms">—</div>
-                    <div class="kpi-label">إجمالي العمولات (₪)</div>
-                    <div class="kpi-sub">6% من قيمة البضاعة</div>
-                </div>
-                <div class="kpi-card green"><span class="kpi-icon">🌾</span>
-                    <div class="kpi-value" id="kpi-farmers">—</div>
-                    <div class="kpi-label">المزارعون النشطون</div>
-                    <div class="kpi-sub" id="kpi-farmers-sub">—</div>
-                </div>
-                <div class="kpi-card sky"><span class="kpi-icon">🏪</span>
-                    <div class="kpi-value" id="kpi-traders">—</div>
-                    <div class="kpi-label">التجار النشطون</div>
-                    <div class="kpi-sub" id="kpi-traders-sub">—</div>
-                </div>
-                <div class="kpi-card gold"><span class="kpi-icon">🥦</span>
-                    <div class="kpi-value" id="kpi-products">—</div>
-                    <div class="kpi-label">أنواع المنتجات</div>
-                    <div class="kpi-sub" id="kpi-products-sub">—</div>
-                </div>
-                <div class="kpi-card teal"><span class="kpi-icon">📦</span>
-                    <div class="kpi-value" id="kpi-crates">—</div>
-                    <div class="kpi-label">إجمالي الأطباق المتداولة</div>
-                    <div class="kpi-sub" id="kpi-crates-sub">—</div>
+                <div class="sec">
+                    <h2>🍩 توزيع الاقتطاعات</h2>
+                    <div class="chart-wrap"><canvas id="chart-fees-donut"></canvas></div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <div class="divider"></div>
+        <!-- COMMONS LIST -->
+        <div class="tab-content" id="tab-commons">
+            <div class="sec">
+                <h2>👥 إحصاءات جميع المشتركين</h2>
+                <div class="filter-row">
+                    <div><label>من تاريخ</label><input type="date" id="commons-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="commons-date-to"></div>
+                    <button class="btn-primary" onclick="renderCommonsList()">🔍 بحث</button>
+                    <button class="btn-primary btn-green"
+                        onclick="clearDatesAndRun('commons-date-from','commons-date-to',renderCommonsList)">↺
+                        الكل</button>
+                </div>
+                <div class="tbl-wrap" id="commons-table-wrap">
+                    <div class="loading">جارٍ التحميل...</div>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>أعلى 15 مشترك — الصناديق</h2>
+                    <div class="chart-wrap"><canvas id="chart-commons-boxes"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>أعلى 15 مشترك — القيمة</h2>
+                    <div class="chart-wrap"><canvas id="chart-commons-value"></canvas></div>
+                </div>
+            </div>
+        </div>
 
-        <!-- ── SECTION 2: PRICES OVER YEARS ── -->
-        <section class="section fade-in" id="sec-prices">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">تحليل الأسعار</div>
-                    <div class="section-title">متوسط سعر <span>المنتجات عبر السنوات</span></div>
-                    <div class="section-desc">تطور متوسط سعر الكيلو لكل منتج — اختر المنتجات التي تريد مقارنتها</div>
-                </div>
-            </div>
-            <div class="chart-card">
-                <div class="ctrl-row">
-                    <span class="ctrl-label">المنتجات:</span>
-                    <select class="ctrl-select" id="price-prod-select" multiple size="1"
-                        style="min-width:200px"></select>
-                    <button class="ctrl-btn active" id="price-top5-btn" onclick="priceShowTop5()">أعلى 5
-                        منتجات</button>
-                    <button class="ctrl-btn" id="price-all-btn" onclick="priceShowAll()">كل المنتجات</button>
-                    <select class="ctrl-select" id="price-view-select" onchange="renderPriceChart()">
-                        <option value="avg">متوسط السعر</option>
-                        <option value="max">أعلى سعر</option>
-                        <option value="min">أدنى سعر</option>
-                    </select>
-                </div>
-                <div class="chart-wrap" style="height:360px"><canvas id="chart-prices"></canvas></div>
-                <div class="annotation-note">
-                    <span class="annotation-icon">💡</span>
-                    <span>يُحسب متوسط السعر من (إجمالي قيمة الفاتورة ÷ الوزن الكلي) لكل منتج في كل سنة. السعر بالشيكل
-                        الإسرائيلي (₪) لكل كيلوغرام.</span>
-                </div>
-            </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <!-- ── SECTION 3: FARMER PERFORMANCE ── -->
-        <section class="section fade-in" id="sec-farmers">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">تحليل المزارعين</div>
-                    <div class="section-title">أداء <span>المزارعين عبر السنوات</span></div>
-                    <div class="section-desc">مقارنة نشاط المزارعين من حيث الحجم والقيمة والمنتجات</div>
-                </div>
-            </div>
-            <div class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">منحنى أداء مزارع مختار</div>
-                            <div class="chart-card-sub">الوزن المباع سنة بسنة</div>
-                        </div>
-                        <span class="chart-badge badge-teal">خط زمني</span>
-                    </div>
-                    <div class="ctrl-row">
-                        <select class="ctrl-select" id="farmer-select" style="min-width:220px"
-                            onchange="renderFarmerChart()">
-                            <option>— اختر مزارعاً —</option>
-                        </select>
-                        <select class="ctrl-select" id="farmer-metric" onchange="renderFarmerChart()">
-                            <option value="weight">الوزن (كجم)</option>
-                            <option value="revenue">الإيرادات (₪)</option>
-                            <option value="orders">عدد الفواتير</option>
-                        </select>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-farmer-timeline"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">تصنيف أفضل المزارعين</div>
-                            <div class="chart-card-sub">إجمالي الوزن المباع على مدى الفترة الكاملة</div>
-                        </div>
-                        <span class="chart-badge badge-gold">تصنيف</span>
-                    </div>
-                    <div class="chart-wrap" style="height:300px"><canvas id="chart-farmer-rank"></canvas></div>
-                </div>
-            </div>
-            <div style="margin-top:20px">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">توزيع المنتجات لكل مزارع (أعلى 10)</div>
-                            <div class="chart-card-sub">ما هي المنتجات التي يبيعها كل مزارع بشكل رئيسي</div>
-                        </div>
-                        <span class="chart-badge badge-lav">توزيع</span>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-farmer-products"></canvas></div>
-                </div>
-            </div>
-            <div style="margin-top:20px">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">جدول أداء المزارعين التفصيلي</div>
-                            <div class="chart-card-sub">أعلى 20 مزارعاً من حيث الوزن الكلي</div>
-                        </div>
-                        <span class="chart-badge badge-green">جدول</span>
-                    </div>
-                    <div id="farmer-table-wrap" style="overflow-x:auto;max-height:380px;overflow-y:auto"></div>
-                </div>
-            </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <!-- ── SECTION 4: TOP PRODUCTS ── -->
-        <section class="section fade-in" id="sec-products">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">تحليل المنتجات</div>
-                    <div class="section-title">أفضل المنتجات <span>أداءً عبر السنوات</span></div>
-                    <div class="section-desc">منحنيات متعددة تظهر أداء كل منتج بمعيار الوزن أو القيمة أو عدد الصفقات
-                    </div>
-                </div>
-            </div>
-            <div class="chart-card">
-                <div class="ctrl-row">
-                    <span class="ctrl-label">المعيار:</span>
-                    <select class="ctrl-select" id="prod-metric-select" onchange="renderTopProdsChart()">
-                        <option value="weight">الوزن الكلي (كجم)</option>
-                        <option value="revenue">إجمالي الإيرادات (₪)</option>
-                        <option value="orders">عدد الصفقات</option>
-                        <option value="avgprice">متوسط السعر/كجم</option>
-                    </select>
-                    <span class="ctrl-label">أعلى:</span>
-                    <select class="ctrl-select" id="prod-topn-select" onchange="renderTopProdsChart()">
-                        <option value="5">5 منتجات</option>
-                        <option value="8" selected>8 منتجات</option>
-                        <option value="10">10 منتجات</option>
-                        <option value="15">15 منتج</option>
-                    </select>
-                </div>
-                <div class="chart-wrap" style="height:380px"><canvas id="chart-top-products"></canvas></div>
-            </div>
-            <div style="margin-top:20px" class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">حصة كل منتج من الحجم الكلي</div>
-                            <div class="chart-card-sub">دونات تفاعلي للحصص السوقية بالوزن</div>
-                        </div>
-                        <span class="chart-badge badge-gold">دونات</span>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-prod-share"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">تصنيف الأسعار — أعلى وأدنى</div>
-                            <div class="chart-card-sub">متوسط السعر / كجم لكل منتج (أعلى 20)</div>
-                        </div>
-                        <span class="chart-badge badge-coral">أسعار</span>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-prod-price-rank"></canvas></div>
-                </div>
-            </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <!-- ── SECTION 5: TRADERS ── -->
-        <section class="section fade-in" id="sec-traders">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">تحليل التجار</div>
-                    <div class="section-title">نشاط <span>التجار والمشترين</span></div>
-                </div>
-            </div>
-            <div class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">أعلى 15 تاجراً — حجم الشراء</div>
-                            <div class="chart-card-sub">إجمالي الوزن المشترى لكل تاجر</div>
-                        </div>
-                        <span class="chart-badge badge-sky">تصنيف</span>
-                    </div>
-                    <div class="chart-wrap" style="height:320px"><canvas id="chart-trader-rank"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">منحنى نشاط تاجر مختار</div>
-                            <div class="chart-card-sub">عدد الفواتير والحجم سنة بسنة</div>
-                        </div>
-                        <span class="chart-badge badge-lav">خط زمني</span>
-                    </div>
-                    <div class="ctrl-row">
-                        <select class="ctrl-select" id="trader-select" style="min-width:220px"
-                            onchange="renderTraderChart()">
-                            <option>— اختر تاجراً —</option>
-                        </select>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-trader-timeline"></canvas></div>
-                </div>
-            </div>
-            <div style="margin-top:20px">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">جدول التجار التفصيلي</div>
-                            <div class="chart-card-sub">أعلى 20 تاجراً</div>
-                        </div>
-                    </div>
-                    <div id="trader-table-wrap" style="overflow-x:auto"></div>
-                </div>
-            </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <!-- ── SECTION 6: FINANCIAL ── -->
-        <section class="section fade-in" id="sec-finance">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">التحليل المالي</div>
-                    <div class="section-title">توزيع <span>الرسوم والعمولات</span></div>
-                    <div class="section-desc">تفصيل كامل للعمولات والنقل والبلدية والأطباق وإيجار الأطباق</div>
-                </div>
-            </div>
-            <div class="chart-grid-1-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">توزيع أنواع الرسوم</div>
-                            <div class="chart-card-sub">نسبة كل نوع رسوم من الإجمالي</div>
-                        </div>
-                        <span class="chart-badge badge-gold">دونات</span>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-fees-donut"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">تطور العمولات والرسوم سنوياً</div>
-                            <div class="chart-card-sub">منحنى تراكمي لكل نوع رسوم عبر السنوات</div>
-                        </div>
-                        <span class="chart-badge badge-teal">منطقة</span>
-                    </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-fees-yearly"></canvas></div>
-                </div>
-            </div>
-            <div style="margin-top:20px" class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">حركة الأطباق (Crates) سنوياً</div>
-                            <div class="chart-card-sub">عدد الأطباق المتداولة كل سنة</div>
-                        </div>
-                        <span class="chart-badge badge-coral">أطباق</span>
-                    </div>
-                    <div class="chart-wrap" style="height:260px"><canvas id="chart-crates-yearly"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">مؤشرات الرسوم لكل كيلو</div>
-                            <div class="chart-card-sub">متوسط الرسوم لكل كيلوغرام مباع</div>
-                        </div>
-                        <span class="chart-badge badge-lav">مؤشرات</span>
-                    </div>
-                    <div class="gauge-row" style="padding:10px 0" id="fees-gauge-row">
-                        <div class="empty-state"><span class="empty-state-icon">⏳</span>جاري التحليل...</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <!-- ── SECTION 7: SEASONAL / HEATMAP ── -->
-        <section class="section fade-in" id="sec-seasonal">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">التحليل الموسمي</div>
-                    <div class="section-title">الأنماط <span>الموسمية والشهرية</span></div>
-                    <div class="section-desc">خريطة حرارية تظهر كثافة النشاط التجاري شهراً بشهر وسنة بسنة</div>
-                </div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-card-header">
+        <!-- COMMON DETAIL -->
+        <div class="tab-content" id="tab-common-detail">
+            <div class="sec">
+                <h2>🔍 تفاصيل مشترك محدد</h2>
+                <div class="filter-row">
                     <div>
-                        <div class="chart-card-title">خريطة حرارية — عدد الفواتير الشهرية</div>
-                        <div class="chart-card-sub">كل خلية = شهر × سنة — اللون الأغمق يعني نشاطاً أعلى</div>
-                    </div>
-                    <span class="chart-badge badge-teal">Heatmap</span>
-                </div>
-                <div id="heatmap-container" style="overflow-x:auto;padding-bottom:8px"></div>
-            </div>
-            <div style="margin-top:20px" class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">متوسط النشاط الشهري</div>
-                            <div class="chart-card-sub">أي الأشهر الأكثر نشاطاً؟ (متوسط كل السنوات)</div>
+                        <label>اسم المشترك</label>
+                        <div class="autocomplete-wrap">
+                            <input type="text" id="cd-common-input" placeholder="ابحث عن مشترك..."
+                                oninput="acSearch(this.value,'commons','cd-common-ac','cd-common-id','cd-common-input')"
+                                onblur="hideAcDelayed('cd-common-ac')">
+                            <div class="ac-dropdown" id="cd-common-ac"></div>
                         </div>
-                        <span class="chart-badge badge-gold">شريطي</span>
+                        <input type="hidden" id="cd-common-id">
                     </div>
-                    <div class="chart-wrap" style="height:260px"><canvas id="chart-monthly-avg"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">نمو الحجم السنوي</div>
-                            <div class="chart-card-sub">إجمالي الوزن المباع كل سنة — رصد النمو أو التراجع</div>
-                        </div>
-                        <span class="chart-badge badge-teal">نمو</span>
-                    </div>
-                    <div class="chart-wrap" style="height:260px"><canvas id="chart-yearly-growth"></canvas></div>
+                    <div><label>من تاريخ</label><input type="date" id="cd-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="cd-date-to"></div>
+                    <button class="btn-primary" onclick="renderCommonDetail()">🔍 بحث</button>
+                    <button class="btn-print" id="cd-print-btn" onclick="printCommonDetail()"> 🖨️ طباعة
+                        التقرير</button>
                 </div>
             </div>
-        </section>
+            <div id="common-detail-content"></div>
+        </div>
 
-        <div class="divider"></div>
-
-        <!-- ── SECTION 8: AGENTS / COMMONS ── -->
-        <section class="section fade-in" id="sec-agents">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-eyebrow">الوكلاء والعملاء</div>
-                    <div class="section-title">أداء <span>الوكلاء (Commons)</span></div>
-                    <div class="section-desc">تصنيف الوكلاء وتحليل حجم النشاط عبر شبكة العملاء</div>
+        <!-- TRADERS LIST -->
+        <div class="tab-content" id="tab-traders">
+            <div class="sec">
+                <h2>🏪 إحصاءات جميع التجار</h2>
+                <div class="filter-row">
+                    <div><label>من تاريخ</label><input type="date" id="traders-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="traders-date-to"></div>
+                    <button class="btn-primary" onclick="renderTradersList()">🔍 بحث</button>
+                    <button class="btn-primary btn-green"
+                        onclick="clearDatesAndRun('traders-date-from','traders-date-to',renderTradersList)">↺
+                        الكل</button>
+                </div>
+                <div class="tbl-wrap" id="traders-table-wrap">
+                    <div class="loading">جارٍ التحميل...</div>
                 </div>
             </div>
-            <div class="chart-grid-2">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">أعلى الوكلاء — عدد المزارعين المرتبطين</div>
-                            <div class="chart-card-sub">من يمثل أكثر المزارعين؟</div>
-                        </div>
-                        <span class="chart-badge badge-lav">شريطي</span>
-                    </div>
-                    <div class="chart-wrap" style="height:300px"><canvas id="chart-agents-farmers"></canvas></div>
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>أعلى 15 تاجر — الصناديق</h2>
+                    <div class="chart-wrap"><canvas id="chart-traders-boxes"></canvas></div>
                 </div>
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">نشاط السوق حسب العميل (Client)</div>
-                            <div class="chart-card-sub">مقارنة أداء كل سوق/مشغّل في المنصة</div>
-                        </div>
-                        <span class="chart-badge badge-coral">مقارنة</span>
-                    </div>
-                    <div class="chart-wrap" style="height:300px"><canvas id="chart-clients-compare"></canvas></div>
+                <div class="sec">
+                    <h2>أعلى 15 تاجر — القيمة</h2>
+                    <div class="chart-wrap"><canvas id="chart-traders-value"></canvas></div>
                 </div>
             </div>
-            <div style="margin-top:20px">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <div>
-                            <div class="chart-card-title">معدل العمولة مقابل حجم النشاط</div>
-                            <div class="chart-card-sub">مخطط تشتت — الوكلاء الأعلى عمولةً مقابل الأكثر نشاطاً</div>
+        </div>
+
+        <!-- TRADER DETAIL -->
+        <div class="tab-content" id="tab-trader-detail">
+            <div class="sec">
+                <h2>🔍 تفاصيل تاجر محدد</h2>
+                <div class="filter-row">
+                    <div>
+                        <label>اسم التاجر</label>
+                        <div class="autocomplete-wrap">
+                            <input type="text" id="td-trader-input" placeholder="ابحث عن تاجر..."
+                                oninput="acSearch(this.value,'traders','td-trader-ac','td-trader-id','td-trader-input')"
+                                onblur="hideAcDelayed('td-trader-ac')">
+                            <div class="ac-dropdown" id="td-trader-ac"></div>
                         </div>
-                        <span class="chart-badge badge-sky">Scatter</span>
+                        <input type="hidden" id="td-trader-id">
                     </div>
-                    <div class="chart-wrap" style="height:280px"><canvas id="chart-agents-scatter"></canvas></div>
+                    <div><label>من تاريخ</label><input type="date" id="td-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="td-date-to"></div>
+                    <button class="btn-primary" onclick="renderTraderDetail()">🔍 بحث</button>
                 </div>
             </div>
-        </section>
+            <div id="trader-detail-content"></div>
+        </div>
 
-        <footer class="footer">
-            حسبة Analytics — جميع العمليات تتم محلياً في المتصفح | بيانات السوق المركزي للخضار
-        </footer>
+        <!-- PRODUCTS LIST -->
+        <div class="tab-content" id="tab-products">
+            <div class="sec">
+                <h2>📦 إحصاءات جميع المنتجات</h2>
+                <div class="filter-row">
+                    <div><label>من تاريخ</label><input type="date" id="products-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="products-date-to"></div>
+                    <button class="btn-primary" onclick="renderProductsList()">🔍 بحث</button>
+                    <button class="btn-primary btn-green"
+                        onclick="clearDatesAndRun('products-date-from','products-date-to',renderProductsList)">↺
+                        الكل</button>
+                </div>
+                <div class="tbl-wrap" id="products-table-wrap">
+                    <div class="loading">جارٍ التحميل...</div>
+                </div>
+            </div>
+            <div class="sec">
+                <h2>📦 أعلى 15 منتج — الصناديق</h2>
+                <div class="chart-wrap"><canvas id="chart-products-boxes"></canvas></div>
+            </div>
+        </div>
 
-    </div><!-- end #dashboard -->
+        <!-- PRODUCT DETAIL -->
+        <div class="tab-content" id="tab-product-detail">
+            <div class="sec">
+                <h2>🔍 تفاصيل منتج محدد</h2>
+                <div class="filter-row">
+                    <div>
+                        <label>اسم المنتج</label>
+                        <div class="autocomplete-wrap">
+                            <input type="text" id="pd-product-input" placeholder="ابحث عن منتج..."
+                                oninput="acSearch(this.value,'products','pd-product-ac','pd-product-id','pd-product-input')"
+                                onblur="hideAcDelayed('pd-product-ac')">
+                            <div class="ac-dropdown" id="pd-product-ac"></div>
+                        </div>
+                        <input type="hidden" id="pd-product-id">
+                    </div>
+                    <div><label>من تاريخ</label><input type="date" id="pd-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="pd-date-to"></div>
+                    <button class="btn-primary" onclick="renderProductDetail()">🔍 بحث</button>
+                </div>
+            </div>
+            <div id="product-detail-content"></div>
+        </div>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-     JAVASCRIPT ENGINE
-══════════════════════════════════════════════════════════════════ -->
+        <!-- PRICE TRENDS -->
+        <div class="tab-content" id="tab-price-trends">
+            <div class="sec">
+                <h2>📈 اتجاهات أسعار المنتجات عبر الزمن</h2>
+                <div class="filter-row">
+                    <div>
+                        <label>المنتج</label>
+                        <div class="autocomplete-wrap">
+                            <input type="text" id="pt-product-input" placeholder="ابحث عن منتج..."
+                                oninput="acSearch(this.value,'products','pt-product-ac','pt-product-id','pt-product-input')"
+                                onblur="hideAcDelayed('pt-product-ac')">
+                            <div class="ac-dropdown" id="pt-product-ac"></div>
+                        </div>
+                        <input type="hidden" id="pt-product-id">
+                    </div>
+                    <div><label>من تاريخ</label><input type="date" id="pt-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="pt-date-to"></div>
+                    <div>
+                        <label>التجميع</label>
+                        <select id="pt-groupby">
+                            <option value="day">يومي</option>
+                            <option value="week">أسبوعي</option>
+                            <option value="month" selected>شهري</option>
+                            <option value="year">سنوي</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="renderPriceTrend()">📈 عرض</button>
+                </div>
+            </div>
+            <div class="sec">
+                <div class="chart-wrap"><canvas id="chart-price-trend" style="max-height:400px;"></canvas></div>
+            </div>
+            <div class="sec" id="price-trend-stats"></div>
+        </div>
+
+        <!-- FINANCIAL -->
+        <div class="tab-content" id="tab-financial">
+            <div class="sec">
+                <h2>💰 التحليل المالي الشامل</h2>
+                <div class="filter-row">
+                    <div><label>من تاريخ</label><input type="date" id="fin-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="fin-date-to"></div>
+                    <button class="btn-primary" onclick="renderFinancial()">🔍 تحليل</button>
+                    <button class="btn-primary btn-green"
+                        onclick="clearDatesAndRun('fin-date-from','fin-date-to',renderFinancial)">↺ الكل</button>
+                </div>
+            </div>
+            <div class="kpi-row" id="fin-kpi-row"></div>
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>💰 الإيرادات الشهرية والرسوم</h2>
+                    <div class="chart-wrap"><canvas id="chart-fin-monthly"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>📊 توزيع الاقتطاعات</h2>
+                    <div class="chart-wrap"><canvas id="chart-fin-breakdown"></canvas></div>
+                </div>
+            </div>
+            <div class="sec">
+                <h2>📅 أفضل 30 يوم أداءً</h2>
+                <div class="tbl-wrap" id="fin-daily-wrap"></div>
+            </div>
+        </div>
+
+        <!-- ADVANCED STATS -->
+        <div class="tab-content" id="tab-advanced">
+            <div class="sec">
+                <h2>🧠 إحصاءات متقدمة وأرقام قياسية</h2>
+                <div class="filter-row">
+                    <div><label>من تاريخ</label><input type="date" id="adv-date-from"></div>
+                    <div><label>إلى تاريخ</label><input type="date" id="adv-date-to"></div>
+                    <button class="btn-primary" onclick="renderAdvancedStats()">🔍 تحليل</button>
+                    <button class="btn-primary btn-green"
+                        onclick="clearDatesAndRun('adv-date-from','adv-date-to',renderAdvancedStats)">↺ الكل</button>
+                </div>
+            </div>
+            <!-- Records KPIs -->
+            <div class="kpi-row" id="adv-records-row"></div>
+            <!-- Day of week + Seasonal -->
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>📅 أنشط أيام الأسبوع (صناديق)</h2>
+                    <div class="chart-wrap"><canvas id="chart-adv-weekday"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>🌱 الموسمية الشهرية السنوية (صناديق)</h2>
+                    <div class="chart-wrap"><canvas id="chart-adv-seasonal"></canvas></div>
+                </div>
+            </div>
+            <!-- Bill distribution + Price volatility -->
+            <div class="chart-grid">
+                <div class="sec">
+                    <h2>💳 توزيع قيم الفواتير (نطاقات)</h2>
+                    <div class="chart-wrap"><canvas id="chart-adv-bill-dist"></canvas></div>
+                </div>
+                <div class="sec">
+                    <h2>📉 تذبذب أسعار المنتجات (نطاق السعر)</h2>
+                    <div class="chart-wrap"><canvas id="chart-adv-price-range"></canvas></div>
+                </div>
+            </div>
+            <!-- Bill KPIs -->
+            <div class="sec">
+                <h2>📊 إحصاءات الفواتير الفردية</h2>
+                <div class="kpi-row" id="adv-bill-kpi"></div>
+            </div>
+            <!-- Top 20 days table -->
+            <div class="sec">
+                <h2>🏆 أفضل 20 يوم أداءً (قيمة)</h2>
+                <div class="tbl-wrap" id="adv-top-days-wrap"></div>
+            </div>
+            <!-- Slowest days table -->
+            <div class="sec">
+                <h2>🐤 أضعف 20 يوم أداءً (قيمة)</h2>
+                <div class="tbl-wrap" id="adv-slow-days-wrap"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        'use strict';
+        /*
+         * ================================================================
+         *  قاعدة البيانات — هيكل الجداول الكامل (بناءً على ss.sql)
+         *  DATABASE SCHEMA — Full Table Documentation
+         * ================================================================
+         *
+         *  هذا النظام هو نظام حسبة لسوق الخضار والفواكه.
+         *  This is a produce market (hisba) management system.
+         *
+         *  المفهوم الأساسي:
+         *    المشترك (common) = وكيل/تاجر يُرسل بضاعة المزارع للسوق
+         *    التاجر (trader)  = مشتري ينزل السوق ويشتري الصناديق
+         *    كل يوم: مشترك يُورِّد منتجات → يشتريها تجار → تُسجَّل فواتير
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جدول: commons — المشتركون (وكلاء المزارعين / الموردون)
+         * ─────────────────────────────────────────────────────────────
+         *  id          INT  PK   → المعرّف الأساسي
+         *  commonNum   INT       → الرقم المرجعي للمشترك في النظام
+         *  name        VARCHAR   → الاسم (مثال: "أحمد العطيات/إنتاج")
+         *  address     VARCHAR   → العنوان
+         *  phone       VARCHAR   → الهاتف
+         *  transport   DOUBLE    → رسوم النقل لكل صندوق (افتراضي: 1.5 ₪)
+         *  comision    DOUBLE    → نسبة عمولة الحسبة (افتراضي: 0.06 = 6%)
+         *  totalAmount DOUBLE    → إجمالي المبالغ المتراكمة
+         *  preBalance  DOUBLE    → الرصيد المرحَّل من الموسم السابق
+         *  totalEmpty  INT       → إجمالي الصناديق الفارغة
+         *  deleted     INT       → 0=نشط، 1=محذوف (soft delete)
+         *  client_ID   INT FK    → معرّف المستأجر (نظام SaaS متعدد المستأجرين)
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جدول: traders — التجار (المشترون)
+         * ─────────────────────────────────────────────────────────────
+         *  id          INT  PK   → المعرّف الأساسي
+         *  traderNum   INT       → الرقم المرجعي للتاجر
+         *  name        VARCHAR   → الاسم (مثال: "محمد العطيات")
+         *  address     VARCHAR   → العنوان
+         *  phone       VARCHAR   → الهاتف
+         *  empty       DOUBLE    → تكلفة الصندوق الفارغ (افتراضي: 8 ₪)
+         *  emptyRent   DOUBLE    → إيجار الصندوق الفارغ (افتراضي: 1 ₪)
+         *  totalAmount DOUBLE    → إجمالي المبالغ المتراكمة
+         *  preBalance  DOUBLE    → الرصيد المرحَّل
+         *  totalEmpty  INT       → إجمالي الصناديق الفارغة
+         *  deleted     INT       → 0=نشط، 1=محذوف
+         *  client_ID   INT FK    → معرّف المستأجر
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جدول: products — المنتجات (أنواع الخضار والفواكه)
+         * ─────────────────────────────────────────────────────────────
+         *  id          INT  PK   → المعرّف الأساسي
+         *  prodName    VARCHAR   → اسم المنتج (مثال: "بندورة"، "خيار"، "تفاح")
+         *  client_ID   INT FK    → معرّف المستأجر
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جدول: dailybills — رأس الفاتورة اليومية (bill header)
+         *  كل سطر = فاتورة واحدة = تاجر واحد يشتري من مشترك واحد في يوم واحد
+         * ─────────────────────────────────────────────────────────────
+         *  id           INT  PK  → المعرّف الأساسي
+         *  traderID     INT  FK  → معرّف التاجر          → traders.id
+         *  farmerID     INT  FK  → معرّف المشترك         → commons.id
+         *               ⚠️ تنبيه: العمود اسمه farmerID لكنه يشير فعلياً
+         *                  إلى جدول commons (وليس جدول farmers)
+         *  dateInvoice  DATE     → تاريخ الفاتورة (YYYY-MM-DD)
+         *  status       TINYINT  → 0=مفتوحة/جارية، 1=مغلقة/مكتملة
+         *  pre_year     INT      → 0=الموسم الحالي، 1=من الموسم السابق
+         *  bill_id      INT      → رقم الفاتورة التسلسلي داخل الموسم
+         *  client_ID    INT FK   → معرّف المستأجر
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جدول: dailyorders — سطور الفاتورة (bill line items)
+         *  كل سطر = منتج واحد داخل فاتورة واحدة
+         * ─────────────────────────────────────────────────────────────
+         *  id               INT  PK  → المعرّف الأساسي
+         *  prodID           INT  FK  → معرّف المنتج        → products.id
+         *  prodNum          INT      → عدد الصناديق
+         *  prodWheight      DOUBLE   → الوزن الإجمالي (كيلوغرام)
+         *  itemPrice        DOUBLE   → السعر (لكل كيلو أو لكل صندوق)
+         *  weightRate       DOUBLE   → معدّل تحويل الوزن (للحساب بالوزن)
+         *  emptyReturend    INT      → صناديق فارغة مُرجَعة من المشترك
+         *  emptyReturendTrader INT   → صناديق فارغة مُرجَعة من التاجر
+         *  comision         DOUBLE   → نسبة عمولة الحسبة لهذا السطر (مثال: 0.06)
+         *  municipality     DOUBLE   → رسوم البلدية لكل صندوق (بالشيكل)
+         *  empty            DOUBLE   → تكلفة الصندوق الفارغ لكل صندوق
+         *  transport        DOUBLE   → رسوم النقل لكل صندوق (بالشيكل)
+         *  totalTrans       DECIMAL  → إجمالي النقل المحتسب مسبقاً (0 إذا لم يُحتسب)
+         *  emptyRent        DOUBLE   → إيجار الصندوق الفارغ
+         *  billID           INT  FK  → رابط برأس الفاتورة  → dailybills.id
+         *  client_ID        INT FK   → معرّف المستأجر
+         *
+         *  ── معادلات الحساب المستخدمة في هذه الصفحة ──────────────────
+         *  إجمالي الصف:
+         *    إذا prodWheight > 0  →  total = prodWheight × itemPrice  (حساب بالوزن)
+         *    وإلا                 →  total = prodNum × itemPrice      (حساب بالصندوق)
+         *  العمولة:    commissionAmt = total × comision
+         *  البلدية:    munAmt        = municipality × prodNum
+         *  النقل:      transAmt      = totalTrans > 0 ? totalTrans : transport × prodNum
+         *  الصافي:     net           = total − commissionAmt − munAmt − transAmt
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  جداول أخرى في النظام (غير مُقرأة في هذه الصفحة)
+         * ─────────────────────────────────────────────────────────────
+         *  clients          → المستأجرون (نظام SaaS متعدد المستأجرين)
+         *  admins           → مستخدمو النظام مع أدوار (role)
+         *  superadmins      → المسؤولون العامون للنظام
+         *  farmers          → المزارعون الفعليون (يختلفون عن commons)
+         *  commonfarmers    → رابط بين المشترك والمزارع (نسبة الربح rate)
+         *  commonpartners   → رابط بين المشترك والشريك (نسبة الربح rate)
+         *  partners         → الشركاء
+         *  linkedcommons    → ربط مشترك رئيسي بمشترك فرعي (type: 0/1)
+         *  collections      → ملخص تحصيل لكل فاتورة/مشترك (TotalComs, TotalBill...)
+         *  collectiontraders→ ملخص تحصيل لكل فاتورة/تاجر
+         *  cashbills        → سندات نقدية (دفع/قبض) | UserType+type+TypeID+price
+         *  sheks            → سندات شيكات | ShekNum+ShekDate+bankName
+         *  hwalas           → سندات حوالات بنكية | bankName+Alsanad
+         *  emptybills       → سندات صناديق فارغة | emptyNum+storageName
+         *  storemshtalbills → سندات مخازن/مشاتل | storeID+billID
+         *  guarantees       → سندات ضمانات | storeID+billType
+         *  banks            → بيانات البنوك | bankNum+name+address
+         *  shops            → المتاجر | shopNum+name+address
+         *  stores           → المخازن | storeNum+name+address
+         *  mshtals          → المشاتل (حضانات النباتات) | mshtalNum+name
+         *  employees        → الموظفون | emplyeeNum+name+salary
+         *  salaries         → سجل رواتب الموظفين | salary+date+employee_ID
+         *  taxes            → إعدادات الرسوم الافتراضية | comision+municipality+transport+empty+emptyRent
+         *  permissions      → صلاحيات المستخدمين | showCommon+showFarmer
+         *  groups           → مجموعات المستخدمين | user_id+admin_id
+         *  phones           → أرقام هواتف إضافية
+         *  customizes       → إعدادات تخصيص واجهة المستخدم
+         *
+         * ─────────────────────────────────────────────────────────────
+         *  العلاقات الأساسية المستخدمة في ربط الجداول (JOIN):
+         *    dailybills.farmerID  → commons.id   (المشترك الذي أرسل البضاعة)
+         *    dailybills.traderID  → traders.id   (التاجر الذي اشترى)
+         *    dailyorders.billID   → dailybills.id (الفاتورة التي ينتمي إليها السطر)
+         *    dailyorders.prodID   → products.id   (نوع المنتج في السطر)
+         * ================================================================
+         */
 
-        // ─────────────────────────────────────────────────────────────────
-        // 1. STATE
-        // ─────────────────────────────────────────────────────────────────
+        // ============================================================
+        //  STATE — الحالة العامة للتطبيق (البيانات المُحمَّلة في الذاكرة)
+        // ============================================================
         const DB = {
-            dailybills: [],
-            dailyorders: [],
-            farmers: [],
-            traders: [],
-            products: [],
-            commons: [],
-            commonfarmers: [],
-            collections: [],
-            collectiontraders: [],
-            clients: [],
-            taxes: [],
+            commons: [], // ← بيانات جدول commons (id, name)
+            traders: [], // ← بيانات جدول traders (id, name)
+            products: [], // ← بيانات جدول products (id, name)
+            dailybills: [], // ← بيانات جدول dailybills (id, traderID, commonID, dateInvoice)
+            dailyorders: [], // ← بيانات جدول dailyorders (prodID, prodNum, itemPrice, comision...)
+            enriched: [] // ← سطور مدمجة (join): كل سطر يربط order+bill+common+trader+product
         };
+        const charts = {}; // ← مرجع لكائنات Chart.js لإتاحة إتلافها (destroy) قبل إعادة الرسم
 
-        // Lookup maps built after parsing
-        const MAPS = {
-            farmers: {}, // id -> name
-            traders: {}, // id -> name
-            products: {}, // id -> name
-            commons: {}, // id -> name
-            clients: {}, // id -> fname
-        };
-
-        // Chart instances (destroyed before re-render)
-        const CHARTS = {};
-
-        // Derived datasets (computed once)
-        let DERIVED = {};
-
-        const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر',
-            'نوفمبر', 'ديسمبر'
-        ];
-
-        const PALETTE = [
-            '#1dd9b0', '#f0b429', '#f26b5b', '#9b8ff7', '#5bc4f5', '#56d48a',
-            '#f5a623', '#e879f9', '#38bdf8', '#a3e635', '#fb923c', '#f472b6',
-            '#818cf8', '#34d399', '#fbbf24', '#60a5fa', '#c084fc', '#4ade80',
-        ];
-
-        // ─────────────────────────────────────────────────────────────────
-        // 2. UPLOAD HANDLING
-        // ─────────────────────────────────────────────────────────────────
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-        dropZone.addEventListener('drop', e => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-        });
-        fileInput.addEventListener('change', e => {
-            if (e.target.files[0]) handleFile(e.target.files[0]);
+        // ============================================================
+        //  UPLOAD & PARSE — رفع وتحليل ملف SQL
+        //
+        //  الخطوات:
+        //  1. يختار المستخدم ملف SQL dump  → يُظهر زر التحليل
+        //  2. عند الضغط: يُقرأ الملف بكتل 4MB (chunked FileReader)
+        //     لتجنب تجميد المتصفح مع الملفات الكبيرة
+        //  3. كل كتلة: تُقسَّم إلى سطور → يتم تحليل كل INSERT
+        //  4. بعد القراءة الكاملة: finalizeData() ترتبط الجداول
+        // ============================================================
+        document.getElementById('sql-file-input').addEventListener('change', function(e) {
+            const f = e.target.files[0];
+            if (!f) return;
+            // عرض اسم الملف وحجمه للمستخدم
+            document.getElementById('file-info').textContent = '✅ ' + f.name + ' — ' + (f.size / 1024 / 1024)
+                .toFixed(1) + ' MB';
+            document.getElementById('parse-btn').style.display = 'inline-block';
         });
 
-        function handleFile(file) {
-            const reader = new FileReader();
-            reader.onload = e => processSQL(e.target.result, file.name);
-            reader.readAsText(file, 'utf-8');
+        document.getElementById('parse-btn').addEventListener('click', () => {
+            const f = document.getElementById('sql-file-input').files[0];
+            if (!f) return;
+            console.log('%c[Hisba] ▶ Starting parse', 'color:#1a3a5c;font-weight:bold;font-size:13px');
+            console.log(
+                `[Hisba] File: "${f.name}" | Size: ${(f.size/1024/1024).toFixed(2)} MB | Type: ${f.type||'unknown'}`
+            );
+            document.getElementById('progress-bar-wrap').style.display = 'block';
+            document.getElementById('parse-btn').style.display = 'none';
+            readAndParseSql(f);
+        });
+
+        function setProgress(pct, label) {
+            document.getElementById('progress-fill').style.width = pct + '%';
+            document.getElementById('progress-label').textContent = label;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // 3. SQL PARSER
-        // ─────────────────────────────────────────────────────────────────
-        function setProgress(pct, msg) {
-            document.getElementById('prog-fill').style.width = pct + '%';
-            document.getElementById('prog-step').textContent = msg;
-        }
+        /**
+         * readAndParseSql — قراءة ملف SQL بالكتل وتحليل INSERT statements
+         * يقرأ الملف كتلةً كتلة (4 MB لكل مرة) باستخدام FileReader
+         * لكل كتلة: تُقسَّم إلى سطور ويُستدعى parseLine() لكل سطر
+         * عند الانتهاء: يُستدعى finalizeData() لربط الجداول
+         */
+        function readAndParseSql(file) {
+            const CHUNK = 4 * 1024 * 1024; // حجم الكتلة: 4 ميجابايت
+            let offset = 0,
+                leftover = ''; // باقي السطر من الكتلة السابقة (سطر غير مكتمل)
+            const total = file.size;
+            const totalMB = (total / 1024 / 1024).toFixed(2);
+            // جداول مؤقتة لتجميع البيانات أثناء القراءة
+            const tables = {
+                commons: [],
+                traders: [],
+                products: [],
+                dailybills: [],
+                dailyorders: []
+            };
+            let chunkCount = 0;
+            const t0 = performance.now(); // لقياس زمن التحليل الكلي
+            console.log(`[Hisba] Chunk size: 4 MB | Total chunks estimated: ~${Math.ceil(total / (4*1024*1024))}`);
+            console.group('[Hisba] Chunk reading progress');
 
-        function processSQL(sql, filename) {
-            document.getElementById('upload-screen').style.display = 'none';
-            const ps = document.getElementById('progress-screen');
-            ps.style.display = 'flex';
-
-            // Yield to let the browser paint
-            setTimeout(() => {
-                try {
-                    setProgress(5, 'تحليل ملف SQL...');
-                    parseSQLDump(sql);
-
-                    setProgress(40, 'بناء فهارس البيانات...');
-                    buildMaps();
-
-                    setProgress(60, 'حساب الإحصاءات...');
-                    computeDerived();
-
-                    setProgress(80, 'رسم المخططات...');
-                    ps.style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'block';
-
-                    setTimeout(() => {
-                        populateKPIs();
-                        populateTicker();
-                        populateSelectors();
-                        renderAllCharts();
-                        initScrollFadeIn();
-                        document.getElementById('db-info-badge').textContent = filename;
-                        setProgress(100, 'اكتمل التحميل');
-                    }, 100);
-                } catch (err) {
-                    ps.style.display = 'none';
-                    document.getElementById('upload-screen').style.display = 'flex';
-                    alert('خطأ في تحليل الملف: ' + err.message + '\n\nتأكد أن الملف هو MySQL dump صحيح.');
-                    console.error(err);
+            function readNext() {
+                if (offset >= total) {
+                    console.groupEnd();
+                    if (leftover.trim()) parseLine(leftover.trim(), tables);
+                    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+                    console.log(`%c[Hisba] ✅ Read complete in ${elapsed}s`, 'color:green;font-weight:bold');
+                    console.log('[Hisba] Raw counts →', {
+                        commons: tables.commons.length,
+                        traders: tables.traders.length,
+                        products: tables.products.length,
+                        dailybills: tables.dailybills.length,
+                        dailyorders: tables.dailyorders.length
+                    });
+                    finalizeData(tables);
+                    return;
                 }
+                const slice = file.slice(offset, Math.min(offset + CHUNK, total));
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    chunkCount++;
+                    const text = e.target.result;
+                    const lines = (leftover + text).split('\n');
+                    leftover = lines.pop();
+                    for (const line of lines) {
+                        const t = line.trim();
+                        if (t) parseLine(t, tables);
+                    }
+                    offset += CHUNK;
+                    const pct = Math.min(90, Math.round(offset / total * 90));
+                    const readMB = (offset / 1024 / 1024).toFixed(1);
+                    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+                    console.log(
+                        `[Hisba] Chunk #${chunkCount} | ${readMB} / ${totalMB} MB (${pct}%) | ` +
+                        `commons:${tables.commons.length} traders:${tables.traders.length} ` +
+                        `products:${tables.products.length} bills:${tables.dailybills.length} ` +
+                        `orders:${tables.dailyorders.length} | ${elapsed}s elapsed`
+                    );
+                    setProgress(pct, 'جارٍ القراءة... ' + readMB + ' / ' + totalMB + ' MB');
+                    setTimeout(readNext, 0);
+                };
+                reader.onerror = function() {
+                    console.error(`[Hisba] ❌ FileReader error at offset ${offset}`);
+                };
+                reader.readAsText(slice, 'utf-8');
+            }
+            readNext();
+        }
+
+        function parseLine(line, tables) {
+            if (line.indexOf('INSERT') !== 0) return;
+            const m = line.match(/^INSERT INTO `(\w+)` VALUES\s*(.+)/i);
+            if (!m) return;
+            const tbl = m[1];
+            if (!tables[tbl]) {
+                // Only warn once per unknown table to avoid spam
+                if (!parseLine._warned) parseLine._warned = {};
+                if (!parseLine._warned[tbl]) {
+                    console.warn(`[Hisba] Skipping unknown table: "${tbl}" (won't warn again)`);
+                    parseLine._warned[tbl] = true;
+                }
+                return;
+            }
+            const valuesPart = m[2];
+            const regex = /\(([^)]*(?:'(?:[^'\\]|\\.)*'[^)]*)*)\)/g;
+            let match;
+            while ((match = regex.exec(valuesPart)) !== null) {
+                parseInsertRow(tbl, match[1], tables);
+            }
+        }
+
+        /**
+         * parseInsertRow — تحويل صف INSERT واحد إلى كائن JavaScript
+         * row[N] يشير إلى العمود N (بترتيب تعريف الجدول في ss.sql)
+         */
+        function parseInsertRow(tbl, str, tables) {
+            const row = splitRow(str); // تقسيم السطر إلى قيم مع دعم النصوص المقتبسة
+            if (!row || !row.length) return;
+            switch (tbl) {
+                case 'commons':
+                    // commons: id, commonNum, name, address, phone, transport, comision...
+                    // row[0]=id | row[1]=commonNum | row[2]=name
+                    if (row.length >= 3) tables.commons.push({
+                        id: +row[0],
+                        name: uq(row[2]) // اسم المشترك
+                    });
+                    break;
+                case 'traders':
+                    // traders: id, traderNum, name, address, phone, empty, emptyRent...
+                    // row[0]=id | row[1]=traderNum | row[2]=name
+                    if (row.length >= 3) tables.traders.push({
+                        id: +row[0],
+                        name: uq(row[2]) // اسم التاجر
+                    });
+                    break;
+                case 'products':
+                    // products: id, prodName, client_ID
+                    // row[0]=id | row[1]=prodName
+                    if (row.length >= 2) tables.products.push({
+                        id: +row[0],
+                        name: uq(row[1]) // اسم المنتج (مثال: "بندورة")
+                    });
+                    break;
+                case 'dailybills':
+                    // dailybills: id, traderID, farmerID(=commonID), dateInvoice, status, pre_year, bill_id, client_ID
+                    // row[0]=id | row[1]=traderID | row[2]=farmerID(→commons) | row[3]=dateInvoice
+                    // ملاحظة: العمود اسمه farmerID لكنه يشير إلى جدول commons
+                    if (row.length >= 4) tables.dailybills.push({
+                        id: +row[0],
+                        traderID: +row[1], // → traders.id
+                        commonID: +row[2], // → commons.id (مخزون كـ farmerID في DB)
+                        dateInvoice: uq(row[3]) // تاريخ الفاتورة YYYY-MM-DD
+                    });
+                    break;
+                case 'dailyorders':
+                    // dailyorders: id[0], prodID[1], prodNum[2], prodWheight[3], itemPrice[4],
+                    //   weightRate[5], emptyReturend[6], emptyReturendTrader[7],
+                    //   comision[8], municipality[9], empty[10], transport[11],
+                    //   totalTrans[12], emptyRent[13], billID[14], client_ID[15]
+                    if (row.length >= 15) {
+                        const prodNum = parseInt(row[2]) || 0; // عدد الصناديق
+                        const prodWeight = parseFloat(row[3]) || 0; // الوزن الإجمالي (كغ)
+                        const itemPrice = parseFloat(row[4]) || 0; // السعر (₪/كغ أو ₪/صندوق)
+                        const comision = parseFloat(row[8]) || 0; // نسبة عمولة الحسبة (0.06 = 6%)
+                        const mun = parseFloat(row[9]) || 0; // رسوم البلدية لكل صندوق (₪)
+                        const transport = parseFloat(row[11]) || 0; // رسوم النقل لكل صندوق (₪)
+                        const totalTrans = parseFloat(row[12]) || 0; // إجمالي النقل المحتسب مسبقاً
+
+                        // حساب الإجمالي: إذا كان هناك وزن → حساب بالوزن، وإلا → حساب بالصناديق
+                        const total = prodWeight > 0 ? prodWeight * itemPrice : prodNum * itemPrice;
+                        // حساب النقل: استخدام totalTrans إذا موجود، وإلا احتساب transport × عدد الصناديق
+                        const transAmt = totalTrans > 0 ? totalTrans : transport * prodNum;
+
+                        tables.dailyorders.push({
+                            prodID: +row[1], // → products.id
+                            prodNum, // عدد الصناديق
+                            prodWeight, // الوزن
+                            itemPrice, // السعر
+                            comision, // نسبة العمولة
+                            mun, // رسوم البلدية/صندوق
+                            transAmt, // إجمالي النقل المحتسب
+                            billID: +row[14], // → dailybills.id
+                            total, // = الوزن×السعر أو الصناديق×السعر
+                            commissionAmt: total * comision, // = إجمالي × نسبة العمولة
+                            munAmt: mun * prodNum // = رسوم البلدية × عدد الصناديق
+                        });
+                    }
+                    break;
+            }
+        }
+
+        /**
+         * splitRow — تقسيم سطر SQL إلى مصفوفة من القيم
+         * يتعامل مع النصوص المقتبسة بعلامات ' بشكل صحيح
+         * (تجاهل الفاصلة داخل النصوص المقتبسة)
+         * مثال: "1,'أحمد',0.06" → ['1', "'أحمد'", '0.06']
+         */
+        function splitRow(str) {
+            const vals = [];
+            let cur = '',
+                inStr = false, // هل نحن داخل نص مقتبس؟
+                esc = false; // هل الحرف التالي مُهرَّب (escaped)؟
+            for (let i = 0; i < str.length; i++) {
+                const c = str[i];
+                if (esc) {
+                    cur += c;
+                    esc = false;
+                    continue;
+                }
+                if (c === '\\') {
+                    esc = true; // الحرف التالي مُهرَّب
+                    cur += c;
+                    continue;
+                }
+                if (c === "'" && !inStr) {
+                    inStr = true; // بداية نص مقتبس
+                    cur += c;
+                    continue;
+                }
+                if (c === "'" && inStr) {
+                    inStr = false; // نهاية نص مقتبس
+                    cur += c;
+                    continue;
+                }
+                if (c === ',' && !inStr) {
+                    vals.push(cur.trim()); // فاصل بين القيم (خارج النصوص)
+                    cur = '';
+                    continue;
+                }
+                cur += c;
+            }
+            if (cur.trim()) vals.push(cur.trim()); // القيمة الأخيرة
+            return vals;
+        }
+
+        /**
+         * uq — إزالة علامات الاقتباس من قيمة نصية SQL
+         * مثال: "'أحمد العطيات'" → "أحمد العطيات"
+         * يتعامل أيضاً مع الهروب (\'  →  ')
+         */
+        function uq(s) {
+            if (!s) return '';
+            s = s.trim();
+            if (s.startsWith("'") && s.endsWith("'")) s = s.slice(1, -1); // إزالة الاقتباس
+            return s.replace(/\\'/g, "'").replace(/\\\\/g, '\\'); // إلغاء الهروب
+        }
+
+        /**
+         * finalizeData — ربط جداول dailyorders + dailybills (JOIN في الذاكرة)
+         *
+         * المشكلة: dailyorders لا تحتوي على تاريخ/مشترك/تاجر مباشرةً،
+         *          هذه المعلومات موجودة في dailybills عبر billID.
+         *
+         * الحل: بناء خريطة (billMap) من id → bill،
+         *       ثم لكل order: إيجاد الـ bill المقابل ودمج البيانات
+         *       في مصفوفة DB.enriched (السطور المدمجة الجاهزة للتحليل)
+         *
+         * النتيجة: كل عنصر في DB.enriched يحتوي على:
+         *   date, commonID, traderID, prodID, boxes, weight,
+         *   itemPrice, total, commissionAmt, munAmt, transAmt, billID
+         */
+        function finalizeData(tables) {
+            setProgress(93, 'جارٍ ربط الجداول...');
+            console.log('%c[Hisba] 🔗 Joining tables...', 'color:#2d6a4f;font-weight:bold');
+            const t1 = performance.now();
+            setTimeout(() => {
+                // نقل البيانات إلى الكائن العام DB
+                DB.commons = tables.commons;
+                DB.traders = tables.traders;
+                DB.products = tables.products;
+                DB.dailybills = tables.dailybills;
+                DB.dailyorders = tables.dailyorders;
+
+                // بناء خريطة الفواتير: { billID → billObject } للبحث السريع O(1)
+                const billMap = {};
+                for (const b of DB.dailybills) billMap[b.id] = b;
+                console.log(`[Hisba] Bill map built: ${Object.keys(billMap).length} bill IDs indexed`);
+
+                DB.enriched = [];
+                let skippedOrders = 0; // عداد السطور التي لا تجد فاتورة مقابلة
+                for (const o of DB.dailyorders) {
+                    const bill = billMap[o.billID]; // البحث عن الفاتورة بـ O(1)
+                    if (!bill) {
+                        // سطر يشير إلى فاتورة غير موجودة (بيانات غير مكتملة)
+                        skippedOrders++;
+                        continue;
+                    }
+                    // دمج بيانات الـ order مع بيانات الـ bill في سطر واحد
+                    DB.enriched.push({
+                        date: bill.dateInvoice, // التاريخ (من dailybills)
+                        commonID: bill.commonID, // المشترك (من dailybills.farmerID)
+                        traderID: bill.traderID, // التاجر (من dailybills)
+                        prodID: o.prodID, // المنتج (من dailyorders)
+                        boxes: o.prodNum, // عدد الصناديق
+                        weight: o.prodWeight, // الوزن
+                        itemPrice: o.itemPrice, // السعر
+                        total: o.total, // الإجمالي (وزن×سعر أو صناديق×سعر)
+                        commissionAmt: o.commissionAmt, // العمولة = total × comision
+                        commissionRate: o.comision, // نسبة العمولة (للرجوع إليها)
+                        munAmt: o.munAmt, // رسوم البلدية = municipality × prodNum
+                        transAmt: o.transAmt, // إجمالي النقل
+                        billID: o.billID // معرف الفاتورة (للتجميع وعد الفواتير)
+                    });
+                }
+
+                const joinTime = ((performance.now() - t1) / 1000).toFixed(2);
+                console.log(`%c[Hisba] ✅ Join complete in ${joinTime}s`, 'color:green;font-weight:bold');
+                console.log(
+                    `[Hisba] Enriched rows: ${DB.enriched.length} | Skipped orders (no bill): ${skippedOrders}`);
+                if (skippedOrders > 0) console.warn(
+                    `[Hisba] ⚠️ ${skippedOrders} orders had no matching bill — they are excluded from stats`);
+
+                // Sanity checks
+                const totalBoxes = DB.enriched.reduce((s, r) => s + r.boxes, 0);
+                const totalValue = DB.enriched.reduce((s, r) => s + r.total, 0);
+                console.log('%c[Hisba] 📊 Sanity check', 'color:#d97706;font-weight:bold', {
+                    totalBoxes,
+                    totalValueNIS: totalValue.toFixed(2),
+                    uniqueCommons: new Set(DB.enriched.map(r => r.commonID)).size,
+                    uniqueTraders: new Set(DB.enriched.map(r => r.traderID)).size,
+                    uniqueProducts: new Set(DB.enriched.map(r => r.prodID)).size,
+                    dateRange: [
+                        DB.enriched.map(r => r.date).filter(Boolean).sort()[0],
+                        DB.enriched.map(r => r.date).filter(Boolean).sort().at(-1)
+                    ]
+                });
+
+                setProgress(100, 'اكتملت المعالجة بنجاح! ✅');
+                console.log('%c[Hisba] 🚀 Rendering app...', 'color:#1a3a5c;font-weight:bold');
+                setTimeout(() => {
+                    document.getElementById('upload-screen').style.display = 'none';
+                    document.getElementById('app').style.display = 'block';
+                    initApp();
+                }, 500);
             }, 50);
         }
 
-        function parseSQLDump(sql) {
-            // Remove comments
-            sql = sql.replace(/\/\*.*?\*\//gs, '');
-            sql = sql.replace(/^--.*$/gm, '');
-
-            // Extract INSERT statements
-            const insertRe = /INSERT\s+INTO\s+`?(\w+)`?\s*\(([^)]+)\)\s*VALUES\s*([\s\S]+?)(?=INSERT\s+INTO|$)/gi;
-            let match;
-
-            while ((match = insertRe.exec(sql)) !== null) {
-                const tableName = match[1].toLowerCase();
-                const colsPart = match[2];
-                const valsPart = match[3];
-
-                if (!Object.prototype.hasOwnProperty.call(DB, tableName)) continue;
-
-                const cols = colsPart.split(',').map(c => c.trim().replace(/`/g, '').trim());
-
-            // Parse value tuples
-            const rows = parseValueTuples(valsPart);
-            for (const row of rows) {
-                if (row.length === 0) continue;
-                const obj = {};
-                for (let i = 0; i < cols.length; i++) {
-                    let v = row[i] !== undefined ? row[i] : null;
-                    // Convert numeric strings
-                    if (v !== null && v !== 'NULL' && !isNaN(v) && v !== '') v = parseFloat(v);
-                    obj[cols[i]] = v === 'NULL' ? null : v;
-                }
-                DB[tableName].push(obj);
-            }
-        }
-    }
-
-    function parseValueTuples(valsPart) {
-        const rows = [];
-        // Find each (...) tuple
-        let i = 0;
-        const len = valsPart.length;
-
-        while (i < len) {
-            // Skip to '('
-            while (i < len && valsPart[i] !== '(') i++;
-            if (i >= len) break;
-            i++; // skip '('
-
-            const row = [];
-            let cell = '';
-            let inStr = false;
-            let strChar = '';
-            let escaped = false;
-
-            while (i < len) {
-                const ch = valsPart[i];
-
-                if (escaped) {
-                    cell += ch;
-                    escaped = false;
-                    i++;
-                    continue;
-                }
-                if (ch === '\\' && inStr) {
-                    escaped = true;
-                    cell += ch;
-                    i++;
-                    continue;
-                }
-
-                if (!inStr && (ch === "'" || ch === '"')) {
-                    inStr = true;
-                    strChar = ch;
-                    i++;
-                    continue;
-                }
-                if (inStr && ch === strChar) {
-                    inStr = false;
-                    i++;
-                    continue;
-                }
-                if (inStr) {
-                    cell += ch;
-                    i++;
-                    continue;
-                }
-
-                if (ch === ',') {
-                    row.push(cell.trim());
-                    cell = '';
-                    i++;
-                    continue;
-                }
-                if (ch === ')') {
-                    row.push(cell.trim());
-                    i++;
-                    break;
-                }
-                cell += ch;
-                i++;
-            }
-
-            if (row.length > 0) rows.push(row);
+        // ============================================================
+        //  INIT — تهيئة التطبيق بعد اكتمال التحليل
+        //
+        //  يُظهر رقم المشتركين/التجار/المنتجات في الهيدر
+        //  يستدعي كل دوال render* لتجهيز جميع التبويبات مسبقاً
+        // ============================================================
+        function initApp() {
+            // عرض ملخص قاعدة البيانات في الهيدر
+            document.getElementById('db-meta').textContent =
+                'مشتركون: ' + DB.commons.length +
+                ' | تجار: ' + DB.traders.length +
+                ' | منتجات: ' + DB.products.length +
+                ' | فواتير: ' + DB.dailybills.length +
+                ' | سطور: ' + DB.dailyorders.length;
+            console.log('%c[Hisba] 🖥️ initApp — rendering all sections...', 'color:#1a3a5c;font-weight:bold');
+            console.time('[Hisba] Total render time');
+            renderOverview();
+            console.log('[Hisba]   ✔ Overview rendered');
+            renderCommonsList();
+            console.log('[Hisba]   ✔ Commons list rendered');
+            renderTradersList();
+            console.log('[Hisba]   ✔ Traders list rendered');
+            renderProductsList();
+            console.log('[Hisba]   ✔ Products list rendered');
+            renderFinancial();
+            console.log('[Hisba]   ✔ Financial rendered');
+            renderAdvancedStats();
+            console.log('[Hisba]   ✔ Advanced stats rendered');
+            console.timeEnd('[Hisba] Total render time');
+            console.log('%c[Hisba] ✅ App fully ready', 'color:green;font-weight:bold;font-size:14px');
         }
 
-        return rows;
-    }
+        // ============================================================
+        //  HELPERS — دوال مساعدة مشتركة
+        // ============================================================
 
-    // ─────────────────────────────────────────────────────────────────
-    // 4. BUILD MAPS & DERIVED DATA
-    // ─────────────────────────────────────────────────────────────────
-    function buildMaps() {
-        DB.farmers.forEach(f => {
-            MAPS.farmers[f.id] = f.name || ('مزارع #' + f.id);
-        });
-        DB.traders.forEach(t => {
-            MAPS.traders[t.id] = t.name || ('تاجر #' + t.id);
-        });
-        DB.products.forEach(p => {
-            MAPS.products[p.id] = p.prodName || ('منتج #' + p.id);
-        });
-        DB.commons.forEach(c => {
-            MAPS.commons[c.id] = c.name || ('وكيل #' + c.id);
-        });
-        DB.clients.forEach(c => {
-            MAPS.clients[c.id] = (c.fname || '') + ' ' + (c.lname || '');
-        });
-    }
-
-    function computeDerived() {
-        // Join dailyorders with dailybills to get year, farmerID, traderID
-        const billMap = {};
-        DB.dailybills.forEach(b => {
-            billMap[b.id] = b;
-        });
-
-        // For each order, compute price per kg = (itemPrice * prodNum * prodWheight) / (prodNum * prodWheight) = itemPrice per unit weight
-        // The itemPrice in dailyorders is price per unit (طبق/piece) — total value = itemPrice * prodNum
-        // Weight per item = prodWheight, so total weight = prodNum * prodWheight (kg? or kg per طبق)
-        // We'll treat: totalValue = itemPrice * prodNum, totalWeight = prodNum * prodWheight
-        const enriched = [];
-
-        for (const ord of DB.dailyorders) {
-            const bill = billMap[ord.billID];
-            if (!bill) continue;
-            const dateStr = bill.dateInvoice;
-            if (!dateStr) continue;
-            const year = parseInt(String(dateStr).substring(0, 4));
-            const month = parseInt(String(dateStr).substring(5, 7));
-            if (isNaN(year) || isNaN(month)) continue;
-
-            const totalWeight = (ord.prodNum || 0) * (ord.prodWheight || 0);
-            const totalValue = (ord.itemPrice || 0) * (ord.prodNum || 0);
-            const pricePerKg = totalWeight > 0 ? totalValue / totalWeight : 0;
-
-            enriched.push({
-                billID: ord.billID,
-                orderID: ord.id,
-                prodID: ord.prodID,
-                farmerID: bill.farmerID,
-                traderID: bill.traderID,
-                year,
-                month,
-                prodNum: ord.prodNum || 0,
-                prodWheight: ord.prodWheight || 0,
-                itemPrice: ord.itemPrice || 0,
-                totalWeight,
-                totalValue,
-                pricePerKg,
-                comision: ord.comision || 0,
-                municipality: ord.municipality || 0,
-                empty: ord.empty || 0,
-                transport: ord.transport || 0,
-                emptyRent: ord.emptyRent || 0,
-                totalTrans: ord.totalTrans || 0,
-                emptyReturned: ord.emptyReturend || 0,
-                clientID: ord.client_ID || bill.client_ID,
+        /** fmt — تنسيق رقم بالعربية (فاصلة آلاف) بدون عملة */
+        function fmt(n) {
+            return (+(n || 0)).toLocaleString('ar-EG', {
+                maximumFractionDigits: 2
             });
         }
 
-        DERIVED.enriched = enriched;
-
-        // Years
-        DERIVED.years = [...new Set(enriched.map(e => e.year))].sort();
-
-        // ── Price per product per year
-        const priceByProdYear = {}; // prodID -> year -> {totalVal, totalWt}
-        for (const e of enriched) {
-            if (!e.prodID || e.totalWeight <= 0) continue;
-            if (!priceByProdYear[e.prodID]) priceByProdYear[e.prodID] = {};
-            if (!priceByProdYear[e.prodID][e.year]) priceByProdYear[e.prodID][e.year] = {
-                totalVal: 0,
-                totalWt: 0,
-                count: 0,
-                maxP: 0,
-                minP: Infinity
-            };
-            const b = priceByProdYear[e.prodID][e.year];
-            b.totalVal += e.totalValue;
-            b.totalWt += e.totalWeight;
-            b.count++;
-            if (e.pricePerKg > b.maxP) b.maxP = e.pricePerKg;
-            if (e.pricePerKg < b.minP) b.minP = e.pricePerKg;
+        /** fmtNIS — تنسيق مبلغ بالشيكل – يضيف رمز ₪ بعد الرقم */
+        function fmtNIS(n) {
+            return fmt(n) + ' ₪';
         }
-        DERIVED.priceByProdYear = priceByProdYear;
 
-        // ── Totals per product
-        const prodTotals = {}; // prodID -> {weight, value, orders, avgPrice}
-        for (const e of enriched) {
-            if (!e.prodID) continue;
-            if (!prodTotals[e.prodID]) prodTotals[e.prodID] = {
-                weight: 0,
-                value: 0,
-                orders: 0
-            };
-            prodTotals[e.prodID].weight += e.totalWeight;
-            prodTotals[e.prodID].value += e.totalValue;
-            prodTotals[e.prodID].orders++;
+        /** commonName — إرجاع اسم المشترك من DB.commons بواسطة id */
+        function commonName(id) {
+            const f = DB.commons.find(x => x.id === +id);
+            return f ? f.name : '#' + id; // إذا لم يُعثر عليه: عرض المعرف الرقمي
         }
-        for (const pid in prodTotals) {
-            const p = prodTotals[pid];
-            p.avgPrice = p.weight > 0 ? p.value / p.weight : 0;
+
+        /** traderName — إرجاع اسم التاجر من DB.traders بواسطة id */
+        function traderName(id) {
+            const t = DB.traders.find(x => x.id === +id);
+            return t ? t.name : '#' + id;
         }
-        DERIVED.prodTotals = prodTotals;
 
-        // ── Totals per farmer
-        const farmerTotals = {}; // farmerID -> {weight, value, orders, years:{}}
-        for (const e of enriched) {
-            if (!e.farmerID) continue;
-            if (!farmerTotals[e.farmerID]) farmerTotals[e.farmerID] = {
-                weight: 0,
-                value: 0,
-                orders: 0,
-                years: {}
-            };
-            const f = farmerTotals[e.farmerID];
-            f.weight += e.totalWeight;
-            f.value += e.totalValue;
-            f.orders++;
-            if (!f.years[e.year]) f.years[e.year] = {
-                weight: 0,
-                value: 0,
-                orders: 0
-            };
-            f.years[e.year].weight += e.totalWeight;
-            f.years[e.year].value += e.totalValue;
-            f.years[e.year].orders++;
+        /** productName — إرجاع اسم المنتج من DB.products بواسطة id */
+        function productName(id) {
+            const p = DB.products.find(x => x.id === +id);
+            return p ? p.name : '#' + id;
         }
-        DERIVED.farmerTotals = farmerTotals;
 
-        // ── Farmer product distribution (top farmers, what products they sell)
-        const farmerProds = {}; // farmerID -> prodID -> weight
-        for (const e of enriched) {
-            if (!e.farmerID || !e.prodID) continue;
-            if (!farmerProds[e.farmerID]) farmerProds[e.farmerID] = {};
-            farmerProds[e.farmerID][e.prodID] = (farmerProds[e.farmerID][e.prodID] || 0) + e.totalWeight;
-        }
-        DERIVED.farmerProds = farmerProds;
-
-        // ── Totals per trader
-        const traderTotals = {}; // traderID -> {weight, value, orders, years:{}}
-        for (const e of enriched) {
-            if (!e.traderID) continue;
-            if (!traderTotals[e.traderID]) traderTotals[e.traderID] = {
-                weight: 0,
-                value: 0,
-                orders: 0,
-                years: {}
-            };
-            const t = traderTotals[e.traderID];
-            t.weight += e.totalWeight;
-            t.value += e.totalValue;
-            t.orders++;
-            if (!t.years[e.year]) t.years[e.year] = {
-                weight: 0,
-                value: 0,
-                orders: 0
-            };
-            t.years[e.year].weight += e.totalWeight;
-            t.years[e.year].value += e.totalValue;
-            t.years[e.year].orders++;
-        }
-        DERIVED.traderTotals = traderTotals;
-
-        // ── Monthly activity heatmap
-        const monthlyActivity = {}; // year -> month -> {bills, weight}
-        for (const e of enriched) {
-            if (!monthlyActivity[e.year]) monthlyActivity[e.year] = {};
-            if (!monthlyActivity[e.year][e.month]) monthlyActivity[e.year][e.month] = {
-                bills: new Set(),
-                weight: 0
-            };
-            monthlyActivity[e.year][e.month].bills.add(e.billID);
-            monthlyActivity[e.year][e.month].weight += e.totalWeight;
-        }
-        // Convert sets to counts
-        for (const yr in monthlyActivity)
-            for (const mo in monthlyActivity[yr])
-                monthlyActivity[yr][mo].bills = monthlyActivity[yr][mo].bills.size;
-        DERIVED.monthlyActivity = monthlyActivity;
-
-        // ── Fees totals
-        const fees = {
-            comision: 0,
-            municipality: 0,
-            empty: 0,
-            transport: 0,
-            emptyRent: 0
-        };
-        let totalWeight = 0;
-        const feesByYear = {}; // year -> fees
-        for (const e of enriched) {
-            fees.comision += e.comision;
-            fees.municipality += e.municipality;
-            fees.empty += e.empty;
-            fees.transport += e.transport;
-            fees.emptyRent += e.emptyRent;
-            totalWeight += e.totalWeight;
-            if (!feesByYear[e.year]) feesByYear[e.year] = {
-                comision: 0,
-                municipality: 0,
-                empty: 0,
-                transport: 0,
-                emptyRent: 0
-            };
-            feesByYear[e.year].comision += e.comision;
-            feesByYear[e.year].municipality += e.municipality;
-            feesByYear[e.year].empty += e.empty;
-            feesByYear[e.year].transport += e.transport;
-            feesByYear[e.year].emptyRent += e.emptyRent;
-        }
-        DERIVED.fees = fees;
-        DERIVED.feesByYear = feesByYear;
-        DERIVED.totalWeight = totalWeight;
-        DERIVED.totalValue = enriched.reduce((s, e) => s + e.totalValue, 0);
-
-        // ── Crates per year
-        const cratesByYear = {};
-        for (const e of enriched) {
-            cratesByYear[e.year] = (cratesByYear[e.year] || 0) + e.prodNum;
-        }
-        DERIVED.cratesByYear = cratesByYear;
-
-        // ── Clients activity
-        const clientActivity = {}; // clientID -> {weight, orders}
-        for (const e of enriched) {
-            if (!clientActivity[e.clientID]) clientActivity[e.clientID] = {
-                weight: 0,
-                orders: 0,
-                value: 0
-            };
-            clientActivity[e.clientID].weight += e.totalWeight;
-            clientActivity[e.clientID].orders++;
-            clientActivity[e.clientID].value += e.totalValue;
-        }
-        DERIVED.clientActivity = clientActivity;
-
-        // ── Top products by year (for multi-line chart)
-        const prodByYear = {}; // prodID -> year -> {weight, value, orders}
-        for (const e of enriched) {
-            if (!e.prodID) continue;
-            if (!prodByYear[e.prodID]) prodByYear[e.prodID] = {};
-            if (!prodByYear[e.prodID][e.year]) prodByYear[e.prodID][e.year] = {
-                weight: 0,
-                value: 0,
-                orders: 0
-            };
-            prodByYear[e.prodID][e.year].weight += e.totalWeight;
-            prodByYear[e.prodID][e.year].value += e.totalValue;
-            prodByYear[e.prodID][e.year].orders++;
-        }
-        DERIVED.prodByYear = prodByYear;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // 5. POPULATE UI
-    // ─────────────────────────────────────────────────────────────────
-    function fmt(n, digits = 0) {
-        if (n === undefined || n === null || isNaN(n)) return '—';
-        return n.toLocaleString('ar-EG', {
-            minimumFractionDigits: digits,
-            maximumFractionDigits: digits
-        });
-    }
-
-    function populateKPIs() {
-        const e = DERIVED.enriched;
-        const totalOrders = e.length;
-        const totalWeight = DERIVED.totalWeight;
-        const totalValue = DERIVED.totalValue;
-        const avgPrice = totalWeight > 0 ? totalValue / totalWeight : 0;
-        const totalComs = DERIVED.fees.comision;
-        const activeFarmers = Object.keys(DERIVED.farmerTotals).length;
-        const activeTraders = Object.keys(DERIVED.traderTotals).length;
-        const totalProds = Object.keys(DERIVED.prodTotals).length;
-        const totalCrates = e.reduce((s, r) => s + r.prodNum, 0);
-
-        const years = DERIVED.years;
-        const period = years.length > 0 ? `${years[0]} — ${years[years.length-1]}` : '—';
-
-        setText('kpi-total-orders', fmt(totalOrders));
-        setText('kpi-total-orders-sub', period);
-        setText('kpi-total-weight', fmt(totalWeight / 1000, 1) + ' طن');
-        setText('kpi-total-weight-sub', fmt(totalWeight) + ' كجم إجمالي');
-        setText('kpi-avg-price', fmt(avgPrice, 2) + ' ₪');
-        setText('kpi-avg-price-sub', 'إجمالي الإيرادات: ' + fmt(totalValue, 0) + ' ₪');
-        setText('kpi-total-coms', fmt(totalComs, 0) + ' ₪');
-        setText('kpi-farmers', fmt(activeFarmers));
-        setText('kpi-farmers-sub', 'من إجمالي ' + DB.farmers.length + ' مزارع مسجّل');
-        setText('kpi-traders', fmt(activeTraders));
-        setText('kpi-traders-sub', 'من إجمالي ' + DB.traders.length + ' تاجر مسجّل');
-        setText('kpi-products', fmt(totalProds));
-        setText('kpi-products-sub', 'من ' + DB.products.length + ' صنف في الكتالوج');
-        setText('kpi-crates', fmt(totalCrates));
-        setText('kpi-crates-sub', 'طبق/صندوق تداول');
-    }
-
-    function populateTicker() {
-        const e = DERIVED.enriched;
-        const yrs = DERIVED.years;
-        setText('tk-bills', fmt(new Set(e.map(r => r.billID)).size));
-        setText('tk-weight', fmt(DERIVED.totalWeight / 1000, 1) + ' طن');
-        setText('tk-avgprice', fmt(DERIVED.totalWeight > 0 ? DERIVED.totalValue / DERIVED.totalWeight : 0, 2) +
-            ' ₪/كجم');
-        setText('tk-coms', fmt(DERIVED.fees.comision, 0) + ' ₪');
-        setText('tk-farmers', fmt(Object.keys(DERIVED.farmerTotals).length));
-        setText('tk-traders', fmt(Object.keys(DERIVED.traderTotals).length));
-        setText('tk-prods', fmt(Object.keys(DERIVED.prodTotals).length));
-        setText('tk-period', yrs.length > 0 ? yrs[0] + ' — ' + yrs[yrs.length - 1] : '—');
-    }
-
-    function populateSelectors() {
-        // Farmer select
-        const topFarmers = Object.entries(DERIVED.farmerTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 50);
-        const fsel = document.getElementById('farmer-select');
-        fsel.innerHTML = '<option value="">— اختر مزارعاً —</option>';
-        topFarmers.forEach(([id]) => {
-            const o = document.createElement('option');
-            o.value = id;
-            o.textContent = MAPS.farmers[id] || ('مزارع #' + id);
-            fsel.appendChild(o);
-        });
-
-        // Trader select
-        const topTraders = Object.entries(DERIVED.traderTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 50);
-        const tsel = document.getElementById('trader-select');
-        tsel.innerHTML = '<option value="">— اختر تاجراً —</option>';
-        topTraders.forEach(([id]) => {
-            const o = document.createElement('option');
-            o.value = id;
-            o.textContent = MAPS.traders[id] || ('تاجر #' + id);
-            tsel.appendChild(o);
-        });
-
-        // Product select for price chart
-        const topProds = Object.entries(DERIVED.prodTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 30);
-        const psel = document.getElementById('price-prod-select');
-        psel.innerHTML = '';
-        topProds.forEach(([id]) => {
-            const o = document.createElement('option');
-            o.value = id;
-            o.textContent = MAPS.products[id] || ('منتج #' + id);
-            psel.appendChild(o);
-        });
-    }
-
-    function setText(id, val) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // 6. CHART HELPERS
-    // ─────────────────────────────────────────────────────────────────
-    function mkChart(id, config) {
-        if (CHARTS[id]) {
-            CHARTS[id].destroy();
-        }
-        const canvas = document.getElementById(id);
-        if (!canvas) return null;
-        Chart.defaults.color = '#8fa3c4';
-        Chart.defaults.font.family = "'IBM Plex Sans Arabic', sans-serif";
-        Chart.defaults.font.size = 12;
-        CHARTS[id] = new Chart(canvas, config);
-        return CHARTS[id];
-    }
-
-    function gridOpts(alpha = 0.12) {
-        return {
-            color: `rgba(46,63,92,${alpha})`,
-            lineWidth: 0.8
-        };
-    }
-
-    function tickOpts(color = '#5a7299') {
-        return {
-            color,
-            font: {
-                size: 11
-            }
-        };
-    }
-
-    function tooltipOpts() {
-        return {
-            backgroundColor: '#1a2235',
-            borderColor: '#3d5278',
-            borderWidth: 1,
-            titleColor: '#e8edf5',
-            bodyColor: '#8fa3c4',
-            padding: 10,
-            cornerRadius: 8,
-            titleFont: {
-                family: "'IBM Plex Sans Arabic', sans-serif"
-            },
-            bodyFont: {
-                family: "'IBM Plex Sans Arabic', sans-serif"
-            },
-        };
-    }
-
-    function legendOpts() {
-        return {
-            labels: {
-                color: '#8fa3c4',
-                font: {
-                    size: 11
-                },
-                usePointStyle: true,
-                pointStyleWidth: 10,
-                padding: 16,
-            }
-        };
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // 7. RENDER ALL CHARTS
-    // ─────────────────────────────────────────────────────────────────
-    function renderAllCharts() {
-        renderPriceChart();
-        renderFarmerRankChart();
-        renderFarmerProductsChart();
-        renderFarmerTable();
-        renderTopProdsChart();
-        renderProdShareChart();
-        renderProdPriceRankChart();
-        renderTraderRankChart();
-        renderTraderTable();
-        renderFeesDonut();
-        renderFeesYearly();
-        renderCratesYearly();
-        renderFeesGauges();
-        renderHeatmap();
-        renderMonthlyAvg();
-        renderYearlyGrowth();
-        renderAgentsFarmers();
-        renderClientsCompare();
-        renderAgentsScatter();
-    }
-
-    // ── PRICE OVER YEARS ──
-    let priceSelectedProds = [];
-
-    function priceShowTop5() {
-        document.getElementById('price-top5-btn').classList.add('active');
-        document.getElementById('price-all-btn').classList.remove('active');
-        const top5 = Object.entries(DERIVED.prodTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 5)
-            .map(([id]) => id);
-        priceSelectedProds = top5;
-        renderPriceChart();
-    }
-
-    function priceShowAll() {
-        document.getElementById('price-top5-btn').classList.remove('active');
-        document.getElementById('price-all-btn').classList.add('active');
-        const sel = document.getElementById('price-prod-select');
-        priceSelectedProds = Array.from(sel.options).map(o => o.value);
-        renderPriceChart();
-    }
-
-    function renderPriceChart() {
-        if (priceSelectedProds.length === 0) priceShowTop5();
-        const years = DERIVED.years;
-        const metric = document.getElementById('price-view-select')?.value || 'avg';
-        if (years.length === 0) return;
-
-        const datasets = priceSelectedProds.map((pid, idx) => {
-            const byYear = DERIVED.priceByProdYear[pid] || {};
-            const data = years.map(yr => {
-                const d = byYear[yr];
-                if (!d) return null;
-                if (metric === 'avg') return d.totalWt > 0 ? +(d.totalVal / d.totalWt).toFixed(2) :
-                null;
-                if (metric === 'max') return d.maxP > 0 ? +d.maxP.toFixed(2) : null;
-                if (metric === 'min') return d.minP < Infinity ? +d.minP.toFixed(2) : null;
-                return null;
+        /**
+         * filterByDate — فلترة مصفوفة DB.enriched حسب نطاق تاريخ
+         * يستخدم مقارنة نصية مباشرة (التواريخ بصيغة YYYY-MM-DD)
+         */
+        function filterByDate(arr, from, to) {
+            return arr.filter(r => {
+                if (!r.date) return false; // تجاهل سطور بدون تاريخ
+                if (from && r.date < from) return false; // قبل تاريخ البداية
+                if (to && r.date > to) return false; // بعد تاريخ النهاية
+                return true;
             });
-            const color = PALETTE[idx % PALETTE.length];
-            return {
-                label: MAPS.products[pid] || ('منتج #' + pid),
-                data,
-                borderColor: color,
-                backgroundColor: color + '22',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 7,
-                tension: 0.4,
-                fill: false,
-                spanGaps: true,
-            };
-        });
-
-        mkChart('chart-prices', {
-            type: 'line',
-            data: {
-                labels: years,
-                datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts(),
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: {
-                            ...tickOpts(),
-                            callback: v => v + ' ₪'
-                        },
-                        title: {
-                            display: true,
-                            text: 'السعر (₪/كجم)',
-                            color: '#5a7299',
-                            font: {
-                                size: 11
-                            }
-                        },
-                    },
-                },
-            },
-        });
-    }
-
-    // ── FARMER CHARTS ──
-    function renderFarmerChart() {
-        const id = document.getElementById('farmer-select')?.value;
-        const met = document.getElementById('farmer-metric')?.value || 'weight';
-        if (!id) return;
-        const data = DERIVED.farmerTotals[id];
-        if (!data) return;
-        const years = DERIVED.years;
-        const vals = years.map(yr => {
-            const y = data.years[yr];
-            if (!y) return 0;
-            return met === 'weight' ? y.weight : met === 'revenue' ? y.value : y.orders;
-        });
-        const color = '#1dd9b0';
-        const yLabel = met === 'weight' ? 'الوزن (كجم)' : met === 'revenue' ? 'الإيرادات (₪)' : 'عدد الفواتير';
-
-        mkChart('chart-farmer-timeline', {
-            type: 'bar',
-            data: {
-                labels: years,
-                datasets: [{
-                    label: MAPS.farmers[id] || ('مزارع #' + id),
-                    data: vals,
-                    backgroundColor: color + '44',
-                    borderColor: color,
-                    borderWidth: 2,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts(),
-                        title: {
-                            display: true,
-                            text: yLabel,
-                            color: '#5a7299',
-                            font: {
-                                size: 11
-                            }
-                        },
-                    },
-                },
-            },
-        });
-    }
-
-    function renderFarmerRankChart() {
-        const top = Object.entries(DERIVED.farmerTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 15);
-        const labels = top.map(([id]) => MAPS.farmers[id] || ('#' + id));
-        const vals = top.map(([, d]) => Math.round(d.weight));
-
-        mkChart('chart-farmer-rank', {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'الوزن الكلي (كجم)',
-                    data: vals,
-                    backgroundColor: PALETTE.map(c => c + '88'),
-                    borderColor: PALETTE,
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                },
-            },
-        });
-    }
-
-    function renderFarmerProductsChart() {
-        const topFarmers = Object.entries(DERIVED.farmerTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 10)
-            .map(([id]) => id);
-
-        // Get top 6 products overall
-        const topProds = Object.entries(DERIVED.prodTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 6)
-            .map(([id]) => id);
-
-        const datasets = topProds.map((pid, idx) => ({
-            label: MAPS.products[pid] || ('#' + pid),
-            data: topFarmers.map(fid => {
-                const fp = DERIVED.farmerProds[fid];
-                return fp ? Math.round(fp[pid] || 0) : 0;
-            }),
-            backgroundColor: PALETTE[idx % PALETTE.length] + 'bb',
-            borderColor: PALETTE[idx % PALETTE.length],
-            borderWidth: 1,
-            borderRadius: 4,
-        }));
-
-        mkChart('chart-farmer-products', {
-            type: 'bar',
-            data: {
-                labels: topFarmers.map(id => MAPS.farmers[id] || ('#' + id)),
-                datasets,
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: gridOpts(0.08),
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    y: {
-                        stacked: true,
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                },
-            },
-        });
-    }
-
-    function renderFarmerTable() {
-        const top = Object.entries(DERIVED.farmerTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 20);
-
-        const maxW = top.length > 0 ? top[0][1].weight : 1;
-
-        let html = `<table class="data-table">
-        <thead><tr>
-          <th>#</th>
-          <th>اسم المزارع</th>
-          <th>الوزن الكلي (كجم)</th>
-          <th>التوزيع</th>
-          <th>إجمالي الإيرادات (₪)</th>
-          <th>عدد الفواتير</th>
-          <th>متوسط السعر/كجم</th>
-        </tr></thead><tbody>`;
-
-        top.forEach(([id, d], i) => {
-            const avg = d.weight > 0 ? (d.value / d.weight).toFixed(2) : '—';
-            const barW = Math.round((d.weight / maxW) * 120);
-            const rankCls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
-            html += `<tr>
-          <td><span class="rank-num ${rankCls}">${i+1}</span></td>
-          <td>${MAPS.farmers[id] || ('#' + id)}</td>
-          <td><span class="mono-val">${fmt(d.weight)}</span></td>
-          <td><div class="bar-inline"><div class="bar-fill" style="width:${barW}px"></div></div></td>
-          <td><span class="mono-val">${fmt(d.value, 0)} ₪</span></td>
-          <td>${fmt(d.orders)}</td>
-          <td><span class="mono-val">${avg} ₪</span></td>
-        </tr>`;
-        });
-
-        html += '</tbody></table>';
-        document.getElementById('farmer-table-wrap').innerHTML = html;
-    }
-
-    // ── TOP PRODUCTS MULTI-LINE ──
-    function renderTopProdsChart() {
-        const metric = document.getElementById('prod-metric-select')?.value || 'weight';
-        const topN = parseInt(document.getElementById('prod-topn-select')?.value || '8');
-        const years = DERIVED.years;
-        if (years.length === 0) return;
-
-        // Pick top N products by total
-        const sorted = Object.entries(DERIVED.prodTotals)
-            .sort((a, b) => {
-                const va = metric === 'weight' ? a[1].weight : metric === 'revenue' ? a[1].value : metric ===
-                    'orders' ? a[1].orders : a[1].avgPrice;
-                const vb = metric === 'weight' ? b[1].weight : metric === 'revenue' ? b[1].value : metric ===
-                    'orders' ? b[1].orders : b[1].avgPrice;
-                return vb - va;
-            })
-            .slice(0, topN)
-            .map(([id]) => id);
-
-        const datasets = sorted.map((pid, idx) => {
-            const byYear = DERIVED.prodByYear[pid] || {};
-            const data = years.map(yr => {
-                const d = byYear[yr];
-                if (!d) return null;
-                if (metric === 'weight') return Math.round(d.weight);
-                if (metric === 'revenue') return Math.round(d.value);
-                if (metric === 'orders') return d.orders;
-                if (metric === 'avgprice') return d.weight > 0 ? +(d.value / d.weight).toFixed(2) :
-                null;
-                return null;
-            });
-            const color = PALETTE[idx % PALETTE.length];
-            return {
-                label: MAPS.products[pid] || ('#' + pid),
-                data,
-                borderColor: color,
-                backgroundColor: color + '18',
-                borderWidth: 2.5,
-                pointRadius: 4,
-                tension: 0.35,
-                fill: true,
-                spanGaps: true,
-            };
-        });
-
-        mkChart('chart-top-products', {
-            type: 'line',
-            data: {
-                labels: years,
-                datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts(),
-                        stacked: false
-                    },
-                },
-            },
-        });
-    }
-
-    function renderProdShareChart() {
-        const top = Object.entries(DERIVED.prodTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 10);
-
-        const labels = top.map(([id]) => MAPS.products[id] || ('#' + id));
-        const vals = top.map(([, d]) => Math.round(d.weight));
-
-        mkChart('chart-prod-share', {
-            type: 'doughnut',
-            data: {
-                labels,
-                datasets: [{
-                    data: vals,
-                    backgroundColor: PALETTE.map(c => c + 'cc'),
-                    borderColor: PALETTE,
-                    borderWidth: 1.5,
-                    hoverOffset: 10,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                cutout: '60%',
-            },
-        });
-    }
-
-    function renderProdPriceRankChart() {
-        const sorted = Object.entries(DERIVED.prodTotals)
-            .filter(([, d]) => d.weight > 100)
-            .sort((a, b) => b[1].avgPrice - a[1].avgPrice)
-            .slice(0, 20);
-
-        const labels = sorted.map(([id]) => MAPS.products[id] || ('#' + id));
-        const vals = sorted.map(([, d]) => +d.avgPrice.toFixed(2));
-
-        mkChart('chart-prod-price-rank', {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'متوسط السعر (₪/كجم)',
-                    data: vals,
-                    backgroundColor: sorted.map((_, i) => PALETTE[i % PALETTE.length] + '88'),
-                    borderColor: sorted.map((_, i) => PALETTE[i % PALETTE.length]),
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: {
-                            ...tickOpts(),
-                            callback: v => v + ' ₪'
-                        }
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                },
-            },
-        });
-    }
-
-    // ── TRADERS ──
-    function renderTraderChart() {
-        const id = document.getElementById('trader-select')?.value;
-        if (!id) return;
-        const data = DERIVED.traderTotals[id];
-        if (!data) return;
-        const years = DERIVED.years;
-        const weights = years.map(yr => data.years[yr] ? Math.round(data.years[yr].weight) : 0);
-        const orders = years.map(yr => data.years[yr] ? data.years[yr].orders : 0);
-
-        mkChart('chart-trader-timeline', {
-            type: 'bar',
-            data: {
-                labels: years,
-                datasets: [{
-                        label: 'الوزن (كجم)',
-                        data: weights,
-                        backgroundColor: '#5bc4f522',
-                        borderColor: '#5bc4f5',
-                        borderWidth: 2,
-                        borderRadius: 5,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'عدد الفواتير',
-                        data: orders,
-                        type: 'line',
-                        borderColor: '#f0b429',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.4,
-                        yAxisID: 'y2',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts(),
-                        position: 'right'
-                    },
-                    y2: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: tickOpts(),
-                        position: 'left'
-                    },
-                },
-            },
-        });
-    }
-
-    function renderTraderRankChart() {
-        const top = Object.entries(DERIVED.traderTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 15);
-
-        mkChart('chart-trader-rank', {
-            type: 'bar',
-            data: {
-                labels: top.map(([id]) => MAPS.traders[id] || ('#' + id)),
-                datasets: [{
-                    label: 'الوزن المشترى (كجم)',
-                    data: top.map(([, d]) => Math.round(d.weight)),
-                    backgroundColor: PALETTE.map(c => c + '88'),
-                    borderColor: PALETTE,
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                },
-            },
-        });
-    }
-
-    function renderTraderTable() {
-        const top = Object.entries(DERIVED.traderTotals)
-            .sort((a, b) => b[1].weight - a[1].weight)
-            .slice(0, 20);
-        const maxW = top.length > 0 ? top[0][1].weight : 1;
-
-        let html = `<table class="data-table"><thead><tr>
-        <th>#</th><th>اسم التاجر</th><th>الوزن الكلي (كجم)</th>
-        <th>التوزيع</th><th>إجمالي المشتريات (₪)</th><th>عدد الفواتير</th>
-      </tr></thead><tbody>`;
-
-        top.forEach(([id, d], i) => {
-            const rankCls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
-            const barW = Math.round((d.weight / maxW) * 120);
-            html += `<tr>
-          <td><span class="rank-num ${rankCls}">${i+1}</span></td>
-          <td>${MAPS.traders[id] || ('#' + id)}</td>
-          <td><span class="mono-val">${fmt(d.weight)}</span></td>
-          <td><div class="bar-inline"><div class="bar-fill" style="width:${barW}px;background:linear-gradient(90deg,#5bc4f222,#5bc4f5)"></div></div></td>
-          <td><span class="mono-val">${fmt(d.value, 0)} ₪</span></td>
-          <td>${fmt(d.orders)}</td>
-        </tr>`;
-        });
-
-        html += '</tbody></table>';
-        document.getElementById('trader-table-wrap').innerHTML = html;
-    }
-
-    // ── FEES ──
-    function renderFeesDonut() {
-        const f = DERIVED.fees;
-        const total = f.comision + f.municipality + f.empty + f.transport + f.emptyRent;
-        if (total === 0) return;
-
-        mkChart('chart-fees-donut', {
-            type: 'doughnut',
-            data: {
-                labels: ['عمولة', 'بلدية', 'أطباق', 'نقل', 'إيجار أطباق'],
-                datasets: [{
-                    data: [f.comision, f.municipality, f.empty, f.transport, f.emptyRent].map(v => +v
-                        .toFixed(0)),
-                    backgroundColor: ['#1dd9b0cc', '#f0b429cc', '#f26b5bcc', '#9b8ff7cc', '#5bc4f5cc'],
-                    borderColor: ['#1dd9b0', '#f0b429', '#f26b5b', '#9b8ff7', '#5bc4f5'],
-                    borderWidth: 1.5,
-                    hoverOffset: 12,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: {
-                        ...tooltipOpts(),
-                        callbacks: {
-                            label: ctx => {
-                                const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                                return ` ${ctx.label}: ${fmt(ctx.parsed, 0)} ₪ (${pct}%)`;
-                            },
-                        },
-                    },
-                },
-                cutout: '55%',
-            },
-        });
-    }
-
-    function renderFeesYearly() {
-        const years = DERIVED.years;
-        const fByY = DERIVED.feesByYear;
-
-        const mkDs = (label, key, color) => ({
-            label,
-            data: years.map(yr => fByY[yr] ? +fByY[yr][key].toFixed(0) : 0),
-            borderColor: color,
-            backgroundColor: color + '22',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.35,
-        });
-
-        mkChart('chart-fees-yearly', {
-            type: 'line',
-            data: {
-                labels: years,
-                datasets: [
-                    mkDs('عمولة', 'comision', '#1dd9b0'),
-                    mkDs('بلدية', 'municipality', '#f0b429'),
-                    mkDs('أطباق', 'empty', '#f26b5b'),
-                    mkDs('نقل', 'transport', '#9b8ff7'),
-                    mkDs('إيجار أطباق', 'emptyRent', '#5bc4f5'),
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: {
-                            ...tickOpts(),
-                            callback: v => fmt(v, 0) + ' ₪'
-                        },
-                        stacked: false
-                    },
-                },
-            },
-        });
-    }
-
-    function renderCratesYearly() {
-        const years = DERIVED.years;
-        const vals = years.map(yr => DERIVED.cratesByYear[yr] || 0);
-
-        mkChart('chart-crates-yearly', {
-            type: 'bar',
-            data: {
-                labels: years,
-                datasets: [{
-                    label: 'عدد الأطباق',
-                    data: vals,
-                    backgroundColor: '#f26b5b44',
-                    borderColor: '#f26b5b',
-                    borderWidth: 2,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                },
-            },
-        });
-    }
-
-    function renderFeesGauges() {
-        const tw = DERIVED.totalWeight;
-        if (tw === 0) return;
-        const f = DERIVED.fees;
-        const items = [{
-                name: 'عمولة / كجم',
-                val: f.comision / tw,
-                color: '#1dd9b0',
-                max: 0.15
-            },
-            {
-                name: 'بلدية / كجم',
-                val: f.municipality / tw,
-                color: '#f0b429',
-                max: 0.05
-            },
-            {
-                name: 'أطباق / كجم',
-                val: f.empty / tw,
-                color: '#f26b5b',
-                max: 0.20
-            },
-            {
-                name: 'نقل / كجم',
-                val: f.transport / tw,
-                color: '#9b8ff7',
-                max: 0.10
-            },
-            {
-                name: 'إيجار أطباق / كجم',
-                val: f.emptyRent / tw,
-                color: '#5bc4f5',
-                max: 0.05
-            },
-        ];
-
-        const container = document.getElementById('fees-gauge-row');
-        container.innerHTML = items.map(item => {
-            const pct = Math.min(100, (item.val / item.max) * 100);
-            return `
-          <div class="gauge-item">
-            <div class="gauge-header">
-              <span class="gauge-name">${item.name}</span>
-              <span class="gauge-val">${item.val.toFixed(4)} ₪</span>
-            </div>
-            <div class="gauge-track">
-              <div class="gauge-fill" style="width:${pct.toFixed(1)}%;background:${item.color}"></div>
-            </div>
-          </div>`;
-        }).join('');
-    }
-
-    // ── HEATMAP ──
-    function renderHeatmap() {
-        const years = DERIVED.years;
-        if (years.length === 0) return;
-        const activity = DERIVED.monthlyActivity;
-
-        // Find max for color scale
-        let maxBills = 0;
-        for (const yr of years)
-            for (let m = 1; m <= 12; m++) {
-                const v = activity[yr]?.[m]?.bills || 0;
-                if (v > maxBills) maxBills = v;
-            }
-
-        const shortM = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر',
-            'نوفمبر', 'ديسمبر'
-        ];
-        const shortMa = ['ي', 'ف', 'م', 'أ', 'م', 'ي', 'ي', 'أ', 'س', 'أ', 'ن', 'د'];
-
-        let html = `<div class="heatmap-grid" style="min-width:${60 + 12*36}px">`;
-        // Header row
-        html += `<div class="heatmap-label"></div>`;
-        for (let m = 0; m < 12; m++) {
-            html += `<div class="heatmap-month-header">${shortMa[m]}</div>`;
         }
 
-        for (const yr of years) {
-            html += `<div class="heatmap-label">${yr}</div>`;
-            for (let m = 1; m <= 12; m++) {
-                const bills = activity[yr]?.[m]?.bills || 0;
-                const intensity = maxBills > 0 ? bills / maxBills : 0;
-                const alpha = 0.08 + intensity * 0.85;
-                const r = Math.round(29 + (29 * 0.8) * intensity);
-                const g = Math.round(217 - 160 * intensity);
-                const b = Math.round(176 - 100 * intensity);
-                const bg = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
-                const title = `${shortM[m-1]} ${yr}: ${bills} فاتورة`;
-                html +=
-                    `<div class="heatmap-cell" style="background:${bg}" title="${title}">${bills > 0 ? bills : ''}</div>`;
+        /** clearDatesAndRun — تفريغ حقلي التاريخ ثم تشغيل دالة render */
+        function clearDatesAndRun(id1, id2, fn) {
+            document.getElementById(id1).value = '';
+            document.getElementById(id2).value = '';
+            fn();
+        }
+
+        /** destroyChart — إتلاف مخطط Chart.js الموجود قبل إعادة رسمه
+         *   ضروري لمنع تراكم المخططات عند تغيير الفلترة */
+        function destroyChart(id) {
+            if (charts[id]) {
+                charts[id].destroy();
+                delete charts[id];
             }
         }
 
-        html += '</div>';
-        document.getElementById('heatmap-container').innerHTML = html;
-    }
-
-    function renderMonthlyAvg() {
-        const years = DERIVED.years;
-        const activity = DERIVED.monthlyActivity;
-        const monthAvg = Array.from({
-            length: 12
-        }, (_, i) => {
-            let total = 0,
-                count = 0;
-            for (const yr of years) {
-                const v = activity[yr]?.[i + 1]?.bills || 0;
-                total += v;
-                count++;
-            }
-            return count > 0 ? +(total / count).toFixed(1) : 0;
-        });
-
-        mkChart('chart-monthly-avg', {
-            type: 'bar',
-            data: {
-                labels: MONTHS_AR,
-                datasets: [{
-                    label: 'متوسط عدد الفواتير الشهرية',
-                    data: monthAvg,
-                    backgroundColor: monthAvg.map((v, i) => {
-                        const mx = Math.max(...monthAvg);
-                        const alpha = 0.3 + (v / (mx || 1)) * 0.6;
-                        return `rgba(240,180,41,${alpha.toFixed(2)})`;
-                    }),
-                    borderColor: '#f0b429',
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
+        /**
+         * makeBarChart — رسم مخطط أعمدة بسيط باستخدام Chart.js
+         * @param id       معرف عنصر <canvas>
+         * @param labels   تسميات المحور الأفقي
+         * @param data     القيم العددية
+         * @param label    عنوان المجموعة (dataset label)
+         * @param color    لون الأعمدة (افتراضي: #1a3a5c)
+         */
+        function makeBarChart(id, labels, data, label, color) {
+            destroyChart(id);
+            const ctx = document.getElementById(id);
+            if (!ctx) return;
+            charts[id] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label,
+                        data,
+                        backgroundColor: color || '#1a3a5c',
+                        borderRadius: 6
+                    }]
                 },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                },
-            },
-        });
-    }
-
-    function renderYearlyGrowth() {
-        const years = DERIVED.years;
-        const activity = DERIVED.monthlyActivity;
-        const yearlyWeight = years.map(yr => {
-            let w = 0;
-            for (let m = 1; m <= 12; m++) w += (DERIVED.monthlyActivity[yr]?.[m]?.weight || 0);
-            return Math.round(w);
-        });
-
-        // Compute YoY growth %
-        const growthPct = yearlyWeight.map((v, i) => {
-            if (i === 0) return 0;
-            const prev = yearlyWeight[i - 1];
-            return prev > 0 ? +((v - prev) / prev * 100).toFixed(1) : 0;
-        });
-
-        mkChart('chart-yearly-growth', {
-            type: 'bar',
-            data: {
-                labels: years,
-                datasets: [{
-                        label: 'الوزن الكلي (كجم)',
-                        data: yearlyWeight,
-                        backgroundColor: '#1dd9b033',
-                        borderColor: '#1dd9b0',
-                        borderWidth: 2,
-                        borderRadius: 5,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'نمو سنوي %',
-                        type: 'line',
-                        data: growthPct,
-                        borderColor: '#f0b429',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        tension: 0.3,
-                        yAxisID: 'y2',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts(),
-                        position: 'right'
-                    },
-                    y2: {
-                        grid: {
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
                             display: false
-                        },
-                        position: 'left',
-                        ticks: {
-                            ...tickOpts(),
-                            callback: v => v + '%'
-                        },
-                    },
-                },
-            },
-        });
-    }
-
-    // ── AGENTS ──
-    function renderAgentsFarmers() {
-        const agentFarmerCount = {};
-        DB.commonfarmers.forEach(cf => {
-            agentFarmerCount[cf.commonID] = (agentFarmerCount[cf.commonID] || 0) + 1;
-        });
-        const top = Object.entries(agentFarmerCount)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 15);
-
-        mkChart('chart-agents-farmers', {
-            type: 'bar',
-            data: {
-                labels: top.map(([id]) => MAPS.commons[id] || ('#' + id)),
-                datasets: [{
-                    label: 'عدد المزارعين المرتبطين',
-                    data: top.map(([, v]) => v),
-                    backgroundColor: PALETTE.map(c => c + '88'),
-                    borderColor: PALETTE,
-                    borderWidth: 1.5,
-                    borderRadius: 5,
-                }],
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: tickOpts()
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
                         }
-                    },
-                },
-            },
-        });
-    }
-
-    function renderClientsCompare() {
-        const ca = DERIVED.clientActivity;
-        const sorted = Object.entries(ca).sort((a, b) => b[1].weight - a[1].weight);
-        const labels = sorted.map(([id]) => MAPS.clients[id]?.trim() || ('سوق #' + id));
-        const wVals = sorted.map(([, d]) => Math.round(d.weight));
-        const oVals = sorted.map(([, d]) => d.orders);
-
-        mkChart('chart-clients-compare', {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                        label: 'الوزن (كجم)',
-                        data: wVals,
-                        backgroundColor: '#f26b5b55',
-                        borderColor: '#f26b5b',
-                        borderWidth: 2,
-                        borderRadius: 6,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'عدد الطلبيات',
-                        type: 'line',
-                        data: oVals,
-                        borderColor: '#9b8ff7',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        tension: 0.3,
-                        yAxisID: 'y2',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: legendOpts(),
-                    tooltip: tooltipOpts()
-                },
-                scales: {
-                    x: {
-                        grid: gridOpts(),
-                        ticks: {
-                            ...tickOpts(),
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    y: {
-                        grid: gridOpts(),
-                        ticks: tickOpts(),
-                        position: 'right'
-                    },
-                    y2: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: tickOpts(),
-                        position: 'left'
-                    },
-                },
-            },
-        });
-    }
-
-    function renderAgentsScatter() {
-        const pts = DB.commons.map(c => {
-            const farmerCount = DB.commonfarmers.filter(cf => cf.commonID == c.id).length;
-            return {
-                x: farmerCount,
-                y: +(c.comision || 0.06) * 100,
-                label: c.name || ('#' + c.id),
-                r: Math.min(20, Math.sqrt(farmerCount + 1) * 3),
-            };
-        }).filter(p => p.x > 0 || p.y > 0);
-
-        mkChart('chart-agents-scatter', {
-            type: 'bubble',
-            data: {
-                datasets: [{
-                    label: 'الوكلاء',
-                    data: pts,
-                    backgroundColor: pts.map((_, i) => PALETTE[i % PALETTE.length] + 'aa'),
-                    borderColor: pts.map((_, i) => PALETTE[i % PALETTE.length]),
-                    borderWidth: 1.5,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        ...tooltipOpts(),
-                        callbacks: {
-                            label: ctx => {
-                                const pt = ctx.raw;
-                                return ` ${pt.label} — مزارعين: ${pt.x}، عمولة: ${pt.y.toFixed(1)}%`;
-                                },
-                            },
-                        },
                     },
                     scales: {
                         x: {
-                            grid: gridOpts(),
-                            ticks: tickOpts(),
-                            title: {
-                                display: true,
-                                text: 'عدد المزارعين المرتبطين',
-                                color: '#5a7299',
+                            ticks: {
                                 font: {
-                                    size: 11
+                                    size: 10
                                 }
-                            },
+                            }
                         },
                         y: {
-                            grid: gridOpts(),
-                            ticks: {
-                                ...tickOpts(),
-                                callback: v => v + '%'
-                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * makeLineChart — رسم مخطط خطوط متعدد المحاور (datasets)
+         * يدعم عدة مجموعات في نفس المخطط (مثل: سعر متوسط + أعلى + أدنى)
+         * يُظهر الأسطورة إذا كان هناك أكثر من dataset واحد
+         */
+        function makeLineChart(id, labels, datasets) {
+            destroyChart(id);
+            const ctx = document.getElementById(id);
+            if (!ctx) return;
+            charts[id] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: datasets.length > 1,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * makePieChart — رسم مخطط دائري (doughnut) لعرض التوزيع النسبي
+         * يُستخدم لتمثيل حصص المشتركين والتجار والمنتجات
+         */
+        function makePieChart(id, labels, data, colors) {
+            destroyChart(id);
+            const ctx = document.getElementById(id);
+            if (!ctx) return;
+            charts[id] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data,
+                        backgroundColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        /** COLORS — لوحة ألوان متسقة للمخططات الدائرية والمتعددة المحاور */
+        const COLORS = ['#1a3a5c', '#2d6a4f', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#059669', '#ea580c', '#db2777',
+            '#4338ca', '#65a30d', '#b45309', '#0f766e', '#be185d', '#1d4ed8'
+        ];
+
+        /** avg — حساب متوسط مصفوفة أرقام، يُرجع 0 للمصفوفة الفارغة */
+        function avg(arr) {
+            return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+        }
+
+        // ============================================================
+        //  AUTOCOMPLETE — بحث تلقائي في حقول المشترك/التاجر/المنتج
+        //
+        //  acSearch: يبحث في DB[type] ويعرض قائمة منسدلة بالنتائج
+        //  selectAc: يختار عنصراً ويضع الاسم في حقل النص والid في hidden input
+        //  hideAcDelayed: يُخفي القائمة بتأخير 200ms (لإتاحة حدث onmousedown قبل onblur)
+        // ============================================================
+        function acSearch(val, type, dropId, hiddenId, inputId) {
+            const q = val.trim().toLowerCase();
+            const drop = document.getElementById(dropId);
+            if (!q) {
+                drop.style.display = 'none';
+                return;
+            }
+            const list = DB[type] || [];
+            const matches = list.filter(x => x.name.toLowerCase().includes(q)).slice(0, 20);
+            if (!matches.length) {
+                drop.style.display = 'none';
+                return;
+            }
+            drop.innerHTML = matches.map(x =>
+                '<div class="ac-item" onmousedown="selectAc(' + x.id + ',`' + x.name.replace(/`/g, '') + '`,`' +
+                hiddenId + '`,`' + inputId + '`,`' + dropId + '`)">' + x.name + '</div>'
+        ).join('');
+        drop.style.display = 'block';
+    }
+
+    function selectAc(id, name, hiddenId, inputId, dropId) {
+        document.getElementById(inputId).value = name;
+        document.getElementById(hiddenId).value = id;
+        document.getElementById(dropId).style.display = 'none';
+    }
+
+    function hideAcDelayed(dropId) {
+        setTimeout(() => {
+            const el = document.getElementById(dropId);
+            if (el) el.style.display = 'none';
+        }, 200);
+    }
+
+    // ============================================================
+    //  TABS — إدارة التبويبات
+    //
+    //  showTab: يُخفي جميع التبويبات ويُظهر المختار
+    //  يضع class active على الزر النشط للتلوين
+    // ============================================================
+    function showTab(name, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        if (btn) btn.classList.add('active');
+    }
+
+    // ============================================================
+    //  OVERVIEW — النظرة العامة
+    //
+    //  يحسب المؤشرات الإجمالية من DB.enriched بالكامل (reduce),
+    //  ثم يرسم 6 مخططات بيانية
+    // ============================================================
+    function renderOverview() {
+        const e = DB.enriched;
+        // مجاميع reduce لحساب الأرقام الكلية
+        const totalBoxes = e.reduce((s, r) => s + r.boxes, 0); // إجمالي الصناديق
+        const totalValue = e.reduce((s, r) => s + r.total, 0); // إجمالي قيمة البضاعة
+        const totalComm = e.reduce((s, r) => s + r.commissionAmt, 0); // إجمالي عمولات الحسبة
+        const totalMun = e.reduce((s, r) => s + r.munAmt, 0); // إجمالي رسوم البلدية
+        const totalTrans = e.reduce((s, r) => s + r.transAmt, 0); // إجمالي رسوم النقل
+        // صافي المشتركين = إجمالي القيمة − عمولة − بلدية − نقل
+        const netFarmers = totalValue - totalComm - totalMun - totalTrans;
+        const uniqueDates = new Set(e.map(r => r.date)).size; // عدد الأيام النشطة
+
+        document.getElementById('kpi-row').innerHTML = `
+                                <div class="kpi-card"><div class="val">${fmt(DB.commons.length)}</div><div class="lbl">👥 إجمالي المشتركين</div></div>
+                                <div class="kpi-card green"><div class="val">${fmt(DB.traders.length)}</div><div class="lbl">🏪 إجمالي التجار</div></div>
+                                <div class="kpi-card orange"><div class="val">${fmt(DB.products.length)}</div><div class="lbl">📦 أنواع المنتجات</div></div>
+                                <div class="kpi-card"><div class="val">${fmt(DB.dailybills.length)}</div><div class="lbl">📋 إجمالي الفواتير</div></div>
+                                <div class="kpi-card green"><div class="val">${fmt(totalBoxes)}</div><div class="lbl">📦 إجمالي الصناديق</div></div>
+                                <div class="kpi-card orange"><div class="val">${fmtNIS(totalValue)}</div><div class="lbl">💰 إجمالي القيمة</div></div>
+                                <div class="kpi-card red"><div class="val">${fmtNIS(totalComm)}</div><div class="lbl">📊 إجمالي العمولات</div></div>
+                                <div class="kpi-card purple"><div class="val">${fmtNIS(totalMun)}</div><div class="lbl">🏛️ رسوم البلدية</div></div>
+                                <div class="kpi-card"><div class="val">${fmtNIS(totalTrans)}</div><div class="lbl">🚚 رسوم النقل</div></div>
+                                <div class="kpi-card green"><div class="val">${fmtNIS(netFarmers)}</div><div class="lbl">✅ صافي المشتركين</div></div>
+                                <div class="kpi-card orange"><div class="val">${fmt(uniqueDates)}</div><div class="lbl">📅 أيام النشاط</div></div>
+                                <div class="kpi-card red"><div class="val">${(totalValue>0?(totalComm/totalValue*100):0).toFixed(1)}%</div><div class="lbl">نسبة العمولة</div></div>
+                            `;
+
+        // Monthly revenue
+        const monthlyMap = {};
+        for (const r of e) {
+            if (!r.date) continue;
+            const m = r.date.slice(0, 7);
+            if (!monthlyMap[m]) monthlyMap[m] = 0;
+            monthlyMap[m] += r.total;
+        }
+        const months18 = Object.keys(monthlyMap).sort().slice(-18);
+        makeLineChart('chart-monthly-revenue', months18, [{
+            label: 'الإيرادات ₪',
+            data: months18.map(m => monthlyMap[m]),
+            borderColor: '#1a3a5c',
+            backgroundColor: 'rgba(26,58,92,0.1)',
+            fill: true,
+            tension: 0.4
+        }]);
+
+        // Top products by boxes
+        const prodBoxes = {};
+        for (const r of e) {
+            prodBoxes[r.prodID] = (prodBoxes[r.prodID] || 0) + r.boxes;
+        }
+        const topProds = Object.entries(prodBoxes).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        makeBarChart('chart-top-products', topProds.map(([id]) => productName(id)), topProds.map(([, v]) => v),
+            'الصناديق', '#2d6a4f');
+
+        // Top commons
+        const farmerBoxes = {};
+        for (const r of e) {
+            farmerBoxes[r.commonID] = (farmerBoxes[r.commonID] || 0) + r.boxes;
+        }
+        const topCommons = Object.entries(farmerBoxes).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        makeBarChart('chart-top-commons', topCommons.map(([id]) => commonName(id)), topCommons.map(([, v]) => v),
+            'الصناديق', '#d97706');
+
+        // Top traders
+        const traderVal = {};
+        for (const r of e) {
+            traderVal[r.traderID] = (traderVal[r.traderID] || 0) + r.total;
+        }
+        const topTraders = Object.entries(traderVal).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        makeBarChart('chart-top-traders', topTraders.map(([id]) => traderName(id)), topTraders.map(([, v]) => v),
+            'القيمة ₪', '#dc2626');
+
+        // Pie
+        const top8 = Object.entries(prodBoxes).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        makePieChart('chart-revenue-pie', top8.map(([id]) => productName(id)), top8.map(([, v]) => v), COLORS);
+        makePieChart('chart-fees-donut',
+            ['عمولات', 'بلدية', 'نقل', 'صافي المشتركين'],
+            [totalComm, totalMun, totalTrans, Math.max(0, netFarmers)],
+            ['#dc2626', '#d97706', '#7c3aed', '#2d6a4f']);
+    }
+
+    // ============================================================
+    //  COMMONS LIST — قائمة المشتركين
+    //
+    //  يجمع DB.enriched حسب commonID ويحسب لكل مشترك:
+    //    boxes | total | comm | mun | trans | setالفواتير
+    //  ثم يرسم الجدول مرتباً تنازلياً بإجمالي القيمة
+    // ============================================================
+    function renderCommonsList() {
+        const from = document.getElementById('commons-date-from').value;
+        const to = document.getElementById('commons-date-to').value;
+        const data = filterByDate(DB.enriched, from, to);
+        const map = {};
+        for (const r of data) {
+            if (!map[r.commonID]) map[r.commonID] = {
+                boxes: 0,
+                total: 0,
+                comm: 0,
+                mun: 0,
+                trans: 0,
+                bills: new Set()
+            };
+            map[r.commonID].boxes += r.boxes;
+            map[r.commonID].total += r.total;
+            map[r.commonID].comm += r.commissionAmt;
+            map[r.commonID].mun += r.munAmt;
+            map[r.commonID].trans += r.transAmt;
+            map[r.commonID].bills.add(r.billID);
+        }
+        const rows = Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+        const wrap = document.getElementById('commons-table-wrap');
+        if (!rows.length) {
+            wrap.innerHTML = '<div class="no-data">لا توجد بيانات</div>';
+            return;
+        }
+        wrap.innerHTML =
+            '<table><thead><tr><th>#</th><th>المشترك</th><th>الصناديق</th><th>إجمالي القيمة</th><th>العمولات</th><th>البلدية</th><th>النقل</th><th>الصافي</th><th>الفواتير</th></tr></thead><tbody>' +
+            rows.map(([id, v], i) => '<tr>' +
+                '<td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                '<td><strong>' + commonName(id) + '</strong></td>' +
+                '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                '<td><strong>' + fmtNIS(v.total) + '</strong></td>' +
+                '<td><span class="badge badge-red">' + fmtNIS(v.comm) + '</span></td>' +
+                '<td><span class="badge badge-orange">' + fmtNIS(v.mun) + '</span></td>' +
+                '<td>' + fmtNIS(v.trans) + '</td>' +
+                '<td><span class="badge badge-green">' + fmtNIS(v.total - v.comm - v.mun - v.trans) + '</span></td>' +
+                '<td>' + v.bills.size + '</td>' +
+                '</tr>').join('') +
+            '</tbody></table>';
+        const top15 = rows.slice(0, 15);
+        makeBarChart('chart-commons-boxes', top15.map(([id]) => commonName(id)), top15.map(([, v]) => v.boxes),
+            'الصناديق', '#1a3a5c');
+        makeBarChart('chart-commons-value', top15.map(([id]) => commonName(id)), top15.map(([, v]) => v.total),
+            'القيمة ₪', '#2d6a4f');
+    }
+
+    // ============================================================
+    //  COMMON DETAIL — تفاصيل مشترك محدد
+    //
+    //  يفلتر DB.enriched بالـ commonID + نطاق التاريخ
+    //  يجمع حسب المنتج + حسب الشهر
+    //  يرسم: KPIs + مخطط شهري + دائري + جدول منتجات
+    // ============================================================
+    function renderCommonDetail() {
+        const fidRaw = document.getElementById('cd-common-id').value;
+        const fname = document.getElementById('cd-common-input').value.trim();
+        const from = document.getElementById('cd-date-from').value;
+        const to = document.getElementById('cd-date-to').value;
+        const wrap = document.getElementById('common-detail-content');
+        if (!fidRaw && !fname) {
+            wrap.innerHTML = '<div class="sec"><div class="no-data">يرجى اختيار مشترك</div></div>';
+            return;
+        }
+        let id = +fidRaw;
+        if (!id && fname) {
+            const f = DB.commons.find(x => x.name === fname);
+            if (f) id = f.id;
+        }
+        if (!id) {
+            wrap.innerHTML = '<div class="sec"><div class="no-data">لم يتم العثور على المشترك</div></div>';
+            return;
+        }
+        let data = DB.enriched.filter(r => +r.commonID === id);
+        if (from) data = data.filter(r => r.date >= from);
+        if (to) data = data.filter(r => r.date <= to);
+        if (!data.length) {
+            document.getElementById('cd-print-btn').style.display = 'none';
+            wrap.innerHTML = '<div class="sec"><div class="no-data">لا توجد فواتير في الفترة المحددة</div></div>';
+            return;
+        }
+
+        const totalBoxes = data.reduce((s, r) => s + r.boxes, 0);
+        const totalVal = data.reduce((s, r) => s + r.total, 0);
+        const totalComm = data.reduce((s, r) => s + r.commissionAmt, 0);
+        const totalMun = data.reduce((s, r) => s + r.munAmt, 0);
+        const totalTrans = data.reduce((s, r) => s + r.transAmt, 0);
+        const net = totalVal - totalComm - totalMun - totalTrans;
+
+        const prodMap = {};
+        for (const r of data) {
+            if (!prodMap[r.prodID]) prodMap[r.prodID] = {
+                boxes: 0,
+                total: 0,
+                comm: 0,
+                mun: 0,
+                trans: 0,
+                prices: []
+            };
+            prodMap[r.prodID].boxes += r.boxes;
+            prodMap[r.prodID].total += r.total;
+            prodMap[r.prodID].comm += r.commissionAmt;
+            prodMap[r.prodID].mun += r.munAmt;
+            prodMap[r.prodID].trans += r.transAmt;
+            prodMap[r.prodID].prices.push(r.itemPrice);
+        }
+        const prodRows = Object.entries(prodMap).sort((a, b) => b[1].total - a[1].total);
+
+        const monthMap = {};
+        for (const r of data) {
+            const m = r.date.slice(0, 7);
+            if (!monthMap[m]) monthMap[m] = {
+                total: 0,
+                boxes: 0
+            };
+            monthMap[m].total += r.total;
+            monthMap[m].boxes += r.boxes;
+        }
+        const months = Object.keys(monthMap).sort();
+
+        wrap.innerHTML =
+            '<div class="kpi-row">' +
+            '<div class="kpi-card"><div class="val">' + fmt(totalBoxes) +
+            '</div><div class="lbl">📦 الصناديق</div></div>' +
+            '<div class="kpi-card green"><div class="val">' + fmtNIS(totalVal) +
+            '</div><div class="lbl">💰 إجمالي القيمة</div></div>' +
+            '<div class="kpi-card red"><div class="val">' + fmtNIS(totalComm) +
+            '</div><div class="lbl">📊 العمولات</div></div>' +
+            '<div class="kpi-card orange"><div class="val">' + fmtNIS(totalMun) +
+            '</div><div class="lbl">🏛️ البلدية</div></div>' +
+            '<div class="kpi-card purple"><div class="val">' + fmtNIS(totalTrans) +
+            '</div><div class="lbl">🚚 النقل</div></div>' +
+            '<div class="kpi-card green"><div class="val">' + fmtNIS(net) +
+            '</div><div class="lbl">✅ الصافي للمشترك</div></div>' +
+            '</div>' +
+            '<div class="chart-grid">' +
+            '<div class="sec"><h2>📈 الأداء الشهري</h2><div class="chart-wrap"><canvas id="chart-fd-monthly"></canvas></div></div>' +
+            '<div class="sec"><h2>📦 توزيع المنتجات</h2><div class="chart-wrap"><canvas id="chart-fd-pie"></canvas></div></div>' +
+            '</div>' +
+            '<div class="sec"><h2>📋 تفاصيل كل منتج</h2><div class="tbl-wrap">' +
+            '<table><thead><tr><th>#</th><th>المنتج</th><th>الصناديق</th><th>الإجمالي</th><th>متوسط السعر</th><th>أعلى سعر</th><th>أدنى سعر</th><th>العمولة</th><th>البلدية</th><th>النقل</th><th>الصافي</th></tr></thead><tbody>' +
+            prodRows.map(([pid, v], i) => {
+                const a = avg(v.prices),
+                    mx = Math.max(...v.prices),
+                    mn = Math.min(...v.prices);
+                return '<tr><td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                    '<td><strong>' + productName(pid) + '</strong></td>' +
+                    '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                    '<td><strong>' + fmtNIS(v.total) + '</strong></td>' +
+                    '<td>' + fmtNIS(a) + '</td>' +
+                    '<td><span class="badge badge-green">' + fmtNIS(mx) + '</span></td>' +
+                    '<td><span class="badge badge-red">' + fmtNIS(mn) + '</span></td>' +
+                    '<td>' + fmtNIS(v.comm) + '</td>' +
+                    '<td>' + fmtNIS(v.mun) + '</td>' +
+                    '<td>' + fmtNIS(v.trans) + '</td>' +
+                    '<td><span class="badge badge-green">' + fmtNIS(v.total - v.comm - v.mun - v.trans) +
+                    '</span></td>' +
+                    '</tr>';
+            }).join('') +
+            '</tbody></table></div></div>';
+
+        setTimeout(() => {
+            destroyChart('chart-fd-monthly');
+            const ctx = document.getElementById('chart-fd-monthly');
+            if (ctx) charts['chart-fd-monthly'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                            label: 'القيمة ₪',
+                            data: months.map(m => monthMap[m].total),
+                            borderColor: '#1a3a5c',
+                            backgroundColor: 'rgba(26,58,92,0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'الصناديق',
+                            data: months.map(m => monthMap[m].boxes),
+                            borderColor: '#2d6a4f',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            position: 'right',
                             title: {
                                 display: true,
-                                text: 'نسبة العمولة (%)',
-                                color: '#5a7299',
-                                font: {
-                                    size: 11
-                                }
-                            },
+                                text: 'القيمة ₪'
+                            }
                         },
-                    },
-                },
+                        y1: {
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'الصناديق'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
             });
-        }
+            const top8 = prodRows.slice(0, 8);
+            makePieChart('chart-fd-pie', top8.map(([id]) => productName(id)), top8.map(([, v]) => v.boxes),
+                COLORS);
+            document.getElementById('cd-print-btn').style.display = 'inline-block';
+        }, 100);
+    }
 
-        // ─────────────────────────────────────────────────────────────────
-        // 8. SCROLL FADE-IN
-        // ─────────────────────────────────────────────────────────────────
-        function initScrollFadeIn() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(e => {
-                    if (e.isIntersecting) e.target.classList.add('visible');
-                });
-            }, {
-                threshold: 0.08
-            });
-            document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-        }
-
-        // ─────────────────────────────────────────────────────────────────
-        // 9. INITIAL STATE (demo if no file)
-        // ─────────────────────────────────────────────────────────────────
-        // Show upload screen on load (default)
-        window.addEventListener('DOMContentLoaded', () => {
-            // Initialize price chart selections
-            priceSelectedProds = [];
+    // ============================================================
+    //  PRINT COMMON DETAIL — فتح نافذة طباعة التقرير
+    //
+    //  يلتقط صور الرسوم من Canvas قبل فتح النافذة
+    //  يبني HTML كاملاً في الذاكرة ويفتحه في تبويبة جديدة
+    //  ثم يدعو window.print() بعد 600ms لإتاحة تحميل الصور
+    // ============================================================
+    function printCommonDetail() {
+        const name = document.getElementById('cd-common-input').value.trim() || 'مشترك';
+        const from = document.getElementById('cd-date-from').value;
+        const to = document.getElementById('cd-date-to').value;
+        const dateRange = (from || to) ?
+            ('\u0627\u0644\u0641\u062a\u0631\u0629: ' + (from || '—') + ' \u0625\u0644\u0649 ' + (to || '—')) :
+            '\u062c\u0645\u064a\u0639 \u0627\u0644\u0641\u062a\u0631\u0627\u062a';
+        const printDate = new Date().toLocaleDateString('ar-EG', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
+
+        // Capture chart images before opening print window
+        const monthlyCanvas = document.getElementById('chart-fd-monthly');
+        const pieCanvas = document.getElementById('chart-fd-pie');
+        const monthlyImg = monthlyCanvas ? monthlyCanvas.toDataURL('image/png') : null;
+        const pieImg = pieCanvas ? pieCanvas.toDataURL('image/png') : null;
+
+        // Capture KPI cards HTML
+        const content = document.getElementById('common-detail-content');
+        const kpiHTML = content.querySelector('.kpi-row') ? content.querySelector('.kpi-row').outerHTML : '';
+
+        // Capture product table HTML (clone to strip badges to plain text for print)
+        const tblWrap = content.querySelector('.tbl-wrap');
+        const tblHTML = tblWrap ? tblWrap.outerHTML : '';
+
+        const html = `<!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+        <meta charset="UTF-8">
+        <title>\u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643 — ${name}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #fff; color: #1a202c; padding: 24px; font-size: 13px; }
+          .print-header { border-bottom: 3px solid #1a3a5c; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .print-header h1 { font-size: 1.5rem; color: #1a3a5c; }
+          .print-header .sub { color: #64748b; font-size: .9rem; margin-top: 4px; }
+          .print-header .meta { text-align: left; color: #64748b; font-size: .82rem; }
+          .section-title { font-size: 1rem; font-weight: 700; color: #1a3a5c; border-right: 4px solid #2d6a4f; padding-right: 10px; margin: 20px 0 12px; }
+          .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+          .kpi-card { border-radius: 10px; padding: 14px; text-align: center; border: 1.5px solid #e2e8f0; border-top: 4px solid #1a3a5c; }
+          .kpi-card.green  { border-top-color: #2d6a4f; }
+          .kpi-card.red    { border-top-color: #dc2626; }
+          .kpi-card.orange { border-top-color: #d97706; }
+          .kpi-card.purple { border-top-color: #7c3aed; }
+          .kpi-card .val { font-size: 1.4rem; font-weight: 700; color: #1a202c; }
+          .kpi-card .lbl { font-size: .75rem; color: #64748b; margin-top: 3px; }
+          .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+          .chart-box { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; }
+          .chart-box h3 { font-size: .9rem; color: #1a3a5c; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+          .chart-box img { width: 100%; height: auto; }
+          table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 4px; }
+          th { background: #1a3a5c; color: #fff; padding: 8px 10px; text-align: right; white-space: nowrap; }
+          td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+          tr:nth-child(even) td { background: #f8fafc; }
+          .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+          .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+          .badge-green  { background: #dcfce7; color: #15803d; }
+          .badge-orange { background: #fef3c7; color: #b45309; }
+          .badge-red    { background: #fee2e2; color: #dc2626; }
+          .print-footer { border-top: 1px solid #e2e8f0; margin-top: 28px; padding-top: 10px; text-align: center; color: #94a3b8; font-size: .78rem; }
+          @media print {
+            body { padding: 10px; }
+            .kpi-row { grid-template-columns: repeat(3, 1fr); }
+            .charts-row { grid-template-columns: 1fr 1fr; }
+          }
+        </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <div>
+              <h1>\ud83d\udcca \u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643: ${name}</h1>
+              <div class="sub">${dateRange}</div>
+            </div>
+            <div class="meta">\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0637\u0628\u0627\u0639\u0629: ${printDate}<br>\u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629</div>
+          </div>
+
+          <div class="section-title">\ud83d\udcca \u0645\u0644\u062e\u0635 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0645\u0627\u0644\u064a</div>
+          ${kpiHTML}
+
+          <div class="section-title">\ud83d\udcc8 \u0627\u0644\u0631\u0633\u0648\u0645 \u0627\u0644\u0628\u064a\u0627\u0646\u064a\u0629</div>
+          <div class="charts-row">
+            ${monthlyImg ? `<div class="chart-box"><h3>\ud83d\udcc8 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0634\u0647\u0631\u064a</h3><img src="${monthlyImg}"></div>` : ''}
+            ${pieImg     ? `<div class="chart-box"><h3>\ud83c\udf5f \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a</h3><img src="${pieImg}"></div>` : ''}
+          </div>
+
+          <div class="section-title">\ud83d\udccb \u062a\u0641\u0635\u064a\u0644 \u0643\u0644 \u0645\u0646\u062a\u062c</div>
+          ${tblHTML}
+
+          <div class="print-footer">\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 \u0628\u0648\u0627\u0633\u0637\u0629 \u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629 &mdash; ${printDate}</div>
+        </body>
+        </html>`;
+
+            const win = window.open('', '_blank', 'width=900,height=700');
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            setTimeout(() => {
+                win.print();
+            }, 600);
+        }
+
+        // ============================================================
+        //  TRADERS LIST — قائمة التجار
+        //
+        //  يجمع DB.enriched حسب traderID ويحسب لكل تاجر:
+        //    boxes | total | setالفواتير | setأنواعالمنتجات
+        // ============================================================
+        function renderTradersList() {
+            const from = document.getElementById('traders-date-from').value;
+            const to = document.getElementById('traders-date-to').value;
+            const data = filterByDate(DB.enriched, from, to);
+            const map = {};
+            for (const r of data) {
+                if (!map[r.traderID]) map[r.traderID] = {
+                    boxes: 0,
+                    total: 0,
+                    bills: new Set(),
+                    products: new Set()
+                };
+                map[r.traderID].boxes += r.boxes;
+                map[r.traderID].total += r.total;
+                map[r.traderID].bills.add(r.billID);
+                map[r.traderID].products.add(r.prodID);
+            }
+            const rows = Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+            const wrap = document.getElementById('traders-table-wrap');
+            if (!rows.length) {
+                wrap.innerHTML = '<div class="no-data">لا توجد بيانات</div>';
+                return;
+            }
+            wrap.innerHTML =
+                '<table><thead><tr><th>#</th><th>التاجر</th><th>الصناديق</th><th>إجمالي المشتريات</th><th>متوسط الصندوق</th><th>الفواتير</th><th>أنواع المنتجات</th></tr></thead><tbody>' +
+                rows.map(([id, v], i) => '<tr>' +
+                    '<td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                    '<td><strong>' + traderName(id) + '</strong></td>' +
+                    '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                    '<td><strong>' + fmtNIS(v.total) + '</strong></td>' +
+                    '<td>' + fmtNIS(v.boxes > 0 ? v.total / v.boxes : 0) + '</td>' +
+                    '<td>' + v.bills.size + '</td>' +
+                    '<td><span class="badge badge-green">' + v.products.size + '</span></td>' +
+                    '</tr>').join('') +
+                '</tbody></table>';
+            const top15 = rows.slice(0, 15);
+            makeBarChart('chart-traders-boxes', top15.map(([id]) => traderName(id)), top15.map(([, v]) => v.boxes),
+                'الصناديق', '#7c3aed');
+            makeBarChart('chart-traders-value', top15.map(([id]) => traderName(id)), top15.map(([, v]) => v.total),
+                'القيمة ₪', '#0891b2');
+        }
+
+        // ============================================================
+        //  TRADER DETAIL — تفاصيل تاجر محدد
+        //
+        //  يفلتر DB.enriched بالـ traderID + نطاق التاريخ
+        //  يجمع حسب المنتج + حسب المشترك + حسب الشهر
+        // ============================================================
+        function renderTraderDetail() {
+            const tidRaw = document.getElementById('td-trader-id').value;
+            const tname = document.getElementById('td-trader-input').value.trim();
+            const from = document.getElementById('td-date-from').value;
+            const to = document.getElementById('td-date-to').value;
+            const wrap = document.getElementById('trader-detail-content');
+            if (!tidRaw && !tname) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">يرجى اختيار تاجر</div></div>';
+                return;
+            }
+            let id = +tidRaw;
+            if (!id && tname) {
+                const t = DB.traders.find(x => x.name === tname);
+                if (t) id = t.id;
+            }
+            if (!id) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">لم يتم العثور على التاجر</div></div>';
+                return;
+            }
+            let data = DB.enriched.filter(r => +r.traderID === id);
+            if (from) data = data.filter(r => r.date >= from);
+            if (to) data = data.filter(r => r.date <= to);
+            if (!data.length) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">لا توجد فواتير في الفترة المحددة</div></div>';
+                return;
+            }
+
+            const totalBoxes = data.reduce((s, r) => s + r.boxes, 0);
+            const totalVal = data.reduce((s, r) => s + r.total, 0);
+            const bills = new Set(data.map(r => r.billID)).size;
+
+            const prodMap = {},
+                farmerMap = {},
+                monthMap = {};
+            for (const r of data) {
+                if (!prodMap[r.prodID]) prodMap[r.prodID] = {
+                    boxes: 0,
+                    total: 0,
+                    prices: []
+                };
+                prodMap[r.prodID].boxes += r.boxes;
+                prodMap[r.prodID].total += r.total;
+                prodMap[r.prodID].prices.push(r.itemPrice);
+                if (!farmerMap[r.commonID]) farmerMap[r.commonID] = {
+                    boxes: 0,
+                    total: 0
+                };
+                farmerMap[r.commonID].boxes += r.boxes;
+                farmerMap[r.commonID].total += r.total;
+                const m = r.date.slice(0, 7);
+                if (!monthMap[m]) monthMap[m] = {
+                    total: 0,
+                    boxes: 0
+                };
+                monthMap[m].total += r.total;
+                monthMap[m].boxes += r.boxes;
+            }
+            const prodRows = Object.entries(prodMap).sort((a, b) => b[1].total - a[1].total);
+            const topFarmers = Object.entries(farmerMap).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+            const months = Object.keys(monthMap).sort();
+
+            wrap.innerHTML =
+                '<div class="kpi-row">' +
+                '<div class="kpi-card"><div class="val">' + fmt(totalBoxes) +
+                '</div><div class="lbl">📦 الصناديق</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmtNIS(totalVal) +
+                '</div><div class="lbl">💰 إجمالي المشتريات</div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(totalBoxes > 0 ? totalVal / totalBoxes : 0) +
+                '</div><div class="lbl">📊 متوسط الصندوق</div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + fmt(bills) +
+                '</div><div class="lbl">📋 الفواتير</div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmt(prodRows.length) +
+                '</div><div class="lbl">📦 أنواع المنتجات</div></div>' +
+                '</div>' +
+                '<div class="chart-grid">' +
+                '<div class="sec"><h2>📈 الأداء الشهري</h2><div class="chart-wrap"><canvas id="chart-td-monthly"></canvas></div></div>' +
+                '<div class="sec"><h2>📦 توزيع المنتجات</h2><div class="chart-wrap"><canvas id="chart-td-pie"></canvas></div></div>' +
+                '</div>' +
+                '<div class="chart-grid">' +
+                '<div class="sec"><h2>👥 أكثر المشتركين تعاملاً</h2><div class="chart-wrap"><canvas id="chart-td-commons"></canvas></div></div>' +
+                '<div class="sec"><h2>📋 تفاصيل المنتجات</h2><div class="tbl-wrap"><table><thead><tr><th>#</th><th>المنتج</th><th>الصناديق</th><th>الإجمالي</th><th>متوسط السعر</th></tr></thead><tbody>' +
+                prodRows.map(([pid, v], i) => '<tr><td>' + (i + 1) + '</td><td>' + productName(pid) +
+                    '</td><td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td><td>' + fmtNIS(v.total) +
+                    '</td><td>' + fmtNIS(avg(v.prices)) + '</td></tr>').join('') +
+                '</tbody></table></div></div>' +
+                '</div>';
+
+            setTimeout(() => {
+                destroyChart('chart-td-monthly');
+                const ctx = document.getElementById('chart-td-monthly');
+                if (ctx) charts['chart-td-monthly'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'القيمة ₪',
+                            data: months.map(m => monthMap[m].total),
+                            backgroundColor: 'rgba(124,58,237,0.75)',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+                const top8 = prodRows.slice(0, 8);
+                makePieChart('chart-td-pie', top8.map(([id]) => productName(id)), top8.map(([, v]) => v.boxes),
+                    COLORS);
+                makeBarChart('chart-td-commons', topFarmers.map(([id]) => commonName(id)), topFarmers.map(([, v]) =>
+                    v.total), 'القيمة ₪', '#2d6a4f');
+            }, 100);
+        }
+
+        // ============================================================
+        //  PRODUCTS LIST — قائمة المنتجات
+        //
+        //  يجمع DB.enriched حسب prodID ويحسب:
+        //    boxes | total | prices[] | setالمشتركين | setالتجار
+        //  يحسب متوسط/أعلى/أدنى سعر لكل منتج
+        // ============================================================
+        function renderProductsList() {
+            const from = document.getElementById('products-date-from').value;
+            const to = document.getElementById('products-date-to').value;
+            const data = filterByDate(DB.enriched, from, to);
+            const map = {};
+            for (const r of data) {
+                if (!map[r.prodID]) map[r.prodID] = {
+                    boxes: 0,
+                    total: 0,
+                    prices: [],
+                    commons: new Set(),
+                    traders: new Set()
+                };
+                map[r.prodID].boxes += r.boxes;
+                map[r.prodID].total += r.total;
+                map[r.prodID].prices.push(r.itemPrice);
+                map[r.prodID].commons.add(r.commonID);
+                map[r.prodID].traders.add(r.traderID);
+            }
+            const rows = Object.entries(map).sort((a, b) => b[1].boxes - a[1].boxes);
+            const wrap = document.getElementById('products-table-wrap');
+            if (!rows.length) {
+                wrap.innerHTML = '<div class="no-data">لا توجد بيانات</div>';
+                return;
+            }
+            wrap.innerHTML =
+                '<table><thead><tr><th>#</th><th>المنتج</th><th>الصناديق</th><th>إجمالي القيمة</th><th>متوسط السعر</th><th>أعلى سعر</th><th>أدنى سعر</th><th>المشتركون</th><th>التجار</th></tr></thead><tbody>' +
+                rows.map(([id, v], i) => {
+                    const a = avg(v.prices),
+                        mx = Math.max(...v.prices),
+                        mn = Math.min(...v.prices);
+                    return '<tr>' +
+                        '<td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                        '<td><strong>' + productName(id) + '</strong></td>' +
+                        '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                        '<td><strong>' + fmtNIS(v.total) + '</strong></td>' +
+                        '<td>' + fmtNIS(a) + '</td>' +
+                        '<td><span class="badge badge-green">' + fmtNIS(mx) + '</span></td>' +
+                        '<td><span class="badge badge-red">' + fmtNIS(mn) + '</span></td>' +
+                        '<td>' + v.commons.size + '</td>' +
+                        '<td>' + v.traders.size + '</td>' +
+                        '</tr>';
+                }).join('') +
+                '</tbody></table>';
+            makeBarChart('chart-products-boxes', rows.slice(0, 15).map(([id]) => productName(id)), rows.slice(0, 15).map(([,
+                v
+            ]) => v.boxes), 'الصناديق', '#059669');
+        }
+
+        // ============================================================
+        //  PRODUCT DETAIL — تفاصيل منتج محدد
+        //
+        //  يفلتر DB.enriched بالـ prodID + نطاق التاريخ
+        //  يعرض منحنى السعر الشهري + أفضل المشتركين حجماً وسعراً
+        // ============================================================
+        function renderProductDetail() {
+            const pidRaw = document.getElementById('pd-product-id').value;
+            const pname = document.getElementById('pd-product-input').value.trim();
+            const from = document.getElementById('pd-date-from').value;
+            const to = document.getElementById('pd-date-to').value;
+            const wrap = document.getElementById('product-detail-content');
+            if (!pidRaw && !pname) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">يرجى اختيار منتج</div></div>';
+                return;
+            }
+            let id = +pidRaw;
+            if (!id && pname) {
+                const p = DB.products.find(x => x.name === pname);
+                if (p) id = p.id;
+            }
+            if (!id) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">لم يتم العثور على المنتج</div></div>';
+                return;
+            }
+            let data = DB.enriched.filter(r => +r.prodID === id);
+            if (from) data = data.filter(r => r.date >= from);
+            if (to) data = data.filter(r => r.date <= to);
+            if (!data.length) {
+                wrap.innerHTML = '<div class="sec"><div class="no-data">لا توجد بيانات</div></div>';
+                return;
+            }
+
+            const totalBoxes = data.reduce((s, r) => s + r.boxes, 0);
+            const totalVal = data.reduce((s, r) => s + r.total, 0);
+            const allPrices = data.map(r => r.itemPrice);
+            const avgPrice = avg(allPrices);
+
+            const farmerMap = {},
+                monthMap = {};
+            for (const r of data) {
+                if (!farmerMap[r.commonID]) farmerMap[r.commonID] = {
+                    boxes: 0,
+                    total: 0,
+                    prices: []
+                };
+                farmerMap[r.commonID].boxes += r.boxes;
+                farmerMap[r.commonID].total += r.total;
+                farmerMap[r.commonID].prices.push(r.itemPrice);
+                const m = r.date.slice(0, 7);
+                if (!monthMap[m]) monthMap[m] = {
+                    total: 0,
+                    boxes: 0,
+                    prices: []
+                };
+                monthMap[m].total += r.total;
+                monthMap[m].boxes += r.boxes;
+                monthMap[m].prices.push(r.itemPrice);
+            }
+            const byBoxes = Object.entries(farmerMap).sort((a, b) => b[1].boxes - a[1].boxes).slice(0, 15);
+            const byAvgPrice = Object.entries(farmerMap).sort((a, b) => avg(b[1].prices) - avg(a[1].prices)).slice(0, 15);
+            const months = Object.keys(monthMap).sort();
+
+            wrap.innerHTML =
+                '<div class="kpi-row">' +
+                '<div class="kpi-card"><div class="val">' + fmt(totalBoxes) +
+                '</div><div class="lbl">📦 الصناديق</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmtNIS(totalVal) +
+                '</div><div class="lbl">💰 إجمالي القيمة</div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(avgPrice) +
+                '</div><div class="lbl">📊 متوسط السعر</div></div>' +
+                '<div class="kpi-card red"><div class="val">' + fmtNIS(Math.max(...allPrices)) +
+                '</div><div class="lbl">⬆️ أعلى سعر</div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + fmtNIS(Math.min(...allPrices)) +
+                '</div><div class="lbl">⬇️ أدنى سعر</div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmt(Object.keys(farmerMap).length) +
+                '</div><div class="lbl">👥 المشتركون</div></div>' +
+                '</div>' +
+                '<div class="sec"><h2>📈 متوسط السعر الشهري</h2><div class="chart-wrap"><canvas id="chart-pd-price" style="max-height:300px;"></canvas></div></div>' +
+                '<div class="chart-grid">' +
+                '<div class="sec"><h2>🥇 أفضل المشتركين — حجم الصناديق</h2><div class="chart-wrap"><canvas id="chart-pd-boxes"></canvas></div></div>' +
+                '<div class="sec"><h2>💰 أفضل المشتركين — متوسط السعر</h2><div class="chart-wrap"><canvas id="chart-pd-avg-price"></canvas></div></div>' +
+                '</div>' +
+                '<div class="sec"><h2>👥 تفصيل المشتركين لهذا المنتج</h2><div class="tbl-wrap"><table><thead><tr><th>#</th><th>المشترك</th><th>الصناديق</th><th>الإجمالي</th><th>متوسط السعر</th><th>أعلى سعر</th><th>أدنى سعر</th></tr></thead><tbody>' +
+                byBoxes.map(([fid, v], i) => '<tr>' +
+                    '<td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                    '<td>' + commonName(fid) + '</td>' +
+                    '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                    '<td>' + fmtNIS(v.total) + '</td>' +
+                    '<td><strong>' + fmtNIS(avg(v.prices)) + '</strong></td>' +
+                    '<td><span class="badge badge-green">' + fmtNIS(Math.max(...v.prices)) + '</span></td>' +
+                    '<td><span class="badge badge-red">' + fmtNIS(Math.min(...v.prices)) + '</span></td>' +
+                    '</tr>').join('') +
+                '</tbody></table></div></div>';
+
+            setTimeout(() => {
+                makeLineChart('chart-pd-price', months, [{
+                    label: 'متوسط السعر ₪',
+                    data: months.map(m => avg(monthMap[m].prices)),
+                    borderColor: '#d97706',
+                    backgroundColor: 'rgba(217,119,6,0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]);
+                makeBarChart('chart-pd-boxes', byBoxes.map(([fid]) => commonName(fid)), byBoxes.map(([, v]) => v
+                    .boxes), 'الصناديق', '#1a3a5c');
+                makeBarChart('chart-pd-avg-price', byAvgPrice.map(([fid]) => commonName(fid)), byAvgPrice.map(([,
+                    v
+                ]) => avg(v.prices)), 'متوسط السعر ₪', '#2d6a4f');
+            }, 100);
+        }
+
+        // ============================================================
+        //  PRICE TRENDS — اتجاهات أسعار منتج محدد
+        //
+        //  يجمع الأسعار في سطل حسب التجميع المختار (يومي/أسبوعي/شهري/سنوي)
+        //  يرسم منحنى ثلاثي: متوسط سعر / أعلى سعر / أدنى سعر
+        // ============================================================
+        function renderPriceTrend() {
+            const pidRaw = document.getElementById('pt-product-id').value;
+            const pname = document.getElementById('pt-product-input').value.trim();
+            const from = document.getElementById('pt-date-from').value;
+            const to = document.getElementById('pt-date-to').value;
+            const group = document.getElementById('pt-groupby').value;
+            if (!pidRaw && !pname) {
+                alert('يرجى اختيار منتج');
+                return;
+            }
+            let id = +pidRaw;
+            if (!id && pname) {
+                const p = DB.products.find(x => x.name === pname);
+                if (p) id = p.id;
+            }
+            if (!id) {
+                alert('لم يتم العثور على المنتج');
+                return;
+            }
+            let data = DB.enriched.filter(r => +r.prodID === id);
+            if (from) data = data.filter(r => r.date >= from);
+            if (to) data = data.filter(r => r.date <= to);
+            if (!data.length) {
+                document.getElementById('price-trend-stats').innerHTML = '<div class="no-data">لا توجد بيانات</div>';
+                return;
+            }
+
+            function getKey(d) {
+                if (group === 'day') return d;
+                if (group === 'week') {
+                    const dt = new Date(d),
+                        day = dt.getDay();
+                    const mon = new Date(dt);
+                    mon.setDate(dt.getDate() - ((day + 1) % 7));
+                    return mon.toISOString().slice(0, 10);
+                }
+                if (group === 'year') return d.slice(0, 4);
+                return d.slice(0, 7);
+            }
+            const buckets = {};
+            for (const r of data) {
+                const k = getKey(r.date);
+                if (!buckets[k]) buckets[k] = {
+                    prices: [],
+                    boxes: 0,
+                    total: 0
+                };
+                buckets[k].prices.push(r.itemPrice);
+                buckets[k].boxes += r.boxes;
+                buckets[k].total += r.total;
+            }
+            const keys = Object.keys(buckets).sort();
+            destroyChart('chart-price-trend');
+            const ctx = document.getElementById('chart-price-trend');
+            if (ctx) charts['chart-price-trend'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: keys,
+                    datasets: [{
+                            label: 'متوسط السعر',
+                            data: keys.map(k => avg(buckets[k].prices)),
+                            borderColor: '#d97706',
+                            backgroundColor: 'rgba(217,119,6,0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'أعلى سعر',
+                            data: keys.map(k => Math.max(...buckets[k].prices)),
+                            borderColor: '#dc2626',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'أدنى سعر',
+                            data: keys.map(k => Math.min(...buckets[k].prices)),
+                            borderColor: '#2d6a4f',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'السعر ₪'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+
+            const allPrices = data.map(r => r.itemPrice);
+            const overallAvg = avg(allPrices);
+            document.getElementById('price-trend-stats').innerHTML =
+                '<h2>📊 ملخص إحصائي — ' + productName(id) + '</h2>' +
+                '<div class="kpi-row" style="margin-top:16px;">' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(overallAvg) +
+                '</div><div class="lbl">متوسط السعر الإجمالي</div></div>' +
+                '<div class="kpi-card red"><div class="val">' + fmtNIS(Math.max(...allPrices)) +
+                '</div><div class="lbl">أعلى سعر</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmtNIS(Math.min(...allPrices)) +
+                '</div><div class="lbl">أدنى سعر</div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmtNIS(Math.max(...allPrices) - Math.min(...allPrices)) +
+                '</div><div class="lbl">مدى التذبذب</div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + fmt(data.reduce((s, r) => s + r.boxes, 0)) +
+                '</div><div class="lbl">إجمالي الصناديق</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmt(keys.length) +
+                '</div><div class="lbl">فترات التحليل</div></div>' +
+                '</div>';
+        }
+
+        // ============================================================
+        //  FINANCIAL — التحليل المالي الشامل
+        //
+        //  يحسب إجمالي: قيمة / عمولة / بلدية / نقل / صافي
+        //  يجمع شهرياً لرسم bar chart متعدد المحاور
+        //  يعرض أفضل 30 يوم أداءً في جدول
+        // ============================================================
+        function renderFinancial() {
+            const from = document.getElementById('fin-date-from').value;
+            const to = document.getElementById('fin-date-to').value;
+            const data = filterByDate(DB.enriched, from, to);
+
+            const totalVal = data.reduce((s, r) => s + r.total, 0);
+            const totalComm = data.reduce((s, r) => s + r.commissionAmt, 0);
+            const totalMun = data.reduce((s, r) => s + r.munAmt, 0);
+            const totalTrans = data.reduce((s, r) => s + r.transAmt, 0);
+            const totalBoxes = data.reduce((s, r) => s + r.boxes, 0);
+            const netFarmers = totalVal - totalComm - totalMun - totalTrans;
+
+            document.getElementById('fin-kpi-row').innerHTML =
+                '<div class="kpi-card green"><div class="val">' + fmtNIS(totalVal) +
+                '</div><div class="lbl">💰 إجمالي قيمة البضاعة</div></div>' +
+                '<div class="kpi-card red"><div class="val">' + fmtNIS(totalComm) +
+                '</div><div class="lbl">📊 إجمالي عمولاتنا</div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(totalMun) +
+                '</div><div class="lbl">🏛️ رسوم البلدية</div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + fmtNIS(totalTrans) +
+                '</div><div class="lbl">🚚 رسوم النقل</div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmtNIS(netFarmers) +
+                '</div><div class="lbl">✅ صافي المشتركين</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmt(totalBoxes) +
+                '</div><div class="lbl">📦 إجمالي الصناديق</div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(totalBoxes > 0 ? totalVal / totalBoxes : 0) +
+                '</div><div class="lbl">📊 متوسط سعر الصندوق</div></div>' +
+                '<div class="kpi-card red"><div class="val">' + (totalVal > 0 ? (totalComm / totalVal * 100) : 0).toFixed(
+                    1) + '%</div><div class="lbl">نسبة العمولة</div></div>';
+
+            const monthMap = {};
+            for (const r of data) {
+                if (!r.date) continue;
+                const m = r.date.slice(0, 7);
+                if (!monthMap[m]) monthMap[m] = {
+                    val: 0,
+                    comm: 0,
+                    mun: 0,
+                    trans: 0
+                };
+                monthMap[m].val += r.total;
+                monthMap[m].comm += r.commissionAmt;
+                monthMap[m].mun += r.munAmt;
+                monthMap[m].trans += r.transAmt;
+            }
+            const months = Object.keys(monthMap).sort().slice(-18);
+            destroyChart('chart-fin-monthly');
+            const ctx1 = document.getElementById('chart-fin-monthly');
+            if (ctx1) charts['chart-fin-monthly'] = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                            label: 'إجمالي القيمة',
+                            data: months.map(m => monthMap[m]?.val || 0),
+                            backgroundColor: 'rgba(26,58,92,0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'العمولات',
+                            data: months.map(m => monthMap[m]?.comm || 0),
+                            backgroundColor: 'rgba(220,38,38,0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'البلدية',
+                            data: months.map(m => monthMap[m]?.mun || 0),
+                            backgroundColor: 'rgba(217,119,6,0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'النقل',
+                            data: months.map(m => monthMap[m]?.trans || 0),
+                            backgroundColor: 'rgba(124,58,237,0.8)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            makePieChart('chart-fin-breakdown',
+                ['عمولاتنا', 'رسوم البلدية', 'رسوم النقل', 'صافي المشتركين'],
+                [totalComm, totalMun, totalTrans, Math.max(0, netFarmers)],
+                ['#dc2626', '#d97706', '#7c3aed', '#2d6a4f']);
+
+            // Best days
+            const dayMap = {};
+            for (const r of data) {
+                if (!r.date) continue;
+                if (!dayMap[r.date]) dayMap[r.date] = {
+                    val: 0,
+                    boxes: 0,
+                    comm: 0,
+                    bills: new Set()
+                };
+                dayMap[r.date].val += r.total;
+                dayMap[r.date].boxes += r.boxes;
+                dayMap[r.date].comm += r.commissionAmt;
+                dayMap[r.date].bills.add(r.billID);
+            }
+            const topDays = Object.entries(dayMap).sort((a, b) => b[1].val - a[1].val).slice(0, 30);
+            document.getElementById('fin-daily-wrap').innerHTML =
+                '<table><thead><tr><th>#</th><th>التاريخ</th><th>إجمالي القيمة</th><th>الصناديق</th><th>العمولات</th><th>الفواتير</th></tr></thead><tbody>' +
+                topDays.map(([d, v], i) => '<tr>' +
+                    '<td>' + (i + 1) + '</td><td>' + d + '</td>' +
+                    '<td><strong>' + fmtNIS(v.val) + '</strong></td>' +
+                    '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                    '<td><span class="badge badge-red">' + fmtNIS(v.comm) + '</span></td>' +
+                    '<td>' + v.bills.size + '</td>' +
+                    '</tr>').join('') +
+                '</tbody></table>';
+        }
+
+        // ============================================================
+        //  ADVANCED STATS — إحصائيات متقدمة وأرقام قياسية
+        //
+        //  1. يجمع DB.enriched يومياً (dayMap: date → {boxes,value,bills})
+        //  2. يحسب يوم الذروة وأهدأ يوم
+        //  3. يحسب توزيع النشاط على أيام الأسبوع
+        //  4. يحسب الموسمية الشهرية (1-12)
+        //  5. يحسب توزيع قيم الفواتير في نطاقات
+        //  6. يحسب تذبذب أسعار المنتجات (max-min price)
+        //  7. يعرض جداول أفضل/أسوأ 20 يوم
+        // ============================================================
+        function renderAdvancedStats() {
+            const from = document.getElementById('adv-date-from').value;
+            const to = document.getElementById('adv-date-to').value;
+            const data = filterByDate(DB.enriched, from, to);
+
+            if (!data.length) {
+                document.getElementById('adv-records-row').innerHTML = '<div class="no-data">لا توجد بيانات</div>';
+                return;
+            }
+
+            // === GROUP BY DATE ===
+            const dayMap = {};
+            for (const r of data) {
+                if (!r.date) continue;
+                if (!dayMap[r.date]) dayMap[r.date] = {
+                    boxes: 0,
+                    value: 0,
+                    bills: new Set(),
+                    comm: 0
+                };
+                dayMap[r.date].boxes += r.boxes;
+                dayMap[r.date].value += r.total;
+                dayMap[r.date].bills.add(r.billID);
+                dayMap[r.date].comm += r.commissionAmt;
+            }
+            const dayEntries = Object.entries(dayMap);
+            const activeDays = dayEntries.length;
+            const totalBoxes = data.reduce((s, r) => s + r.boxes, 0);
+            const totalValue = data.reduce((s, r) => s + r.total, 0);
+
+            const peakBoxDay = dayEntries.reduce((a, b) => b[1].boxes > a[1].boxes ? b : a);
+            const peakValDay = dayEntries.reduce((a, b) => b[1].value > a[1].value ? b : a);
+            const peakBillDay = dayEntries.reduce((a, b) => b[1].bills.size > a[1].bills.size ? b : a);
+            const quietDay = dayEntries.reduce((a, b) => b[1].value < a[1].value ? b : a);
+            const avgDailyBoxes = totalBoxes / activeDays;
+            const avgDailyValue = totalValue / activeDays;
+
+            document.getElementById('adv-records-row').innerHTML =
+                '<div class="kpi-card orange"><div class="val">' + peakBoxDay[0] +
+                '</div><div class="lbl">🏆 يوم الذروة — الصناديق<br><small>' + fmt(peakBoxDay[1].boxes) +
+                ' صندوق</small></div></div>' +
+                '<div class="kpi-card green"><div class="val">' + peakValDay[0] +
+                '</div><div class="lbl">💰 يوم الذروة — القيمة<br><small>' + fmtNIS(peakValDay[1].value) +
+                '</small></div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + peakBillDay[0] +
+                '</div><div class="lbl">📋 يوم الذروة — الفواتير<br><small>' + peakBillDay[1].bills.size +
+                ' فاتورة</small></div></div>' +
+                '<div class="kpi-card red"><div class="val">' + quietDay[0] +
+                '</div><div class="lbl">🐤 أهدأ يوم<br><small>' + fmtNIS(quietDay[1].value) + '</small></div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmt(activeDays) +
+                '</div><div class="lbl">📅 أيام النشاط</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmt(Math.round(avgDailyBoxes)) +
+                '</div><div class="lbl">📦 متوسط صناديق/يوم</div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(avgDailyValue) +
+                '</div><div class="lbl">💵 متوسط قيمة/يوم</div></div>';
+
+            // === DAY OF WEEK ===
+            const dowNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const dowBoxes = [0, 0, 0, 0, 0, 0, 0];
+            const dowValue = [0, 0, 0, 0, 0, 0, 0];
+            const dowDays = [0, 0, 0, 0, 0, 0, 0];
+            for (const [d, v] of dayEntries) {
+                const dow = new Date(d).getDay();
+                dowBoxes[dow] += v.boxes;
+                dowValue[dow] += v.value;
+                dowDays[dow]++;
+            }
+            makeBarChart('chart-adv-weekday', dowNames, dowBoxes, 'الصناديق', '#1a3a5c');
+
+            // === MONTHLY SEASONALITY ===
+            const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر',
+                'نوفمبر', 'ديسمبر'
+            ];
+            const monthBoxes = new Array(12).fill(0);
+            for (const [d, v] of dayEntries) {
+                const mo = new Date(d).getMonth();
+                monthBoxes[mo] += v.boxes;
+            }
+            makeBarChart('chart-adv-seasonal', monthNames, monthBoxes, 'الصناديق', '#2d6a4f');
+
+            // === PER-BILL STATS ===
+            const billMap = {};
+            for (const r of data) {
+                if (!billMap[r.billID]) billMap[r.billID] = {
+                    total: 0,
+                    boxes: 0,
+                    date: r.date
+                };
+                billMap[r.billID].total += r.total;
+                billMap[r.billID].boxes += r.boxes;
+            }
+            const billVals = Object.values(billMap);
+            const billTotals = billVals.map(b => b.total);
+            const maxBill = billTotals.reduce((a, b) => b > a ? b : a, -Infinity);
+            const minBill = billTotals.reduce((a, b) => b < a ? b : a, Infinity);
+            const avgBill = billTotals.reduce((s, v) => s + v, 0) / billTotals.length;
+            const maxBillEntry = billVals.find(b => b.total === maxBill);
+            const minBillEntry = billVals.find(b => b.total === minBill);
+
+            document.getElementById('adv-bill-kpi').innerHTML =
+                '<div class="kpi-card"><div class="val">' + fmt(billVals.length) +
+                '</div><div class="lbl">📋 إجمالي الفواتير</div></div>' +
+                '<div class="kpi-card green"><div class="val">' + fmtNIS(maxBill) +
+                '</div><div class="lbl">🏆 أعلى فاتورة قيمةً<br><small>' + (maxBillEntry?.date || '') +
+                '</small></div></div>' +
+                '<div class="kpi-card red"><div class="val">' + fmtNIS(minBill) +
+                '</div><div class="lbl">⬇️ أدنى فاتورة قيمةً<br><small>' + (minBillEntry?.date || '') +
+                '</small></div></div>' +
+                '<div class="kpi-card orange"><div class="val">' + fmtNIS(avgBill) +
+                '</div><div class="lbl">📊 متوسط قيمة الفاتورة</div></div>' +
+                '<div class="kpi-card purple"><div class="val">' + fmt(Math.round(totalBoxes / billVals.length)) +
+                '</div><div class="lbl">📦 متوسط صناديق/فاتورة</div></div>' +
+                '<div class="kpi-card"><div class="val">' + fmt(Math.round(billVals.length / activeDays * 10) / 10) +
+                '</div><div class="lbl">📋 متوسط فواتير/يوم</div></div>';
+
+            // Bill value distribution
+            const ranges = [0, 500, 1000, 2000, 5000, 10000, 20000, Infinity];
+            const rangeLabels = ['< 500', '500–1k', '1k–2k', '2k–5k', '5k–10k', '10k–20k', '> 20k'];
+            const rangeCounts = new Array(7).fill(0);
+            for (const t of billTotals) {
+                for (let i = 0; i < ranges.length - 1; i++) {
+                    if (t >= ranges[i] && t < ranges[i + 1]) {
+                        rangeCounts[i]++;
+                        break;
+                    }
+                }
+            }
+            makeBarChart('chart-adv-bill-dist', rangeLabels, rangeCounts, 'عدد الفواتير', '#0891b2');
+
+            // === PRODUCT PRICE VOLATILITY ===
+            const prodPrices = {};
+            for (const r of data) {
+                if (!prodPrices[r.prodID]) prodPrices[r.prodID] = [];
+                prodPrices[r.prodID].push(r.itemPrice);
+            }
+            const prodVol = Object.entries(prodPrices)
+                .filter(([, arr]) => arr.length >= 3)
+                .map(([id, arr]) => {
+                    let mx = arr[0],
+                        mn = arr[0];
+                    for (const v of arr) {
+                        if (v > mx) mx = v;
+                        if (v < mn) mn = v;
+                    }
+                    return {
+                        id,
+                        range: mx - mn
+                    };
+                })
+                .sort((a, b) => b.range - a.range)
+                .slice(0, 12);
+            makeBarChart('chart-adv-price-range', prodVol.map(p => productName(p.id)), prodVol.map(p => p.range),
+                'نطاق السعر ₪', '#ea580c');
+
+            // === TOP DAYS TABLE ===
+            const sortedDays = dayEntries.slice().sort((a, b) => b[1].value - a[1].value);
+            const buildDayTable = (rows) =>
+                '<table><thead><tr><th>#</th><th>التاريخ</th><th>الصناديق</th><th>إجمالي القيمة</th><th>العمولات</th><th>الفواتير</th><th>متوسط قيمة الفاتورة</th></tr></thead><tbody>' +
+                rows.map(([d, v], i) => '<tr>' +
+                    '<td>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td>' +
+                    '<td><strong>' + d + '</strong></td>' +
+                    '<td><span class="badge badge-blue">' + fmt(v.boxes) + '</span></td>' +
+                    '<td><strong>' + fmtNIS(v.value) + '</strong></td>' +
+                    '<td><span class="badge badge-red">' + fmtNIS(v.comm) + '</span></td>' +
+                    '<td>' + v.bills.size + '</td>' +
+                    '<td>' + fmtNIS(v.bills.size > 0 ? v.value / v.bills.size : 0) + '</td>' +
+                    '</tr>').join('') +
+                '</tbody></table>';
+
+            document.getElementById('adv-top-days-wrap').innerHTML = buildDayTable(sortedDays.slice(0, 20));
+            document.getElementById('adv-slow-days-wrap').innerHTML = buildDayTable(sortedDays.slice(-20).reverse());
+        }
     </script>
 </body>
 
