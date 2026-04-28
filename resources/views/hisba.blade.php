@@ -1206,10 +1206,50 @@
                 return;
             }
             const valuesPart = m[2];
-            const regex = /\(([^)]*(?:'(?:[^'\\]|\\.)*'[^)]*)*)\)/g;
-            let match;
-            while ((match = regex.exec(valuesPart)) !== null) {
-                parseInsertRow(tbl, match[1], tables);
+            // استخدام محلل حرف-بحرف بدلاً من regex لأن regex يفشل
+            // عندما تحتوي القيمة المقتبسة على قوس إغلاق ) مثل 'محمد(ابو داود)'
+            let depth = 0,
+                inStr = false,
+                esc = false,
+                buf = '';
+            for (let i = 0; i < valuesPart.length; i++) {
+                const c = valuesPart[i];
+                if (esc) {
+                    buf += c;
+                    esc = false;
+                    continue;
+                }
+                if (c === '\\' && inStr) {
+                    buf += c;
+                    esc = true;
+                    continue;
+                }
+                if (c === "'" && !inStr) {
+                    inStr = true;
+                    buf += c;
+                    continue;
+                }
+                if (c === "'" && inStr) {
+                    inStr = false;
+                    buf += c;
+                    continue;
+                }
+                if (!inStr && c === '(') {
+                    depth++;
+                    if (depth === 1) {
+                        buf = '';
+                        continue;
+                    }
+                }
+                if (!inStr && c === ')') {
+                    depth--;
+                    if (depth === 0) {
+                        parseInsertRow(tbl, buf, tables);
+                        buf = '';
+                        continue;
+                    }
+                }
+                if (depth >= 1) buf += c;
             }
         }
 
@@ -1223,37 +1263,41 @@
             switch (tbl) {
                 case 'commons':
                     // commons: id, commonNum, name, address, phone, transport, comision...
-                    // row[0]=id | row[1]=commonNum | row[2]=name
+                    // row[0]=id | row[1]=commonNum | row[2]=name | row[11]=client_ID
                     if (row.length >= 3) tables.commons.push({
                         id: +row[0],
-                        name: uq(row[2]) // اسم المشترك
+                        name: uq(row[2]), // اسم المشترك
+                        clientID: row.length >= 12 ? +row[11] : 0
                     });
                     break;
                 case 'traders':
                     // traders: id, traderNum, name, address, phone, empty, emptyRent...
-                    // row[0]=id | row[1]=traderNum | row[2]=name
+                    // row[0]=id | row[1]=traderNum | row[2]=name | row[11]=client_ID
                     if (row.length >= 3) tables.traders.push({
                         id: +row[0],
-                        name: uq(row[2]) // اسم التاجر
+                        name: uq(row[2]), // اسم التاجر
+                        clientID: row.length >= 12 ? +row[11] : 0
                     });
                     break;
                 case 'products':
                     // products: id, prodName, client_ID
-                    // row[0]=id | row[1]=prodName
+                    // row[0]=id | row[1]=prodName | row[2]=client_ID
                     if (row.length >= 2) tables.products.push({
                         id: +row[0],
-                        name: uq(row[1]) // اسم المنتج (مثال: "بندورة")
+                        name: uq(row[1]), // اسم المنتج (مثال: "بندورة")
+                        clientID: row.length >= 3 ? +row[2] : 0
                     });
                     break;
                 case 'dailybills':
                     // dailybills: id, traderID, farmerID(=commonID), dateInvoice, status, pre_year, bill_id, client_ID
-                    // row[0]=id | row[1]=traderID | row[2]=farmerID(→commons) | row[3]=dateInvoice
+                    // row[0]=id | row[1]=traderID | row[2]=farmerID(→commons) | row[3]=dateInvoice | row[7]=client_ID
                     // ملاحظة: العمود اسمه farmerID لكنه يشير إلى جدول commons
                     if (row.length >= 4) tables.dailybills.push({
                         id: +row[0],
                         traderID: +row[1], // → traders.id
                         commonID: +row[2], // → commons.id (مخزون كـ farmerID في DB)
-                        dateInvoice: uq(row[3]) // تاريخ الفاتورة YYYY-MM-DD
+                        dateInvoice: uq(row[3]), // تاريخ الفاتورة YYYY-MM-DD
+                        clientID: row.length >= 8 ? +row[7] : 0
                     });
                     break;
                 case 'dailyorders':
@@ -1284,6 +1328,7 @@
                             mun, // رسوم البلدية/صندوق
                             transAmt, // إجمالي النقل المحتسب
                             billID: +row[14], // → dailybills.id
+                            clientID: row.length >= 16 ? +row[15] : 0, // معرّف العميل
                             total, // = الوزن×السعر أو الصناديق×السعر
                             commissionAmt: total * comision, // = إجمالي × نسبة العمولة
                             munAmt: mun * prodNum // = رسوم البلدية × عدد الصناديق
@@ -1368,12 +1413,41 @@
             console.log('%c[Hisba] 🔗 Joining tables...', 'color:#2d6a4f;font-weight:bold');
             const t1 = performance.now();
             setTimeout(() => {
-                // نقل البيانات إلى الكائن العام DB
-                DB.commons = tables.commons;
-                DB.traders = tables.traders;
-                DB.products = tables.products;
-                DB.dailybills = tables.dailybills;
-                DB.dailyorders = tables.dailyorders;
+                // ── اكتشاف العميل ذو أعلى مبيعات يومية (أكثر فواتير في dailybills) ──
+                const clientBillCount = {};
+                for (const b of tables.dailybills) {
+                    const cid = b.clientID || 0;
+                    clientBillCount[cid] = (clientBillCount[cid] || 0) + 1;
+                }
+                const _clientEntries = Object.entries(clientBillCount);
+                let dominantClientID = 0;
+                if (_clientEntries.length > 0) {
+                    dominantClientID = +_clientEntries.sort((a, b) => b[1] - a[1])[0][0];
+                }
+                DB.dominantClientID = dominantClientID;
+                console.log(
+                    `%c[Hisba] 🏆 Dominant client ID: ${dominantClientID} | Bills: ${clientBillCount[dominantClientID] || 0}`,
+                    'color:#d97706;font-weight:bold');
+                console.log('[Hisba] All clients (top 5 by bills):', Object.fromEntries(_clientEntries.sort((a,
+                    b) => b[1] - a[1]).slice(0, 5)));
+
+                // تصفية جميع الجداول لإظهار بيانات العميل المختار فقط
+                DB.commons = tables.commons.filter(r => +r.clientID === dominantClientID);
+                DB.traders = tables.traders.filter(r => +r.clientID === dominantClientID);
+                DB.products = tables.products.filter(r => +r.clientID === dominantClientID);
+                DB.dailybills = tables.dailybills.filter(r => +r.clientID === dominantClientID);
+                DB.dailyorders = tables.dailyorders.filter(r => +r.clientID === dominantClientID);
+
+                // طباعة جميع المشتركين بترتيب ورودهم في ملف SQL (للعميل المختار)
+                console.log(
+                    `%c[Hisba] 👥 Commons list for client #${dominantClientID} — in SQL file order (${DB.commons.length} records)`,
+                    'color:#2d6a4f;font-weight:bold;font-size:13px');
+                console.table(DB.commons.map((c, i) => ({
+                    '#': i + 1,
+                    id: c.id,
+                    name: c.name,
+                    clientID: c.clientID
+                })));
 
                 // بناء خريطة الفواتير: { billID → billObject } للبحث السريع O(1)
                 const billMap = {};
@@ -1448,7 +1522,8 @@
         function initApp() {
             // عرض ملخص قاعدة البيانات في الهيدر
             document.getElementById('db-meta').textContent =
-                'مشتركون: ' + DB.commons.length +
+                'عميل: #' + DB.dominantClientID +
+                ' | مشتركون: ' + DB.commons.length +
                 ' | تجار: ' + DB.traders.length +
                 ' | منتجات: ' + DB.products.length +
                 ' | فواتير: ' + DB.dailybills.length +
@@ -1721,19 +1796,19 @@
         const uniqueDates = new Set(e.map(r => r.date)).size; // عدد الأيام النشطة
 
         document.getElementById('kpi-row').innerHTML = `
-                                <div class="kpi-card"><div class="val">${fmt(DB.commons.length)}</div><div class="lbl">👥 إجمالي المشتركين</div></div>
-                                <div class="kpi-card green"><div class="val">${fmt(DB.traders.length)}</div><div class="lbl">🏪 إجمالي التجار</div></div>
-                                <div class="kpi-card orange"><div class="val">${fmt(DB.products.length)}</div><div class="lbl">📦 أنواع المنتجات</div></div>
-                                <div class="kpi-card"><div class="val">${fmt(DB.dailybills.length)}</div><div class="lbl">📋 إجمالي الفواتير</div></div>
-                                <div class="kpi-card green"><div class="val">${fmt(totalBoxes)}</div><div class="lbl">📦 إجمالي الصناديق</div></div>
-                                <div class="kpi-card orange"><div class="val">${fmtNIS(totalValue)}</div><div class="lbl">💰 إجمالي القيمة</div></div>
-                                <div class="kpi-card red"><div class="val">${fmtNIS(totalComm)}</div><div class="lbl">📊 إجمالي العمولات</div></div>
-                                <div class="kpi-card purple"><div class="val">${fmtNIS(totalMun)}</div><div class="lbl">🏛️ رسوم البلدية</div></div>
-                                <div class="kpi-card"><div class="val">${fmtNIS(totalTrans)}</div><div class="lbl">🚚 رسوم النقل</div></div>
-                                <div class="kpi-card green"><div class="val">${fmtNIS(netFarmers)}</div><div class="lbl">✅ صافي المشتركين</div></div>
-                                <div class="kpi-card orange"><div class="val">${fmt(uniqueDates)}</div><div class="lbl">📅 أيام النشاط</div></div>
-                                <div class="kpi-card red"><div class="val">${(totalValue>0?(totalComm/totalValue*100):0).toFixed(1)}%</div><div class="lbl">نسبة العمولة</div></div>
-                            `;
+                                    <div class="kpi-card"><div class="val">${fmt(DB.commons.length)}</div><div class="lbl">👥 إجمالي المشتركين</div></div>
+                                    <div class="kpi-card green"><div class="val">${fmt(DB.traders.length)}</div><div class="lbl">🏪 إجمالي التجار</div></div>
+                                    <div class="kpi-card orange"><div class="val">${fmt(DB.products.length)}</div><div class="lbl">📦 أنواع المنتجات</div></div>
+                                    <div class="kpi-card"><div class="val">${fmt(DB.dailybills.length)}</div><div class="lbl">📋 إجمالي الفواتير</div></div>
+                                    <div class="kpi-card green"><div class="val">${fmt(totalBoxes)}</div><div class="lbl">📦 إجمالي الصناديق</div></div>
+                                    <div class="kpi-card orange"><div class="val">${fmtNIS(totalValue)}</div><div class="lbl">💰 إجمالي القيمة</div></div>
+                                    <div class="kpi-card red"><div class="val">${fmtNIS(totalComm)}</div><div class="lbl">📊 إجمالي العمولات</div></div>
+                                    <div class="kpi-card purple"><div class="val">${fmtNIS(totalMun)}</div><div class="lbl">🏛️ رسوم البلدية</div></div>
+                                    <div class="kpi-card"><div class="val">${fmtNIS(totalTrans)}</div><div class="lbl">🚚 رسوم النقل</div></div>
+                                    <div class="kpi-card green"><div class="val">${fmtNIS(netFarmers)}</div><div class="lbl">✅ صافي المشتركين</div></div>
+                                    <div class="kpi-card orange"><div class="val">${fmt(uniqueDates)}</div><div class="lbl">📅 أيام النشاط</div></div>
+                                    <div class="kpi-card red"><div class="val">${(totalValue>0?(totalComm/totalValue*100):0).toFixed(1)}%</div><div class="lbl">نسبة العمولة</div></div>
+                                `;
 
         // Monthly revenue
         const monthlyMap = {};
@@ -2059,71 +2134,71 @@
         const tblHTML = tblWrap ? tblWrap.outerHTML : '';
 
         const html = `<!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-        <meta charset="UTF-8">
-        <title>\u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643 — ${name}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #fff; color: #1a202c; padding: 24px; font-size: 13px; }
-          .print-header { border-bottom: 3px solid #1a3a5c; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-          .print-header h1 { font-size: 1.5rem; color: #1a3a5c; }
-          .print-header .sub { color: #64748b; font-size: .9rem; margin-top: 4px; }
-          .print-header .meta { text-align: left; color: #64748b; font-size: .82rem; }
-          .section-title { font-size: 1rem; font-weight: 700; color: #1a3a5c; border-right: 4px solid #2d6a4f; padding-right: 10px; margin: 20px 0 12px; }
-          .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-          .kpi-card { border-radius: 10px; padding: 14px; text-align: center; border: 1.5px solid #e2e8f0; border-top: 4px solid #1a3a5c; }
-          .kpi-card.green  { border-top-color: #2d6a4f; }
-          .kpi-card.red    { border-top-color: #dc2626; }
-          .kpi-card.orange { border-top-color: #d97706; }
-          .kpi-card.purple { border-top-color: #7c3aed; }
-          .kpi-card .val { font-size: 1.4rem; font-weight: 700; color: #1a202c; }
-          .kpi-card .lbl { font-size: .75rem; color: #64748b; margin-top: 3px; }
-          .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-          .chart-box { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; }
-          .chart-box h3 { font-size: .9rem; color: #1a3a5c; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-          .chart-box img { width: 100%; height: auto; }
-          table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 4px; }
-          th { background: #1a3a5c; color: #fff; padding: 8px 10px; text-align: right; white-space: nowrap; }
-          td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
-          tr:nth-child(even) td { background: #f8fafc; }
-          .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .75rem; font-weight: 600; }
-          .badge-blue   { background: #dbeafe; color: #1d4ed8; }
-          .badge-green  { background: #dcfce7; color: #15803d; }
-          .badge-orange { background: #fef3c7; color: #b45309; }
-          .badge-red    { background: #fee2e2; color: #dc2626; }
-          .print-footer { border-top: 1px solid #e2e8f0; margin-top: 28px; padding-top: 10px; text-align: center; color: #94a3b8; font-size: .78rem; }
-          @media print {
-            body { padding: 10px; }
-            .kpi-row { grid-template-columns: repeat(3, 1fr); }
-            .charts-row { grid-template-columns: 1fr 1fr; }
-          }
-        </style>
-        </head>
-        <body>
-          <div class="print-header">
-            <div>
-              <h1>\ud83d\udcca \u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643: ${name}</h1>
-              <div class="sub">${dateRange}</div>
-            </div>
-            <div class="meta">\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0637\u0628\u0627\u0639\u0629: ${printDate}<br>\u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629</div>
-          </div>
+            <html lang="ar" dir="rtl">
+            <head>
+            <meta charset="UTF-8">
+            <title>\u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643 — ${name}</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #fff; color: #1a202c; padding: 24px; font-size: 13px; }
+              .print-header { border-bottom: 3px solid #1a3a5c; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+              .print-header h1 { font-size: 1.5rem; color: #1a3a5c; }
+              .print-header .sub { color: #64748b; font-size: .9rem; margin-top: 4px; }
+              .print-header .meta { text-align: left; color: #64748b; font-size: .82rem; }
+              .section-title { font-size: 1rem; font-weight: 700; color: #1a3a5c; border-right: 4px solid #2d6a4f; padding-right: 10px; margin: 20px 0 12px; }
+              .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+              .kpi-card { border-radius: 10px; padding: 14px; text-align: center; border: 1.5px solid #e2e8f0; border-top: 4px solid #1a3a5c; }
+              .kpi-card.green  { border-top-color: #2d6a4f; }
+              .kpi-card.red    { border-top-color: #dc2626; }
+              .kpi-card.orange { border-top-color: #d97706; }
+              .kpi-card.purple { border-top-color: #7c3aed; }
+              .kpi-card .val { font-size: 1.4rem; font-weight: 700; color: #1a202c; }
+              .kpi-card .lbl { font-size: .75rem; color: #64748b; margin-top: 3px; }
+              .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+              .chart-box { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; }
+              .chart-box h3 { font-size: .9rem; color: #1a3a5c; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+              .chart-box img { width: 100%; height: auto; }
+              table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 4px; }
+              th { background: #1a3a5c; color: #fff; padding: 8px 10px; text-align: right; white-space: nowrap; }
+              td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+              tr:nth-child(even) td { background: #f8fafc; }
+              .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+              .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+              .badge-green  { background: #dcfce7; color: #15803d; }
+              .badge-orange { background: #fef3c7; color: #b45309; }
+              .badge-red    { background: #fee2e2; color: #dc2626; }
+              .print-footer { border-top: 1px solid #e2e8f0; margin-top: 28px; padding-top: 10px; text-align: center; color: #94a3b8; font-size: .78rem; }
+              @media print {
+                body { padding: 10px; }
+                .kpi-row { grid-template-columns: repeat(3, 1fr); }
+                .charts-row { grid-template-columns: 1fr 1fr; }
+              }
+            </style>
+            </head>
+            <body>
+              <div class="print-header">
+                <div>
+                  <h1>\ud83d\udcca \u062a\u0642\u0631\u064a\u0631 \u0645\u0634\u062a\u0631\u0643: ${name}</h1>
+                  <div class="sub">${dateRange}</div>
+                </div>
+                <div class="meta">\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0637\u0628\u0627\u0639\u0629: ${printDate}<br>\u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629</div>
+              </div>
 
-          <div class="section-title">\ud83d\udcca \u0645\u0644\u062e\u0635 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0645\u0627\u0644\u064a</div>
-          ${kpiHTML}
+              <div class="section-title">\ud83d\udcca \u0645\u0644\u062e\u0635 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0645\u0627\u0644\u064a</div>
+              ${kpiHTML}
 
-          <div class="section-title">\ud83d\udcc8 \u0627\u0644\u0631\u0633\u0648\u0645 \u0627\u0644\u0628\u064a\u0627\u0646\u064a\u0629</div>
-          <div class="charts-row">
-            ${monthlyImg ? `<div class="chart-box"><h3>\ud83d\udcc8 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0634\u0647\u0631\u064a</h3><img src="${monthlyImg}"></div>` : ''}
-            ${pieImg     ? `<div class="chart-box"><h3>\ud83c\udf5f \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a</h3><img src="${pieImg}"></div>` : ''}
-          </div>
+              <div class="section-title">\ud83d\udcc8 \u0627\u0644\u0631\u0633\u0648\u0645 \u0627\u0644\u0628\u064a\u0627\u0646\u064a\u0629</div>
+              <div class="charts-row">
+                ${monthlyImg ? `<div class="chart-box"><h3>\ud83d\udcc8 \u0627\u0644\u0623\u062f\u0627\u0621 \u0627\u0644\u0634\u0647\u0631\u064a</h3><img src="${monthlyImg}"></div>` : ''}
+                ${pieImg     ? `<div class="chart-box"><h3>\ud83c\udf5f \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a</h3><img src="${pieImg}"></div>` : ''}
+              </div>
 
-          <div class="section-title">\ud83d\udccb \u062a\u0641\u0635\u064a\u0644 \u0643\u0644 \u0645\u0646\u062a\u062c</div>
-          ${tblHTML}
+              <div class="section-title">\ud83d\udccb \u062a\u0641\u0635\u064a\u0644 \u0643\u0644 \u0645\u0646\u062a\u062c</div>
+              ${tblHTML}
 
-          <div class="print-footer">\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 \u0628\u0648\u0627\u0633\u0637\u0629 \u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629 &mdash; ${printDate}</div>
-        </body>
-        </html>`;
+              <div class="print-footer">\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 \u0628\u0648\u0627\u0633\u0637\u0629 \u0646\u0638\u0627\u0645 \u0625\u062d\u0635\u0627\u0621\u0627\u062a \u0627\u0644\u062d\u0633\u0628\u0629 &mdash; ${printDate}</div>
+            </body>
+            </html>`;
 
             const win = window.open('', '_blank', 'width=900,height=700');
             win.document.write(html);
