@@ -96,4 +96,6 @@ return [
     'Return value' => 'قيمة المرتجعات',
     'Confirm Return' => 'تأكيد الاسترجاع',
     'Returned' => 'مرتجع',
+    'View Bill' => 'عرض الفاتورة',
+    'Create Bill' => 'إنشاء فاتورة',
 ];

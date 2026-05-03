@@ -129,10 +129,42 @@
                 </div>
             @endif
 
+            <!-- Mobile Tab Navigation (hidden on lg+) -->
+            <div class="lg:hidden mb-4 sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm -mx-4 px-4 pt-1">
+                <div class="flex gap-1">
+                    <button id="mobile-tab-products" onclick="switchMobileTab('products')"
+                        class="mobile-tab active flex-1 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 border-blue-600 text-blue-700 bg-blue-50 transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        {{ __('dashboard.Product Search') }}
+                    </button>
+                    <button id="mobile-tab-bill" onclick="switchMobileTab('bill')"
+                        class="mobile-tab flex-1 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-gray-500 hover:text-gray-700 bg-transparent transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {{ __('dashboard.Create New Bill') }}
+                        <span id="mobile-bill-badge"
+                            class="hidden bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+                    </button>
+                    <button id="mobile-tab-summary" onclick="switchMobileTab('summary')"
+                        class="mobile-tab flex-1 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-gray-500 hover:text-gray-700 bg-transparent transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        {{ __('dashboard.Bill Summary') }}
+                    </button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none">
 
                 <!-- Left Panel - Product Search & Selection ONLY -->
-                <div class="lg:col-span-4 space-y-4">
+                <div id="mobile-panel-products" class="lg:col-span-4 space-y-4">
                     <!-- Product Search Controls - Shown for all users -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center mb-4">
@@ -208,7 +240,8 @@
                                 {{ __('dashboard.Available Products') }}
                             </h4>
                         </div>
-                        <div id="product-cards-container" class="max-h-96 overflow-y-auto">
+                        <div id="product-cards-container" class="max-h-96 lg:max-h-96 overflow-y-auto"
+                            style="max-height: clamp(320px, 60vh, 480px)">
                             <div id="product-results"
                                 class="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 p-4">
                                 <!-- Products will be loaded here -->
@@ -223,7 +256,7 @@
                 </div>
 
                 <!-- Main Content - Bill Creation AND Quick Payments (for Restaurant) -->
-                <div class="lg:col-span-6 space-y-4">
+                <div id="mobile-panel-bill" class="lg:col-span-6 space-y-4 hidden lg:block">
 
                     <!-- Bill Form -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -239,16 +272,18 @@
                             </h3>
                         </div>
 
-                        <form id="create-bill" method="POST" action="{{ route('bills.store') }}" class="p-6">
+                        <form id="create-bill" method="POST" action="{{ route('bills.store') }}"
+                            class="p-4 sm:p-6">
                             @csrf
                             <input type="hidden" id="bill_date_hidden" name="bill_date"
                                 value="{{ date('Y-m-d') }}">
 
                             <!-- Customer, Note, and Damaged in one row -->
                             <div class="mb-6">
-                                <div class="flex justify-between items-start">
+                                <div
+                                    class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
                                     <!-- Customer Selection -->
-                                    <div>
+                                    <div class="w-full sm:w-auto sm:flex-1">
                                         <label
                                             class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Customer') }}</label>
                                         @if ($isRestaurant)
@@ -296,7 +331,7 @@
                                     </div>
 
                                     <!-- Note -->
-                                    <div class="mx-1">
+                                    <div class="mx-0 sm:mx-1 w-full sm:w-auto sm:flex-1">
                                         <label for="note"
                                             class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Note') }}</label>
                                         <textarea name="note" id="note" rows="1"
@@ -305,38 +340,38 @@
                                     </div>
 
                                     <!-- Damaged Toggle -->
-                                    <div class="mx-1">
+                                    <div class="mx-0 sm:mx-1 flex sm:flex-col items-center sm:items-start gap-2">
                                         <label for="is_damaged"
-                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Damaged Bill') }}</label>
+                                            class="block text-sm font-medium text-gray-700">{{ __('dashboard.Damaged Bill') }}</label>
                                         <div class="flex items-center">
                                             <label class="toggle-switch">
                                                 <input type="checkbox" name="is_damaged" id="is_damaged">
                                                 <span class="toggle-slider"></span>
                                             </label>
                                             <span
-                                                class="ml-2 text-sm text-gray-600">{{ __('dashboard.100% discount') }}</span>
+                                                class="ml-2 text-xs text-gray-500">{{ __('dashboard.100% discount') }}</span>
                                         </div>
                                     </div>
 
                                     <!-- Returned Bill Toggle -->
-                                    <div class="mx-1">
+                                    <div class="mx-0 sm:mx-1 flex sm:flex-col items-center sm:items-start gap-2">
                                         <label for="is_returned"
-                                            class="block text-sm font-medium text-gray-700 mb-2">{{ __('dashboard.Return Bill') }}</label>
+                                            class="block text-sm font-medium text-gray-700">{{ __('dashboard.Return Bill') }}</label>
                                         <div class="flex items-center">
                                             <label class="toggle-switch">
                                                 <input type="checkbox" name="is_returned" id="is_returned">
                                                 <span class="toggle-slider"></span>
                                             </label>
                                             <span
-                                                class="ml-2 text-sm text-gray-600">{{ __('dashboard.Negative qty') }}</span>
+                                                class="ml-2 text-xs text-gray-500">{{ __('dashboard.Negative qty') }}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Products List -->
-                            <div class="products-table-container mb-6">
-                                <table class="products-table">
+                            <div class="products-table-container mb-6 overflow-x-auto">
+                                <table class="products-table min-w-full">
                                     <thead>
                                         <tr>
                                             <th>{{ __('messages.Product') }}</th>
@@ -354,9 +389,9 @@
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex gap-3">
+                            <div class="flex flex-wrap gap-2">
                                 <button type="submit"
-                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center shadow-sm">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -366,7 +401,7 @@
                                 </button>
 
                                 <button type="button" id="clear-all"
-                                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    class="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -374,7 +409,7 @@
                                     </svg>
                                 </button>
                                 <button type="button" id="print-button"
-                                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    class="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
@@ -382,7 +417,7 @@
                                     </svg>
                                 </button>
                                 <button type="button" id="print-receipt-button"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -564,7 +599,7 @@
                 </div>
 
                 <!-- Right Panel - Totals & Summary -->
-                <div class="lg:col-span-2 space-y-4">
+                <div id="mobile-panel-summary" class="lg:col-span-2 space-y-4 hidden lg:block">
                     @if (!$isRestaurant)
                         <!-- Barcode Scanner -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -724,6 +759,34 @@
         </div>
     </div>
 
+    <!-- Mobile Sticky Bottom Bar (only on small screens) -->
+    <div id="mobile-bottom-bar"
+        class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-200 shadow-2xl px-4 py-3 flex items-center gap-3"
+        style="padding-bottom: env(safe-area-inset-bottom, 12px);">
+        <div class="flex flex-col min-w-0">
+            <span class="text-xs text-gray-500">{{ __('dashboard.Total Amount:') }}</span>
+            <span class="font-bold text-lg text-green-700">₪<span id="mobile-total-display">0.00</span></span>
+        </div>
+        <button type="button" onclick="switchMobileTab('bill')"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ __('dashboard.View Bill') }}
+            <span id="mobile-bottom-badge"
+                class="hidden bg-white text-blue-700 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+        </button>
+        <button type="button"
+            onclick="document.getElementById('create-bill').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}))"
+            class="flex-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-3 px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ __('dashboard.Create Bill') }}
+        </button>
+    </div>
+
     <!-- Barcode Duplicate Selection Modal -->
     <div id="barcode-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -773,7 +836,84 @@
 
     <!-- Optimized Styles -->
     <style>
-        /* Core styles only - removed duplicate and unused styles */
+        /* Mobile tab navigation */
+        .mobile-tab {
+            outline: none;
+        }
+
+        .mobile-tab.active {
+            border-bottom-color: rgb(37 99 235);
+            color: rgb(29 78 216);
+            background-color: rgb(239 246 255);
+        }
+
+        /* Mobile panel visibility */
+        @media (max-width: 1023px) {
+
+            #mobile-panel-products.mobile-active,
+            #mobile-panel-bill.mobile-active,
+            #mobile-panel-summary.mobile-active {
+                display: block !important;
+            }
+
+            .mobile-hidden {
+                display: none !important;
+            }
+
+            /* Pad bottom for sticky bar */
+            #mobile-panel-products,
+            #mobile-panel-bill,
+            #mobile-panel-summary {
+                padding-bottom: 80px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+
+            #mobile-panel-products,
+            #mobile-panel-bill,
+            #mobile-panel-summary {
+                display: block !important;
+                padding-bottom: 0;
+            }
+
+            #mobile-bottom-bar {
+                display: none !important;
+            }
+        }
+
+        /* Larger touch targets on mobile */
+        @media (max-width: 767px) {
+            .product-card {
+                padding: 12px;
+                min-height: 80px;
+            }
+
+            .filter-btn {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            input[type="text"],
+            input[type="number"],
+            select,
+            textarea {
+                font-size: 16px;
+                /* Prevents iOS auto-zoom */
+            }
+
+            .products-table input[type="number"] {
+                font-size: 16px;
+                padding: 6px 4px;
+            }
+
+            /* Wider product name column on mobile */
+            .product-name-cell {
+                min-width: 120px;
+            }
+        }
+
+        /* Core styles */
         .customer-suggestion-item {
             padding: 8px 12px;
             cursor: pointer;
@@ -808,6 +948,11 @@
             background-color: white;
             color: #1f2937;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        input.discount {
+            min-width: 60px;
+            width: 60px;
         }
 
         .product-row.compact {
@@ -1000,6 +1145,78 @@
 
     <!-- Clean JavaScript -->
     <script>
+        // Mobile tab switching
+        let _activeMobileTab = 'products';
+
+        function switchMobileTab(tab) {
+            _activeMobileTab = tab;
+            const panels = ['products', 'bill', 'summary'];
+            panels.forEach(p => {
+                const panel = document.getElementById('mobile-panel-' + p);
+                const btn = document.getElementById('mobile-tab-' + p);
+                if (p === tab) {
+                    if (panel) {
+                        panel.classList.add('mobile-active');
+                        panel.classList.remove('mobile-hidden');
+                    }
+                    if (btn) {
+                        btn.classList.add('active');
+                        btn.style.borderBottomColor = 'rgb(37 99 235)';
+                        btn.style.color = 'rgb(29 78 216)';
+                        btn.style.backgroundColor = 'rgb(239 246 255)';
+                    }
+                } else {
+                    if (panel) {
+                        panel.classList.remove('mobile-active');
+                        panel.classList.add('mobile-hidden');
+                    }
+                    if (btn) {
+                        btn.classList.remove('active');
+                        btn.style.borderBottomColor = 'transparent';
+                        btn.style.color = '';
+                        btn.style.backgroundColor = '';
+                    }
+                }
+            });
+        }
+        // Initialize mobile tabs (only runs on small screens effectively)
+        if (window.innerWidth < 1024) {
+            switchMobileTab('products');
+        }
+
+        // Update mobile total display whenever calculateTotal is called
+        function updateMobileTotal(total) {
+            const mobileTotal = document.getElementById('mobile-total-display');
+            if (mobileTotal) mobileTotal.textContent = total;
+        }
+
+        // Update mobile bill item badge
+        function updateMobileBillBadge() {
+            const count = document.querySelectorAll('.product-row').length;
+            const badge = document.getElementById('mobile-bill-badge');
+            const bottomBadge = document.getElementById('mobile-bottom-badge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                } else {
+                    badge.classList.add('hidden');
+                    badge.classList.remove('flex');
+                }
+            }
+            if (bottomBadge) {
+                if (count > 0) {
+                    bottomBadge.textContent = count;
+                    bottomBadge.classList.remove('hidden');
+                    bottomBadge.classList.add('flex');
+                } else {
+                    bottomBadge.classList.add('hidden');
+                    bottomBadge.classList.remove('flex');
+                }
+            }
+        }
+
         // Global variables
         const products = @json($products);
         const categories = @json($categories ?? []);
@@ -1980,7 +2197,8 @@
             document.getElementById('customer_id_hidden').value = customer.id;
             document.getElementById('customer_suggestions').classList.add('hidden');
             hideUnidentifiedCustomerNotification();
-            if (!isRestaurant) {
+            // Only auto-focus barcode on wide screens (tablet/desktop), not on phones
+            if (!isRestaurant && window.innerWidth >= 768) {
                 document.getElementById('barcode_input').focus();
             }
         }
@@ -2678,14 +2896,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -2927,6 +3145,8 @@
             document.getElementById('total_discount').value = totalDiscount.toFixed(2);
             document.getElementById('total_price_display').textContent = total.toFixed(2);
             document.getElementById('total_discount_display').textContent = totalDiscount.toFixed(2);
+            updateMobileTotal(total.toFixed(2));
+            updateMobileBillBadge();
         }
 
         // Event delegation
@@ -2989,6 +3209,8 @@
                     if (!isRestaurant && window.innerWidth >= 768) {
                         document.getElementById('barcode_input').focus();
                     }
+                    // On mobile, briefly flash the bill badge to show product was added
+                    updateMobileBillBadge();
                 } else if (willShowDialog) {
                     console.log('Dialog will appear for return cost');
                 }
@@ -3544,9 +3766,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

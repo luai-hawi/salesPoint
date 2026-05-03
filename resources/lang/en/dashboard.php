@@ -96,4 +96,6 @@ return [
     'Return value' => 'Return value',
     'Confirm Return' => 'Confirm Return',
     'Returned' => 'Returned',
+    'View Bill' => 'View Bill',
+    'Create Bill' => 'Create Bill',
 ];
