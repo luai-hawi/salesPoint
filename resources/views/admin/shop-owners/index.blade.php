@@ -173,9 +173,10 @@
                                             @endif
                                             @if ($user->account_type === 'full' && $user->license_expires_at)
                                                 @php $licDays = (int) now()->diffInDays($user->license_expires_at, false); @endphp
-                                                <div class="text-xs mt-1 {{ $licDays < 0 ? 'text-red-600 font-semibold' : ($licDays <= 30 ? 'text-orange-500' : 'text-gray-400') }}">
+                                                <div
+                                                    class="text-xs mt-1 {{ $licDays < 0 ? 'text-red-600 font-semibold' : ($licDays <= 30 ? 'text-orange-500' : 'text-gray-400') }}">
                                                     🗓 {{ $user->license_expires_at->format('M j, Y') }}
-                                                    ({{ $licDays < 0 ? 'exp.' : ($licDays . 'd left') }})
+                                                    ({{ $licDays < 0 ? 'exp.' : $licDays . 'd left' }})
                                                 </div>
                                             @endif
                                             <!-- Renew license button (always available for full accounts) -->
@@ -278,10 +279,12 @@
             <div class="fixed inset-0 bg-black bg-opacity-50" onclick="closeMarkPaidModal()"></div>
             <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md z-10 p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">{{ __('messages.Mark Subscription Paid') }}</h3>
+                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">
+                        {{ __('messages.Mark Subscription Paid') }}</h3>
                     <button onclick="closeMarkPaidModal()" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
@@ -292,13 +295,18 @@
                     @csrf
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Number of Months') }}</label>
-                            <input type="number" name="months" id="modal-months" value="1" min="1" max="120" required
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Number of Months') }}</label>
+                            <input type="number" name="months" id="modal-months" value="1" min="1"
+                                max="120" required
                                 class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <p class="text-xs text-gray-500 mt-1">{{ __('messages.License will be extended from the current expiry date (or today if expired).') }}</p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                {{ __('messages.License will be extended from the current expiry date (or today if expired).') }}
+                            </p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Amount Charged (₪)') }}</label>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Amount Charged (₪)') }}</label>
                             <input type="number" name="amount" id="modal-amount" step="0.01" min="0"
                                 class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                                 placeholder="{{ __('messages.Leave empty to use subscription cost') }}">
@@ -327,6 +335,7 @@
             document.getElementById('modal-months').value = 1;
             document.getElementById('mark-paid-modal').classList.remove('hidden');
         }
+
         function closeMarkPaidModal() {
             document.getElementById('mark-paid-modal').classList.add('hidden');
         }

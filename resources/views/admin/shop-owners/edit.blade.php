@@ -243,9 +243,11 @@
                                         class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
                                     @if ($shopOwner->license_expires_at)
                                         @php $daysLeft = (int) now()->diffInDays($shopOwner->license_expires_at, false); @endphp
-                                        <p class="text-xs mt-1 {{ $daysLeft < 0 ? 'text-red-600 font-semibold' : ($daysLeft <= 30 ? 'text-orange-600' : 'text-gray-500') }}">
+                                        <p
+                                            class="text-xs mt-1 {{ $daysLeft < 0 ? 'text-red-600 font-semibold' : ($daysLeft <= 30 ? 'text-orange-600' : 'text-gray-500') }}">
                                             @if ($daysLeft < 0)
-                                                {{ __('messages.Expired') }} {{ abs($daysLeft) }} {{ __('messages.days ago') }}
+                                                {{ __('messages.Expired') }} {{ abs($daysLeft) }}
+                                                {{ __('messages.days ago') }}
                                             @elseif ($daysLeft === 0)
                                                 {{ __('messages.Expires today') }}
                                             @else
@@ -253,16 +255,20 @@
                                             @endif
                                         </p>
                                     @else
-                                        <p class="text-xs text-gray-400 mt-1">{{ __('messages.No license expiry date set') }}</p>
+                                        <p class="text-xs text-gray-400 mt-1">
+                                            {{ __('messages.No license expiry date set') }}</p>
                                     @endif
                                 </div>
                                 @if ($shopOwner->last_payment_months || $shopOwner->last_payment_amount)
                                     <div class="text-xs text-blue-700 bg-blue-100 rounded p-2">
                                         @if ($shopOwner->last_payment_months)
-                                            <span>{{ __('messages.Last payment:') }} <strong>{{ $shopOwner->last_payment_months }} {{ __('messages.months') }}</strong></span>
+                                            <span>{{ __('messages.Last payment:') }}
+                                                <strong>{{ $shopOwner->last_payment_months }}
+                                                    {{ __('messages.months') }}</strong></span>
                                         @endif
                                         @if ($shopOwner->last_payment_amount)
-                                            <span class="ml-2">— ₪{{ number_format($shopOwner->last_payment_amount, 2) }}</span>
+                                            <span class="ml-2">—
+                                                ₪{{ number_format($shopOwner->last_payment_amount, 2) }}</span>
                                         @endif
                                     </div>
                                 @endif
