@@ -295,8 +295,10 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         {{ __('messages.Restaurant') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">                                        {{ __('messages.Status') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">                                        {{ __('messages.Email') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('messages.Status') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('messages.Email') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         {{ __('messages.Phone') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -311,7 +313,9 @@
                                 @foreach ($menuExpiredUsers as $mu)
                                     @php
                                         $isNeverPaid = is_null($mu->paid_at);
-                                        $isExpired   = !is_null($mu->expires_at) && \Carbon\Carbon::parse($mu->expires_at)->isPast();
+                                        $isExpired =
+                                            !is_null($mu->expires_at) &&
+                                            \Carbon\Carbon::parse($mu->expires_at)->isPast();
                                     @endphp
                                     <tr class="bg-purple-50 hover:bg-purple-100 transition-colors">
                                         <td class="px-4 py-3">
@@ -319,19 +323,22 @@
                                                 <div
                                                     class="w-9 h-9 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                                                     <span
-                                                        class="text-white font-bold text-xs">{{ strtoupper(substr($mu->restaurant_name ?? $mu->name ?? '?', 0, 2)) }}</span>
+                                                        class="text-white font-bold text-xs">{{ strtoupper(substr($mu->restaurant_name ?? ($mu->name ?? '?'), 0, 2)) }}</span>
                                                 </div>
                                                 <div>
-                                                    <div class="text-sm font-semibold text-gray-800">{{ $mu->restaurant_name ?? '—' }}</div>
+                                                    <div class="text-sm font-semibold text-gray-800">
+                                                        {{ $mu->restaurant_name ?? '—' }}</div>
                                                     <div class="text-xs text-gray-500">{{ $mu->name }}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">
                                             @if ($isNeverPaid)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">{{ __('messages.Never Paid') }}</span>
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">{{ __('messages.Never Paid') }}</span>
                                             @elseif ($isExpired)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">{{ __('messages.Expired') }}</span>
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">{{ __('messages.Expired') }}</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $mu->email }}</td>
