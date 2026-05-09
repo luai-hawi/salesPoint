@@ -36,7 +36,7 @@
 
                 <!-- Add this cash drawer button -->
                 <button type="button" id="open-cash-drawer"
-                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                    class="hidden bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
@@ -1231,6 +1231,127 @@
         const shopName = '{{ $shopName }}';
         let currentBillId = null;
 
+        // ── Sales / Promotions engine ──────────────────────────────────────────────
+        const activeSalesData = @json($activeSales ?? []);
+
+        // Build map: productId → [{ discount_type, discount_value, applies_every_n }, ...]
+        const productSaleRules = {};
+        activeSalesData.forEach(sale => {
+            (sale.rules || []).forEach(rule => {
+                const pid = rule.product_id;
+                if (!productSaleRules[pid]) productSaleRules[pid] = [];
+                productSaleRules[pid].push({
+                    discount_type: rule.discount_type,
+                    discount_value: parseFloat(rule.discount_value),
+                    applies_every_n: parseInt(rule.applies_every_n) || 1,
+                    sale_name: sale.name,
+                });
+            });
+        });
+
+        /**
+         * Compute the best (highest) sale discount for a product given qty & unitPrice.
+         * Returns { discount: float, label: string } or null if no sale applies.
+         */
+        function computeBestSaleDiscount(productId, qty, unitPrice) {
+            const rules = productSaleRules[productId];
+            if (!rules || rules.length === 0 || qty <= 0) return null;
+
+            let bestDiscount = 0;
+            let bestLabel = '';
+
+            rules.forEach(rule => {
+                const n = Math.max(1, rule.applies_every_n);
+                let disc = 0;
+
+                if (n === 1) {
+                    // Automatic per-item discount on all units
+                    disc = rule.discount_type === 'percentage' ?
+                        unitPrice * (rule.discount_value / 100) * qty :
+                        rule.discount_value * qty;
+                } else {
+                    // Quantity-based: per complete group of N items
+                    const groups = Math.floor(qty / n);
+                    if (groups <= 0) return;
+                    disc = rule.discount_type === 'percentage' ?
+                        (unitPrice * n) * (rule.discount_value / 100) * groups :
+                        rule.discount_value * groups;
+                }
+
+                disc = Math.round(disc * 100) / 100;
+
+                if (disc > bestDiscount) {
+                    bestDiscount = disc;
+                    bestLabel = rule.sale_name || '';
+                }
+            });
+
+            if (bestDiscount <= 0) return null;
+            return {
+                discount: bestDiscount,
+                label: bestLabel
+            };
+        }
+
+        /**
+         * Apply the best sale discount to a product row.
+         * Stores the sale discount in data-sale-discount; sets the discount input.
+         */
+        function applySaleToRow(row) {
+            const pidInput = row.querySelector('input[name="product_ids[]"]');
+            const qtyInput = row.querySelector('.quantity');
+            const priceInput = row.querySelector('.selling-price');
+            const discInput = row.querySelector('.discount');
+            if (!pidInput || !qtyInput || !priceInput || !discInput) return;
+
+            const pid = parseInt(pidInput.value);
+            const qty = parseFloat(qtyInput.value) || 0;
+            const unitPrice = parseFloat(priceInput.value) || 0;
+
+            const result = computeBestSaleDiscount(pid, qty, unitPrice);
+
+            // Remove old badge
+            const oldBadge = row.querySelector('.sale-badge');
+            if (oldBadge) oldBadge.remove();
+
+            if (result) {
+                // Store sale discount in data attr
+                row.dataset.saleDiscount = result.discount;
+
+                // Set discount input to sale discount (only if user hasn't manually typed)
+                if (!row.dataset.userDiscount) {
+                    discInput.value = result.discount.toFixed(2);
+                    row.querySelector('.discount-type').value = 'total';
+                    // Ensure Total button is active
+                    row.querySelectorAll('.discount-type-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.type === 'total');
+                    });
+                }
+
+                // Add sale badge to product name cell
+                const nameCell = row.querySelector('.product-name-cell');
+                if (nameCell) {
+                    const badge = document.createElement('div');
+                    badge.className = 'sale-badge text-xs mt-0.5 text-orange-600 font-semibold flex items-center gap-1';
+                    badge.innerHTML =
+                        `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>${result.label} -₪${result.discount.toFixed(2)}`;
+                    nameCell.appendChild(badge);
+                }
+            } else {
+                delete row.dataset.saleDiscount;
+                // Only reset discount if it was a sale discount (not user-typed)
+                if (!row.dataset.userDiscount && parseFloat(discInput.value) > 0) {
+                    // Check if discount was from a previous sale, if so clear it
+                    // (We can't distinguish from user discount unless we store it; keep as-is)
+                }
+            }
+        }
+
+        /** Call applySaleToRow on ALL product rows */
+        function applySalesToAllRows() {
+            document.querySelectorAll('.product-row').forEach(row => applySaleToRow(row));
+        }
+
         // Function to update bill date
         function updateBillDate(date) {
             document.getElementById('bill_date_hidden').value = date;
@@ -2205,6 +2326,123 @@
 
         // Enhanced barcode input handler (only for non-restaurant) - LOCAL LOOKUP
         if (!isRestaurant) {
+
+            // ── Global barcode-reader interceptor ────────────────────────────────────
+            // Barcode readers fire keystrokes far faster than a human can type.
+            // If characters arrive quickly and focus is NOT on the barcode/search field,
+            // we buffer them and redirect the whole scan to the barcode input.
+            (function() {
+                const BARCODE_FIELD_IDS = ['barcode_input', 'product-search'];
+                const MAX_INTER_KEY_MS = 50; // scanners typically fire < 30ms apart
+                const MIN_BARCODE_LEN = 3; // ignore very short sequences
+
+                let _buf = '';
+                let _lastKey = 0;
+                let _bufTimer = null;
+                // Track the element that received the first key so we can revert it
+                // if the second key proves this is a barcode reader sequence.
+                let _firstKeyTarget = null;
+                let _firstKeyPreVal = null;
+
+                function _isBarcodeTarget(el) {
+                    if (!el) return false;
+                    return BARCODE_FIELD_IDS.includes(el.id) ||
+                        el.closest?.('#barcode-scanner-modal');
+                }
+
+                function _resetFirstKey() {
+                    _firstKeyTarget = null;
+                    _firstKeyPreVal = null;
+                }
+
+                function _flush() {
+                    clearTimeout(_bufTimer);
+                    const code = _buf;
+                    _buf = '';
+                    _resetFirstKey();
+                    if (code.length < MIN_BARCODE_LEN) return;
+
+                    // Redirect to barcode input and dispatch it
+                    const barcodeInput = document.getElementById('barcode_input');
+                    if (!barcodeInput) return;
+                    barcodeInput.focus();
+                    barcodeInput.value = code;
+                    // Fire Enter so the existing handler processes it
+                    barcodeInput.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        bubbles: true,
+                        cancelable: true
+                    }));
+                }
+
+                document.addEventListener('keydown', function(e) {
+                    const active = document.activeElement;
+
+                    // Let normal typing happen when focus is already on a barcode/search field
+                    if (_isBarcodeTarget(active)) {
+                        _buf = '';
+                        clearTimeout(_bufTimer);
+                        _resetFirstKey();
+                        return;
+                    }
+
+                    // Ignore modifier-only keypresses, function keys, Tab, Escape, etc.
+                    if (e.key.length > 1 && e.key !== 'Enter') return;
+                    // Ignore if a modifier key is held (Ctrl+C, Alt+… etc.)
+                    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+                    const now = Date.now();
+                    const gap = now - _lastKey;
+                    _lastKey = now;
+
+                    if (e.key === 'Enter') {
+                        if (_buf.length >= MIN_BARCODE_LEN) {
+                            e.preventDefault();
+                            _flush();
+                        } else {
+                            _buf = '';
+                            _resetFirstKey();
+                        }
+                        clearTimeout(_bufTimer);
+                        return;
+                    }
+
+                    // If gap since last key is too large, reset buffer (human typed, not scanner)
+                    if (_buf.length > 0 && gap > MAX_INTER_KEY_MS) {
+                        _buf = '';
+                        _resetFirstKey();
+                    }
+
+                    // Before appending the first character, snapshot the focused element's value
+                    // so we can revert it if the next key proves this is a barcode reader.
+                    if (_buf.length === 0) {
+                        _firstKeyTarget = active;
+                        _firstKeyPreVal = (active && 'value' in active) ? active.value : null;
+                    }
+
+                    _buf += e.key;
+
+                    // Safety flush after 150ms with no new key (scanner finished but no Enter)
+                    clearTimeout(_bufTimer);
+                    _bufTimer = setTimeout(_flush, 150);
+
+                    // From the second fast key onward: prevent the key from landing in the
+                    // focused field, and on exactly the second key, revert the first character
+                    // that already landed before we knew this was a barcode sequence.
+                    if (gap <= MAX_INTER_KEY_MS && _buf.length >= 2) {
+                        e.preventDefault();
+                        if (_buf.length === 2 && _firstKeyTarget && _firstKeyPreVal !== null) {
+                            // Revert the first character that slipped into the focused element
+                            _firstKeyTarget.value = _firstKeyPreVal;
+                            _resetFirstKey();
+                        }
+                    }
+                }, true); // capture phase so we intercept before the focused field gets the event
+            })();
+            // ─────────────────────────────────────────────────────────────────────────
+
             document.getElementById('barcode_input').addEventListener('keydown', e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -2464,18 +2702,6 @@
             }
 
             renderProducts(filtered, false, currentCategory);
-        }
-
-        // Filter products based on current filter
-        function filterProducts(products) {
-            switch (currentFilter) {
-                case 'in-stock':
-                    return products.filter(p => p.quantity > 0);
-                case 'out-of-stock':
-                    return products.filter(p => p.quantity === 0);
-                default:
-                    return products;
-            }
         }
 
         // Create product card
@@ -2812,6 +3038,7 @@
                 const currentQty = parseFloat(qty.value);
 
                 qty.value = currentQty + 1;
+                applySaleToRow(row);
                 calculateTotal();
                 return true; // Product was incremented
             }
@@ -2862,9 +3089,8 @@
             `;
 
             productsList.appendChild(row);
+            applySaleToRow(row);
             calculateTotal();
-
-            // Clear return_cost after adding so the next product won't use the same cost
             if (product.return_cost) {
                 delete product.return_cost;
             }
@@ -2896,14 +3122,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3019,6 +3245,7 @@
             `;
 
             productsList.appendChild(row);
+            applySaleToRow(row);
             calculateTotal();
             showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name),
                 'success');
@@ -3223,12 +3450,21 @@
                 return;
             }
 
+            if (['quantity', 'selling-price'].some(cls => e.target.classList.contains(cls))) {
+                // Re-apply sale when qty or price changes
+                const row = e.target.closest('.product-row');
+                if (row) applySaleToRow(row);
+            }
+
             if (['quantity', 'discount', 'selling-price'].some(cls => e.target.classList.contains(cls))) {
                 if (e.target.classList.contains('discount') && !isApplyingBillDiscount) {
                     const billDiscountInput = document.getElementById('bill_discount_percent');
                     if (billDiscountInput && parseFloat(billDiscountInput.value || 0) > 0) {
                         billDiscountInput.value = '0';
                     }
+                    // Mark as user-typed discount so we don't override it
+                    const row = e.target.closest('.product-row');
+                    if (row) row.dataset.userDiscount = '1';
                 }
                 calculateTotal();
             }
@@ -3766,9 +4002,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

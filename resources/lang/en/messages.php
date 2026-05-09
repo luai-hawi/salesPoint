@@ -2101,6 +2101,9 @@ return [
     'Employee visibility settings updated successfully.' => 'Employee visibility settings updated successfully.',
     'Unauthorized action.' => 'Unauthorized action.',
 
+    // Sales & Promotions
+    'Sales & Promotions' => 'Sales & Promotions',
+
     // Installments
     'Installments' => 'Installments',
     'Deferred Payments' => 'Deferred Payments',

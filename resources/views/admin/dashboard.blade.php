@@ -11,7 +11,7 @@
             <h2 class="font-bold text-2xl text-gray-900 leading-tight">
                 {{ __('messages.Admin Dashboard') }}
             </h2>
-            <div class="flex items-center space-x-4">
+            <div class="flex flex-col md:flex-row gap-1 items-center space-x-4">
                 <span class="text-sm text-gray-600">{{ now()->format('F j, Y') }}</span>
                 @if ($expiredTempAccounts->count() > 0)
                     <button type="button"

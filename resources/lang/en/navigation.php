@@ -98,4 +98,7 @@ return [
     // Installments
     'Installments' => 'Installments',
     'Deferred Payments' => 'Deferred Payments',
+
+    // Sales & Promotions
+    'Sales & Promotions' => 'Sales & Promotions',
 ];

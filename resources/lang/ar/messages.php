@@ -2277,6 +2277,9 @@ return [
     'Employee visibility settings updated successfully.' => 'تم تحديث إعدادات عرض الموظف بنجاح.',
     'Unauthorized action.' => 'إجراء غير مصرح به.',
 
+    // Sales & Promotions
+    'Sales & Promotions' => 'المبيعات والعروض',
+
     // Installments
     'Installments' => 'الأقساط',
     'Deferred Payments' => 'المدفوعات المؤجلة',

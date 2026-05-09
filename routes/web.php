@@ -24,6 +24,7 @@ use App\Http\Controllers\IslamicSalesController;
 use App\Http\Controllers\CapitalController;
 use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\SaleController;
 
 
 
@@ -101,7 +102,16 @@ Route::get('/dashboard', function () {
         ->take(5) // Show top 5
         ->get();
 
-    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths', 'billsCount', 'categories', 'tags'));
+    // Load currently-active sales with their rules (for JS discount engine)
+    $today = Carbon::today()->toDateString();
+    $activeSales = \App\Models\Sale::where('user_id', $ownerId)
+        ->where('is_active', true)
+        ->where(fn($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $today))
+        ->where(fn($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+        ->with(['rules:id,sale_id,product_id,discount_type,discount_value,applies_every_n'])
+        ->get(['id', 'name']);
+
+    return view('dashboard', compact('products', 'totalToday', 'customers', 'warningProducts', 'warningMonths', 'deactivationMonths', 'billsCount', 'categories', 'tags', 'activeSales'));
 })->middleware(['auth', 'verified', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,admin,restaurant,merchant'])
     ->name('dashboard');
 
@@ -253,6 +263,12 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
         })->name('payments.destroy');
+
+        // Sales & Promotions
+        Route::resource('sales', SaleController::class)->except(['show', 'create', 'edit']);
+        Route::post('/sales/{sale}/toggle-active', [SaleController::class, 'toggleActive'])->name('sales.toggle-active');
+        Route::post('/sales/{sale}/extend-date', [SaleController::class, 'extendDate'])->name('sales.extend-date');
+        Route::get('/api/active-sales', [SaleController::class, 'activeSales'])->name('sales.active');
     });
 
 // ------------------- SHOP OWNER AND EMPLOYEE SPECIFIC ROUTES -------------------

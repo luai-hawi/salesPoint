@@ -135,8 +135,9 @@
         hideTip() {
             this.tip.show = false;
         }
-    }" class="flex-1 overflow-visible">
-        <div class="h-full overflow-y-auto overflow-x-visible py-2">
+    }" class="flex-1 overflow-hidden">
+        <div class="h-full overflow-y-auto overflow-x-hidden py-2"
+            style="scrollbar-width: thin; scrollbar-color: #d1d5db transparent;">
 
             @if (Auth::user()->role === 'admin')
                 {{-- ══ ADMIN ══════════════════════════════════════════════════════ --}}
@@ -271,6 +272,27 @@
                             </svg>
                             <span x-cloak x-show="$store.sidebar.expanded"
                                 class="{{ $labelCls }}">{{ __('navigation.Bills') }}</span>
+                        </a>
+                    </div>
+                @endif
+
+                {{-- Sales & Promotions --}}
+                @if (auth()->user()->role !== 'employee' ||
+                        auth()->user()->hasPermission('view_sales') ||
+                        auth()->user()->hasPermission('create_sales') ||
+                        auth()->user()->hasPermission('edit_sales') ||
+                        auth()->user()->hasPermission('delete_sales'))
+                    @php $ac = request()->routeIs('sales.*') ? $activeLink : $inactiveLink; @endphp
+                    <div @mouseenter="showTip($event, @js(__('navigation.Sales & Promotions')))" @mouseleave="hideTip()"
+                        class="relative px-2 mb-0.5">
+                        <a href="{{ route('sales.index') }}" class="{{ $navLink }} {{ $ac }}">
+                            <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <span x-cloak x-show="$store.sidebar.expanded"
+                                class="{{ $labelCls }}">{{ __('navigation.Sales & Promotions') }}</span>
                         </a>
                     </div>
                 @endif

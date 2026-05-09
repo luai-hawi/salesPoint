@@ -414,6 +414,38 @@
                                 </div>
                             </div>
 
+                            <!-- Sales & Promotions Permissions -->
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">
+                                    {{ __('messages.Sales & Promotions') }}</h4>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="view_sales"
+                                            {{ in_array('view_sales', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span class="ml-2 text-xs text-gray-700">{{ __('messages.View') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="create_sales"
+                                            {{ in_array('create_sales', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span class="ml-2 text-xs text-gray-700">{{ __('messages.Create') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="edit_sales"
+                                            {{ in_array('edit_sales', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span class="ml-2 text-xs text-gray-700">{{ __('messages.Edit') }}</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="delete_sales"
+                                            {{ in_array('delete_sales', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span class="ml-2 text-xs text-gray-700">{{ __('messages.Delete') }}</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <!-- Installments Permissions -->
                             <div>
                                 <h4 class="text-sm font-medium text-gray-900 mb-2">

@@ -243,7 +243,8 @@
 
                                 <!-- Low Stock Threshold -->
                                 <div>
-                                    <label for="low_stock_threshold" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label for="low_stock_threshold"
+                                        class="block text-sm font-semibold text-gray-700 mb-2">
                                         {{ __('messages.Low Stock Warning Threshold') }}
                                     </label>
                                     <div class="relative">
@@ -560,6 +561,11 @@
                 </button>
             `;
             container.appendChild(div);
+
+            // Prevent Enter from submitting the form (barcode readers send Enter after the code)
+            div.querySelector('input[name="additional_barcodes[]"]').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') e.preventDefault();
+            });
 
             // Add event listener to remove button
             div.querySelector('.remove-barcode-btn').addEventListener('click', function() {

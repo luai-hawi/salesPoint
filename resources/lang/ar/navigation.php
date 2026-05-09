@@ -94,4 +94,7 @@ return [
     // Installments
     'Installments' => 'الأقساط',
     'Deferred Payments' => 'المدفوعات المؤجلة',
+
+    // Sales & Promotions
+    'Sales & Promotions' => 'العروض والخصومات',
 ];
