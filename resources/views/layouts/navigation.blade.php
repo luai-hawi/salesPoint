@@ -180,6 +180,40 @@
                             class="{{ $labelCls }}">{{ __('navigation.All Employees') }}</span>
                     </a>
                 </div>
+
+                @php
+                    $expiredLicenseCount = \App\Models\User::where('account_type', 'full')
+                        ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
+                        ->whereNotNull('license_expires_at')
+                        ->where('license_expires_at', '<', now())
+                        ->count();
+                    $ac = request()->routeIs('admin.shop-owners.expiring-licenses') ? $activeLink : $inactiveLink;
+                @endphp
+                <div @mouseenter="showTip($event, @js(__('navigation.License Monitor')))" @mouseleave="hideTip()"
+                    class="relative px-2 mb-0.5">
+                    <a href="{{ route('admin.shop-owners.expiring-licenses') }}" class="{{ $navLink }} {{ $ac }}">
+                        <div class="relative flex-shrink-0">
+                            <svg class="{{ $iconCls }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            @if ($expiredLicenseCount > 0)
+                                <span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-0.5 bg-red-600 text-white text-[10px] font-bold rounded-full leading-none">
+                                    {{ $expiredLicenseCount > 99 ? '99+' : $expiredLicenseCount }}
+                                </span>
+                            @endif
+                        </div>
+                        <span x-cloak x-show="$store.sidebar.expanded"
+                            class="{{ $labelCls }} flex items-center gap-2">
+                            {{ __('navigation.License Monitor') }}
+                            @if ($expiredLicenseCount > 0)
+                                <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-xs font-bold rounded-full leading-none">
+                                    {{ $expiredLicenseCount > 99 ? '99+' : $expiredLicenseCount }}
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </div>
             @else
                 {{-- ══ SHOP OWNER / EMPLOYEE ══════════════════════════════════════ --}}
 

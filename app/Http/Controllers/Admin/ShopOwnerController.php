@@ -186,6 +186,7 @@ class ShopOwnerController extends Controller
             'account_type' => 'nullable|in:full,temp',
             'temp_period_days' => 'nullable|integer|min:0|max:365',
             'extend_days' => 'nullable|integer|min:-365|max:365',
+            'license_expires_at' => 'nullable|date',
         ]);
 
         try {
@@ -397,22 +398,96 @@ class ShopOwnerController extends Controller
     }
 
     /**
-     * Mark subscription as paid for a user.
+     * Mark subscription as paid for a user, extend license by given months.
      */
-    public function markPaid(User $shopOwner)
+    public function markPaid(Request $request, User $shopOwner)
     {
+        $validated = $request->validate([
+            'months' => 'required|integer|min:1|max:120',
+            'amount' => 'nullable|numeric|min:0',
+        ]);
+
         try {
+            $months = (int) $validated['months'];
+            $amount = $validated['amount'] ?? $shopOwner->subscription_cost;
+
+            // License always extends from existing expiry date, or from today if no license set yet
+            $baseDate = $shopOwner->license_expires_at ?? now();
+
+            $newExpiry = $baseDate->copy()->addMonths($months);
+
             $shopOwner->update([
-                'subscription_paid' => true,
-                'account_type' => 'full'
+                'subscription_paid'    => true,
+                'account_type'         => 'full',
+                'temp_expires_at'      => null,
+                'temp_period_days'     => null,
+                'license_expires_at'   => $newExpiry,
+                'last_payment_months'  => $months,
+                'last_payment_amount'  => $amount,
+                'subscription_cost'    => $amount ?? $shopOwner->subscription_cost,
             ]);
 
             return redirect()->back()
-                ->with('success', 'Subscription marked as paid and account converted to full successfully.');
+                ->with('success', "Subscription marked as paid. License extended by {$months} month(s) until {$newExpiry->format('M j, Y')}.");
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to mark subscription as paid. Please try again.']);
         }
+    }
+
+    /**
+     * Show full accounts with expired or soon-to-expire licenses.
+     */
+    public function expiringLicenses()
+    {
+        $expiredLicenses = User::where('account_type', 'full')
+            ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
+            ->whereNotNull('license_expires_at')
+            ->where('license_expires_at', '<', now())
+            ->orderBy('license_expires_at')
+            ->get();
+
+        $expiringSoonLicenses = User::where('account_type', 'full')
+            ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
+            ->whereNotNull('license_expires_at')
+            ->whereBetween('license_expires_at', [now(), now()->addDays(30)])
+            ->orderBy('license_expires_at')
+            ->get();
+
+        // Query the online menu SQLite for expired restaurant subscriptions
+        $menuExpiredUsers = collect();
+        try {
+            $menuDbPath = 'C:\\Users\\lolo_\\OneDrive\\Desktop\\Menu\\database\\database.sqlite';
+            if (file_exists($menuDbPath)) {
+                config(['database.connections.menu_sqlite' => [
+                    'driver'   => 'sqlite',
+                    'database' => $menuDbPath,
+                    'prefix'   => '',
+                    'foreign_key_constraints' => true,
+                ]]);
+
+                $rows = \Illuminate\Support\Facades\DB::connection('menu_sqlite')
+                    ->select("
+                        SELECT u.id, u.name, u.email, u.phone,
+                               s.amount, s.paid_at, s.expires_at
+                        FROM users u
+                        LEFT JOIN subscriptions s ON s.user_id = u.id
+                        WHERE u.role != 'admin'
+                          AND (s.expires_at IS NULL OR s.expires_at < datetime('now'))
+                        ORDER BY s.expires_at ASC
+                    ");
+
+                $menuExpiredUsers = collect($rows);
+            }
+        } catch (\Exception $e) {
+            // Silently fail if menu DB is unavailable
+        }
+
+        return view('admin.shop-owners.expiring-licenses', compact(
+            'expiredLicenses',
+            'expiringSoonLicenses',
+            'menuExpiredUsers'
+        ));
     }
 
     /**

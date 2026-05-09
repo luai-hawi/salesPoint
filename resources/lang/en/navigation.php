@@ -41,6 +41,7 @@ return [
     // Admin Specific
     'Shop Owners' => 'Shop Owners',
     'All Employees' => 'All Employees',
+    'License Monitor' => 'License Monitor',
 
     // Inventory Section
     'Inventory' => 'Inventory',

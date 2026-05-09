@@ -216,13 +216,59 @@
                         function toggleTempFields() {
                             const accountType = document.getElementById('account_type').value;
                             const tempField = document.getElementById('temp_period_field');
+                            const licenseField = document.getElementById('license_expiry_field');
                             if (accountType === 'temp') {
                                 tempField.classList.remove('hidden');
+                                if (licenseField) licenseField.classList.add('hidden');
                             } else {
                                 tempField.classList.add('hidden');
+                                if (licenseField) licenseField.classList.remove('hidden');
                             }
                         }
                     </script>
+
+                    <!-- License Expiry Date (full accounts only) -->
+                    <div id="license_expiry_field"
+                        class="{{ old('account_type', $shopOwner->account_type ?? 'temp') == 'full' ? '' : 'hidden' }}">
+                        <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <h4 class="text-sm font-semibold text-blue-800 mb-3">
+                                {{ __('messages.License (Full Account)') }}
+                            </h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="license_expires_at"
+                                        class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.License Expiry Date') }}</label>
+                                    <input type="date" name="license_expires_at" id="license_expires_at"
+                                        value="{{ old('license_expires_at', $shopOwner->license_expires_at ? $shopOwner->license_expires_at->format('Y-m-d') : '') }}"
+                                        class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                                    @if ($shopOwner->license_expires_at)
+                                        @php $daysLeft = (int) now()->diffInDays($shopOwner->license_expires_at, false); @endphp
+                                        <p class="text-xs mt-1 {{ $daysLeft < 0 ? 'text-red-600 font-semibold' : ($daysLeft <= 30 ? 'text-orange-600' : 'text-gray-500') }}">
+                                            @if ($daysLeft < 0)
+                                                {{ __('messages.Expired') }} {{ abs($daysLeft) }} {{ __('messages.days ago') }}
+                                            @elseif ($daysLeft === 0)
+                                                {{ __('messages.Expires today') }}
+                                            @else
+                                                {{ $daysLeft }} {{ __('messages.days remaining') }}
+                                            @endif
+                                        </p>
+                                    @else
+                                        <p class="text-xs text-gray-400 mt-1">{{ __('messages.No license expiry date set') }}</p>
+                                    @endif
+                                </div>
+                                @if ($shopOwner->last_payment_months || $shopOwner->last_payment_amount)
+                                    <div class="text-xs text-blue-700 bg-blue-100 rounded p-2">
+                                        @if ($shopOwner->last_payment_months)
+                                            <span>{{ __('messages.Last payment:') }} <strong>{{ $shopOwner->last_payment_months }} {{ __('messages.months') }}</strong></span>
+                                        @endif
+                                        @if ($shopOwner->last_payment_amount)
+                                            <span class="ml-2">— ₪{{ number_format($shopOwner->last_payment_amount, 2) }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Current Status Info -->
                     <div class="bg-gray-50 rounded-lg p-4">

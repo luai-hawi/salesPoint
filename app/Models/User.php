@@ -38,6 +38,9 @@ class User extends Authenticatable
         'temp_period_days',
         'temp_expires_at',
         'visibility_settings',
+        'license_expires_at',
+        'last_payment_months',
+        'last_payment_amount',
     ];
 
 
@@ -92,6 +95,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'temp_expires_at' => 'date',
+            'license_expires_at' => 'date',
             'visibility_settings' => 'array',
         ];
     }
@@ -167,6 +171,40 @@ class User extends Authenticatable
         return $query->where('account_type', 'temp')
             ->whereNotNull('temp_expires_at')
             ->where('temp_expires_at', '<', now());
+    }
+
+    /**
+     * Check if the full account license has expired
+     */
+    public function isLicenseExpired(): bool
+    {
+        if ($this->account_type !== 'full' || !$this->license_expires_at) {
+            return false;
+        }
+        return now()->greaterThan($this->license_expires_at);
+    }
+
+    /**
+     * Check if the full account license is expiring soon (within 30 days)
+     */
+    public function isLicenseExpiringSoon(): bool
+    {
+        if ($this->account_type !== 'full' || !$this->license_expires_at) {
+            return false;
+        }
+        $daysLeft = now()->diffInDays($this->license_expires_at, false);
+        return $daysLeft >= 0 && $daysLeft <= 30;
+    }
+
+    /**
+     * Get days until license expires (negative if already expired)
+     */
+    public function getLicenseDaysLeft(): ?int
+    {
+        if ($this->account_type !== 'full' || !$this->license_expires_at) {
+            return null;
+        }
+        return (int) now()->diffInDays($this->license_expires_at, false);
     }
 
     /**

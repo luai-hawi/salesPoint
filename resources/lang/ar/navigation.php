@@ -40,6 +40,7 @@ return [
     // Admin Specific
     'Shop Owners' => 'أصحاب المتاجر',
     'All Employees' => 'جميع الموظفين',
+    'License Monitor' => 'مراقبة التراخيص',
 
     // Inventory Section
     'Inventory' => 'المخزون',
