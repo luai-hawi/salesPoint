@@ -457,7 +457,14 @@ class ShopOwnerController extends Controller
         // Query the online menu SQLite for expired restaurant subscriptions
         $menuExpiredUsers = collect();
         try {
-            $menuDbPath = 'C:\\Users\\lolo_\\OneDrive\\Desktop\\Menu\\database\\database.sqlite';
+            // Resolve the menu DB path: env override > server path > local dev path
+            $menuDbPath = env('MENU_DB_PATH')
+                ?? public_path('menu/database/database.sqlite')  // server: public/menu/...
+                ?? base_path('../Menu/database/database.sqlite'); // local fallback
+            // Try server path first, then local dev path
+            if (!file_exists($menuDbPath)) {
+                $menuDbPath = base_path('../Menu/database/database.sqlite');
+            }
             if (file_exists($menuDbPath)) {
                 config(['database.connections.menu_sqlite' => [
                     'driver'   => 'sqlite',
@@ -469,11 +476,13 @@ class ShopOwnerController extends Controller
                 $rows = \Illuminate\Support\Facades\DB::connection('menu_sqlite')
                     ->select("
                         SELECT u.id, u.name, u.email, u.phone,
-                               s.amount, s.paid_at, s.expires_at
-                        FROM users u
-                        LEFT JOIN subscriptions s ON s.user_id = u.id
+                               s.amount, s.paid_at, s.expires_at,
+                               r.name AS restaurant_name
+                        FROM subscriptions s
+                        INNER JOIN users u ON u.id = s.user_id
+                        LEFT JOIN restaurants r ON r.user_id = u.id
                         WHERE u.role != 'admin'
-                          AND (s.expires_at IS NULL OR s.expires_at < datetime('now'))
+                          AND (s.paid_at IS NULL OR s.expires_at < datetime('now'))
                         ORDER BY s.expires_at ASC
                     ");
 

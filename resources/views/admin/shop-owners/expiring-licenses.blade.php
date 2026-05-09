@@ -281,7 +281,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
                             </svg>
-                            {{ __('messages.Online Menu – Expired/No Subscription') }}
+                            {{ __('messages.Online Menu – Unpaid Subscriptions') }}
                             <span class="bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                 {{ $menuExpiredUsers->count() }}
                             </span>
@@ -295,8 +295,8 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         {{ __('messages.Restaurant') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        {{ __('messages.Email') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">                                        {{ __('messages.Status') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">                                        {{ __('messages.Email') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         {{ __('messages.Phone') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -309,17 +309,30 @@
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach ($menuExpiredUsers as $mu)
+                                    @php
+                                        $isNeverPaid = is_null($mu->paid_at);
+                                        $isExpired   = !is_null($mu->expires_at) && \Carbon\Carbon::parse($mu->expires_at)->isPast();
+                                    @endphp
                                     <tr class="bg-purple-50 hover:bg-purple-100 transition-colors">
                                         <td class="px-4 py-3">
                                             <div class="flex items-center gap-3">
                                                 <div
                                                     class="w-9 h-9 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                                                     <span
-                                                        class="text-white font-bold text-xs">{{ strtoupper(substr($mu->name ?? '?', 0, 2)) }}</span>
+                                                        class="text-white font-bold text-xs">{{ strtoupper(substr($mu->restaurant_name ?? $mu->name ?? '?', 0, 2)) }}</span>
                                                 </div>
-                                                <span
-                                                    class="text-sm font-semibold text-gray-800">{{ $mu->name }}</span>
+                                                <div>
+                                                    <div class="text-sm font-semibold text-gray-800">{{ $mu->restaurant_name ?? '—' }}</div>
+                                                    <div class="text-xs text-gray-500">{{ $mu->name }}</div>
+                                                </div>
                                             </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            @if ($isNeverPaid)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">{{ __('messages.Never Paid') }}</span>
+                                            @elseif ($isExpired)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">{{ __('messages.Expired') }}</span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $mu->email }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $mu->phone ?: '—' }}</td>
@@ -342,7 +355,7 @@
                 <div class="bg-white shadow-lg rounded-xl overflow-hidden">
                     <div class="px-6 py-4 border-b border-purple-200 bg-purple-50">
                         <h3 class="text-lg font-bold text-purple-700">
-                            {{ __('messages.Online Menu – Expired/No Subscription') }}</h3>
+                            {{ __('messages.Online Menu – Unpaid Subscriptions') }}</h3>
                     </div>
                     <div class="p-8 text-center text-gray-400">
                         <p class="text-sm">
