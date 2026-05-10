@@ -121,24 +121,24 @@ class ShopOwnerController extends Controller
 
         // Calculate statistics with better error handling
         try {
-            $shopOwner->total_sales = Bill::whereIn('user_id', $userIds)->sum('total_price') ?? 0;
+            $shopOwner->total_sales = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)->sum('total_price') ?? 0;
 
-            $shopOwner->sales_this_month = Bill::whereIn('user_id', $userIds)
+            $shopOwner->sales_this_month = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)
                 ->whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->sum('total_price') ?? 0;
 
-            $shopOwner->sales_today = Bill::whereIn('user_id', $userIds)
+            $shopOwner->sales_today = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)
                 ->whereDate('created_at', Carbon::today())
                 ->sum('total_price') ?? 0;
 
-            $shopOwner->products_count = Product::where('user_id', $shopOwner->id)->count();
-            $shopOwner->customers_count = Customer::where('user_id', $shopOwner->id)->count();
+            $shopOwner->products_count = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count();
+            $shopOwner->customers_count = Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count();
             $shopOwner->employees_count = $shopOwner->employees->count();
 
             // Count total images for this user
             $shopOwner->total_images = 0;
-            $products = Product::where('user_id', $shopOwner->id)->whereNotNull('pictures')->get();
+            $products = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->whereNotNull('pictures')->get();
             foreach ($products as $product) {
                 $pictures = json_decode($product->pictures, true);
                 if (is_array($pictures)) {
@@ -290,7 +290,7 @@ class ShopOwnerController extends Controller
 
                 // Delete product-related data (before deleting products)
                 // Get all product IDs for this user
-                $productIds = Product::where('user_id', $shopOwner->id)->pluck('id');
+                $productIds = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
 
                 // Delete product barcodes
                 ProductBarcode::whereIn('product_id', $productIds)->delete();
@@ -299,10 +299,10 @@ class ShopOwnerController extends Controller
                 Batch::whereIn('product_id', $productIds)->delete();
 
                 // Delete product variant groups
-                ProductVariantGroup::where('user_id', $shopOwner->id)->delete();
+                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete product images from storage
-                $products = Product::where('user_id', $shopOwner->id)->get();
+                $products = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->get();
                 foreach ($products as $product) {
                     $pictures = json_decode($product->pictures, true);
                     if (is_array($pictures)) {
@@ -315,41 +315,41 @@ class ShopOwnerController extends Controller
                 }
 
                 // Delete products
-                Product::where('user_id', $shopOwner->id)->delete();
+                Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete customer-related data (before deleting customers)
-                $customerIds = Customer::where('user_id', $shopOwner->id)->pluck('id');
+                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
 
                 // Delete customer payments
                 CustomerPayment::whereIn('customer_id', $customerIds)->delete();
 
                 // Delete bills (cascade from customers - bill_product pivot will be deleted automatically)
-                Bill::whereIn('customer_id', $customerIds)->delete();
+                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
 
                 // Delete bills directly associated with user
-                Bill::where('user_id', $shopOwner->id)->delete();
+                Bill::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete customers
-                Customer::where('user_id', $shopOwner->id)->delete();
+                Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete supplier-related data (before deleting suppliers)
-                $supplierIds = Supplier::where('user_id', $shopOwner->id)->pluck('id');
+                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
 
                 // Delete supplier payments
                 SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
 
                 // Delete purchase bills
-                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
 
                 // Delete purchase bills directly associated with user
-                PurchaseBill::where('user_id', $shopOwner->id)->delete();
+                PurchaseBill::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete suppliers
-                Supplier::where('user_id', $shopOwner->id)->delete();
+                Supplier::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
 
                 // Delete other user-related data
-                Expense::where('user_id', $shopOwner->id)->delete();
-                Tag::where('user_id', $shopOwner->id)->delete();
+                Expense::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
+                Tag::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
             }
 
             $shopOwner->delete();
@@ -556,13 +556,13 @@ class ShopOwnerController extends Controller
                 Employee::where('shop_owner_id', $account->id)->delete();
 
                 // Delete product-related data
-                $productIds = Product::where('user_id', $account->id)->pluck('id');
+                $productIds = Product::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 ProductBarcode::whereIn('product_id', $productIds)->delete();
                 Batch::whereIn('product_id', $productIds)->delete();
-                ProductVariantGroup::where('user_id', $account->id)->delete();
+                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete product images from storage
-                $products = Product::where('user_id', $account->id)->get();
+                $products = Product::withoutGlobalScopes()->where('user_id', $account->id)->get();
                 foreach ($products as $product) {
                     $pictures = json_decode($product->pictures, true);
                     if (is_array($pictures)) {
@@ -575,25 +575,25 @@ class ShopOwnerController extends Controller
                 }
 
                 // Delete products
-                Product::where('user_id', $account->id)->delete();
+                Product::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete customer-related data
-                $customerIds = Customer::where('user_id', $account->id)->pluck('id');
+                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 CustomerPayment::whereIn('customer_id', $customerIds)->delete();
-                Bill::whereIn('customer_id', $customerIds)->delete();
-                Bill::where('user_id', $account->id)->delete();
-                Customer::where('user_id', $account->id)->delete();
+                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
+                Bill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Customer::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete supplier-related data
-                $supplierIds = Supplier::where('user_id', $account->id)->pluck('id');
+                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::where('user_id', $account->id)->delete();
-                Supplier::where('user_id', $account->id)->delete();
+                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Supplier::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete other user-related data
-                Expense::where('user_id', $account->id)->delete();
-                Tag::where('user_id', $account->id)->delete();
+                Expense::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Tag::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete the account
                 $account->delete();
@@ -677,13 +677,13 @@ class ShopOwnerController extends Controller
                 Employee::where('shop_owner_id', $account->id)->delete();
 
                 // Delete product-related data
-                $productIds = Product::where('user_id', $account->id)->pluck('id');
+                $productIds = Product::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 ProductBarcode::whereIn('product_id', $productIds)->delete();
                 Batch::whereIn('product_id', $productIds)->delete();
-                ProductVariantGroup::where('user_id', $account->id)->delete();
+                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete product images from storage
-                $products = Product::where('user_id', $account->id)->get();
+                $products = Product::withoutGlobalScopes()->where('user_id', $account->id)->get();
                 foreach ($products as $product) {
                     $pictures = json_decode($product->pictures, true);
                     if (is_array($pictures)) {
@@ -696,25 +696,25 @@ class ShopOwnerController extends Controller
                 }
 
                 // Delete products
-                Product::where('user_id', $account->id)->delete();
+                Product::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete customer-related data
-                $customerIds = Customer::where('user_id', $account->id)->pluck('id');
+                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 CustomerPayment::whereIn('customer_id', $customerIds)->delete();
-                Bill::whereIn('customer_id', $customerIds)->delete();
-                Bill::where('user_id', $account->id)->delete();
-                Customer::where('user_id', $account->id)->delete();
+                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
+                Bill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Customer::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete supplier-related data
-                $supplierIds = Supplier::where('user_id', $account->id)->pluck('id');
+                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
                 SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::where('user_id', $account->id)->delete();
-                Supplier::where('user_id', $account->id)->delete();
+                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
+                PurchaseBill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Supplier::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete other user-related data
-                Expense::where('user_id', $account->id)->delete();
-                Tag::where('user_id', $account->id)->delete();
+                Expense::withoutGlobalScopes()->where('user_id', $account->id)->delete();
+                Tag::withoutGlobalScopes()->where('user_id', $account->id)->delete();
 
                 // Delete the account
                 $account->delete();

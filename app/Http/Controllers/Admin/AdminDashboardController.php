@@ -27,8 +27,8 @@ class AdminDashboardController extends Controller
                 $endOfMonth = Carbon::now()->endOfMonth();
 
                 // Get today's and month's bills
-                $todayBills = Bill::whereDate('created_at', $today);
-                $monthBills = Bill::whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+                $todayBills = Bill::withoutGlobalScopes()->whereDate('created_at', $today);
+                $monthBills = Bill::withoutGlobalScopes()->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
 
                 // Calculate total sales today and this month
                 $totalSalesToday = $todayBills->sum('total_price') ?? 0;
@@ -51,7 +51,7 @@ class AdminDashboardController extends Controller
                 $avgBillValueMonth = $billsCountMonth > 0 ? $totalSalesMonth / $billsCountMonth : 0;
 
                 // Get total expenses this month
-                $totalExpensesMonth = Expense::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                $totalExpensesMonth = Expense::withoutGlobalScopes()->whereBetween('created_at', [$startOfMonth, $endOfMonth])
                     ->sum('amount') ?? 0;
 
                 return [
@@ -75,8 +75,8 @@ class AdminDashboardController extends Controller
                     'avg_bill_value_today' => $avgBillValueToday,
                     'avg_bill_value_month' => $avgBillValueMonth,
                     'total_expenses_month' => $totalExpensesMonth,
-                    'total_products' => Product::count(),
-                    'total_customers' => Customer::count(),
+                    'total_products' => Product::withoutGlobalScopes()->count(),
+                    'total_customers' => Customer::withoutGlobalScopes()->count(),
                 ];
             });
 
@@ -223,9 +223,9 @@ class AdminDashboardController extends Controller
                     $endOfMonth = Carbon::now()->endOfMonth();
 
                     // Get all bills for this shop
-                    $allBills = Bill::whereIn('user_id', $userIds);
-                    $todayBills = Bill::whereIn('user_id', $userIds)->whereDate('created_at', $today);
-                    $monthBills = Bill::whereIn('user_id', $userIds)->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+                    $allBills   = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds);
+                    $todayBills = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)->whereDate('created_at', $today);
+                    $monthBills = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
 
                     // Get shop owner's metrics with error handling
                     $shopOwner->total_sales = $this->getSafeSum(
@@ -261,11 +261,11 @@ class AdminDashboardController extends Controller
                         : 0;
 
                     // Get counts with error handling
-                    $shopOwner->products_count = Product::where('user_id', $shopOwner->id)->count() ?? 0;
-                    $shopOwner->customers_count = Customer::where('user_id', $shopOwner->id)->count() ?? 0;
+                    $shopOwner->products_count = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count() ?? 0;
+                    $shopOwner->customers_count = Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count() ?? 0;
 
                     // Get last activity
-                    $shopOwner->last_activity = Bill::whereIn('user_id', $userIds)
+                    $shopOwner->last_activity = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)
                         ->latest()
                         ->value('created_at');
                 } catch (\Exception $e) {
@@ -299,7 +299,7 @@ class AdminDashboardController extends Controller
         try {
             for ($i = 6; $i >= 0; $i--) {
                 $date = Carbon::now()->subDays($i);
-                $sales = Bill::whereDate('created_at', $date->toDateString())
+                $sales = Bill::withoutGlobalScopes()->whereDate('created_at', $date->toDateString())
                     ->sum('total_price') ?? 0;
 
                 $salesChartData[] = [
