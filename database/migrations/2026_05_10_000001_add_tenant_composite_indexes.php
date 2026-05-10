@@ -36,6 +36,15 @@ return new class extends Migration
     public function up(): void
     {
         foreach ($this->indexes as $table => $columns) {
+            $indexName = $table . '_' . implode('_', $columns) . '_index';
+            $existing  = collect(\DB::select("SHOW INDEX FROM `{$table}`"))
+                ->pluck('Key_name')
+                ->contains($indexName);
+
+            if ($existing) {
+                continue;
+            }
+
             Schema::table($table, function (Blueprint $blueprint) use ($columns) {
                 $blueprint->index($columns);
             });
@@ -45,8 +54,17 @@ return new class extends Migration
     public function down(): void
     {
         foreach ($this->indexes as $table => $columns) {
-            Schema::table($table, function (Blueprint $blueprint) use ($table, $columns) {
-                $blueprint->dropIndex([$table . '_' . implode('_', $columns) . '_index']);
+            $indexName = $table . '_' . implode('_', $columns) . '_index';
+            $existing  = collect(\DB::select("SHOW INDEX FROM `{$table}`"))
+                ->pluck('Key_name')
+                ->contains($indexName);
+
+            if (! $existing) {
+                continue;
+            }
+
+            Schema::table($table, function (Blueprint $blueprint) use ($indexName) {
+                $blueprint->dropIndex($indexName);
             });
         }
     }
