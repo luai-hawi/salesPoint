@@ -221,7 +221,7 @@ return [
     'Print Report' => 'Print Report',
     'From Date' => 'From Date',
     'To Date' => 'To Date',
-    'Payment Report' => 'Payment Report',
+    'Payment Report' => 'Payment sReport',
     'Phone' => 'Phone',
     'Credit' => 'Credit',
     'Debt' => 'Debt',
