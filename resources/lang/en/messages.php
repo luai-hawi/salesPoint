@@ -213,6 +213,7 @@ return [
 
     'another_session_active' => 'Another session is already active for this account. Your previous session has been terminated.',
     'session_warning' => 'Session Notice:',
+    'page_expired' => 'Your session has expired. Please log in again.',
     'session_expired' => 'Your session has expired due to login from another device.',
     'session_expired_new_login' => 'You have been logged out because this account was accessed from another device.',
     'login_elsewhere' => 'You have been logged out because you logged in from another device.',
