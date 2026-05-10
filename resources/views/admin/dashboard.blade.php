@@ -20,11 +20,11 @@
                         {{ __('messages.Disable All Expired') }} ({{ $expiredTempAccounts->count() }})
                     </button>
                 @endif
-                @if ($stats['disabled_expired_accounts_count'] > 0)
+                @if ($disabledExpiredAccounts->count() > 0)
                     <button type="button"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
                         onclick="document.getElementById('deleteDisabledModal').classList.remove('hidden');">
-                        {{ __('messages.Delete Disabled') }} ({{ $stats['disabled_expired_accounts_count'] }})
+                        {{ __('messages.Delete Disabled') }} ({{ $disabledExpiredAccounts->count() }})
                     </button>
                 @endif
                 <a href="{{ route('admin.shop-owners.create') }}"
@@ -88,46 +88,98 @@
     @endif
 
     <!-- Delete Disabled Modal -->
-    @if ($stats['disabled_expired_accounts_count'] > 0)
+    @if ($disabledExpiredAccounts->count() > 0)
         <div id="deleteDisabledModal"
             class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-red-600">
-                            {{ __('messages.Confirm Delete Disabled Accounts') }}
-                        </h3>
-                        <button onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
-                            class="text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <p class="text-gray-600 mb-4">
-                        {{ __('messages.You are about to permanently delete the following disabled expired accounts:') }}
-                    </p>
-                    <p class="text-sm text-red-500 mb-4">
-                        {{ __('messages.This action cannot be undone!') }}
-                    </p>
-                    <div class="flex justify-end space-x-3">
-                        <button onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
-                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                            {{ __('messages.Cancel') }}
-                        </button>
-                        <form action="{{ route('admin.shop-owners.delete-disabled-expired') }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                                {{ __('messages.Delete Disabled') }} ({{ $stats['disabled_expired_accounts_count'] }})
+            <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                <form action="{{ route('admin.shop-owners.delete-disabled-expired') }}" method="POST"
+                    id="deleteDisabledForm">
+                    @csrf
+                    @method('DELETE')
+                    <div class="flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-red-600">
+                                {{ __('messages.Confirm Delete Disabled Accounts') }}
+                            </h3>
+                            <button type="button"
+                                onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
+                                class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
                             </button>
-                        </form>
+                        </div>
+                        <p class="text-gray-600 mb-2">
+                            {{ __('messages.You are about to permanently delete the following disabled expired accounts:') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mb-3">
+                            {{ __('messages.Uncheck accounts you want to keep.') }}
+                        </p>
+                        <p class="text-sm text-red-500 mb-4">
+                            {{ __('messages.This action cannot be undone!') }}
+                        </p>
+                        <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-60 overflow-y-auto">
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                                <label class="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="selectAllDisabled" checked
+                                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                        onchange="toggleAllDisabled(this.checked)">
+                                    {{ __('messages.Select All') }}
+                                </label>
+                                <span id="disabledSelectedCount" class="text-xs text-gray-500">
+                                    {{ $disabledExpiredAccounts->count() }} {{ __('messages.selected') }}
+                                </span>
+                            </div>
+                            <ul class="space-y-1">
+                                @foreach ($disabledExpiredAccounts as $account)
+                                    <li class="flex items-center gap-3 py-1.5 px-1 hover:bg-gray-100 rounded">
+                                        <input type="checkbox" name="user_ids[]" value="{{ $account->id }}" checked
+                                            class="disabled-account-checkbox rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                            onchange="updateDisabledCount()">
+                                        <div>
+                                            <span class="font-medium text-sm text-gray-800">{{ $account->name }}</span>
+                                            <span class="text-gray-400 text-xs block">{{ $account->email }}</span>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button"
+                                onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                                {{ __('messages.Cancel') }}
+                            </button>
+                            <button type="submit" id="deleteDisabledSubmit"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ __('messages.Delete Selected') }} (<span
+                                    id="deleteDisabledCountLabel">{{ $disabledExpiredAccounts->count() }}</span>)
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
+
+        <script>
+            function toggleAllDisabled(checked) {
+                document.querySelectorAll('.disabled-account-checkbox').forEach(cb => cb.checked = checked);
+                updateDisabledCount();
+            }
+
+            function updateDisabledCount() {
+                const checkboxes = document.querySelectorAll('.disabled-account-checkbox');
+                const total = checkboxes.length;
+                const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+                document.getElementById('disabledSelectedCount').textContent = checked + ' {{ __('messages.selected') }}';
+                document.getElementById('deleteDisabledCountLabel').textContent = checked;
+                document.getElementById('deleteDisabledSubmit').disabled = checked === 0;
+                document.getElementById('selectAllDisabled').checked = checked === total;
+                document.getElementById('selectAllDisabled').indeterminate = checked > 0 && checked < total;
+            }
+        </script>
     @endif
 
     <div class="py-8">

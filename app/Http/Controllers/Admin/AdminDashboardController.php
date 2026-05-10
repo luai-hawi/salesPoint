@@ -88,7 +88,14 @@ class AdminDashboardController extends Controller
 
             // Get expired temp accounts for deletion confirmation (only shop owners, not employees)
             $expiredTempAccounts = User::expiredTempAccounts()
-                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
+                ->whereIn('role', ['shop_owner', 'restaurant', 'merchant'])
+                ->get(['id', 'name', 'email']);
+
+            // Get disabled expired accounts for deletion confirmation
+            $disabledExpiredAccounts = User::where('account_type', 'temp')
+                ->whereNotNull('temp_expires_at')
+                ->where('temp_expires_at', '<', now())
+                ->where('role', 'disabled')
                 ->get(['id', 'name', 'email']);
 
             return view('admin.dashboard', compact(
@@ -96,7 +103,8 @@ class AdminDashboardController extends Controller
                 'shopOwners',
                 'salesChartData',
                 'topShopOwners',
-                'expiredTempAccounts'
+                'expiredTempAccounts',
+                'disabledExpiredAccounts'
             ));
         } catch (\Exception $e) {
             // Log error and return with empty data
@@ -126,13 +134,15 @@ class AdminDashboardController extends Controller
             $salesChartData = [];
             $topShopOwners = collect();
             $expiredTempAccounts = collect();
+            $disabledExpiredAccounts = collect();
 
             return view('admin.dashboard', compact(
                 'stats',
                 'shopOwners',
                 'salesChartData',
                 'topShopOwners',
-                'expiredTempAccounts'
+                'expiredTempAccounts',
+                'disabledExpiredAccounts'
             ))->with('error', 'Some dashboard data could not be loaded.');
         }
     }

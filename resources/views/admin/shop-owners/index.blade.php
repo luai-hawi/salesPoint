@@ -13,22 +13,17 @@
             </h2>
             <div class="flex items-center space-x-4">
                 @php
-                    $expiredCount = $users
-                        ->filter(function ($user) {
-                            return $user->isTempExpired();
-                        })
-                        ->count();
+                    $expiredUsers = $users->filter(function ($user) {
+                        return $user->isTempExpired();
+                    });
+                    $expiredCount = $expiredUsers->count();
                 @endphp
                 @if ($expiredCount > 0)
-                    <form action="{{ route('admin.shop-owners.delete-expired') }}" method="POST" class="inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit"
-                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                            onclick="return confirm('{{ __('messages.Delete all expired accounts?') }}');">
-                            {{ __('messages.Delete All Expired') }} ({{ $expiredCount }})
-                        </button>
-                    </form>
+                    <button type="button"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                        onclick="document.getElementById('deleteExpiredModal').classList.remove('hidden');">
+                        {{ __('messages.Delete All Expired') }} ({{ $expiredCount }})
+                    </button>
                 @endif
                 <a href="{{ route('admin.shop-owners.create') }}"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
@@ -37,6 +32,100 @@
             </div>
         </div>
     </x-slot>
+
+    {{-- Delete Expired Modal --}}
+    @if ($expiredCount > 0)
+        <div id="deleteExpiredModal"
+            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                <form action="{{ route('admin.shop-owners.delete-expired') }}" method="POST" id="deleteExpiredForm">
+                    @csrf
+                    @method('DELETE')
+                    <div class="flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-red-600">
+                                {{ __('messages.Confirm Delete Expired Accounts') }}
+                            </h3>
+                            <button type="button"
+                                onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                                class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-gray-600 mb-2">
+                            {{ __('messages.You are about to permanently delete the following expired accounts:') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mb-3">
+                            {{ __('messages.Uncheck accounts you want to keep.') }}
+                        </p>
+                        <p class="text-sm text-red-500 mb-4">
+                            {{ __('messages.This action cannot be undone!') }}
+                        </p>
+                        <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-60 overflow-y-auto">
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                                <label class="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="selectAllExpired" checked
+                                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                        onchange="toggleAllExpired(this.checked)">
+                                    {{ __('messages.Select All') }}
+                                </label>
+                                <span id="expiredSelectedCount" class="text-xs text-gray-500">
+                                    {{ $expiredCount }} {{ __('messages.selected') }}
+                                </span>
+                            </div>
+                            <ul class="space-y-1">
+                                @foreach ($expiredUsers as $account)
+                                    <li class="flex items-center gap-3 py-1.5 px-1 hover:bg-gray-100 rounded">
+                                        <input type="checkbox" name="user_ids[]" value="{{ $account->id }}" checked
+                                            class="expired-account-checkbox rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                            onchange="updateExpiredCount()">
+                                        <div>
+                                            <span class="font-medium text-sm text-gray-800">{{ $account->name }}</span>
+                                            <span class="text-gray-400 text-xs block">{{ $account->email }}</span>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button"
+                                onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                                {{ __('messages.Cancel') }}
+                            </button>
+                            <button type="submit" id="deleteExpiredSubmit"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ __('messages.Delete Selected') }} (<span
+                                    id="deleteExpiredCountLabel">{{ $expiredCount }}</span>)
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function toggleAllExpired(checked) {
+                document.querySelectorAll('.expired-account-checkbox').forEach(cb => cb.checked = checked);
+                updateExpiredCount();
+            }
+
+            function updateExpiredCount() {
+                const checkboxes = document.querySelectorAll('.expired-account-checkbox');
+                const total = checkboxes.length;
+                const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+                document.getElementById('expiredSelectedCount').textContent = checked + ' {{ __('messages.selected') }}';
+                document.getElementById('deleteExpiredCountLabel').textContent = checked;
+                document.getElementById('deleteExpiredSubmit').disabled = checked === 0;
+                document.getElementById('selectAllExpired').checked = checked === total;
+                document.getElementById('selectAllExpired').indeterminate = checked > 0 && checked < total;
+            }
+        </script>
+    @endif
 
     <div class="py-8">
         <div class="mx-auto sm:px-6 lg:px-8">

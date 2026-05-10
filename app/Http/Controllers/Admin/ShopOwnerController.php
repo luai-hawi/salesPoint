@@ -522,13 +522,20 @@ class ShopOwnerController extends Controller
     /**
      * Delete all expired temporary accounts.
      */
-    public function deleteExpiredTempAccounts()
+    public function deleteExpiredTempAccounts(Request $request)
     {
         try {
-            // Get all expired temp accounts (only shop owners, not employees)
-            $expiredAccounts = User::expiredTempAccounts()
-                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-                ->get();
+            // Build base query: expired temp accounts (only shop owners, not employees)
+            $query = User::expiredTempAccounts()
+                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant']);
+
+            // If specific IDs were submitted, filter to only those
+            if ($request->filled('user_ids')) {
+                $selectedIds = array_map('intval', (array) $request->input('user_ids'));
+                $query->whereIn('id', $selectedIds);
+            }
+
+            $expiredAccounts = $query->get();
 
             $count = $expiredAccounts->count();
 
@@ -634,15 +641,22 @@ class ShopOwnerController extends Controller
     /**
      * Delete all disabled expired accounts.
      */
-    public function deleteDisabledExpiredAccounts()
+    public function deleteDisabledExpiredAccounts(Request $request)
     {
         try {
-            // Get all disabled expired temp accounts (only shop owners, not employees)
-            $disabledAccounts = User::where('account_type', 'temp')
+            // Build base query: disabled expired temp accounts (only shop owners, not employees)
+            $query = User::where('account_type', 'temp')
                 ->whereNotNull('temp_expires_at')
-                ->where('temp_expires_at', '<')
-                ->where('role', 'disabled')
-                ->get();
+                ->where('temp_expires_at', '<', now())
+                ->where('role', 'disabled');
+
+            // If specific IDs were submitted, filter to only those
+            if ($request->filled('user_ids')) {
+                $selectedIds = array_map('intval', (array) $request->input('user_ids'));
+                $query->whereIn('id', $selectedIds);
+            }
+
+            $disabledAccounts = $query->get();
 
             $count = $disabledAccounts->count();
 
