@@ -2,12 +2,13 @@
 // App/Models/Supplier.php
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
         'name',
@@ -41,13 +42,13 @@ class Supplier extends Model
     public function getLastPurchaseBillData($userId = null)
     {
         $query = $this->purchaseBills()->latest('purchase_date');
-        
+
         if ($userId) {
             $query->where('user_id', $userId);
         }
-        
+
         $lastBill = $query->first();
-        
+
         return [
             'amount' => $lastBill ? $lastBill->total_amount : 0,
             'bill_id' => $lastBill ? $lastBill->id : null,
@@ -58,22 +59,22 @@ class Supplier extends Model
     public function getTotalPurchases($userId = null)
     {
         $query = $this->purchaseBills();
-        
+
         if ($userId) {
             $query->where('user_id', $userId);
         }
-        
+
         return $query->sum('total_amount');
     }
 
     public function getTotalPayments($userId = null)
     {
         $query = $this->payments();
-        
+
         if ($userId) {
             $query->where('user_id', $userId);
         }
-        
+
         return $query->sum('amount');
     }
 }

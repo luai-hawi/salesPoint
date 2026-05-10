@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Batch;
 use App\Models\CustomerPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BillsController extends Controller
 {
@@ -67,43 +68,25 @@ class BillsController extends Controller
         }
 
         // Use selected date or default to today for money calculations
-        $calculationDate = $date ? $date : today();
+        $calculationDate = $date ? $date : today()->format('Y-m-d');
 
-        $calculationBills = Bill::where('user_id', $ownerId)
-            ->with(['products' => function ($q) use ($ownerId) {
-                $q->where('user_id', $ownerId);
-            }])
+        $totalSales = Bill::where('user_id', $ownerId)
             ->whereDate('created_at', $calculationDate)
-            ->get();
+            ->sum('total_price');
 
-        $totalSales = $calculationBills->sum('total_price');
-        $totalProfit = $calculationBills->sum(function ($bill) {
-            return $bill->products->sum(function ($product) {
-                $quantity = $product->pivot->quantity;
-                $costPrice = $product->pivot->cost_price;
-                $sellingPrice = $product->pivot->selling_price;
-                $discount = $product->pivot->discount;
-
-                return (($sellingPrice - $costPrice) * $quantity) - $discount;
-            });
-        });
+        $totalProfit = DB::table('bills')
+            ->join('bill_product', 'bills.id', '=', 'bill_product.bill_id')
+            ->where('bills.user_id', $ownerId)
+            ->whereDate('bills.created_at', $calculationDate)
+            ->selectRaw('SUM((bill_product.selling_price - bill_product.cost_price) * bill_product.quantity - bill_product.discount) as profit')
+            ->value('profit') ?? 0;
 
         $bills = $baseQuery->paginate(50);
 
-        // Load products for each bill (needed for view details modal)
-        $bills->each(function ($bill) {
-            $bill->load('products');
-        });
-
         // Handle AJAX requests
         if ($request->ajax()) {
-            $billsWithProducts = $bills->map(function ($bill) {
-                $bill->load('products');
-                return $bill;
-            });
-
             return response()->json([
-                'bills' => $billsWithProducts->all(),
+                'bills' => $bills->values()->all(),
                 'pagination' => [
                     'current_page' => $bills->currentPage(),
                     'last_page' => $bills->lastPage(),
