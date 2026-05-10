@@ -2401,4 +2401,8 @@ return [
     'Back' => 'رجوع',
     'Bill Total' => 'إجمالي الفاتورة',
     'Unknown' => 'غير معروف',
+
+    // Database Backup
+    'Download Backup' => 'تنزيل النسخة الاحتياطية',
+    'Generating...' => 'جارٍ الإنشاء...',
 ];

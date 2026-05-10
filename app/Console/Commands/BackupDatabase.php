@@ -54,33 +54,120 @@ class BackupDatabase extends Command
 
     private function backupMysql(array $config, string $dir, string $timestamp): bool
     {
-        $database = $config['database'];
-        $file     = "{$dir}/backup_{$timestamp}.sql.gz";
+        $file = "{$dir}/backup_{$timestamp}.sql.gz";
 
-        $host     = escapeshellarg($config['host'] ?? '127.0.0.1');
-        $port     = escapeshellarg($config['port'] ?? '3306');
-        $user     = escapeshellarg($config['username'] ?? 'root');
-        $pass     = $config['password'] ?? '';
-        $db       = escapeshellarg($database);
-        $fileArg  = escapeshellarg($file);
+        if ($this->isExecAvailable()) {
+            // Fast path: use mysqldump via shell
+            $host    = escapeshellarg($config['host'] ?? '127.0.0.1');
+            $port    = escapeshellarg($config['port'] ?? '3306');
+            $user    = escapeshellarg($config['username'] ?? 'root');
+            $pass    = $config['password'] ?? '';
+            $db      = escapeshellarg($config['database']);
+            $fileArg = escapeshellarg($file);
 
-        // Pass password via env variable to avoid it appearing in process list
-        $env     = !empty($pass) ? "MYSQL_PWD=" . escapeshellarg($pass) . " " : '';
-        $command = "{$env}mysqldump --host={$host} --port={$port} --user={$user} --single-transaction --quick --lock-tables=false {$db} | gzip > {$fileArg} 2>&1";
+            // Pass password via env variable to avoid it appearing in process list
+            $env     = !empty($pass) ? "MYSQL_PWD=" . escapeshellarg($pass) . " " : '';
+            $command = "{$env}mysqldump --host={$host} --port={$port} --user={$user} --single-transaction --quick --lock-tables=false {$db} | gzip > {$fileArg} 2>&1";
 
-        exec($command, $output, $exitCode);
+            \exec($command, $output, $exitCode);
 
-        if ($exitCode !== 0 || !file_exists($file) || filesize($file) === 0) {
-            $message = implode("\n", $output);
-            $this->error("MySQL backup failed. Exit code: {$exitCode}. Output: {$message}");
-            Log::error("BackupDatabase MySQL failed", ['exit_code' => $exitCode, 'output' => $output]);
-            return false;
+            if ($exitCode !== 0 || !file_exists($file) || filesize($file) === 0) {
+                $message = implode("\n", $output);
+                $this->error("MySQL backup failed. Exit code: {$exitCode}. Output: {$message}");
+                Log::error("BackupDatabase MySQL failed", ['exit_code' => $exitCode, 'output' => $output]);
+                return false;
+            }
+        } else {
+            // Fallback: pure-PHP PDO dump (used when exec is disabled on the host)
+            $this->info("exec() is unavailable. Using PHP PDO dump fallback.");
+            Log::info("BackupDatabase: using PHP PDO fallback for MySQL backup");
+
+            if (!$this->dumpMysqlViaPdo($config, $file)) {
+                return false;
+            }
         }
 
         $size = $this->humanSize(filesize($file));
         $this->info("MySQL backup created: backup_{$timestamp}.sql.gz ({$size})");
         Log::info("BackupDatabase: MySQL backup created [{$file}] ({$size})");
         return true;
+    }
+
+    /**
+     * Dump a MySQL/MariaDB database to a gzipped SQL file using PDO only.
+     * Used as a fallback when exec() is disabled on the host.
+     */
+    private function dumpMysqlViaPdo(array $config, string $file): bool
+    {
+        try {
+            $host    = $config['host'] ?? '127.0.0.1';
+            $port    = $config['port'] ?? '3306';
+            $dbName  = $config['database'];
+            $charset = $config['charset'] ?? 'utf8mb4';
+
+            $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset={$charset}";
+            $pdo = new \PDO($dsn, $config['username'] ?? 'root', $config['password'] ?? '', [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+
+            $gz = \gzopen($file, 'wb9');
+            if ($gz === false) {
+                $this->error("MySQL backup failed: could not open gzip output file.");
+                Log::error("BackupDatabase: gzopen failed for [{$file}]");
+                return false;
+            }
+
+            \gzwrite($gz, "-- Database: {$dbName}\n");
+            \gzwrite($gz, "-- Generated: " . date('Y-m-d H:i:s') . " (PHP PDO dump)\n\n");
+            \gzwrite($gz, "SET FOREIGN_KEY_CHECKS=0;\n");
+            \gzwrite($gz, "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
+
+            $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                \gzwrite($gz, "-- Table: `{$table}`\n");
+                \gzwrite($gz, "DROP TABLE IF EXISTS `{$table}`;\n");
+
+                $createRow = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
+                \gzwrite($gz, $createRow['Create Table'] . ";\n\n");
+
+                // Dump rows in chunks to avoid memory exhaustion on large tables
+                $rowStmt = $pdo->query("SELECT * FROM `{$table}`");
+                $chunk   = [];
+                $columns = null;
+
+                while ($row = $rowStmt->fetch(\PDO::FETCH_ASSOC)) {
+                    if ($columns === null) {
+                        $columns = '`' . implode('`, `', array_keys($row)) . '`';
+                    }
+                    $escaped = array_map(
+                        fn($v) => $v === null ? 'NULL' : $pdo->quote((string) $v),
+                        array_values($row)
+                    );
+                    $chunk[] = '(' . implode(', ', $escaped) . ')';
+
+                    if (count($chunk) >= 200) {
+                        \gzwrite($gz, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+                        $chunk = [];
+                    }
+                }
+
+                if (!empty($chunk) && $columns !== null) {
+                    \gzwrite($gz, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+                }
+
+                \gzwrite($gz, "\n");
+            }
+
+            \gzwrite($gz, "SET FOREIGN_KEY_CHECKS=1;\n");
+            \gzclose($gz);
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->error("MySQL PDO backup failed: " . $e->getMessage());
+            Log::error("BackupDatabase: PDO dump failed", ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     private function backupSqlite(array $config, string $dir, string $timestamp): bool
@@ -121,10 +208,16 @@ class BackupDatabase extends Command
         $db      = escapeshellarg($database);
         $fileArg = escapeshellarg($file);
 
+        if (!$this->isExecAvailable()) {
+            $this->error("PostgreSQL backup requires exec(), which is disabled on this host.");
+            Log::error("BackupDatabase: exec() unavailable, cannot run pg_dump");
+            return false;
+        }
+
         $env     = !empty($pass) ? "PGPASSWORD=" . escapeshellarg($pass) . " " : '';
         $command = "{$env}pg_dump --host={$host} --port={$port} --username={$user} {$db} | gzip > {$fileArg} 2>&1";
 
-        exec($command, $output, $exitCode);
+        \exec($command, $output, $exitCode);
 
         if ($exitCode !== 0 || !file_exists($file) || filesize($file) === 0) {
             $message = implode("\n", $output);
@@ -171,6 +264,25 @@ class BackupDatabase extends Command
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Check whether PHP's exec() function is available on this host.
+     * Many shared hosts disable it via the disable_functions php.ini directive.
+     */
+    private function isExecAvailable(): bool
+    {
+        if (!function_exists('exec')) {
+            return false;
+        }
+        $disabled = ini_get('disable_functions');
+        if ($disabled) {
+            $disabledList = array_map('trim', explode(',', $disabled));
+            if (in_array('exec', $disabledList, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     private function humanSize(int $bytes): string
     {
