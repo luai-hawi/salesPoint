@@ -363,6 +363,7 @@ return [
     'Full Account' => 'حساب كامل',
     'Temp Accounts' => 'الحسابات المؤقتة',
     'Expired Temp Accounts' => 'الحسابات المؤقتة المنتهية',
+    'Delete Selected' => 'حذف المحدد',
     'Temporary' => 'مؤقت',
     'Expired' => 'منتهي',
     'Convert to Full' => 'تحويل للحساب الكامل',
