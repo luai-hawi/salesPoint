@@ -11,6 +11,9 @@ use App\Models\Expense;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminDashboardController extends Controller
 {
@@ -328,5 +331,49 @@ class AdminDashboardController extends Controller
         } catch (\Exception $e) {
             return 0;
         }
+    }
+
+    /**
+     * Generate a fresh database backup and stream it as a download.
+     */
+    public function downloadBackup(): StreamedResponse
+    {
+        $backupDir = storage_path('app/backups');
+
+        if (!is_dir($backupDir)) {
+            mkdir($backupDir, 0755, true);
+        }
+
+        // Run the backup command (saves file to storage/app/backups/ and rotates)
+        Artisan::call('db:backup', ['--keep' => 7]);
+
+        // Find the most recently created backup file
+        $files = glob($backupDir . '/backup_*');
+
+        if (empty($files)) {
+            abort(500, 'Backup generation failed. Check server logs.');
+        }
+
+        // Sort descending by modification time, pick the newest
+        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
+        $latestFile = $files[0];
+        $filename   = basename($latestFile);
+        $mimeType   = str_ends_with($filename, '.gz') ? 'application/gzip' : 'application/octet-stream';
+
+        Log::info("BackupDatabase: Manual download by admin [{$filename}]");
+
+        return response()->streamDownload(function () use ($latestFile) {
+            $handle = fopen($latestFile, 'rb');
+            while (!feof($handle)) {
+                echo fread($handle, 8192);
+                ob_flush();
+                flush();
+            }
+            fclose($handle);
+        }, $filename, [
+            'Content-Type'        => $mimeType,
+            'Content-Length'      => filesize($latestFile),
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

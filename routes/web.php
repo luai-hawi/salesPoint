@@ -122,6 +122,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin'
 
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/download-backup', [AdminDashboardController::class, 'downloadBackup'])->name('dashboard.download-backup');
 
     // Shop Owners Management
     // NOTE: Static routes MUST come before Route::resource to avoid {shopOwner} binding swallowing them

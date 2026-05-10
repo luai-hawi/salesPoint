@@ -31,6 +31,15 @@
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
                     {{ __('messages.Add New User') }}
                 </a>
+                <a href="{{ route('admin.dashboard.download-backup') }}" id="downloadBackupBtn"
+                    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                    onclick="startBackupDownload(this)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span id="downloadBackupLabel">{{ __('messages.Download Backup') }}</span>
+                </a>
             </div>
         </div>
     </x-slot>
@@ -860,4 +869,18 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function startBackupDownload(link) {
+            const label = document.getElementById('downloadBackupLabel');
+            label.textContent = '{{ __('messages.Generating...') }}';
+            link.classList.add('opacity-60', 'pointer-events-none');
+
+            // Re-enable after 30 seconds in case the user wants to download again
+            setTimeout(function() {
+                label.textContent = '{{ __('messages.Download Backup') }}';
+                link.classList.remove('opacity-60', 'pointer-events-none');
+            }, 30000);
+        }
+    </script>
 </x-app-layout>

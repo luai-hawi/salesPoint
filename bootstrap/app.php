@@ -25,6 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('02:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Run database backup daily at 3 AM, keep last 7 backups
+        $schedule->command('db:backup --keep=7')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/db-backup.log'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
