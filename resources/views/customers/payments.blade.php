@@ -17,7 +17,7 @@
                 </svg>
                 {{ __('messages.Payment History') }}
             </h2>
-            <div class="flex items-center space-x-4">
+            <div class="flex-wrap gap-4 items-center space-x-4">
                 <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     {{ __('messages.Customer') }}: <span class="font-bold text-green-600">{{ $customer->name }}</span>
                 </div>
@@ -728,11 +728,11 @@
                     <span>{{ $customer->name }}</span>
                 </div>
                 ${customerPhone ? `
-                                                                                                            <div class="info-row">
-                                                                                                                <span class="info-label">{{ __('messages.Phone') }}:</span>
-                                                                                                                <span>${customerPhone}</span>
-                                                                                                            </div>
-                                                                                                            ` : ''}
+                                                                                                                    <div class="info-row">
+                                                                                                                        <span class="info-label">{{ __('messages.Phone') }}:</span>
+                                                                                                                        <span>${customerPhone}</span>
+                                                                                                                    </div>
+                                                                                                                    ` : ''}
                 <div class="info-row">
                     <span class="info-label">{{ __('messages.Report Generated') }}:</span>
                     <span>${new Date().toLocaleString()}</span>
@@ -752,13 +752,13 @@
             </div>
 
             ${fromDate || toDate ? `
-                                                                                                        <div class="date-range">
-                                                                                                            {{ __('messages.Date Range') }}:
-                                                                                                            ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                                                                                                            {{ __('messages.to') }}
-                                                                                                            ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
-                                                                                                        </div>
-                                                                                                        ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
+                                                                                                                <div class="date-range">
+                                                                                                                    {{ __('messages.Date Range') }}:
+                                                                                                                    ${fromDate ? new Date(fromDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                                                                    {{ __('messages.to') }}
+                                                                                                                    ${toDate ? new Date(toDate).toLocaleDateString() : '{{ __('messages.All dates') }}'}
+                                                                                                                </div>
+                                                                                                                ` : '<div class="date-range">{{ __('messages.All Payment Records') }}</div>'}
 
             <table>
                 <thead>
@@ -772,16 +772,16 @@
                 </thead>
                 <tbody>
                     ${filteredPayments.map(payment => `
-                                                                                                                    <tr>
-                                                                                                                        <td>${payment.id}</td>
-                                                                                                                        <td>${payment.date}</td>
-                                                                                                                        <td>${payment.time}</td>
-                                                                                                                        <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
-                                                                                                                            ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
-                                                                                                                        </td>
-                                                                                                                        <td>${payment.note}</td>
-                                                                                                                    </tr>
-                                                                                                                `).join('')}
+                                                                                                                            <tr>
+                                                                                                                                <td>${payment.id}</td>
+                                                                                                                                <td>${payment.date}</td>
+                                                                                                                                <td>${payment.time}</td>
+                                                                                                                                <td class="${payment.amount >= 0 ? 'amount-positive' : 'amount-negative'}">
+                                                                                                                                    ₪${Math.abs(payment.amount).toFixed(2)} ${payment.amount >= 0 ? '' : '({{ __('messages.Debt') }})'}
+                                                                                                                                </td>
+                                                                                                                                <td>${payment.note}</td>
+                                                                                                                            </tr>
+                                                                                                                        `).join('')}
                 </tbody>
             </table>
 

@@ -8,7 +8,7 @@
 <x-app-layout>
     {{-- Employee Index Header --}}
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex-wrap gap-4 items-center justify-between">
             <h2 class="font-bold text-2xl text-gray-800 leading-tight flex items-center">
                 <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -17,7 +17,7 @@
                 </svg>
                 {{ __('employees.Employee Management') }}
             </h2>
-            <div class="flex items-center space-x-4">
+            <div class="flex flex-wrap gap-4 items-center space-x-4">
                 <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     {{ __('employees.Total Employees') }}: <span
                         class="font-bold text-blue-600">{{ $employees->total() }}</span>
