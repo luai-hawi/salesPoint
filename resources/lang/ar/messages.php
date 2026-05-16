@@ -2406,4 +2406,36 @@ return [
     // Database Backup
     'Download Backup' => 'تنزيل النسخة الاحتياطية',
     'Generating...' => 'جارٍ الإنشاء...',
+
+    // ── Plan / Tier Controls (admin edit page) ─────────────────────────────
+    'Plan Controls'                   => 'إدارة الخطة',
+    'Tier'                            => 'المستوى',
+    'Blocked Features'                => 'الميزات المحجوبة',
+    'checked = blocked for this shop' => 'محدد = محجوب عن هذا المتجر',
+    'feature_installments'            => 'الأقساط (صفحة المدفوعات المؤجلة وإنشاء الخطط)',
+    'feature_sales_promotions'        => 'العروض والخصومات (صفحة العروض ومحرك التسعير)',
+    'feature_financial_dashboard'     => 'لوحة التحكم المالية (صفحة التقارير والتحليلات)',
+    'feature_desc_installments'       => 'يحجب صفحة الأقساط وإمكانية إنشاء خطط التقسيط من الفواتير.',
+    'feature_desc_sales_promotions'   => 'يحجب صفحة العروض ويخفي قواعد الخصم النشطة من نقطة البيع.',
+    'feature_desc_financial_dashboard' => 'يحجب لوحة التحكم المالية والتقارير وميزة التصدير.',
+    'Entry Limit'                     => 'حد السجلات',
+    'entry_limit_desc'                => 'الحد الأقصى للسجلات المجمعة (فواتير + منتجات + عملاء + فواتير الشراء). اترك فارغًا للسماح بغير محدود.',
+    'entry_limit_placeholder'         => 'مثال: 3000 — فارغ = غير محدود',
+    'entry_limit_unit'                => 'سجل (فارغ = غير محدود)',
+    'entry_limit_hints'               => 'قيم مقترحة حسب المستوى',
+    'Unlimited'                       => 'غير محدود',
+    'Current usage'                   => 'الاستخدام الحالي',
+
+    // ── Plan Usage Card (settings page) ───────────────────────────────────
+    'plan_usage_title'                => 'استخدام الخطة',
+    'plan_usage_subtitle'             => 'تتبع عدد سجلاتك الحالية مقارنةً بحد خطتك.',
+    'plan_entries'                    => 'سجل',
+    'plan_usage_critical'             => 'لقد استخدمت 90٪ أو أكثر من حصتك. يُرجى التواصل مع المدير لترقية خطتك قبل بلوغ الحد.',
+    'plan_usage_warning'              => 'لقد استخدمت 75٪ أو أكثر من حصتك. فكّر في التواصل مع المدير للترقية.',
+    'plan_usage_what_counts'          => 'ما يُحسب: الفواتير، المنتجات، العملاء، وفواتير الشراء.',
+    'plan_unlimited'                  => 'خطة غير محدودة — لا يوجد حد للسجلات.',
+    'plan_current_usage'              => 'الاستخدام الحالي',
+
+    // ── Tier middleware error ──────────────────────────────────────────────
+    'tier_feature_blocked'            => 'هذه الميزة غير متاحة في خطتك الحالية. يُرجى التواصل مع المدير للترقية.',
 ];

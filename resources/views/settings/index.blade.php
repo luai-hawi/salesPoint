@@ -24,6 +24,94 @@
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
+            {{-- ═══ Plan Usage Card ════════════════════════════════════════════ --}}
+            @php
+                $__planUser = auth()->user();
+                $__limit = $__planUser->getEntryLimit();
+                $__usage = $__planUser->getEntryUsage();
+                $__pct = $__limit ? min(100, round(($__usage / $__limit) * 100)) : 0;
+                $__barColor = $__pct >= 90 ? 'bg-red-500' : ($__pct >= 75 ? 'bg-orange-400' : 'bg-indigo-500');
+                $__warnLevel = $__pct >= 90 ? 'high' : ($__pct >= 75 ? 'medium' : 'ok');
+            @endphp
+            <div
+                class="bg-white rounded-xl shadow-sm border {{ $__warnLevel === 'high' ? 'border-red-300' : ($__warnLevel === 'medium' ? 'border-orange-300' : 'border-gray-200') }} overflow-hidden mb-6">
+                <div
+                    class="p-5 border-b border-gray-100 bg-gradient-to-r {{ $__warnLevel === 'high' ? 'from-red-50 to-rose-50' : ($__warnLevel === 'medium' ? 'from-orange-50 to-amber-50' : 'from-indigo-50 to-blue-50') }}">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 {{ $__warnLevel === 'high' ? 'text-red-500' : ($__warnLevel === 'medium' ? 'text-orange-500' : 'text-indigo-600') }}"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {{ __('messages.plan_usage_title') }}
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">{{ __('messages.plan_usage_subtitle') }}</p>
+                </div>
+                <div class="p-5">
+                    @if ($__limit)
+                        {{-- Progress bar --}}
+                        <div class="flex items-center justify-between text-sm mb-2">
+                            <span class="font-medium text-gray-700">
+                                {{ number_format($__usage) }} / {{ number_format($__limit) }}
+                                {{ __('messages.plan_entries') }}
+                            </span>
+                            <span
+                                class="font-bold {{ $__warnLevel === 'high' ? 'text-red-600' : ($__warnLevel === 'medium' ? 'text-orange-500' : 'text-indigo-600') }}">
+                                {{ $__pct }}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div class="{{ $__barColor }} h-3 rounded-full transition-all duration-500"
+                                style="width: {{ $__pct }}%"></div>
+                        </div>
+
+                        @if ($__warnLevel === 'high')
+                            <div class="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-sm text-red-700">{{ __('messages.plan_usage_critical') }}</p>
+                            </div>
+                        @elseif ($__warnLevel === 'medium')
+                            <div
+                                class="mt-3 flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <svg class="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-sm text-orange-700">{{ __('messages.plan_usage_warning') }}</p>
+                            </div>
+                        @endif
+
+                        <p class="text-xs text-gray-400 mt-3">
+                            {{ __('messages.plan_usage_what_counts') }}
+                        </p>
+                    @else
+                        {{-- Unlimited plan --}}
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-indigo-700">{{ __('messages.plan_unlimited') }}
+                                </p>
+                                <p class="text-xs text-gray-500">{{ __('messages.plan_current_usage') }}:
+                                    {{ number_format($__usage) }} {{ __('messages.plan_entries') }}</p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            {{-- ═══ end Plan Usage Card ════════════════════════════════════════ --}}
+
             <!-- Image Limit Information (Read-Only) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
                 <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
@@ -123,7 +211,8 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Warning Period -->
                         <div>
-                            <label for="product_warning_period" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="product_warning_period"
+                                class="block text-sm font-semibold text-gray-700 mb-2">
                                 {{ __('messages.Warning Period (Months)') }}
                             </label>
                             <div class="relative">

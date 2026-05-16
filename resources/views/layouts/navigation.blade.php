@@ -33,6 +33,12 @@
             ->count();
     }
 
+    // Feature access flags (resolved once for the whole sidebar)
+    $canInstallments = !Auth::check() || Auth::user()->canAccessFeature('installments');
+    $canSalesPromotions = !Auth::check() || Auth::user()->canAccessFeature('sales_promotions');
+    $canFinancialDash = !Auth::check() || Auth::user()->canAccessFeature('financial_dashboard');
+    $upgradeTip = __('navigation.upgrade_tip');
+
     // Compute installment due-today count for nav badge
     $installmentDueCount = 0;
     if (Auth::check() && Auth::user()->role !== 'admin') {
@@ -319,19 +325,44 @@
                         auth()->user()->hasPermission('create_sales') ||
                         auth()->user()->hasPermission('edit_sales') ||
                         auth()->user()->hasPermission('delete_sales'))
-                    @php $ac = request()->routeIs('sales.*') ? $activeLink : $inactiveLink; @endphp
-                    <div @mouseenter="showTip($event, @js(__('navigation.Sales & Promotions')))" @mouseleave="hideTip()"
-                        class="relative px-2 mb-0.5">
-                        <a href="{{ route('sales.index') }}" class="{{ $navLink }} {{ $ac }}">
-                            <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                            <span x-cloak x-show="$store.sidebar.expanded"
-                                class="{{ $labelCls }}">{{ __('navigation.Sales & Promotions') }}</span>
-                        </a>
-                    </div>
+                    @if ($canSalesPromotions)
+                        @php $ac = request()->routeIs('sales.*') ? $activeLink : $inactiveLink; @endphp
+                        <div @mouseenter="showTip($event, @js(__('navigation.Sales & Promotions')))" @mouseleave="hideTip()"
+                            class="relative px-2 mb-0.5">
+                            <a href="{{ route('sales.index') }}" class="{{ $navLink }} {{ $ac }}">
+                                <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                <span x-cloak x-show="$store.sidebar.expanded"
+                                    class="{{ $labelCls }}">{{ __('navigation.Sales & Promotions') }}</span>
+                            </a>
+                        </div>
+                    @else
+                        {{-- LOCKED: feature not available in this plan --}}
+                        <div @mouseenter="showTip($event, @js($upgradeTip))" @mouseleave="hideTip()"
+                            class="relative px-2 mb-0.5">
+                            <span
+                                class="{{ $navLink }} text-gray-300 cursor-not-allowed select-none flex items-center">
+                                <span class="relative flex-shrink-0">
+                                    <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                    <svg class="absolute -bottom-1 -right-1 w-3 h-3 text-gray-400" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                                <span x-cloak x-show="$store.sidebar.expanded"
+                                    class="{{ $labelCls }} text-gray-300">{{ __('navigation.Sales & Promotions') }}</span>
+                            </span>
+                        </div>
+                    @endif
                 @endif
 
                 {{-- Customers --}}
@@ -357,33 +388,58 @@
 
                 {{-- Installments / Deferred Payments --}}
                 @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_installments'))
-                    @php $ac = request()->routeIs('installments.*') ? $activeLink : $inactiveLink; @endphp
-                    <div @mouseenter="showTip($event, @js(__('navigation.Installments')))" @mouseleave="hideTip()"
-                        class="relative px-2 mb-0.5">
-                        <a href="{{ route('installments.index') }}"
-                            class="{{ $navLink }} {{ $ac }} relative">
-                            <span class="relative flex-shrink-0">
-                                <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                                @if ($installmentDueCount > 0)
-                                    <span
-                                        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center"
-                                        style="font-size:9px;line-height:1;">{{ $installmentDueCount > 9 ? '9+' : $installmentDueCount }}</span>
-                                @endif
+                    @if ($canInstallments)
+                        @php $ac = request()->routeIs('installments.*') ? $activeLink : $inactiveLink; @endphp
+                        <div @mouseenter="showTip($event, @js(__('navigation.Installments')))" @mouseleave="hideTip()"
+                            class="relative px-2 mb-0.5">
+                            <a href="{{ route('installments.index') }}"
+                                class="{{ $navLink }} {{ $ac }} relative">
+                                <span class="relative flex-shrink-0">
+                                    <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
+                                    @if ($installmentDueCount > 0)
+                                        <span
+                                            class="absolute -top-1.5 -right-1.5 bg-red-500 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                                            style="font-size:9px;line-height:1;">{{ $installmentDueCount > 9 ? '9+' : $installmentDueCount }}</span>
+                                    @endif
+                                </span>
+                                <span x-cloak x-show="$store.sidebar.expanded"
+                                    class="{{ $labelCls }} flex items-center gap-2">
+                                    {{ __('navigation.Installments') }}
+                                    @if ($installmentDueCount > 0)
+                                        <span class="bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full"
+                                            style="font-size:9px;line-height:1.4;">{{ $installmentDueCount > 9 ? '9+' : $installmentDueCount }}</span>
+                                    @endif
+                                </span>
+                            </a>
+                        </div>
+                    @else
+                        {{-- LOCKED: feature not available in this plan --}}
+                        <div @mouseenter="showTip($event, @js($upgradeTip))" @mouseleave="hideTip()"
+                            class="relative px-2 mb-0.5">
+                            <span
+                                class="{{ $navLink }} text-gray-300 cursor-not-allowed select-none flex items-center">
+                                <span class="relative flex-shrink-0">
+                                    <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
+                                    <svg class="absolute -bottom-1 -right-1 w-3 h-3 text-gray-400" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                                <span x-cloak x-show="$store.sidebar.expanded"
+                                    class="{{ $labelCls }} text-gray-300">{{ __('navigation.Installments') }}</span>
                             </span>
-                            <span x-cloak x-show="$store.sidebar.expanded"
-                                class="{{ $labelCls }} flex items-center gap-2">
-                                {{ __('navigation.Installments') }}
-                                @if ($installmentDueCount > 0)
-                                    <span class="bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full"
-                                        style="font-size:9px;line-height:1.4;">{{ $installmentDueCount > 9 ? '9+' : $installmentDueCount }}</span>
-                                @endif
-                            </span>
-                        </a>
-                    </div>
+                        </div>
+                    @endif
                 @endif
 
                 {{-- ── Commerce divider ── --}}
@@ -551,20 +607,45 @@
 
                         {{-- Financial Dashboard --}}
                         @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_financial'))
-                            @php $ac = request()->routeIs('dashboard.financial') ? $activeLink : $inactiveLink; @endphp
-                            <div @mouseenter="showTip($event, @js(__('navigation.Financial Dashboard')))" @mouseleave="hideTip()"
-                                class="relative px-2 mb-0.5">
-                                <a href="{{ route('dashboard.financial') }}"
-                                    class="{{ $navLink }} {{ $ac }}">
-                                    <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                    <span x-cloak x-show="$store.sidebar.expanded"
-                                        class="{{ $labelCls }}">{{ __('navigation.Financial Dashboard') }}</span>
-                                </a>
-                            </div>
+                            @if ($canFinancialDash)
+                                @php $ac = request()->routeIs('dashboard.financial') ? $activeLink : $inactiveLink; @endphp
+                                <div @mouseenter="showTip($event, @js(__('navigation.Financial Dashboard')))"
+                                    @mouseleave="hideTip()" class="relative px-2 mb-0.5">
+                                    <a href="{{ route('dashboard.financial') }}"
+                                        class="{{ $navLink }} {{ $ac }}">
+                                        <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        <span x-cloak x-show="$store.sidebar.expanded"
+                                            class="{{ $labelCls }}">{{ __('navigation.Financial Dashboard') }}</span>
+                                    </a>
+                                </div>
+                            @else
+                                {{-- LOCKED --}}
+                                <div @mouseenter="showTip($event, @js($upgradeTip))"
+                                    @mouseleave="hideTip()" class="relative px-2 mb-0.5">
+                                    <span
+                                        class="{{ $navLink }} text-gray-300 cursor-not-allowed select-none flex items-center">
+                                        <span class="relative flex-shrink-0">
+                                            <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                            <svg class="absolute -bottom-1 -right-1 w-3 h-3 text-gray-400"
+                                                fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                                    clip-rule="evenodd" />
+                                            </svg>
+                                        </span>
+                                        <span x-cloak x-show="$store.sidebar.expanded"
+                                            class="{{ $labelCls }} text-gray-300">{{ __('navigation.Financial Dashboard') }}</span>
+                                    </span>
+                                </div>
+                            @endif
                         @endif
 
                         {{-- Payments and Receipts --}}

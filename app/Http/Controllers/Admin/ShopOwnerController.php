@@ -187,6 +187,9 @@ class ShopOwnerController extends Controller
             'temp_period_days' => 'nullable|integer|min:0|max:365',
             'extend_days' => 'nullable|integer|min:-365|max:365',
             'license_expires_at' => 'nullable|date',
+            'blocked_features' => 'nullable|array',
+            'blocked_features.*' => 'string|in:installments,sales_promotions,financial_dashboard',
+            'entry_limit' => 'nullable|integer|min:0',
         ]);
 
         try {
@@ -250,6 +253,17 @@ class ShopOwnerController extends Controller
 
             // Remove extend_days from validated data as it's not a column
             unset($validated['extend_days']);
+
+            // Normalise blocked_features: when no checkboxes are ticked the key
+            // won't be present in $validated at all — treat that as "no blocks".
+            if (!array_key_exists('blocked_features', $validated)) {
+                $validated['blocked_features'] = [];
+            }
+
+            // Normalise entry_limit: empty string → null (unlimited)
+            if (array_key_exists('entry_limit', $validated) && $validated['entry_limit'] === '') {
+                $validated['entry_limit'] = null;
+            }
 
             $shopOwner->update($validated);
 

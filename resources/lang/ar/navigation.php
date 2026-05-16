@@ -98,4 +98,7 @@ return [
 
     // Sales & Promotions
     'Sales & Promotions' => 'العروض والخصومات',
+
+    // Tier / plan feature-gate
+    'upgrade_tip' => 'هذه الميزة غير متاحة في خطتك الحالية. تواصل مع المدير للترقية.',
 ];

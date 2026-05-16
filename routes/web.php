@@ -267,10 +267,13 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
             }
         })->name('payments.destroy');
 
-        // Sales & Promotions
-        Route::resource('sales', SaleController::class)->except(['show', 'create', 'edit']);
-        Route::post('/sales/{sale}/toggle-active', [SaleController::class, 'toggleActive'])->name('sales.toggle-active');
-        Route::post('/sales/{sale}/extend-date', [SaleController::class, 'extendDate'])->name('sales.extend-date');
+        // Sales & Promotions (gated by tier feature flag)
+        Route::middleware('tier.feature:sales_promotions')->group(function () {
+            Route::resource('sales', SaleController::class)->except(['show', 'create', 'edit']);
+            Route::post('/sales/{sale}/toggle-active', [SaleController::class, 'toggleActive'])->name('sales.toggle-active');
+            Route::post('/sales/{sale}/extend-date', [SaleController::class, 'extendDate'])->name('sales.extend-date');
+        });
+        // active-sales API is used by the dashboard sell point for real-time discounts — always accessible
         Route::get('/api/active-sales', [SaleController::class, 'activeSales'])->name('sales.active');
     });
 
@@ -293,7 +296,7 @@ Route::prefix('shopowner')
     });
 
 // ------------------- FINANCIAL DASHBOARD -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_financial', 'tier.feature:financial_dashboard'])->group(function () {
     Route::get('/dashboard/financial', [FinancialDashboardController::class, 'index'])
         ->name('dashboard.financial');
 
@@ -663,52 +666,56 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         // Due-count endpoint (all authenticated users with access)
         Route::get('/installments/due-count', [InstallmentController::class, 'dueCount'])->name('installments.due-count');
 
-        // View installments page
-        Route::get('/installments', [InstallmentController::class, 'index'])
-            ->name('installments.index')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':view_installments');
+        // ── All installment routes are gated by the tier feature flag ──────────
+        Route::middleware('tier.feature:installments')->group(function () {
 
-        // Create standalone plan
-        Route::post('/installments', [InstallmentController::class, 'store'])
-            ->name('installments.store')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+            // View installments page
+            Route::get('/installments', [InstallmentController::class, 'index'])
+                ->name('installments.index')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':view_installments');
 
-        // Create plan from bill (AJAX)
-        Route::post('/installments/from-bill', [InstallmentController::class, 'storeFromBill'])
-            ->name('installments.from-bill')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+            // Create standalone plan
+            Route::post('/installments', [InstallmentController::class, 'store'])
+                ->name('installments.store')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
 
-        // Dismiss all today
-        Route::post('/installments/dismiss-all-today', [InstallmentController::class, 'dismissAllToday'])
-            ->name('installments.dismiss-all');
+            // Create plan from bill (AJAX)
+            Route::post('/installments/from-bill', [InstallmentController::class, 'storeFromBill'])
+                ->name('installments.from-bill')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
 
-        // Update plan meta
-        Route::put('/installments/{plan}', [InstallmentController::class, 'update'])
-            ->name('installments.update')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+            // Dismiss all today
+            Route::post('/installments/dismiss-all-today', [InstallmentController::class, 'dismissAllToday'])
+                ->name('installments.dismiss-all');
 
-        // Delete plan
-        Route::delete('/installments/{plan}', [InstallmentController::class, 'destroy'])
-            ->name('installments.destroy')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
+            // Update plan meta
+            Route::put('/installments/{plan}', [InstallmentController::class, 'update'])
+                ->name('installments.update')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
 
-        // Mark payment as paid
-        Route::post('/installments/payments/{payment}/mark-paid', [InstallmentController::class, 'markPaid'])
-            ->name('installments.mark-paid');
+            // Delete plan
+            Route::delete('/installments/{plan}', [InstallmentController::class, 'destroy'])
+                ->name('installments.destroy')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
 
-        // Dismiss single payment for today
-        Route::post('/installments/payments/{payment}/dismiss', [InstallmentController::class, 'dismissToday'])
-            ->name('installments.dismiss');
+            // Mark payment as paid
+            Route::post('/installments/payments/{payment}/mark-paid', [InstallmentController::class, 'markPaid'])
+                ->name('installments.mark-paid');
 
-        // Update single payment (date/amount)
-        Route::put('/installments/payments/{payment}', [InstallmentController::class, 'updatePayment'])
-            ->name('installments.payments.update')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+            // Dismiss single payment for today
+            Route::post('/installments/payments/{payment}/dismiss', [InstallmentController::class, 'dismissToday'])
+                ->name('installments.dismiss');
 
-        // Delete single payment row
-        Route::delete('/installments/payments/{payment}', [InstallmentController::class, 'destroyPayment'])
-            ->name('installments.payments.destroy')
-            ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
+            // Update single payment (date/amount)
+            Route::put('/installments/payments/{payment}', [InstallmentController::class, 'updatePayment'])
+                ->name('installments.payments.update')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':create_installments');
+
+            // Delete single payment row
+            Route::delete('/installments/payments/{payment}', [InstallmentController::class, 'destroyPayment'])
+                ->name('installments.payments.destroy')
+                ->middleware(\App\Http\Middleware\PermissionMiddleware::class . ':delete_installments');
+        }); // end tier.feature:installments
     });
 
 // ------------------- ISLAMIC SALES PWA -------------------

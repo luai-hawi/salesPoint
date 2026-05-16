@@ -2225,4 +2225,68 @@ return [
     'Back' => 'Back',
     'Bill Total' => 'Bill Total',
     'Unknown' => 'Unknown',
+
+    // ── Plan / Tier Controls (admin edit page) ─────────────────────────────
+    'Plan Controls'                   => 'Plan Controls',
+    'Tier'                            => 'Tier',
+    'Blocked Features'                => 'Blocked Features',
+    'checked = blocked for this shop' => 'checked = blocked for this shop',
+    'feature_installments'            => 'Installments (deferred payments page & plan creation)',
+    'feature_sales_promotions'        => 'Sales & Promotions (promotions page & rules engine)',
+    'feature_financial_dashboard'     => 'Financial Dashboard (reports & analytics page)',
+    'feature_desc_installments'       => 'Blocks the installments / deferred payments page and the ability to create installment plans from bills.',
+    'feature_desc_sales_promotions'   => 'Blocks the sales & promotions page and hides active promotion rules from the sell point.',
+    'feature_desc_financial_dashboard' => 'Blocks the financial dashboard, reports, and export features.',
+    'Entry Limit'                     => 'Entry Limit',
+    'entry_limit_desc'                => 'Maximum combined records (bills + products + customers + purchase bills). Leave empty for unlimited.',
+    'entry_limit_placeholder'         => 'e.g. 3000 — empty = unlimited',
+    'entry_limit_unit'                => 'records (empty = unlimited)',
+    'entry_limit_hints'               => 'Suggested values by tier',
+    'Unlimited'                       => 'Unlimited',
+    'Current usage'                   => 'Current usage',
+
+    // ── Plan Usage Card (settings page) ───────────────────────────────────
+    'plan_usage_title'                => 'Plan Usage',
+    'plan_usage_subtitle'             => 'Track your current record usage against your plan limit.',
+    'plan_entries'                    => 'entries',
+    'plan_usage_critical'             => 'You have used 90 % or more of your plan quota. Please contact the administrator to upgrade your plan before reaching the limit.',
+    'plan_usage_warning'              => 'You have used 75 % or more of your plan quota. Consider contacting the administrator to upgrade.',
+    'plan_usage_what_counts'          => 'Counted entries: bills, products, customers, and purchase bills.',
+    'plan_unlimited'                  => 'Unlimited plan — no entry cap.',
+    'plan_current_usage'              => 'Current usage',
+
+    // ── Tier middleware error ──────────────────────────────────────────────
+    'tier_feature_blocked'            => 'This feature is not available in your current plan. Please contact the administrator to upgrade.',
+
+    // ── Plan / Tier Controls (admin edit page) ─────────────────────────
+    'Plan Controls'                   => 'Plan Controls',
+    'Tier'                            => 'Tier',
+    'Blocked Features'                => 'Blocked Features',
+    'checked = blocked for this shop' => 'checked = blocked for this shop',
+    'feature_installments'            => 'Installments (deferred payments page & creation)',
+    'feature_sales_promotions'        => 'Sales & Promotions (promotions page & rules engine)',
+    'feature_financial_dashboard'     => 'Financial Dashboard (reports & analytics page)',
+    'feature_desc_installments'       => 'Blocks the installments/deferred payments page and the ability to create installment plans from bills.',
+    'feature_desc_sales_promotions'   => 'Blocks the sales & promotions page and hides active promotion rules from the sell point.',
+    'feature_desc_financial_dashboard' => 'Blocks the financial dashboard, reports, and export features.',
+    'Entry Limit'                     => 'Entry Limit',
+    'entry_limit_desc'                => 'Maximum combined records (bills + products + customers + purchase bills). Leave empty for unlimited.',
+    'entry_limit_placeholder'         => 'e.g. 3000 — empty = unlimited',
+    'entry_limit_unit'                => 'records (empty = unlimited)',
+    'entry_limit_hints'               => 'Suggested values by tier',
+    'Unlimited'                       => 'Unlimited',
+    'Current usage'                   => 'Current usage',
+
+    // ── Plan Usage Card (settings page) ──────────────────────────────
+    'plan_usage_title'                => 'Plan Usage',
+    'plan_usage_subtitle'             => 'Track your current record usage against your plan limit.',
+    'plan_entries'                    => 'entries',
+    'plan_usage_critical'             => 'You have used 90 % or more of your plan quota. Please contact the administrator to upgrade your plan before reaching the limit.',
+    'plan_usage_warning'              => 'You have used 75 % or more of your plan quota. Consider contacting the administrator to upgrade.',
+    'plan_usage_what_counts'          => 'Counted entries: bills, products, customers, and purchase bills.',
+    'plan_unlimited'                  => 'Unlimited plan — no entry cap.',
+    'plan_current_usage'              => 'Current usage',
+
+    // ── Tier middleware error ────────────────────────────────────────
+    'tier_feature_blocked'            => 'This feature is not available in your current plan. Please contact the administrator to upgrade.',
 ];

@@ -301,6 +301,162 @@
                         @endif
                     </div>
 
+                    {{-- ═══════════════════════════════════════════════════════
+                         PLAN CONTROLS
+                         ▸ Quick-preset buttons (Tier 1–4) fill the form via JS.
+                         ▸ Feature checkboxes = blocked_features[] values.
+                         ▸ Entry limit = max combined record count (null = ∞).
+                    ═══════════════════════════════════════════════════════ --}}
+                    <div class="border border-indigo-200 rounded-xl overflow-hidden">
+                        {{-- Header --}}
+                        <div
+                            class="px-5 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 flex items-center justify-between flex-wrap gap-3">
+                            <h4 class="text-sm font-semibold text-indigo-800 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                {{ __('messages.Plan Controls') }}
+                            </h4>
+
+                            {{-- Quick-preset buttons --}}
+                            <div class="flex flex-wrap gap-2">
+                                @php
+                                    /* tier presets: [blocked_features[], entry_limit|null] */
+                                    $tierPresets = [
+                                        1 => [['installments', 'sales_promotions', 'financial_dashboard'], 20000],
+                                        2 => [['installments', 'sales_promotions'], 50000],
+                                        3 => [['installments'], 300000],
+                                        4 => [[], null],
+                                    ];
+                                    $tierColors = [
+                                        1 => 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300',
+                                        2 => 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300',
+                                        3 => 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-300',
+                                        4 => 'bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-600',
+                                    ];
+                                @endphp
+                                @foreach ($tierPresets as $t => [$blocked, $limit])
+                                    <button type="button"
+                                        onclick="applyTierPreset({{ json_encode($blocked) }}, {{ json_encode($limit) }})"
+                                        class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors {{ $tierColors[$t] }}">
+                                        {{ __('messages.Tier') }} {{ $t }}
+                                        @if ($t === 4)
+                                            &nbsp;★
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="p-5 space-y-5">
+                            {{-- Feature Toggles --}}
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                                    {{ __('messages.Blocked Features') }}
+                                    <span
+                                        class="normal-case font-normal text-gray-400 ml-1">({{ __('messages.checked = blocked for this shop') }})</span>
+                                </p>
+
+                                @php
+                                    $currentBlocked = $shopOwner->blocked_features ?? [];
+                                    $featureList = [
+                                        'installments' => __('messages.feature_installments'),
+                                        'sales_promotions' => __('messages.feature_sales_promotions'),
+                                        'financial_dashboard' => __('messages.feature_financial_dashboard'),
+                                    ];
+                                    $featureDesc = [
+                                        'installments' => __('messages.feature_desc_installments'),
+                                        'sales_promotions' => __('messages.feature_desc_sales_promotions'),
+                                        'financial_dashboard' => __('messages.feature_desc_financial_dashboard'),
+                                    ];
+                                @endphp
+
+                                <div class="space-y-2" id="feature-checkboxes">
+                                    @foreach ($featureList as $key => $label)
+                                        <label
+                                            class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-red-300 hover:bg-red-50 cursor-pointer transition-colors group has-[:checked]:border-red-400 has-[:checked]:bg-red-50">
+                                            <input type="checkbox" name="blocked_features[]"
+                                                value="{{ $key }}" id="feature_{{ $key }}"
+                                                {{ in_array($key, $currentBlocked) ? 'checked' : '' }}
+                                                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-400 flex-shrink-0">
+                                            <div class="min-w-0">
+                                                <span
+                                                    class="text-sm font-medium text-gray-800 group-has-[:checked]:text-red-700">
+                                                    {{ $label }}
+                                                </span>
+                                                <p class="text-xs text-gray-500 mt-0.5">{{ $featureDesc[$key] }}</p>
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            {{-- Entry Limit --}}
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                    {{ __('messages.Entry Limit') }}
+                                </p>
+                                <p class="text-xs text-gray-400 mb-2">{{ __('messages.entry_limit_desc') }}</p>
+                                <div class="flex items-center gap-3">
+                                    <input type="number" name="entry_limit" id="entry_limit"
+                                        value="{{ old('entry_limit', $shopOwner->entry_limit ?? '') }}"
+                                        min="0" placeholder="{{ __('messages.entry_limit_placeholder') }}"
+                                        class="w-48 border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm">
+                                    <span class="text-xs text-gray-500">{{ __('messages.entry_limit_unit') }}</span>
+                                </div>
+                                @error('entry_limit')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+
+                                {{-- Hint row --}}
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <span class="text-xs text-gray-400">{{ __('messages.entry_limit_hints') }}:</span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ __('messages.Tier') }}
+                                        1 → 20,000</span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ __('messages.Tier') }}
+                                        2 → 50,000</span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{{ __('messages.Tier') }}
+                                        3 → 300,000</span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">{{ __('messages.Tier') }}
+                                        4 → {{ __('messages.Unlimited') }}</span>
+                                </div>
+
+                                {{-- Current usage (if data exists) --}}
+                                @php
+                                    $currentUsage = $shopOwner->getEntryUsage();
+                                    $entryLimitVal = $shopOwner->entry_limit;
+                                @endphp
+                                @if ($currentUsage > 0)
+                                    <p class="mt-2 text-xs text-gray-500">
+                                        {{ __('messages.Current usage') }}:
+                                        <strong class="text-gray-700">{{ number_format($currentUsage) }}</strong>
+                                        @if ($entryLimitVal)
+                                            / {{ number_format($entryLimitVal) }}
+                                            ({{ $shopOwner->getEntryUsagePercent() }}%)
+                                        @endif
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        function applyTierPreset(blocked, limit) {
+                            // Uncheck all feature boxes first
+                            document.querySelectorAll('#feature-checkboxes input[type="checkbox"]').forEach(function(cb) {
+                                cb.checked = blocked.includes(cb.value);
+                            });
+                            // Set entry limit
+                            var limitInput = document.getElementById('entry_limit');
+                            limitInput.value = (limit === null || limit === undefined) ? '' : limit;
+                        }
+                    </script>
+
                     <!-- Action Buttons -->
                     <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                         <a href="{{ route('admin.dashboard') }}"

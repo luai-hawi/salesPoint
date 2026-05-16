@@ -41,6 +41,8 @@ class User extends Authenticatable
         'license_expires_at',
         'last_payment_months',
         'last_payment_amount',
+        'blocked_features',
+        'entry_limit',
     ];
 
 
@@ -97,6 +99,7 @@ class User extends Authenticatable
             'temp_expires_at' => 'date',
             'license_expires_at' => 'date',
             'visibility_settings' => 'array',
+            'blocked_features' => 'array',
         ];
     }
 
@@ -217,6 +220,65 @@ class User extends Authenticatable
             ->where('temp_expires_at', '<')
             ->where('role', 'disabled');
     }
+
+    // ── Feature / Tier helpers ────────────────────────────────────────────
+
+    /**
+     * The shop-owner record that governs this user's feature access.
+     * For shop owners / admins it is themselves; for employees it is their owner.
+     */
+    public function featureOwner(): self
+    {
+        if ($this->role === 'employee') {
+            return $this->shopOwner ?? $this;
+        }
+        return $this;
+    }
+
+    /**
+     * Returns true when the feature is NOT blocked for this user.
+     * Feature keys: 'installments', 'sales_promotions', 'financial_dashboard'
+     */
+    public function canAccessFeature(string $feature): bool
+    {
+        $owner = $this->featureOwner();
+        $blocked = $owner->blocked_features ?? [];
+        return !in_array($feature, $blocked, true);
+    }
+
+    /**
+     * Entry limit for this user's shop (null = unlimited).
+     */
+    public function getEntryLimit(): ?int
+    {
+        return $this->featureOwner()->entry_limit;
+    }
+
+    /**
+     * Combined entry count: bills + products + customers + purchase_bills.
+     * Always scoped to the shop-owner's data.
+     */
+    public function getEntryUsage(): int
+    {
+        $ownerId = $this->role === 'employee' ? $this->shop_owner_id : $this->id;
+        if (!$ownerId) return 0;
+        return \App\Models\Bill::withoutGlobalScopes()->where('user_id', $ownerId)->count()
+            + \App\Models\Product::withoutGlobalScopes()->where('user_id', $ownerId)->count()
+            + \App\Models\Customer::withoutGlobalScopes()->where('user_id', $ownerId)->count()
+            + \App\Models\PurchaseBill::withoutGlobalScopes()->where('user_id', $ownerId)->count();
+    }
+
+    /**
+     * Returns usage percentage (0-100). Returns 0 when unlimited.
+     */
+    public function getEntryUsagePercent(): int
+    {
+        $limit = $this->getEntryLimit();
+        if (!$limit) return 0;
+        return (int) min(100, round(($this->getEntryUsage() / $limit) * 100));
+    }
+
+    // ── Relationships ─────────────────────────────────────────────────────
 
     public function employees()
     {

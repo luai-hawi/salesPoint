@@ -102,4 +102,7 @@ return [
 
     // Sales & Promotions
     'Sales & Promotions' => 'Sales & Promotions',
+
+    // Tier / plan feature-gate
+    'upgrade_tip' => 'This feature is not included in your plan. Contact the administrator to upgrade.',
 ];

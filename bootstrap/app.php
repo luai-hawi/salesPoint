@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\PreventConcurrentSessions::class,
         ]);
+
+        // Named alias for the tier-feature gate middleware
+        $middleware->alias([
+            'tier.feature' => \App\Http\Middleware\TierFeatureMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
