@@ -2333,7 +2333,7 @@
             // we buffer them and redirect the whole scan to the barcode input.
             (function() {
                 const BARCODE_FIELD_IDS = ['barcode_input', 'product-search'];
-                const MAX_INTER_KEY_MS = 50; // scanners typically fire < 30ms apart
+                const MAX_INTER_KEY_MS = 30; // scanners typically fire < 20ms apart; 30ms still safely excludes fast human typing
                 const MIN_BARCODE_LEN = 3; // ignore very short sequences
 
                 let _buf = '';
@@ -3088,7 +3088,7 @@
                 </td>
             `;
 
-            productsList.appendChild(row);
+            productsList.prepend(row);
             applySaleToRow(row);
             calculateTotal();
             if (product.return_cost) {
@@ -3244,7 +3244,7 @@
                 </td>
             `;
 
-            productsList.appendChild(row);
+            productsList.prepend(row);
             applySaleToRow(row);
             calculateTotal();
             showNotification(`{{ __('messages.Added {product} with tags to bill') }}`.replace('{product}', product.name),
