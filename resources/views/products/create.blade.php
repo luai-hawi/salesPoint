@@ -279,6 +279,89 @@
                                         {{ __('messages.Check this if customers can add extra options/tags to this product') }}
                                     </p>
                                 </div>
+
+                                <!-- Has IMEIs Toggle -->
+                                <div class="mb-6 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-indigo-600 mr-2" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                                            </svg>
+                                            <label for="has_imeis" class="text-sm font-semibold text-gray-700">
+                                                {{ __('messages.This product has IMEI / Serial codes') }}
+                                            </label>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" name="has_imeis" id="has_imeis"
+                                                class="sr-only peer" value="1"
+                                                {{ old('has_imeis') ? 'checked' : '' }}>
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p class="text-xs text-indigo-600 mt-2">
+                                        {{ __('messages.Enable this for products like phones, laptops, etc. that have unique IMEI or serial numbers per unit.') }}
+                                    </p>
+                                </div>
+
+                                <!-- IMEI Entry Panel (shown when has_imeis is toggled on) -->
+                                <div id="create-imei-panel"
+                                    class="mb-6 bg-white border border-indigo-300 rounded-lg p-4 space-y-3"
+                                    style="display:none;">
+                                    <h4 class="text-sm font-semibold text-indigo-700 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        {{ __('messages.Add IMEI Code') }}
+                                    </h4>
+
+                                    <!-- Supplier + Date -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label
+                                                class="block text-xs font-medium text-gray-600 mb-1">{{ __('messages.IMEI Supplier') }}</label>
+                                            <select name="new_imeis_supplier" id="create-imei-supplier"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <option value="">— {{ __('messages.None') }} —</option>
+                                                @foreach ($suppliers as $supplier)
+                                                    <option value="{{ $supplier->id }}">{{ $supplier->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-xs font-medium text-gray-600 mb-1">{{ __('messages.Purchase Date') }}</label>
+                                            <input type="date" name="new_imeis_date" id="create-imei-date"
+                                                value="{{ date('Y-m-d') }}"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                        </div>
+                                    </div>
+
+                                    <!-- IMEI input -->
+                                    <div class="flex gap-2">
+                                        <input type="text" id="create-imei-input"
+                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
+                                            placeholder="{{ __('messages.Enter IMEI or serial code...') }}">
+                                        <button type="button" id="create-add-imei-btn"
+                                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+                                            {{ __('messages.Add') }}
+                                        </button>
+                                    </div>
+
+                                    <!-- Pending IMEI list -->
+                                    <div id="create-imei-list" class="space-y-1 max-h-48 overflow-y-auto"></div>
+                                    <p class="text-xs text-gray-400">
+                                        {{ __('messages.Add one IMEI per unit purchased') }}</p>
+
+                                    <!-- Hidden inputs populated by JS -->
+                                    <div id="create-imei-hidden-inputs"></div>
+                                </div>
                             </div>
 
                             <!-- Variants Section (shown when variants are enabled) -->
@@ -1302,6 +1385,80 @@
                     initBarcodeScanner('barcode');
                 });
             }
+
+            // ── IMEI Panel (create form) ─────────────────────────────────────
+            const hasImeisChk = document.getElementById('has_imeis');
+            const imeiPanel = document.getElementById('create-imei-panel');
+            const imeiInput = document.getElementById('create-imei-input');
+            const addImeiBtn = document.getElementById('create-add-imei-btn');
+            const imeiList = document.getElementById('create-imei-list');
+            const hiddenInputs = document.getElementById('create-imei-hidden-inputs');
+            const pendingImeis = [];
+
+            if (!hasImeisChk || !imeiPanel) return;
+
+            // Toggle panel visibility
+            function syncPanel() {
+                imeiPanel.style.display = hasImeisChk.checked ? '' : 'none';
+            }
+            hasImeisChk.addEventListener('change', syncPanel);
+            syncPanel();
+
+            function renderList() {
+                imeiList.innerHTML = '';
+                hiddenInputs.innerHTML = '';
+                pendingImeis.forEach((code, idx) => {
+                    // visible badge
+                    const row = document.createElement('div');
+                    row.className =
+                        'flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded px-3 py-1.5';
+                    row.innerHTML = `
+                        <span class="font-mono text-sm text-indigo-800">${code}</span>
+                        <button type="button" class="remove-create-imei text-red-400 hover:text-red-600 ml-2" data-idx="${idx}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>`;
+                    imeiList.appendChild(row);
+                    // hidden input
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'new_imeis[]';
+                    inp.value = code;
+                    hiddenInputs.appendChild(inp);
+                });
+            }
+
+            function addImei() {
+                const code = imeiInput.value.trim();
+                if (!code) return;
+                if (pendingImeis.includes(code)) {
+                    imeiInput.classList.add('border-red-400');
+                    imeiInput.title = '{{ __('messages.IMEI already in list') }}';
+                    setTimeout(() => imeiInput.classList.remove('border-red-400'), 1500);
+                    return;
+                }
+                pendingImeis.push(code);
+                renderList();
+                imeiInput.value = '';
+                imeiInput.focus();
+            }
+
+            addImeiBtn.addEventListener('click', addImei);
+            imeiInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addImei();
+                }
+            });
+
+            imeiList.addEventListener('click', e => {
+                const btn = e.target.closest('.remove-create-imei');
+                if (btn) {
+                    pendingImeis.splice(parseInt(btn.dataset.idx), 1);
+                    renderList();
+                }
+            });
         });
     </script>
 </x-app-layout>

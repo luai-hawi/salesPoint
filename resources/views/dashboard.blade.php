@@ -17,6 +17,7 @@
         (auth()->user()->role === 'employee' &&
             auth()->user()->shop_owner_id &&
             auth()->user()->shopOwner->role === 'restaurant');
+    $slimMode = !empty(auth()->user()->visibility_settings['pos_slim_mode']);
 @endphp
 <x-app-layout>
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -32,6 +33,17 @@
                     <input type="date" id="bill_date" value="{{ date('Y-m-d') }}"
                         class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         onchange="document.getElementById('bill_date_hidden').value = this.value">
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="hidden lg:flex items-center gap-2" dir="ltr">
+                    <span class="text-xs text-gray-500">{{ __('dashboard.Classic') }}</span>
+                    <button id="pos-view-toggle" type="button" onclick="togglePosViewMode()"
+                        class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none {{ $slimMode ? 'bg-blue-600' : 'bg-gray-300' }}">
+                        <span
+                            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{ $slimMode ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                    </button>
+                    <span class="text-xs text-gray-500">{{ __('dashboard.Focus') }}</span>
                 </div>
 
                 <!-- Add this cash drawer button -->
@@ -161,7 +173,8 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none">
+            <div id="pos-main-grid"
+                class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none{{ $slimMode ? ' pos-slim-mode' : '' }}">
 
                 <!-- Left Panel - Product Search & Selection ONLY -->
                 <div id="mobile-panel-products" class="lg:col-span-4 space-y-4">
@@ -377,7 +390,6 @@
                                             <th>{{ __('messages.Product') }}</th>
                                             <th>{{ __('messages.Quantity') }}</th>
                                             <th>{{ __('messages.Unit Price') }}</th>
-                                            <th>{{ __('messages.Discount') }}</th>
                                             <th>{{ __('messages.Total') }}</th>
                                             <th></th>
                                         </tr>
@@ -683,7 +695,8 @@
                     </div>
 
                     <!-- Today's Sales -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                    <div id="todays-performance-card"
+                        class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                             <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -710,7 +723,7 @@
                     </div>
 
                     <!-- Quick Actions -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                    <div id="quick-actions-card" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                             <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -1141,10 +1154,266 @@
         .remove-btn-small:hover {
             background-color: #dc2626;
         }
+
+        /* ================================================================
+           FOCUS / SLIM VIEW MODE  (desktop lg+)
+           RIGHT half (RTL) = products panel, full height
+           LEFT  half (RTL) = bill (upper) + dark summary strip (lower)
+           ================================================================ */
+        @media (min-width: 1024px) {
+
+            /* ── Grid ───────────────────────────────────────────────────── */
+            #pos-main-grid.pos-slim-mode {
+                display: grid !important;
+                grid-template-columns: repeat(12, 1fr) !important;
+                grid-template-rows: 1fr auto !important;
+                height: calc(100vh - 215px);
+                gap: 0.75rem !important;
+            }
+
+            /* ── Products panel — right in RTL, spans full height ───────── */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products {
+                grid-column: 1 / 7 !important;
+                grid-row: 1 / 3 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden;
+            }
+
+            /* Remove space-y gap so the two cards merge visually */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>*+* {
+                margin-top: 0 !important;
+            }
+
+            /* Search controls card: compact, no bottom radius */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child {
+                flex-shrink: 0;
+                padding: 0.5rem 0.75rem !important;
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                border-bottom: 1px solid #e5e7eb !important;
+                box-shadow: none !important;
+            }
+
+            /* Hide "Product Search" heading */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child>.flex.items-center.mb-4 {
+                display: none !important;
+            }
+
+            /* Tighter search input margin */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child .relative.mb-4 {
+                margin-bottom: 0.35rem !important;
+            }
+
+            /* Compact filter pills */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child .flex.flex-wrap.gap-2.mb-4 {
+                gap: 0.25rem !important;
+                margin-bottom: 0 !important;
+            }
+
+            #pos-main-grid.pos-slim-mode .filter-btn,
+            #pos-main-grid.pos-slim-mode #toggle-category-mode {
+                padding: 0.1rem 0.45rem !important;
+                font-size: 0.625rem !important;
+                line-height: 1.3 !important;
+            }
+
+            /* Results card: no top radius, fills remaining height */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:last-child {
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                border-top-left-radius: 0 !important;
+                border-top-right-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            /* Hide "Available Products" header bar */
+            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:last-child>.p-4.border-b {
+                display: none !important;
+            }
+
+            /* Cards scrollable container fills all remaining space */
+            #pos-main-grid.pos-slim-mode #product-cards-container {
+                flex: 1;
+                min-height: 0;
+                max-height: none !important;
+                overflow-y: auto;
+            }
+
+            /* Auto-fill columns — more products, same card size */
+            #pos-main-grid.pos-slim-mode #product-results {
+                grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important;
+                gap: 0.5rem !important;
+                padding: 0.5rem !important;
+            }
+
+            /* ── Bill panel — upper left in RTL, scrollable ─────────────── */
+            #pos-main-grid.pos-slim-mode #mobile-panel-bill {
+                grid-column: 7 / 13 !important;
+                grid-row: 1 !important;
+                overflow-y: auto;
+                min-width: 0;
+            }
+
+            #pos-main-grid.pos-slim-mode .products-table-container {
+                max-height: 30vh;
+                overflow-y: auto;
+            }
+
+            /* ── Summary strip — compact bar at bottom left ─────────── */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary {
+                grid-column: 7 / 13 !important;
+                grid-row: 2 !important;
+                flex-shrink: 0;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 0.75rem;
+                padding: 0.5rem 0.875rem !important;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 0.75rem;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            }
+
+            /* Strip card styling off all direct children */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary>div {
+                flex: 1;
+                min-width: 0;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Barcode card: hide title */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary>.bg-white>.flex.items-center {
+                display: none !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #barcode_input {
+                border-radius: 0.5rem !important;
+                font-size: 0.8rem !important;
+                padding-top: 0.35rem !important;
+                padding-bottom: 0.35rem !important;
+            }
+
+            /* Bill summary card: strip gradient, lay out sections horizontally */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br {
+                background: transparent !important;
+                padding: 0 !important;
+                color: #374151 !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br>h3 {
+                display: none !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .space-y-3 {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 0.5rem;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .space-y-3>div {
+                flex: 1;
+                background: #f9fafb !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.5rem !important;
+                padding: 0.35rem 0.6rem !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #bill_discount_percent {
+                background: #ffffff !important;
+                border: 1px solid #d1d5db !important;
+                color: #111827 !important;
+                border-radius: 0.375rem !important;
+                font-size: 0.72rem !important;
+                padding: 0.15rem 0.4rem !important;
+                width: 100% !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .text-green-100 {
+                color: #6b7280 !important;
+                font-size: 0.65rem !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .text-\[10px\] {
+                display: none !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #total_price_display {
+                font-size: 1.1rem !important;
+                color: #111827 !important;
+            }
+
+            /* Resize the ₪ prefix spans around total amounts */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .font-bold.text-2xl {
+                font-size: 1.1rem !important;
+                color: #111827 !important;
+            }
+
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary .font-bold.text-lg {
+                font-size: 0.85rem !important;
+                color: #111827 !important;
+            }
+
+            /* Remove space-y-4 margin when summary is a flex row */
+            #pos-main-grid.pos-slim-mode #mobile-panel-summary> :not([hidden])~ :not([hidden]) {
+                margin-top: 0 !important;
+            }
+
+            /* ── Hide clutter ────────────────────────────────────────────── */
+            #pos-main-grid.pos-slim-mode #todays-performance-card,
+            #pos-main-grid.pos-slim-mode #quick-actions-card {
+                display: none !important;
+            }
+        }
     </style>
 
     <!-- Clean JavaScript -->
     <script>
+        // POS view mode toggle
+        function togglePosViewMode() {
+            const grid = document.getElementById('pos-main-grid');
+            const btn = document.getElementById('pos-view-toggle');
+            const thumb = btn ? btn.querySelector('span') : null;
+            const isSlim = grid.classList.toggle('pos-slim-mode');
+
+            if (btn) {
+                if (isSlim) {
+                    btn.classList.replace('bg-gray-300', 'bg-blue-600');
+                } else {
+                    btn.classList.replace('bg-blue-600', 'bg-gray-300');
+                }
+            }
+            if (thumb) {
+                if (isSlim) {
+                    thumb.classList.replace('translate-x-1', 'translate-x-6');
+                } else {
+                    thumb.classList.replace('translate-x-6', 'translate-x-1');
+                }
+            }
+
+            fetch('/settings/pos-view-mode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    slim_mode: isSlim
+                })
+            }).catch(() => {});
+        }
+
         // Mobile tab switching
         let _activeMobileTab = 'products';
 
@@ -2334,7 +2603,7 @@
             (function() {
                 const BARCODE_FIELD_IDS = ['barcode_input', 'product-search'];
                 const MAX_INTER_KEY_MS =
-                30; // scanners typically fire < 20ms apart; 30ms still safely excludes fast human typing
+                    30; // scanners typically fire < 20ms apart; 30ms still safely excludes fast human typing
                 const MIN_BARCODE_LEN = 3; // ignore very short sequences
 
                 let _buf = '';
@@ -2444,60 +2713,357 @@
             })();
             // ─────────────────────────────────────────────────────────────────────────
 
-            document.getElementById('barcode_input').addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const code = e.target.value.trim();
-                    if (!code) return;
+            document.getElementById('barcode_input').addEventListener('keydown', async e => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const code = e.target.value.trim();
+                if (!code) return;
+                e.target.value = '';
 
-                    // Search locally in products array (prefer fully loaded data)
-                    const matchingProducts = [];
-                    const codeLower = code.toLowerCase();
-                    const productsToSearch = (productsLoaded && allProducts.length > 0) ? allProducts : products;
-                    productsToSearch.forEach(product => {
-                        // Check main barcode
-                        if (product.barcode && product.barcode.toLowerCase() === codeLower) {
-                            matchingProducts.push(product);
-                            return;
-                        }
-                        // Check additional barcodes
-                        if (product.barcodes) {
-                            let barcodes = product.barcodes;
-                            if (typeof barcodes === 'string') {
-                                try {
-                                    barcodes = JSON.parse(barcodes);
-                                } catch (e) {
-                                    barcodes = [];
-                                }
-                            }
+                const codeLower = code.toLowerCase();
+                const productsToSearch = (productsLoaded && allProducts.length > 0) ? allProducts : products;
 
-                            if (!Array.isArray(barcodes)) {
+                // ── 1. Search local products by main barcode + additional barcodes ──
+                const barcodeMatches = [];
+                productsToSearch.forEach(product => {
+                    if (product.barcode && product.barcode.toLowerCase() === codeLower) {
+                        barcodeMatches.push({
+                            product,
+                            scannedImei: null
+                        });
+                        return;
+                    }
+                    if (product.barcodes) {
+                        let barcodes = product.barcodes;
+                        if (typeof barcodes === 'string') {
+                            try {
+                                barcodes = JSON.parse(barcodes);
+                            } catch (_) {
                                 barcodes = [];
                             }
+                        }
+                        if (Array.isArray(barcodes) && barcodes.some(b => b && typeof b === 'string' &&
+                                b.toLowerCase() === codeLower)) {
+                            barcodeMatches.push({
+                                product,
+                                scannedImei: null
+                            });
+                        }
+                    }
+                });
 
-                            if (barcodes.some(b => b && typeof b === 'string' && b.toLowerCase() ===
-                                    codeLower)) {
-                                matchingProducts.push(product);
-                            }
+                // ── 2. Search IMEI table in parallel ───────────────────────────────
+                let imeiMatch = null;
+                try {
+                    const r = await fetch(`/products/imei/check?imei=${encodeURIComponent(code)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
+                    const result = await r.json();
+                    if (result.exists) {
+                        const imeiProduct = productsToSearch.find(p => p.id == result.product_id);
+                        if (imeiProduct) {
+                            imeiMatch = {
+                                product: imeiProduct,
+                                scannedImei: code
+                            };
+                        }
+                    }
+                } catch (_) {}
 
-                    if (matchingProducts.length > 1) {
-                        showBarcodeModal(matchingProducts, code);
-                        e.target.value = '';
-                    } else if (matchingProducts.length === 1) {
-                        const product = matchingProducts[0];
-                        product.has_tags = product.has_tags || false;
-                        addProductRow(product);
-                        e.target.value = '';
-                        showNotification(`{{ __('messages.Added {product} to bill') }}`.replace(
-                            '{product}', product.name), 'success');
+                // ── 3. Merge: avoid duplicate product entries ──────────────────────
+                // If the IMEI hit is the same product as a barcode hit, keep barcode hit
+                // but attach the scanned IMEI to it so the IMEI dialog pre-fills it.
+                const allMatches = [...barcodeMatches];
+                if (imeiMatch) {
+                    const alreadyInList = allMatches.find(m => m.product.id === imeiMatch.product.id);
+                    if (alreadyInList) {
+                        // Same product — attach scanned IMEI to the existing match
+                        alreadyInList.scannedImei = code;
                     } else {
-                        showNotification('{{ __('messages.Product not found for barcode: {code}') }}'
-                            .replace('{code}', code), 'warning');
-                        e.target.value = '';
+                        allMatches.push(imeiMatch);
                     }
                 }
+
+                // ── 4. Act on results ─────────────────────────────────────────────
+                if (allMatches.length === 0) {
+                    showNotification(`{{ __('messages.Product not found for barcode: {code}') }}`.replace(
+                        '{code}', code), 'warning');
+                } else if (allMatches.length === 1) {
+                    const {
+                        product,
+                        scannedImei
+                    } = allMatches[0];
+                    if (scannedImei) product._scannedImei = scannedImei;
+                    addProductRow(product);
+                    showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}',
+                        product.name), 'success');
+                } else {
+                    // Multiple matches across barcodes/IMEIs → show selection dialog
+                    showBarcodeModal(allMatches.map(m => {
+                        // Tag each product with its scanned IMEI for later use
+                        if (m.scannedImei) m.product._pendingImei = m.scannedImei;
+                        return m.product;
+                    }), code);
+                }
+
+            });
+        }
+
+        // ── Discount Dialog ──────────────────────────────────────────────────
+        function showDiscountDialog(row) {
+            const existingModal = document.getElementById('discount-dialog-modal');
+            if (existingModal) existingModal.remove();
+
+            const discountInput = row.querySelector('.discount');
+            const discountTypeInput = row.querySelector('.discount-type');
+            const currentDiscount = discountInput ? parseFloat(discountInput.value) || 0 : 0;
+            const currentType = discountTypeInput ? discountTypeInput.value : 'total';
+
+            const modal = document.createElement('div');
+            modal.id = 'discount-dialog-modal';
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl shadow-2xl p-6 w-80 max-w-sm mx-4">
+                    <h3 class="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        {{ __('messages.Set Discount') }}
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('messages.Discount Type') }}</label>
+                            <div class="flex gap-2">
+                                <button type="button" id="dlg-disc-total" class="flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors ${currentType === 'total' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}">
+                                    {{ __('messages.Total') }}
+                                </button>
+                                <button type="button" id="dlg-disc-perunit" class="flex-1 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-colors ${currentType === 'per-unit' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}">
+                                    {{ __('messages.Per Unit') }}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('messages.Discount Amount') }}</label>
+                            <input type="number" id="dlg-disc-amount" min="0" step="0.01" value="${currentDiscount}"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-5">
+                        <button type="button" id="dlg-disc-cancel" class="flex-1 py-2 px-4 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            {{ __('messages.Cancel') }}
+                        </button>
+                        <button type="button" id="dlg-disc-apply" class="flex-1 py-2 px-4 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium">
+                            {{ __('messages.Apply Discount') }}
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            let selectedType = currentType;
+            const totalBtn = modal.querySelector('#dlg-disc-total');
+            const perUnitBtn = modal.querySelector('#dlg-disc-perunit');
+
+            function setActiveType(type) {
+                selectedType = type;
+                [totalBtn, perUnitBtn].forEach(b => b.classList.remove('border-blue-500', 'bg-blue-50', 'text-blue-700'));
+                [totalBtn, perUnitBtn].forEach(b => b.classList.add('border-gray-200', 'text-gray-600'));
+                const activeBtn = type === 'total' ? totalBtn : perUnitBtn;
+                activeBtn.classList.remove('border-gray-200', 'text-gray-600');
+                activeBtn.classList.add('border-blue-500', 'bg-blue-50', 'text-blue-700');
+            }
+
+            totalBtn.addEventListener('click', () => setActiveType('total'));
+            perUnitBtn.addEventListener('click', () => setActiveType('per-unit'));
+
+            modal.querySelector('#dlg-disc-cancel').addEventListener('click', () => modal.remove());
+            modal.querySelector('#dlg-disc-apply').addEventListener('click', () => {
+                const amount = parseFloat(modal.querySelector('#dlg-disc-amount').value) || 0;
+                if (discountInput) {
+                    discountInput.value = amount.toFixed(2);
+                    row.dataset.userDiscount = amount > 0 ? '1' : '';
+                }
+                if (discountTypeInput) discountTypeInput.value = selectedType;
+                modal.remove();
+                calculateTotal();
+            });
+
+            // Focus amount input
+            setTimeout(() => modal.querySelector('#dlg-disc-amount')?.focus(), 50);
+            // Close on backdrop click
+            modal.addEventListener('click', e => {
+                if (e.target === modal) modal.remove();
+            });
+        }
+
+        // ── IMEI Dialog ──────────────────────────────────────────────────────
+        function showImeiDialog(row, product) {
+            const existingModal = document.getElementById('imei-dialog-modal');
+            if (existingModal) existingModal.remove();
+
+            const qtyInput = row.querySelector('.quantity');
+            const qty = Math.ceil(parseFloat(qtyInput?.value) || 1);
+            const imeiContainer = row.querySelector('.imei-hidden-inputs');
+            const imeiCountLabel = row.querySelector('.imei-count-label');
+
+            // Pre-fill from existing hidden inputs
+            const existingImeis = [...(imeiContainer ? imeiContainer.querySelectorAll('input[type=hidden]') : [])].map(i =>
+                i.value);
+
+            // Pre-fill scanned IMEI if any
+            if (product._scannedImei && !existingImeis.includes(product._scannedImei)) {
+                existingImeis.push(product._scannedImei);
+                delete product._scannedImei;
+            }
+
+            const modal = document.createElement('div');
+            modal.id = 'imei-dialog-modal';
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-lg mx-4">
+                    <h3 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        {{ __('messages.IMEI Codes') }}
+                    </h3>
+                    <p class="text-xs text-gray-500 mb-3">${product.name} &nbsp;·&nbsp; {{ __('messages.Qty') }}: ${qty}</p>
+
+                    <div id="imei-dialog-list" class="space-y-1.5 max-h-48 overflow-y-auto mb-3"></div>
+
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="imei-dialog-input" placeholder="{{ __('messages.Scan or type IMEI...') }}"
+                            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+                        <button type="button" id="imei-dialog-add" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium">
+                            {{ __('messages.Add IMEI') }}
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="button" id="imei-dialog-skip" class="flex-1 py-2 px-4 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            {{ __('messages.Skip IMEIs') }}
+                        </button>
+                        <button type="button" id="imei-dialog-confirm" class="flex-1 py-2 px-4 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium">
+                            {{ __('messages.Confirm IMEIs') }}
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const listEl = modal.querySelector('#imei-dialog-list');
+            const inputEl = modal.querySelector('#imei-dialog-input');
+            let pendingImeis = [...existingImeis];
+
+            function renderList() {
+                listEl.innerHTML = '';
+                pendingImeis.forEach((code, idx) => {
+                    const div = document.createElement('div');
+                    div.className =
+                        'flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5';
+                    div.innerHTML = `
+                        <span class="font-mono text-sm text-indigo-800">${code}</span>
+                        <button type="button" data-idx="${idx}" class="remove-imei-item text-red-400 hover:text-red-600 text-lg leading-none ml-2">×</button>
+                    `;
+                    listEl.appendChild(div);
+                });
+                listEl.querySelectorAll('.remove-imei-item').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        pendingImeis.splice(parseInt(btn.dataset.idx), 1);
+                        renderList();
+                    });
+                });
+            }
+
+            renderList();
+            setTimeout(() => inputEl.focus(), 50);
+
+            async function addImeiFromInput() {
+                const code = inputEl.value.trim();
+                if (!code) return;
+
+                if (pendingImeis.includes(code)) {
+                    showNotification('{{ __('messages.IMEI already in list') }}', 'warning');
+                    inputEl.select();
+                    return;
+                }
+
+                // Validate: IMEI must exist for THIS product and must not be sold
+                try {
+                    const r = await fetch(
+                        `/products/imei/check?imei=${encodeURIComponent(code)}&product_id=${product.id}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                    const result = await r.json();
+
+                    if (!result.exists || !result.belongs_to_product) {
+                        showNotification(
+                            `{{ __('messages.IMEI not found for this product') }}: ${code}`, 'error');
+                        inputEl.select();
+                        return;
+                    }
+                    if (result.is_sold) {
+                        showNotification(
+                            `{{ __('messages.IMEI already sold') }}: ${code}`, 'error');
+                        inputEl.select();
+                        return;
+                    }
+                } catch (e) {
+                    // Network error — allow adding with a warning so sales are not blocked
+                    showNotification('{{ __('messages.Could not verify IMEI — added anyway') }}', 'warning');
+                }
+
+                pendingImeis.push(code);
+                renderList();
+                inputEl.value = '';
+                inputEl.focus();
+            }
+
+            inputEl.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addImeiFromInput();
+                }
+            });
+            modal.querySelector('#imei-dialog-add').addEventListener('click', addImeiFromInput);
+
+            function applyImeis() {
+                if (!imeiContainer) return;
+                imeiContainer.innerHTML = '';
+                pendingImeis.forEach(code => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `imeis_product_${product.id}[]`;
+                    input.value = code;
+                    imeiContainer.appendChild(input);
+                });
+                if (imeiCountLabel) {
+                    imeiCountLabel.textContent = `${pendingImeis.length} IMEI${pendingImeis.length !== 1 ? 's' : ''}`;
+                    imeiCountLabel.className =
+                        `text-xs mt-0.5 imei-count-label ${pendingImeis.length > 0 ? 'text-indigo-600 font-medium' : 'text-gray-400'}`;
+                }
+                modal.remove();
+                if (!isRestaurant) document.getElementById('barcode_input')?.focus();
+            }
+
+            modal.querySelector('#imei-dialog-confirm').addEventListener('click', () => {
+                if (pendingImeis.length > 0 && pendingImeis.length !== qty) {
+                    if (!confirm(`{{ __('messages.IMEI count mismatch') }}`.replace(':count', pendingImeis.length)
+                            .replace(':qty', qty))) return;
+                }
+                applyImeis();
+            });
+
+            modal.querySelector('#imei-dialog-skip').addEventListener('click', () => {
+                modal.remove();
+                if (!isRestaurant) document.getElementById('barcode_input')?.focus();
+            });
+            modal.addEventListener('click', e => {
+                if (e.target === modal) modal.remove();
             });
         }
 
@@ -2514,12 +3080,15 @@
                 const productDiv = document.createElement('div');
                 productDiv.className =
                     'flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors';
+                const isImeiMatch = !!product._pendingImei;
                 productDiv.innerHTML = `
                     <div class="flex-1">
-                        <div class="px-8 font-medium text-gray-900">${product.name}</div>
-                        <div class="px-8 text-sm text-gray-500">Price: ${product.selling_price} | Stock: ${product.quantity}</div>
+                        <div class="px-8 font-medium text-gray-900">${product.name}
+                            ${isImeiMatch ? `<span class="ml-2 text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-mono">IMEI: ${product._pendingImei}</span>` : ''}
+                        </div>
+                        <div class="px-8 text-sm text-gray-500">{{ __('messages.Price') }}: ${product.selling_price} | {{ __('messages.in stock') }}: ${product.quantity}</div>
                     </div>
-                    <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                    <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product).replace(/'/g, "&#39;")}'>
                         {{ __('messages.Select') }}
                     </button>
                 `;
@@ -2533,6 +3102,11 @@
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('select-duplicate-product')) {
                 const product = JSON.parse(e.target.dataset.product);
+                // Transfer pending IMEI (from IMEI table match) → _scannedImei used by showImeiDialog
+                if (product._pendingImei) {
+                    product._scannedImei = product._pendingImei;
+                    delete product._pendingImei;
+                }
                 addProductRow(product);
                 closeBarcodeModal();
                 showNotification(`{{ __('messages.Added {product} to bill') }}`.replace('{product}', product
@@ -2716,6 +3290,7 @@
             card.dataset.cost_price = product.cost_price;
             card.dataset.selling_price = product.selling_price;
             card.dataset.has_tags = product.has_tags ? 'true' : 'false';
+            card.dataset.has_imeis = product.has_imeis ? 'true' : 'false';
             card.dataset.category = product.category || '';
 
             let firstImage = null;
@@ -3041,6 +3616,12 @@
                 qty.value = currentQty + 1;
                 applySaleToRow(row);
                 calculateTotal();
+
+                // For IMEI products, open the dialog so the user can enter the new unit's IMEI
+                if (product.has_imeis) {
+                    showImeiDialog(row, product);
+                }
+
                 return true; // Product was incremented
             }
 
@@ -3058,10 +3639,14 @@
                 <input type="hidden" name="cost_prices[]" value="${cost}">
                 <input type="hidden" name="return_costs[]" value="${returnCost || ''}">
                 <input type="hidden" name="product_tags[]" value="">
+                <input type="hidden" name="discounts[]" class="discount" value="0">
+                <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                ${product.has_imeis ? `<div class="imei-hidden-inputs"></div>` : ''}
 
                 <td class="product-name-cell">
                     <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
-                    <div class="text-xs text-gray-500">${maxStock} in stock</div>
+                    <div class="text-xs text-gray-500">${maxStock} {{ __('messages.in stock') }}</div>
+                    ${product.has_imeis ? `<div class="text-xs text-indigo-600 imei-count-label">0 IMEIs</div>` : ''}
                 </td>
                 <td>
                     <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="1" required>
@@ -3069,23 +3654,22 @@
                 <td>
                     <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${price}" required>
                 </td>
-                <td>
-                    <div class="flex gap-1">
-                        <div class="discount-toggle text-xs">
-                            <button type="button" class="discount-type-btn active" data-type="total">{{ __('messages.Total') }}</button>
-                            <button type="button" class="discount-type-btn" data-type="per-unit">{{ __('messages.Per Unit') }}</button>
-                        </div>
-                        <input type="number" name="discounts[]" class="discount" min="0" step="0.01" value="0" required>
-                        <input type="hidden" name="discount_types[]" class="discount-type" value="total">
-                    </div>
-                </td>
                 <td class="text-center font-semibold total-cell">0.00</td>
                 <td>
-                    <button type="button" class="remove-row">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </button>
+                    <div class="flex gap-1">
+                        ${product.has_imeis ? `
+                                    <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${id}" data-product-name="${product.name}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    </button>` : ''}
+                        <button type="button" class="open-discount-dialog text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded p-1" title="{{ __('messages.Set Discount') }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button type="button" class="remove-row text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </td>
             `;
 
@@ -3094,6 +3678,11 @@
             calculateTotal();
             if (product.return_cost) {
                 delete product.return_cost;
+            }
+
+            // If product has IMEIs, show IMEI dialog immediately
+            if (product.has_imeis) {
+                showImeiDialog(row, product);
             }
 
             return true; // Product was successfully added
@@ -3123,14 +3712,14 @@
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                                             ${availableTags.map(tag => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="flex-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div class="flex-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-sm text-gray-500">+${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -3213,11 +3802,15 @@
                 <input type="hidden" name="product_ids[]" value="${product.id}">
                 <input type="hidden" name="cost_prices[]" value="${product.cost_price}">
                 <input type="hidden" name="product_tags[]" value="${tagsString}">
+                <input type="hidden" name="discounts[]" class="discount" value="0">
+                <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                ${product.has_imeis ? `<div class="imei-hidden-inputs"></div>` : ''}
 
                 <td class="product-name-cell">
                     <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
-                    <div class="text-xs text-gray-500">${product.quantity} in stock</div>
+                    <div class="text-xs text-gray-500">${product.quantity} {{ __('messages.in stock') }}</div>
                     ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
+                    ${product.has_imeis ? `<div class="text-xs text-indigo-600 imei-count-label">0 IMEIs</div>` : ''}
                 </td>
                 <td>
                     <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="1" required>
@@ -3225,23 +3818,22 @@
                 <td>
                     <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${product.selling_price}" required>
                 </td>
-                <td>
-                    <div class="flex gap-1">
-                        <div class="discount-toggle text-xs">
-                            <button type="button" class="discount-type-btn active" data-type="total">{{ __('messages.Total') }}</button>
-                            <button type="button" class="discount-type-btn" data-type="per-unit">{{ __('messages.Per Unit') }}</button>
-                        </div>
-                        <input type="number" name="discounts[]" class="discount" min="0" step="0.01" value="0" required>
-                        <input type="hidden" name="discount_types[]" class="discount-type" value="total">
-                    </div>
-                </td>
                 <td class="text-center font-semibold total-cell">0.00</td>
                 <td>
-                    <button type="button" class="remove-btn-small">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </button>
+                    <div class="flex gap-1">
+                        ${product.has_imeis ? `
+                                    <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${product.id}" data-product-name="${product.name}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    </button>` : ''}
+                        <button type="button" class="open-discount-dialog text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded p-1" title="{{ __('messages.Set Discount') }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button type="button" class="remove-row text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </td>
             `;
 
@@ -3393,16 +3985,23 @@
                 return;
             }
 
-            if (e.target.classList.contains('discount-type-btn')) {
+            if (e.target.closest('.open-discount-dialog')) {
                 const row = e.target.closest('.product-row');
-                const buttons = row.querySelectorAll('.discount-type-btn');
-                const hiddenInput = row.querySelector('.discount-type');
+                showDiscountDialog(row);
+                return;
+            }
 
-                buttons.forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                hiddenInput.value = e.target.dataset.type;
-
-                calculateTotal();
+            if (e.target.closest('.open-imei-dialog')) {
+                const btn = e.target.closest('.open-imei-dialog');
+                const row = btn.closest('.product-row');
+                const productId = parseInt(btn.dataset.productId);
+                const productName = btn.dataset.productName;
+                const product = {
+                    id: productId,
+                    name: productName,
+                    has_imeis: true
+                };
+                showImeiDialog(row, product);
                 return;
             }
 
@@ -3418,7 +4017,8 @@
                     selling_price: parseFloat(card.dataset.selling_price),
                     quantity: parseFloat(card.querySelector('.bg-green-100, .bg-red-100')?.textContent.match(
                         /\d+\.?\d*/)?.[0] || 0),
-                    has_tags: card.dataset.has_tags === 'true'
+                    has_tags: card.dataset.has_tags === 'true',
+                    has_imeis: card.dataset.has_imeis === 'true'
                 };
 
                 const isReturnedBill = document.getElementById('is_returned')?.checked || false;
@@ -3455,6 +4055,25 @@
                 // Re-apply sale when qty or price changes
                 const row = e.target.closest('.product-row');
                 if (row) applySaleToRow(row);
+            }
+
+            // Warn user when they change quantity on a product that has IMEI codes
+            if (e.target.classList.contains('quantity')) {
+                const row = e.target.closest('.product-row');
+                if (row) {
+                    const imeiContainer = row.querySelector('.imei-hidden-inputs');
+                    if (imeiContainer && imeiContainer.children.length > 0) {
+                        const newQty = Math.ceil(parseFloat(e.target.value) || 1);
+                        const currentImeiCount = imeiContainer.children.length;
+                        if (newQty !== currentImeiCount) {
+                            const label = row.querySelector('.imei-count-label');
+                            if (label) {
+                                label.textContent = `⚠ ${currentImeiCount} IMEI / qty ${newQty}`;
+                                label.className = 'text-xs mt-0.5 imei-count-label text-orange-500 font-medium';
+                            }
+                        }
+                    }
+                }
             }
 
             if (['quantity', 'discount', 'selling-price'].some(cls => e.target.classList.contains(cls))) {
@@ -4003,9 +4622,9 @@
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                             ${product.actualDiscount > 0 ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : '-'}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : '-'}
                         </td>
                         <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
                     </tr>

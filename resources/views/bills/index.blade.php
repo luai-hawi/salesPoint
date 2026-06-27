@@ -159,6 +159,10 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {{ __('bills.Bill Info') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {{ __('bills.Customer') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {{ __('bills.Created By') }}</th>
                             @if (auth()->user()->getVisibilitySetting('show_bill_total_value') ||
                                     auth()->user()->getVisibilitySetting('show_bill_profit_column'))
                                 <th
@@ -202,6 +206,16 @@
                                             <div class="text-sm text-gray-500">{{ $bill->products->count() }}
                                                 {{ __('bills.items') }}</div>
                                         </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-800">
+                                        {{ $bill->customer->name ?? __('bills.Walk-in') }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-600">
+                                        {{ $bill->creator->name ?? '—' }}
                                     </div>
                                 </td>
                                 @if (auth()->user()->getVisibilitySetting('show_bill_total_value') ||
@@ -687,6 +701,10 @@
                                                 id="bill-id" class="font-medium text-gray-900"></span></p>
                                         <p class="text-sm text-gray-500">{{ __('messages.Date') }}: <span
                                                 id="bill-date" class="font-medium text-gray-900"></span></p>
+                                        <p class="text-sm text-gray-500">{{ __('bills.Customer') }}: <span
+                                                id="bill-customer" class="font-medium text-gray-900"></span></p>
+                                        <p class="text-sm text-gray-500">{{ __('bills.Created By') }}: <span
+                                                id="bill-creator" class="font-medium text-gray-900"></span></p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm text-gray-500">{{ __('messages.Total') }}:</p>
@@ -714,6 +732,9 @@
                                                 <th
                                                     class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                                                     {{ __('messages.Subtotal') }}</th>
+                                                <th
+                                                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                                    IMEI</th>
                                             </tr>
                                         </thead>
                                         <tbody id="bill-products-body" class="divide-y divide-gray-200">
@@ -775,6 +796,8 @@
             document.getElementById('bill-date').textContent = new Date(bill.created_at).toLocaleDateString();
             document.getElementById('bill-total').textContent = '₪' + parseFloat(bill.total_price || 0).toFixed(2);
             document.getElementById('bill-note').textContent = bill.note || '-';
+            document.getElementById('bill-customer').textContent = bill.customer?.name ?? '{{ __('bills.Walk-in') }}';
+            document.getElementById('bill-creator').textContent = bill.creator?.name ?? '—';
 
             // Build products table
             const tbody = document.getElementById('bill-products-body');
@@ -782,11 +805,24 @@
 
             if (bill.products && bill.products.length > 0) {
                 bill.products.forEach(product => {
-                    // Get values from pivot with fallback
                     const quantity = parseFloat(product.pivot?.quantity || product.pivot?.qty || 0);
                     const unitPrice = parseFloat(product.pivot?.selling_price || 0);
                     const discount = parseFloat(product.pivot?.discount || 0);
                     const subtotal = (quantity * unitPrice) - discount;
+
+                    // Parse IMEIs
+                    let imeis = product.pivot?.imeis;
+                    let imeiHtml = '';
+                    if (imeis) {
+                        try {
+                            const imeiArr = typeof imeis === 'string' ? JSON.parse(imeis) : imeis;
+                            if (imeiArr && imeiArr.length > 0) {
+                                imeiHtml = imeiArr.map(i =>
+                                    `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-1.5 py-0.5 rounded font-mono">${i}</span>`
+                                    ).join(' ');
+                            }
+                        } catch (e) {}
+                    }
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -798,12 +834,13 @@
                         <td class="px-3 py-2 text-right text-sm text-gray-900">₪${unitPrice.toFixed(2)}</td>
                         <td class="px-3 py-2 text-right text-sm text-gray-900">₪${discount.toFixed(2)}</td>
                         <td class="px-3 py-2 text-right text-sm font-medium text-gray-900">₪${subtotal.toFixed(2)}</td>
+                        <td class="px-3 py-2 text-sm">${imeiHtml || '<span class="text-gray-400">—</span>'}</td>
                     `;
                     tbody.appendChild(row);
                 });
             } else {
                 tbody.innerHTML =
-                    '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-500">No products found</td></tr>';
+                    '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">No products found</td></tr>';
             }
 
             // Show modal

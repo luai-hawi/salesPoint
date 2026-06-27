@@ -100,4 +100,6 @@ return [
     'Returned' => 'Returned',
     'View Bill' => 'View Bill',
     'Create Bill' => 'Create Bill',
+    'Classic' => 'Classic',
+    'Focus' => 'Focus',
 ];

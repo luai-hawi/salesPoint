@@ -259,6 +259,25 @@
                                                         @endforeach
                                                     </div>
                                                 @endif
+                                                @php
+                                                    $pivotImeis = $product->pivot->imeis;
+                                                    if (is_string($pivotImeis)) {
+                                                        $pivotImeis = json_decode($pivotImeis, true) ?? [];
+                                                    }
+                                                    $pivotImeis = is_array($pivotImeis) ? $pivotImeis : [];
+                                                @endphp
+                                                @if (count($pivotImeis) > 0)
+                                                    <div class="mt-1">
+                                                        <span
+                                                            class="text-xs font-medium text-indigo-600">{{ __('messages.IMEI Codes') }}:</span>
+                                                        <div class="flex flex-wrap gap-1 mt-0.5">
+                                                            @foreach ($pivotImeis as $imeiCode)
+                                                                <span
+                                                                    class="font-mono text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">{{ $imeiCode }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
@@ -635,14 +654,14 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ __('messages.Select Tags for') }} ${product.name}</h3>
                     <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
                         ${availableTags.map(tag => `
-                                                                                                                                                                    <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
-                                                                                                                                                                        <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
-                                                                                                                                                                        <div class="flex-1">
-                                                                                                                                                                            <div class="font-medium">${tag.name}</div>
-                                                                                                                                                                            <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
-                                                                                                                                                                        </div>
-                                                                                                                                                                    </label>
-                                                                                                                                                                `).join('')}
+                                                                                                                                                                        <label class="flex items-center p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                                                                                                                                                                            <input type="checkbox" value="${tag.id}" data-name="${tag.name}" data-price="${tag.price}" class="tag-checkbox mr-3">
+                                                                                                                                                                            <div class="flex-1">
+                                                                                                                                                                                <div class="font-medium">${tag.name}</div>
+                                                                                                                                                                                <div class="text-sm text-gray-500">+₪${parseFloat(tag.price).toFixed(2)}</div>
+                                                                                                                                                                            </div>
+                                                                                                                                                                        </label>
+                                                                                                                                                                    `).join('')}
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
@@ -1944,9 +1963,9 @@
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">
                     ${product.actualDiscount > 0 ? `
-                                                                                                                                                                <div>${product.actualDiscount.toFixed(2)}₪</div>
-                                                                                                                                                                <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
-                                                                                                                                                            ` : '-'}
+                                                                                                                                                                    <div>${product.actualDiscount.toFixed(2)}₪</div>
+                                                                                                                                                                    <small class="text-xs">${product.discountType === 'per-unit' ? '{{ __('messages.Per Unit') }}' : '{{ __('messages.Total') }}'}</small>
+                                                                                                                                                                ` : '-'}
                 </td>
                 <td class="border-2 border-black px-2 py-1 text-center font-semibold">${product.finalSubtotal.toFixed(2)}₪</td>
             </tr>

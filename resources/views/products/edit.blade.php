@@ -298,6 +298,33 @@
                                     </p>
                                 </div>
 
+                                <!-- Has IMEIs Toggle -->
+                                <div class="mb-6 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-indigo-600 mr-2" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                                            </svg>
+                                            <label for="has_imeis" class="text-sm font-semibold text-gray-700">
+                                                {{ __('messages.This product has IMEI / Serial codes') }}
+                                            </label>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" name="has_imeis" id="has_imeis"
+                                                class="sr-only peer" value="1"
+                                                {{ old('has_imeis', $product->has_imeis ?? false) ? 'checked' : '' }}>
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p class="text-xs text-indigo-600 mt-2">
+                                        {{ __('messages.Enable this for products like phones, laptops, etc. that have unique IMEI or serial numbers per unit.') }}
+                                    </p>
+                                </div>
+
                                 <!-- Product Pictures -->
                                 <div class="md:col-span-2">
                                     <label
@@ -406,6 +433,86 @@
 
                 <!-- Right Column - Batch Management -->
                 <div class="space-y-6">
+
+                    @if ($product->has_imeis)
+                        <!-- IMEI Management Panel -->
+                        <div class="bg-white rounded-xl shadow-sm border border-indigo-200 overflow-hidden"
+                            id="imei-panel">
+                            <div
+                                class="p-4 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 flex items-center justify-between">
+                                <h3 class="text-base font-semibold text-indigo-800 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                                    </svg>
+                                    {{ __('messages.IMEI / Serial Codes') }}
+                                </h3>
+                                <div class="flex gap-2">
+                                    <select id="imei-filter"
+                                        class="text-xs border border-indigo-300 rounded px-2 py-1">
+                                        <option value="all">{{ __('messages.All') }}</option>
+                                        <option value="unsold">{{ __('messages.Unsold') }}</option>
+                                        <option value="sold">{{ __('messages.Sold') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="grid grid-cols-3 divide-x divide-indigo-100 border-b border-indigo-100">
+                                <div class="p-3 text-center">
+                                    <div class="text-lg font-bold text-gray-800" id="imei-total-count">—</div>
+                                    <div class="text-xs text-gray-500">{{ __('messages.Total') }}</div>
+                                </div>
+                                <div class="p-3 text-center">
+                                    <div class="text-lg font-bold text-green-600" id="imei-unsold-count">—</div>
+                                    <div class="text-xs text-gray-500">{{ __('messages.Unsold') }}</div>
+                                </div>
+                                <div class="p-3 text-center">
+                                    <div class="text-lg font-bold text-red-500" id="imei-sold-count">—</div>
+                                    <div class="text-xs text-gray-500">{{ __('messages.Sold') }}</div>
+                                </div>
+                            </div>
+
+                            <!-- IMEI List -->
+                            <div class="max-h-64 overflow-y-auto" id="imei-list-container">
+                                <div class="p-4 text-center text-gray-400 text-sm" id="imei-loading">
+                                    {{ __('messages.Loading...') }}</div>
+                            </div>
+
+                            <!-- Add IMEI Section -->
+                            <div class="p-4 border-t border-indigo-100 bg-indigo-50">
+                                <p class="text-xs font-semibold text-indigo-700 mb-2">
+                                    {{ __('messages.Add IMEI Codes') }}</p>
+                                <div class="flex gap-2 mb-2">
+                                    <select id="new-imei-supplier"
+                                        class="flex-1 text-sm border border-indigo-300 rounded px-2 py-1.5">
+                                        <option value="">{{ __('messages.No Supplier') }}</option>
+                                        @foreach (\App\Models\Supplier::where('user_id', auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : auth()->id())->orderBy('name')->get() as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="date" id="new-imei-date"
+                                        class="text-sm border border-indigo-300 rounded px-2 py-1.5"
+                                        value="{{ date('Y-m-d') }}">
+                                </div>
+                                <div id="new-imeis-list" class="max-h-32 overflow-y-auto mb-2 space-y-1">
+                                    <!-- New IMEI inputs appear here -->
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="text" id="new-imei-input"
+                                        class="flex-1 text-sm border border-indigo-300 rounded px-2 py-1.5 font-mono"
+                                        placeholder="{{ __('messages.Enter IMEI or serial...') }}">
+                                    <button type="button" id="add-imei-to-list"
+                                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-sm">+</button>
+                                </div>
+                                <button type="button" id="save-imeis-btn"
+                                    class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 rounded-lg font-medium">
+                                    {{ __('messages.Save IMEI Codes') }}
+                                </button>
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Product Stats Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1671,6 +1778,170 @@
                     initBarcodeScanner('barcode');
                 });
             }
+
+            // IMEI Management (only for products with has_imeis)
+            const imeiPanel = document.getElementById('imei-panel');
+            if (!imeiPanel) return;
+
+            const productId = {{ $product->id }};
+            const imeiListContainer = document.getElementById('imei-list-container');
+            const imeiTotalCount = document.getElementById('imei-total-count');
+            const imeiUnsoldCount = document.getElementById('imei-unsold-count');
+            const imeiSoldCount = document.getElementById('imei-sold-count');
+            const imeiFilter = document.getElementById('imei-filter');
+            const newImeiInput = document.getElementById('new-imei-input');
+            const addImeiBtn = document.getElementById('add-imei-to-list');
+            const newImeisList = document.getElementById('new-imeis-list');
+            const saveImeisBtn = document.getElementById('save-imeis-btn');
+            let pendingImeis = [];
+
+            function loadImeis(filter = 'all') {
+                fetch(`/products/${productId}/imeis?filter=${filter}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        imeiTotalCount.textContent = data.total;
+                        imeiUnsoldCount.textContent = data.unsold_count;
+                        imeiSoldCount.textContent = data.sold_count;
+
+                        imeiListContainer.innerHTML = '';
+                        if (!data.imeis.length) {
+                            imeiListContainer.innerHTML =
+                                '<div class="p-4 text-center text-gray-400 text-sm">{{ __('messages.No IMEI codes found') }}</div>';
+                            return;
+                        }
+                        data.imeis.forEach(imei => {
+                            const div = document.createElement('div');
+                            div.className =
+                                'flex items-center justify-between px-4 py-2 border-b border-gray-100 hover:bg-gray-50';
+                            const isSold = imei.sale_bill_id !== null;
+                            div.innerHTML = `
+                            <div class="flex-1 min-w-0">
+                                <div class="font-mono text-sm ${isSold ? 'text-gray-400 line-through' : 'text-gray-800'}">${imei.imei}</div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    ${imei.supplier ? '🏪 ' + imei.supplier.name : ''}
+                                    ${imei.purchased_at ? '📅 ' + String(imei.purchased_at).split('T')[0] : ''}
+                                    ${isSold ? '<span class="text-red-500">✓ {{ __('messages.Sold') }}</span>' : '<span class="text-green-600">● {{ __('messages.Unsold') }}</span>'}
+                                </div>
+                            </div>
+                            ${!isSold ? `<button type="button" data-id="${imei.id}" class="delete-imei text-red-400 hover:text-red-600 ml-2 text-lg leading-none">×</button>` : ''}
+                        `;
+                            imeiListContainer.appendChild(div);
+                        });
+
+                        // Delete handlers
+                        document.querySelectorAll('.delete-imei').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                if (!confirm('{{ __('messages.Delete this IMEI?') }}'))
+                            return;
+                                const id = this.dataset.id;
+                                fetch(`/products/${productId}/imeis/${id}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'X-CSRF-TOKEN': csrfToken,
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                }).then(() => loadImeis(imeiFilter.value));
+                            });
+                        });
+                    });
+            }
+
+            loadImeis();
+            imeiFilter.addEventListener('change', () => loadImeis(imeiFilter.value));
+
+            function addToPendingList(code) {
+                if (pendingImeis.includes(code)) {
+                    alert('{{ __('messages.This IMEI is already in the list') }}');
+                    return;
+                }
+                pendingImeis.push(code);
+                const div = document.createElement('div');
+                div.className =
+                    'flex items-center justify-between bg-white border border-indigo-200 rounded px-2 py-1';
+                div.innerHTML = `
+                    <span class="font-mono text-xs text-indigo-800">${code}</span>
+                    <button type="button" class="text-red-400 hover:text-red-600 ml-2 remove-pending">×</button>
+                `;
+                div.querySelector('.remove-pending').addEventListener('click', () => {
+                    div.remove();
+                    pendingImeis = pendingImeis.filter(i => i !== code);
+                });
+                newImeisList.appendChild(div);
+            }
+
+            addImeiBtn.addEventListener('click', async () => {
+                const code = newImeiInput.value.trim();
+                if (!code) return;
+
+                // Check duplicate
+                try {
+                    const resp = await fetch(`/products/imei/check?imei=${encodeURIComponent(code)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const result = await resp.json();
+                    if (result.exists) {
+                        const isSameProduct = result.product_id === productId;
+                        const msg = isSameProduct ?
+                            `{{ __('messages.This IMEI already exists for this product') }}. {{ __('messages.Continue?') }}` :
+                            `{{ __('messages.IMEI already exists for product') }}: ${result.product_name}. {{ __('messages.Continue?') }}`;
+                        if (!confirm(msg)) return;
+                    }
+                } catch (e) {}
+
+                addToPendingList(code);
+                newImeiInput.value = '';
+                newImeiInput.focus();
+            });
+
+            newImeiInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addImeiBtn.click();
+                }
+            });
+
+            saveImeisBtn.addEventListener('click', async () => {
+                if (!pendingImeis.length) {
+                    alert('{{ __('messages.No IMEI codes to save') }}');
+                    return;
+                }
+
+                const supplierId = document.getElementById('new-imei-supplier').value;
+                const purchasedAt = document.getElementById('new-imei-date').value;
+
+                try {
+                    const resp = await fetch(`/products/${productId}/imeis`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            imeis: pendingImeis,
+                            supplier_id: supplierId || null,
+                            purchased_at: purchasedAt || null,
+                            force: true
+                        })
+                    });
+                    const result = await resp.json();
+                    if (result.success) {
+                        alert(
+                            `{{ __('messages.Saved') }} ${result.saved} {{ __('messages.IMEI codes') }}`);
+                        pendingImeis = [];
+                        newImeisList.innerHTML = '';
+                        loadImeis(imeiFilter.value);
+                    }
+                } catch (e) {
+                    alert('{{ __('messages.Error saving IMEIs') }}');
+                }
+            });
         });
     </script>
 </x-app-layout>

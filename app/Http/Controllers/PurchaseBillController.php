@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseBill;
 use App\Models\Product;
 use App\Models\ProductBarcode;
+use App\Models\ProductImei;
 use App\Models\Supplier;
 use App\Models\Batch;
 use Illuminate\Http\Request;
@@ -152,7 +153,6 @@ class PurchaseBillController extends Controller
                 if (!empty($barcodes)) {
                     foreach ($barcodes as $barcode) {
                         if (!empty(trim($barcode))) {
-                            // Check if barcode already exists for this product
                             $exists = ProductBarcode::where('product_id', $productId)
                                 ->where('barcode', trim($barcode))
                                 ->exists();
@@ -163,6 +163,32 @@ class PurchaseBillController extends Controller
                                     'barcode' => trim($barcode),
                                 ]);
                             }
+                        }
+                    }
+                }
+
+                // Handle IMEI codes for products that have has_imeis enabled
+                $imeiCodes = $request->input("imeis_{$productId}", []);
+                if (!empty($imeiCodes)) {
+                    foreach ($imeiCodes as $imeiCode) {
+                        $imeiCode = trim($imeiCode);
+                        if (empty($imeiCode)) continue;
+
+                        // Check for existing IMEI (skip duplicates silently in bulk purchase)
+                        $existingImei = ProductImei::where('user_id', $ownerId)
+                            ->where('imei', $imeiCode)
+                            ->first();
+
+                        if (!$existingImei) {
+                            ProductImei::create([
+                                'user_id' => $ownerId,
+                                'product_id' => $productId,
+                                'imei' => $imeiCode,
+                                'supplier_id' => $request->supplier_id,
+                                'purchase_bill_id' => $purchaseBill->id,
+                                'unit_cost' => $unitCost,
+                                'purchased_at' => $request->purchase_date,
+                            ]);
                         }
                     }
                 }

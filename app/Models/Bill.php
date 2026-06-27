@@ -23,7 +23,7 @@ class Bill extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class, 'bill_product')
-            ->withPivot('quantity', 'discount', 'cost_price', 'selling_price', 'tags');
+            ->withPivot('quantity', 'discount', 'cost_price', 'selling_price', 'tags', 'imeis');
     }
 
     public function customer()

@@ -8,6 +8,7 @@ return [
     'Draft' => 'Draft',
     'Customer' => 'Customer',
     'Walk-in Customer' => 'Walk-in Customer',
+    'Walk-in' => 'Walk-in',
     'Total Amount' => 'Total Amount',
     'Created' => 'Created',
     'Created By' => 'Created By',

@@ -9,6 +9,7 @@ return [
     'Draft' => 'مسودة',
     'Customer' => 'العميل',
     'Walk-in Customer' => 'عميل مباشر',
+    'Walk-in' => 'عميل مباشر',
     'Total Amount' => 'المبلغ الإجمالي',
     'Created' => 'تم الإنشاء',
     'Created By' => 'تم الإنشاء بواسطة',

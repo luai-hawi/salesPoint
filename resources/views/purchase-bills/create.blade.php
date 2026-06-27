@@ -193,7 +193,7 @@
                                                 {{ __('messages.Unit Cost') }}</th>
                                             <th
                                                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                                {{ __('messages.Barcodes') }}</th>
+                                                {{ __('messages.Barcodes') }} / IMEI</th>
                                             <th
                                                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                                 {{ __('messages.Total') }}</th>
@@ -374,16 +374,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                                                            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                                                                <div class="flex-1">
-                                                                                                                                    <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                                                                    <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
-                                                                                                                                </div>
-                                                                                                                                <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                                                                    {{ __('messages.Select') }}
-                                                                                                                                </button>
-                                                                                                                            </div>
-                                                                                                                        `).join('')}
+                                                                                                                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                                                        <div class="flex-1">
+                                                                                                                                            <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                                                            <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                                        </div>
+                                                                                                                                        <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                                                            {{ __('messages.Select') }}
+                                                                                                                                        </button>
+                                                                                                                                    </div>
+                                                                                                                                `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -681,9 +681,11 @@
         }
 
         // Original table management functions (preserved from original)
-        function addProductRow(productId, productName, currentCost, quantity = 1, barcodes = []) {
+        function addProductRow(productId, productName, currentCost, quantity = 1, barcodes = [], imeis = []) {
             const tableBody = document.getElementById('products-table-body');
             const noProductsMessage = document.getElementById('no-products-message');
+            const productInfo = productsData[productId] || {};
+            const hasImeis = productInfo.has_imeis ?? false;
 
             // Check if product already exists
             const existingRow = document.querySelector(`input[value="${productId}"][name="product_ids[]"]`);
@@ -704,10 +706,27 @@
 
             noProductsMessage.style.display = 'none';
 
+            const imeiSectionHtml = hasImeis ? `
+                <div class="imeis-container mt-2.5 p-2.5 bg-violet-50 border border-violet-200 rounded-xl">
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <svg class="w-3.5 h-3.5 text-violet-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+                        </svg>
+                        <span class="text-xs font-semibold text-violet-700">{{ __('messages.IMEI Codes') }}</span>
+                    </div>
+                    <div class="imeis-list space-y-1 max-h-24 overflow-y-auto mb-2"></div>
+                    <div class="flex gap-1.5">
+                        <input type="text" class="imei-input flex-1 min-w-0 border border-violet-300 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:ring-2 focus:ring-violet-400 focus:border-violet-400 outline-none" placeholder="{{ __('messages.Enter IMEI...') }}">
+                        <button type="button" class="add-imei-btn flex-shrink-0 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors" data-product-id="${productId}">+</button>
+                    </div>
+                    <p class="text-[10px] text-violet-400 mt-1.5">{{ __('messages.Add one IMEI per unit purchased') }}</p>
+                </div>` : '';
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td class="px-4 py-3">
                     <div class="font-medium text-gray-900">${productName}</div>
+                    ${hasImeis ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-indigo-100 text-indigo-700 mt-1">IMEI</span>' : ''}
                     <input type="hidden" name="product_ids[]" value="${productId}">
                 </td>
                 <td class="px-4 py-3">
@@ -719,14 +738,13 @@
                             class="w-24 border border-gray-300 rounded px-2 py-1 cost-input">
                 </td>
                 <td class="px-4 py-3">
-                    <div class="barcodes-container w-48">
-                        <div class="barcodes-list max-h-20 overflow-y-auto border border-gray-300 rounded p-1 mb-1 text-sm">
-                            <!-- Barcodes will be listed here -->
+                    <div class="barcodes-container min-w-[200px]">
+                        <div class="barcodes-list space-y-1 max-h-20 overflow-y-auto mb-1.5"></div>
+                        <div class="flex gap-1.5">
+                            <input type="text" class="barcode-input flex-1 min-w-0 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none" placeholder="{{ __('messages.Barcode') }}...">
+                            <button type="button" class="add-barcode-btn flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-product-id="${productId}">+ {{ __('messages.Add') }}</button>
                         </div>
-                        <div class="flex">
-                            <input type="text" class="barcode-input flex-1 border border-gray-300 rounded-l px-2 py-1 text-sm" placeholder="Enter barcode">
-                            <button type="button" class="add-barcode-btn bg-blue-600 text-white px-2 py-1 rounded-r text-sm hover:bg-blue-700" data-product-id="${productId}">Add</button>
-                        </div>
+                        ${imeiSectionHtml}
                     </div>
                 </td>
                 <td class="px-4 py-3">
@@ -756,10 +774,13 @@
 
             function addBarcode(code) {
                 const item = document.createElement('div');
-                item.className = 'flex justify-between items-center py-1';
+                item.className =
+                    'flex items-center justify-between gap-1.5 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg group';
                 item.innerHTML = `
-                    <span class="text-gray-700 text-xs">${code}</span>
-                    <button type="button" class="remove-barcode text-red-600 hover:text-red-800 ml-1 text-sm">×</button>
+                    <span class="text-blue-800 font-mono text-xs truncate flex-1">${code}</span>
+                    <button type="button" class="remove-barcode flex-shrink-0 text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 `;
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
@@ -843,6 +864,69 @@
                     addBtn.click();
                 }
             });
+
+            // Setup IMEI section if product has IMEIs
+            if (hasImeis) {
+                const imeiContainer = row.querySelector('.imeis-container');
+                const imeisList = imeiContainer.querySelector('.imeis-list');
+                const imeiInputEl = imeiContainer.querySelector('.imei-input');
+                const addImeiBtn = imeiContainer.querySelector('.add-imei-btn');
+
+                function addImei(code) {
+                    const item = document.createElement('div');
+                    item.className =
+                        'flex items-center justify-between gap-1.5 px-2 py-1 bg-violet-100 border border-violet-200 rounded-lg group';
+                    item.innerHTML = `
+                        <span class="text-violet-800 font-mono text-xs truncate flex-1">${code}</span>
+                        <button type="button" class="remove-imei flex-shrink-0 text-red-400 hover:text-red-600 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    `;
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = `imeis_${productId}[]`;
+                    hiddenInput.value = code;
+                    imeiContainer.appendChild(hiddenInput);
+                    imeisList.appendChild(item);
+                    item.querySelector('.remove-imei').addEventListener('click', () => {
+                        item.remove();
+                        hiddenInput.remove();
+                    });
+                }
+
+                // Add existing IMEIs
+                imeis.forEach(addImei);
+
+                addImeiBtn.addEventListener('click', async () => {
+                    const code = imeiInputEl.value.trim();
+                    if (!code) return;
+
+                    // Check for duplicate IMEI
+                    try {
+                        const resp = await fetch(`/products/imei/check?imei=${encodeURIComponent(code)}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const result = await resp.json();
+                        if (result.exists) {
+                            const msg =
+                                `{{ __('messages.IMEI already exists for product') }}: ${result.product_name}. {{ __('messages.Continue?') }}`;
+                            if (!confirm(msg)) return;
+                        }
+                    } catch (e) {}
+
+                    addImei(code);
+                    imeiInputEl.value = '';
+                });
+
+                imeiInputEl.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addImeiBtn.click();
+                    }
+                });
+            }
 
             // Add event listeners
             const removeBtn = row.querySelector('.remove-product');

@@ -58,15 +58,28 @@ class SettingsController extends Controller
             'show_product_cost_price',
         ];
 
+        $user = Auth::user();
+        $existing = $user->visibility_settings ?? [];
+
         $settings = [];
         foreach ($keys as $key) {
             $settings[$key] = $request->boolean($key, false);
         }
 
-        $user = Auth::user();
-        $user->update(['visibility_settings' => $settings]);
+        // Preserve keys not managed by this form (e.g. pos_slim_mode)
+        $preserved = array_diff_key($existing, array_flip($keys));
+        $user->update(['visibility_settings' => array_merge($preserved, $settings)]);
 
         return back()->with('success', __('messages.Visibility settings updated successfully.'));
+    }
+
+    public function updatePosViewMode(Request $request)
+    {
+        $user = Auth::user();
+        $settings = $user->visibility_settings ?? [];
+        $settings['pos_slim_mode'] = $request->boolean('slim_mode');
+        $user->update(['visibility_settings' => $settings]);
+        return response()->json(['success' => true]);
     }
 
     public function updateEmployeeVisibilitySettings(Request $request, \App\Models\User $user)

@@ -125,6 +125,140 @@
                     </div>
 
                     @if (isset($searched) && $searched)
+
+                        {{-- ── IMEI Result ────────────────────────────────────────────── --}}
+                        @if (isset($imeiResult) && $imeiResult)
+                            @php $imei = $imeiResult; @endphp
+                            <div
+                                class="mb-6 rounded-xl border-2 {{ $imei->isSold() ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' }} p-5">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div
+                                        class="flex-shrink-0 w-10 h-10 rounded-full {{ $imei->isSold() ? 'bg-red-100' : 'bg-green-100' }} flex items-center justify-center">
+                                        <svg class="w-5 h-5 {{ $imei->isSold() ? 'text-red-600' : 'text-green-600' }}"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">{{ __('messages.IMEI Found') }}</h4>
+                                        <p
+                                            class="text-sm {{ $imei->isSold() ? 'text-red-600 font-medium' : 'text-green-600 font-medium' }}">
+                                            {{ $imei->isSold() ? __('messages.IMEI is sold') : __('messages.IMEI is available') }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {{-- Left: Purchase info --}}
+                                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                                        <h5 class="text-xs font-semibold text-gray-500 uppercase mb-3">
+                                            {{ __('messages.Purchase Info') }}</h5>
+                                        <dl class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500">{{ __('messages.Product') }}</dt>
+                                                <dd class="font-medium text-gray-900">{{ $imei->product->name ?? '-' }}
+                                                </dd>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500">IMEI</dt>
+                                                <dd class="font-mono font-medium text-gray-900">{{ $imei->imei }}
+                                                </dd>
+                                            </div>
+                                            @if ($imei->supplier)
+                                                <div class="flex justify-between">
+                                                    <dt class="text-gray-500">{{ __('messages.Purchased From') }}</dt>
+                                                    <dd class="font-medium text-gray-900">{{ $imei->supplier->name }}
+                                                    </dd>
+                                                </div>
+                                            @endif
+                                            @if ($imei->purchased_at)
+                                                <div class="flex justify-between">
+                                                    <dt class="text-gray-500">{{ __('messages.Purchased On') }}</dt>
+                                                    <dd class="text-gray-900">
+                                                        {{ $imei->purchased_at->format('Y-m-d') }}</dd>
+                                                </div>
+                                            @endif
+                                            @if ($imei->unit_cost)
+                                                <div class="flex justify-between">
+                                                    <dt class="text-gray-500">{{ __('messages.Unit Cost') }}</dt>
+                                                    <dd class="text-gray-900">
+                                                        ₪{{ number_format($imei->unit_cost, 2) }}</dd>
+                                                </div>
+                                            @endif
+                                            @if ($imei->purchaseBill)
+                                                <div class="flex justify-between">
+                                                    <dt class="text-gray-500">{{ __('messages.Purchase Bill ID') }}
+                                                    </dt>
+                                                    <dd>
+                                                        <a href="{{ route('purchase-bills.show', $imei->purchaseBill) }}"
+                                                            class="text-blue-600 hover:underline font-medium">#{{ $imei->purchase_bill_id }}</a>
+                                                    </dd>
+                                                </div>
+                                            @endif
+                                        </dl>
+                                    </div>
+
+                                    {{-- Right: Sale info --}}
+                                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                                        <h5 class="text-xs font-semibold text-gray-500 uppercase mb-3">
+                                            {{ __('messages.Sale Info') }}</h5>
+                                        @if ($imei->isSold())
+                                            <dl class="space-y-2 text-sm">
+                                                @if ($imei->saleBill && $imei->saleBill->customer)
+                                                    <div class="flex justify-between">
+                                                        <dt class="text-gray-500">{{ __('messages.Sold To') }}</dt>
+                                                        <dd class="font-medium text-gray-900">
+                                                            {{ $imei->saleBill->customer->name }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if ($imei->sold_at)
+                                                    <div class="flex justify-between">
+                                                        <dt class="text-gray-500">{{ __('messages.Sold On') }}</dt>
+                                                        <dd class="text-gray-900">
+                                                            {{ $imei->sold_at->format('Y-m-d') }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if ($imei->selling_price)
+                                                    <div class="flex justify-between">
+                                                        <dt class="text-gray-500">{{ __('messages.Unit Price') }}</dt>
+                                                        <dd class="text-gray-900">
+                                                            ₪{{ number_format($imei->selling_price, 2) }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if ($imei->saleBill)
+                                                    <div class="flex justify-between">
+                                                        <dt class="text-gray-500">{{ __('messages.Bill ID') }}</dt>
+                                                        <dd>
+                                                            <a href="{{ route('bills.show', $imei->saleBill) }}"
+                                                                class="text-blue-600 hover:underline font-medium">#{{ $imei->sale_bill_id }}</a>
+                                                        </dd>
+                                                    </div>
+                                                    @if ($imei->saleBill->creator)
+                                                        <div class="flex justify-between">
+                                                            <dt class="text-gray-500">{{ __('messages.Created By') }}
+                                                            </dt>
+                                                            <dd class="text-gray-900">
+                                                                {{ $imei->saleBill->creator->name }}</dd>
+                                                        </div>
+                                                    @endif
+                                                @endif
+                                            </dl>
+                                        @else
+                                            <div class="flex items-center gap-2 text-green-700">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <span
+                                                    class="text-sm font-medium">{{ __('messages.IMEI is available') }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                         @if ($barcodeResults->count() > 0)
                             <div class="mb-6">
                                 <h4 class="text-md font-medium text-gray-900 mb-4">
@@ -445,14 +579,14 @@
                 <div class="relative overflow-hidden">
                     ${firstImage ? `<img src="/storage/${firstImage}" alt="${product.name}" class="product-image w-full h-32 object-cover">` :
                         `<div class="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                            </div>`}
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>`}
 
                     ${isOutOfStock ? `<div class="absolute inset-0 bg-red-500 bg-opacity-80 flex items-center justify-center">
-                            <span class="text-white font-bold text-sm">OUT OF STOCK</span>
-                        </div>` : ''}
+                                <span class="text-white font-bold text-sm">OUT OF STOCK</span>
+                            </div>` : ''}
 
                     <div class="absolute top-1 left-1">
                         <span class="bg-gray-800 bg-opacity-75 text-white text-xs font-mono px-1.5 py-0.5 rounded">#${product.id}</span>
@@ -463,13 +597,13 @@
                     <h3 class="font-semibold text-gray-900 text-sm mb-2 line-clamp-2 min-h-[2rem]">${product.name}</h3>
 
                     ${product.barcode ? `<div class="mb-2 p-1.5 bg-gray-50 rounded border-l-2 border-blue-500">
-                            <div class="flex items-center">
-                                <svg class="w-3 h-3 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
-                                </svg>
-                                <span class="text-xs text-gray-600 font-mono">${product.barcode}</span>
-                            </div>
-                        </div>` : ''}
+                                <div class="flex items-center">
+                                    <svg class="w-3 h-3 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-600 font-mono">${product.barcode}</span>
+                                </div>
+                            </div>` : ''}
 
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
                         <div class="text-center p-1.5 bg-green-50 rounded">
@@ -533,24 +667,24 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         ${suppliers.map(supplier => `
-                                <tr>
-                                    <td class="px-4 py-3">
-                                        <div class="font-medium text-gray-900">${supplier.supplier_name}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-900">${new Date(supplier.purchase_date).toLocaleDateString()}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-900">${supplier.quantity}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-900">₪${parseFloat(supplier.unit_cost).toFixed(2)}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-900">${supplier.reference_number || '-'}</div>
-                                    </td>
-                                </tr>
-                            `).join('')}
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <div class="font-medium text-gray-900">${supplier.supplier_name}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm text-gray-900">${new Date(supplier.purchase_date).toLocaleDateString()}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm text-gray-900">${supplier.quantity}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm text-gray-900">₪${parseFloat(supplier.unit_cost).toFixed(2)}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm text-gray-900">${supplier.reference_number || '-'}</div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
                     </tbody>
                 </table>
             `;

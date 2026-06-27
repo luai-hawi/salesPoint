@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Batch;
 use App\Models\CustomerPayment;
+use App\Models\ProductImei;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -274,7 +275,52 @@ class BillsController extends Controller
                 'cost_price' => $costPrice,
                 'selling_price' => $sellingPrice,
                 'tags' => $tags,
+                'imeis' => null, // Will be updated below
             ]);
+
+            // Handle IMEI marking for sold products
+            $imeiCodes = $request->input("imeis_product_{$productId}", []);
+            if (!empty($imeiCodes) && !$isReturned) {
+                $savedImeis = [];
+                foreach ($imeiCodes as $imeiCode) {
+                    $imeiCode = trim($imeiCode);
+                    if (empty($imeiCode)) continue;
+
+                    // Try to find existing IMEI record
+                    $imeiRecord = ProductImei::where('user_id', $ownerId)
+                        ->where('product_id', $productId)
+                        ->where('imei', $imeiCode)
+                        ->whereNull('sale_bill_id')
+                        ->first();
+
+                    if ($imeiRecord) {
+                        $imeiRecord->update([
+                            'sale_bill_id' => $bill->id,
+                            'sold_at' => now(),
+                            'selling_price' => $sellingPrice,
+                        ]);
+                    } else {
+                        // Create new IMEI record if not found (could be manually entered during POS)
+                        $imeiRecord = ProductImei::create([
+                            'user_id' => $ownerId,
+                            'product_id' => $productId,
+                            'imei' => $imeiCode,
+                            'sale_bill_id' => $bill->id,
+                            'sold_at' => now(),
+                            'selling_price' => $sellingPrice,
+                            'purchased_at' => now()->toDateString(),
+                        ]);
+                    }
+                    $savedImeis[] = $imeiCode;
+                }
+
+                // Update pivot with IMEIs
+                if (!empty($savedImeis)) {
+                    $bill->products()->updateExistingPivot($productId, [
+                        'imeis' => json_encode($savedImeis),
+                    ]);
+                }
+            }
 
             // For returned bills, allow negative totals. For normal bills, ensure non-negative.
             if ($isReturned) {

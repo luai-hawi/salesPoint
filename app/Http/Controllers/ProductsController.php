@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductBarcode;
+use App\Models\ProductImei;
 use Illuminate\Http\Request;
 use App\Models\Batch;
 use Illuminate\Validation\Rule;
@@ -38,6 +39,9 @@ class ProductsController extends Controller
                             ->orWhereRaw('LOWER(category) LIKE ?', ["%{$term}%"])
                             ->orWhereHas('barcodes', function ($qb) use ($term) {
                                 $qb->whereRaw('LOWER(barcode) LIKE ?', ["%{$term}%"]);
+                            })
+                            ->orWhereHas('imeis', function ($qb) use ($term) {
+                                $qb->whereRaw('LOWER(imei) LIKE ?', ["%{$term}%"]);
                             });
                     });
                 }
@@ -64,7 +68,10 @@ class ProductsController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        return view('products.create');
+        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $suppliers = \App\Models\Supplier::where('user_id', $ownerId)->orderBy('name')->get();
+
+        return view('products.create', compact('suppliers'));
     }
 
     public function store(Request $request)
@@ -164,6 +171,11 @@ class ProductsController extends Controller
                 'cost_price' => 'required|numeric',
                 'selling_price' => 'required|numeric',
                 'has_tags' => 'boolean',
+                'has_imeis' => 'boolean',
+                'new_imeis' => 'nullable|array',
+                'new_imeis.*' => 'nullable|string|max:255',
+                'new_imeis_supplier' => 'nullable|integer|exists:suppliers,id',
+                'new_imeis_date' => 'nullable|date',
             ]);
 
             // Check image limit
@@ -186,6 +198,7 @@ class ProductsController extends Controller
             $product->selling_price = $request->selling_price;
             $product->user_id = $ownerId;
             $product->has_tags = $request->has('has_tags');
+            $product->has_imeis = $request->boolean('has_imeis', false);
 
             if ($request->hasFile('pictures')) {
                 $pictures = [];
@@ -216,6 +229,23 @@ class ProductsController extends Controller
                             'barcode' => trim($barcode),
                         ]);
                     }
+                }
+            }
+
+            // Save initial IMEIs if provided
+            if ($product->has_imeis && $request->has('new_imeis')) {
+                $supplierId  = $request->input('new_imeis_supplier') ?: null;
+                $purchasedAt = $request->input('new_imeis_date') ?: null;
+                foreach (array_filter((array) $request->new_imeis) as $imei) {
+                    $imei = trim($imei);
+                    if ($imei === '') continue;
+                    \App\Models\ProductImei::create([
+                        'user_id'       => $ownerId,
+                        'product_id'    => $product->id,
+                        'imei'          => $imei,
+                        'supplier_id'   => $supplierId,
+                        'purchased_at'  => $purchasedAt,
+                    ]);
                 }
             }
 
@@ -256,6 +286,7 @@ class ProductsController extends Controller
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
             'has_tags' => 'boolean',
+            'has_imeis' => 'boolean',
             'low_stock_threshold' => 'nullable|numeric|min:1',
         ]);
 
@@ -277,6 +308,7 @@ class ProductsController extends Controller
         $product->cost_price = round($request->cost_price, 2);
         $product->selling_price = $request->selling_price;
         $product->has_tags = $request->has('has_tags');
+        $product->has_imeis = $request->boolean('has_imeis', false);
 
         // Handle image updates
         if ($request->hasFile('pictures')) {
@@ -491,7 +523,7 @@ class ProductsController extends Controller
         $page = $request->query('page', 1);
         $perPage = $request->query('per_page', 20);
 
-        $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'is_active')
+        $query = Product::select('id', 'name', 'category', 'pictures', 'selling_price', 'cost_price', 'quantity', 'barcode', 'has_tags', 'has_imeis', 'is_active')
             ->where('user_id', $ownerId)
             ->where('is_active', true);
 
@@ -600,6 +632,12 @@ class ProductsController extends Controller
                 ->select('products.*')
                 ->get();
 
+            // Also search by IMEI code
+            $imeiProduct = ProductImei::where('user_id', $ownerId)
+                ->where('imei', $barcode)
+                ->with('product')
+                ->first();
+
             // Combine all matching products, avoiding duplicates
             $allProducts = collect();
             $productIds = [];
@@ -620,18 +658,36 @@ class ProductsController extends Controller
                 }
             }
 
+            // Add IMEI product if found and active
+            if ($imeiProduct && $imeiProduct->product && $imeiProduct->product->is_active) {
+                if (!in_array($imeiProduct->product_id, $productIds)) {
+                    // Reload as Product model with proper fields
+                    $imeiProductFull = Product::where('id', $imeiProduct->product_id)
+                        ->where('user_id', $ownerId)
+                        ->where('is_active', true)
+                        ->first();
+                    if ($imeiProductFull) {
+                        $allProducts->push($imeiProductFull);
+                        $productIds[] = $imeiProductFull->id;
+                    }
+                }
+                // Attach the matched IMEI info for POS use
+                $allProducts->each(function ($p) use ($imeiProduct) {
+                    if ($p->id === $imeiProduct->product_id) {
+                        $p->matched_imei = $imeiProduct->imei;
+                    }
+                });
+            }
+
             if ($allProducts->count() === 1) {
-                // Single product found - return it directly
                 return response()->json($allProducts->first());
             } elseif ($allProducts->count() > 1) {
-                // Multiple products found - return array with special flag
                 return response()->json([
                     'multiple_products' => true,
                     'products' => $allProducts,
                     'barcode' => $barcode
                 ]);
             } else {
-                // No products found at all
                 return response()->json(null);
             }
         } elseif ($productId) {
@@ -656,6 +712,12 @@ class ProductsController extends Controller
             return view('products.barcode-search', ['results' => null, 'searched' => false]);
         }
 
+        // First, check if this is an IMEI code
+        $imeiResult = ProductImei::where('user_id', $ownerId)
+            ->where('imei', $barcode)
+            ->with(['product', 'supplier', 'purchaseBill', 'saleBill.customer', 'saleBill.creator'])
+            ->first();
+
         // Search in purchase_bill_product table for barcodes containing this barcode
         $barcodeResults = \DB::table('purchase_bill_product')
             ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
@@ -677,7 +739,6 @@ class ProductsController extends Controller
             ->orderBy('purchase_bills.purchase_date', 'desc')
             ->get()
             ->map(function ($result) {
-                // Convert purchase_date string to Carbon object
                 $result->purchase_date = \Carbon\Carbon::parse($result->purchase_date);
                 return $result;
             });
@@ -685,8 +746,7 @@ class ProductsController extends Controller
         $productSuppliers = collect();
 
         // If no barcode results, find product by barcode and get all suppliers who purchased it
-        if ($barcodeResults->isEmpty()) {
-            // Find product by barcode
+        if ($barcodeResults->isEmpty() && !$imeiResult) {
             $product = Product::where('user_id', $ownerId)
                 ->where(function ($q) use ($barcode) {
                     $q->where('barcode', $barcode)
@@ -697,7 +757,6 @@ class ProductsController extends Controller
                 ->first();
 
             if ($product) {
-                // Get all suppliers who have purchased this product
                 $productSuppliers = \DB::table('purchase_bill_product')
                     ->join('purchase_bills', 'purchase_bill_product.purchase_bill_id', '=', 'purchase_bills.id')
                     ->join('suppliers', 'purchase_bills.supplier_id', '=', 'suppliers.id')
@@ -718,7 +777,6 @@ class ProductsController extends Controller
                     ->orderBy('purchase_bills.purchase_date', 'desc')
                     ->get()
                     ->map(function ($result) {
-                        // Convert purchase_date string to Carbon object
                         $result->purchase_date = \Carbon\Carbon::parse($result->purchase_date);
                         return $result;
                     });
@@ -728,6 +786,7 @@ class ProductsController extends Controller
         return view('products.barcode-search', [
             'barcodeResults' => $barcodeResults,
             'productSuppliers' => $productSuppliers,
+            'imeiResult' => $imeiResult,
             'searched' => true,
             'barcode' => $barcode
         ]);

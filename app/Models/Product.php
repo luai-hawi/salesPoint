@@ -20,6 +20,7 @@ class Product extends Model
         'cost_price',
         'selling_price',
         'has_tags',
+        'has_imeis',
         'is_active',
         'user_id', // the user who owns this product
         'last_sale_date',
@@ -42,6 +43,7 @@ class Product extends Model
         'selling_price' => 'decimal:2',
         'is_active' => 'boolean',
         'has_tags' => 'boolean',
+        'has_imeis' => 'boolean',
     ];
 
     public function bills()
@@ -58,6 +60,11 @@ class Product extends Model
     public function barcodes()
     {
         return $this->hasMany(ProductBarcode::class);
+    }
+
+    public function imeis()
+    {
+        return $this->hasMany(ProductImei::class);
     }
 
     public function variantGroup()

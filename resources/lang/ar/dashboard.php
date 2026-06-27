@@ -101,4 +101,6 @@ return [
     'Returned' => 'مرتجع',
     'View Bill' => 'عرض الفاتورة',
     'Create Bill' => 'إنشاء فاتورة',
+    'Classic' => 'كلاسيك',
+    'Focus' => 'تركيز',
 ];

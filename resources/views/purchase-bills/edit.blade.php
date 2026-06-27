@@ -374,16 +374,16 @@
                                     </div>
                                     <div id="duplicate-products" class="mt-4 space-y-2">
                                         ${products.map(product => `
-                                                                                                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                                                                                                        <div class="flex-1">
-                                                                                                                            <div class="font-medium text-gray-900">${product.name}</div>
-                                                                                                                            <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                                                                                                            <div class="flex-1">
+                                                                                                                                <div class="font-medium text-gray-900">${product.name}</div>
+                                                                                                                                <div class="text-sm text-gray-500">Cost: ₪${product.cost_price} | Stock: ${product.quantity}</div>
+                                                                                                                            </div>
+                                                                                                                            <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
+                                                                                                                                {{ __('messages.Select') }}
+                                                                                                                            </button>
                                                                                                                         </div>
-                                                                                                                        <button class="select-duplicate-product bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" data-product='${JSON.stringify(product)}'>
-                                                                                                                            {{ __('messages.Select') }}
-                                                                                                                        </button>
-                                                                                                                    </div>
-                                                                                                                `).join('')}
+                                                                                                                    `).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -719,13 +719,11 @@
                             class="w-24 border border-gray-300 rounded px-2 py-1 cost-input">
                 </td>
                 <td class="px-4 py-3">
-                    <div class="barcodes-container w-48">
-                        <div class="barcodes-list max-h-20 overflow-y-auto border border-gray-300 rounded p-1 mb-1 text-sm">
-                            <!-- Barcodes will be listed here -->
-                        </div>
-                        <div class="flex">
-                            <input type="text" class="barcode-input flex-1 border border-gray-300 rounded-l px-2 py-1 text-sm" placeholder="Enter barcode">
-                            <button type="button" class="add-barcode-btn bg-blue-600 text-white px-2 py-1 rounded-r text-sm hover:bg-blue-700" data-product-id="${productId}">Add</button>
+                    <div class="barcodes-container min-w-[200px]">
+                        <div class="barcodes-list space-y-1 max-h-20 overflow-y-auto mb-1.5"></div>
+                        <div class="flex gap-1.5">
+                            <input type="text" class="barcode-input flex-1 min-w-0 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none" placeholder="{{ __('messages.Barcode') }}...">
+                            <button type="button" class="add-barcode-btn flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-product-id="${productId}">+ {{ __('messages.Add') }}</button>
                         </div>
                     </div>
                 </td>
@@ -756,10 +754,13 @@
 
             function addBarcode(code) {
                 const item = document.createElement('div');
-                item.className = 'flex justify-between items-center py-1';
+                item.className =
+                    'flex items-center justify-between gap-1.5 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg group';
                 item.innerHTML = `
-                    <span class="text-gray-700 text-xs">${code}</span>
-                    <button type="button" class="remove-barcode text-red-600 hover:text-red-800 ml-1 text-sm">×</button>
+                    <span class="text-blue-800 font-mono text-xs truncate flex-1">${code}</span>
+                    <button type="button" class="remove-barcode flex-shrink-0 text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 `;
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';

@@ -61,7 +61,7 @@ Route::get('/dashboard', function () {
     $products = \App\Models\Product::where('user_id', $ownerId)
         ->where('is_active', true)
         ->with('barcodes')
-        ->select('id', 'name', 'selling_price', 'cost_price', 'barcode', 'pictures', 'quantity', 'category', 'has_tags')
+        ->select('id', 'name', 'selling_price', 'cost_price', 'barcode', 'pictures', 'quantity', 'category', 'has_tags', 'has_imeis')
         ->get()
         ->map(function ($product) {
             // Transform barcodes relationship to simple array
@@ -166,6 +166,10 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 
 
 
+use App\Http\Controllers\ProductImeiController;
+
+
+
 // Products - Search routes (used by dashboard) - moved outside middleware for AJAX access
 Route::middleware(['auth'])->group(function () {
     Route::get('/products/search', [ProductsController::class, 'search'])->name('products.search');
@@ -175,6 +179,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/products/get-suppliers', [ProductsController::class, 'getProductSuppliers'])->name('products.get-suppliers');
     Route::get('/products/categories', [ProductsController::class, 'getCategories'])->name('products.categories');
     Route::post('/products/check-barcodes', [ProductsController::class, 'checkBarcodes'])->name('products.check-barcodes');
+
+    // IMEI routes
+    Route::get('/products/imei/check', [ProductImeiController::class, 'checkExists'])->name('products.imei.check');
+    Route::get('/products/imei/search', [ProductImeiController::class, 'search'])->name('products.imei.search');
+    Route::get('/products/{product}/imeis', [ProductImeiController::class, 'index'])->name('products.imeis.index');
+    Route::get('/products/{product}/imeis/available', [ProductImeiController::class, 'available'])->name('products.imeis.available');
+    Route::post('/products/{product}/imeis', [ProductImeiController::class, 'store'])->name('products.imeis.store');
+    Route::delete('/products/{product}/imeis/{imei}', [ProductImeiController::class, 'destroy'])->name('products.imeis.destroy');
 });
 
 // Barcode search page
@@ -203,6 +215,9 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 
         // Shop owners can manage visibility settings for their employee accounts (no manage_settings permission required)
         Route::post('/settings/employees/{user}/visibility', [SettingsController::class, 'updateEmployeeVisibilitySettings'])->name('settings.employee-visibility');
+
+        // POS view mode toggle (accessible by all authenticated users)
+        Route::post('/settings/pos-view-mode', [SettingsController::class, 'updatePosViewMode'])->name('settings.pos-view-mode');
 
         Route::get('/api/tags', [BillsController::class, 'getTags'])->name('api.tags');
         Route::get('/customers/{customer}/recent-payments', [CustomerController::class, 'getRecentPayments'])->name('customers.recent-payments');
