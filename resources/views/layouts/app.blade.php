@@ -736,6 +736,41 @@
 </head>
 
 <body class="font-sans antialiased">
+
+    {{-- ── Offline Banner ────────────────────────────────────────────────────── --}}
+    <div id="sp-offline-banner" style="display:none"
+        class="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 bg-red-600 text-white text-sm font-medium px-4 py-2 shadow-lg">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 12h.01M8.464 8.464a5 5 0 000 7.072M5.636 5.636a9 9 0 000 12.728" />
+        </svg>
+        <span>{{ __('offline.you_are_offline') }}</span>
+    </div>
+
+    {{-- ── Floating Sync Button (shown when pending bills exist) ──────────────── --}}
+    <button id="sp-sync-btn" type="button" onclick="window.spSyncNow && window.spSyncNow()" style="display:none"
+        class="fixed bottom-6 {{ app()->getLocale() === 'ar' ? 'left-6' : 'right-6' }} z-[9990]
+                   flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700
+                   text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-xl
+                   transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2">
+        {{-- spinner (hidden by default) --}}
+        <svg id="sp-sync-spinner" style="display:none" class="w-4 h-4 animate-spin" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        {{-- cloud-sync icon --}}
+        <svg id="sp-sync-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+        </svg>
+        <span id="sp-sync-label">{{ __('offline.sync_now') }}</span>
+        <span id="sp-sync-badge"
+            class="inline-flex items-center justify-center w-5 h-5 bg-white text-orange-600
+                     text-xs font-bold rounded-full">0</span>
+    </button>
+
     <div class="min-h-screen bg-gray-100">
         @include('layouts.navigation')
 
@@ -771,10 +806,29 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/pwa/sw.js')
                     .then(function(registration) {
-                        console.log('PWA Service Worker registered with scope:', registration.scope);
+                        console.log('[SW] Registered, scope:', registration.scope);
+                        // Tell any waiting SW to activate immediately
+                        if (registration.waiting) {
+                            registration.waiting.postMessage({
+                                type: 'SKIP_WAITING'
+                            });
+                        }
+                        registration.addEventListener('updatefound', () => {
+                            const newSW = registration.installing;
+                            if (newSW) {
+                                newSW.addEventListener('statechange', () => {
+                                    if (newSW.state === 'installed' && navigator.serviceWorker
+                                        .controller) {
+                                        newSW.postMessage({
+                                            type: 'SKIP_WAITING'
+                                        });
+                                    }
+                                });
+                            }
+                        });
                     })
                     .catch(function(error) {
-                        console.log('PWA Service Worker registration failed:', error);
+                        console.warn('[SW] Registration failed:', error);
                     });
             });
         }
@@ -814,6 +868,11 @@
             }
         }
     </script>
+
+    <!-- Offline module (IndexedDB + sync + UI) -->
+    @auth
+        <script src="{{ asset('js/salespoint-offline.js') }}"></script>
+    @endauth
 </body>
 
 </html>

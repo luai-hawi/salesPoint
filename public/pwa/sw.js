@@ -1,63 +1,124 @@
-// SalesPoint PWA Service Worker
-// Network-first strategy with cache fallback
+// SalesPoint Enhanced Service Worker v3
+// Pages: stale-while-revalidate | Vite assets: cache-first | Images: skip
 
-const CACHE_NAME = 'salespoint-v1';
+const SHELL_CACHE = 'sp-shell-v3';
+const ASSET_CACHE = 'sp-assets-v3';
+const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE];
 
+// Pre-cache these on install so the dashboard loads offline immediately
+const PRECACHE_URLS = ['/dashboard'];
+
+// Never cache these (mutations, images, external CDN)
+const BYPASS_TESTS = [
+    (url, req) => req.method !== 'GET',
+    (url) => url.origin !== self.location.origin,
+    (url) => /\.(png|jpe?g|gif|webp|ico|svg|woff2?|ttf|eot)(\?|$)/i.test(url.pathname),
+    (url) => /\/(offline\/sync|bills\/store|products\/search|api\/)/i.test(url.pathname),
+];
+
+// Vite build assets have content hashes ? safe for long-lived cache
+const isViteAsset = (url) => url.pathname.startsWith('/build/assets/');
+
+// -- Install ----------------------------------------------------------------
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing Service Worker...');
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating Service Worker...');
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => {
-                        console.log('[SW] Deleting old cache:', name);
-                        return caches.delete(name);
-                    })
-            );
-        })
+        caches.open(SHELL_CACHE)
+            .then((cache) => cache.addAll(PRECACHE_URLS))
+            .catch(() => {}) // non-fatal if pre-cache fails
+            .then(() => self.skipWaiting())
     );
-    self.clients.claim();
 });
 
+// -- Activate ---------------------------------------------------------------
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys()
+            .then((keys) => Promise.all(
+                keys.filter((k) => !ALL_CACHES.includes(k)).map((k) => caches.delete(k))
+            ))
+            .then(() => self.clients.claim())
+    );
+});
+
+// -- Fetch ------------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') {
+    const url = new URL(event.request.url);
+
+    // Skip anything in the bypass list
+    if (BYPASS_TESTS.some((fn) => fn(url, event.request))) return;
+
+    if (isViteAsset(url)) {
+        // Content-hashed assets: serve from cache forever, fetch if missing
+        event.respondWith(cacheFirst(event.request, ASSET_CACHE));
         return;
     }
 
-    event.respondWith(
-        fetch(event.request)
-            .then((networkResponse) => {
-                // Clone the response before caching
-                const responseClone = networkResponse.clone();
+    // Everything else (navigation + misc GETs): stale-while-revalidate
+    event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+});
 
-                // Cache the response for next time
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseClone);
-                });
+// Cache-first: return cached copy; fetch & cache on miss
+async function cacheFirst(request, cacheName) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    try {
+        const response = await fetch(request);
+        if (response.ok) (await caches.open(cacheName)).put(request, response.clone());
+        return response;
+    } catch {
+        return new Response('', { status: 503 });
+    }
+}
 
-                return networkResponse;
-            })
-            .catch(() => {
-                // Network failed, try cache
-                return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
+// Stale-while-revalidate: return cached immediately and refresh in background
+async function staleWhileRevalidate(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
 
-                    // Return offline page for navigation requests
-                    if (event.request.mode === 'navigate') {
-                        return caches.match('/dashboard');
-                    }
+    // Always kick off a background network fetch to keep cache fresh
+    const networkFetch = fetch(request).then((res) => {
+        if (res.ok) cache.put(request, res.clone());
+        return res;
+    }).catch(() => null);
 
-                    return new Response('Offline', { status: 503 });
-                });
-            })
-    );
+    if (cached) {
+        networkFetch.catch(() => {}); // background update, do not await
+        return cached;
+    }
+
+    // No cache � must wait for network
+    const response = await networkFetch;
+    if (response) return response;
+
+    // Network failed and no cache � return offline fallback for navigation
+    if (request.mode === 'navigate') {
+        const fallback = await caches.match('/dashboard');
+        if (fallback) return fallback;
+        return new Response(
+            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
+            '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+            'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
+            'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
+            '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
+            '<button onclick="location.reload()">Retry</button></body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+        );
+    }
+    return new Response('', { status: 503 });
+}
+
+// -- Background Sync --------------------------------------------------------
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'sp-sync-bills') {
+        event.waitUntil(
+            self.clients.matchAll({ type: 'window' }).then((clients) =>
+                clients.forEach((c) => c.postMessage({ type: 'SP_TRIGGER_SYNC' }))
+            )
+        );
+    }
+});
+
+// -- Message Handler --------------------------------------------------------
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

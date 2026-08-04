@@ -167,8 +167,12 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 
 
 use App\Http\Controllers\ProductImeiController;
+use App\Http\Controllers\OfflineSyncController;
 
-
+// Offline sync endpoint — batch-creates bills saved in IndexedDB while offline
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,employee,restaurant,merchant'])
+    ->post('/offline/sync', [OfflineSyncController::class, 'sync'])
+    ->name('offline.sync');
 
 // Products - Search routes (used by dashboard) - moved outside middleware for AJAX access
 Route::middleware(['auth'])->group(function () {
