@@ -256,6 +256,13 @@
                                     <span
                                         class="ml-2 text-sm text-gray-700">{{ __('messages.Delete Installments') }}</span>
                                 </label>
+
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="permissions[]" value="view_reports"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span
+                                        class="ml-2 text-sm text-gray-700">{{ __('messages.View Reports') }}</span>
+                                </label>
                             </div>
                         </div>
                         @error('permissions')

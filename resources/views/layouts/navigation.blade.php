@@ -553,7 +553,8 @@
                             auth()->user()->hasPermission('view_financial') ||
                             auth()->user()->hasPermission('manage_settings') ||
                             auth()->user()->hasPermission('view_expenses') ||
-                            auth()->user()->hasPermission('manage_payments_receipts'))
+                            auth()->user()->hasPermission('manage_payments_receipts') ||
+                            auth()->user()->hasPermission('view_reports'))
 
                         <div class="my-2 px-2">
                             <div x-cloak x-show="$store.sidebar.expanded" class="px-3 pt-3 pb-1">
@@ -662,6 +663,24 @@
                                     </svg>
                                     <span x-cloak x-show="$store.sidebar.expanded"
                                         class="{{ $labelCls }}">{{ __('navigation.Payments and Receipts') }}</span>
+                                </a>
+                            </div>
+                        @endif
+
+                        {{-- Reports --}}
+                        @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports'))
+                            @php $ac = request()->routeIs('reports.*') ? $activeLink : $inactiveLink; @endphp
+                            <div @mouseenter="showTip($event, @js(__('navigation.Reports')))" @mouseleave="hideTip()"
+                                class="relative px-2 mb-0.5">
+                                <a href="{{ route('reports.index') }}"
+                                    class="{{ $navLink }} {{ $ac }}">
+                                    <svg class="{{ $iconCls }}" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span x-cloak x-show="$store.sidebar.expanded"
+                                        class="{{ $labelCls }}">{{ __('navigation.Reports') }}</span>
                                 </a>
                             </div>
                         @endif

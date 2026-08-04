@@ -2524,4 +2524,79 @@ return [
     'No IMEIs recorded' => 'لا توجد أرقام IMEI مسجلة',
     'Created By' => 'أنشئ بواسطة',
     'Product not found for barcode: {code}' => 'المنتج غير موجود للباركود: {code}',
+
+    // ── مركز التقارير ─────────────────────────────────────────────────────────
+    'Reports Center'             => 'مركز التقارير',
+    'Select a Report'            => 'اختر تقريراً',
+    'select_report_hint'         => 'اختر نوع التقرير من الشريط الجانبي للبدء.',
+    'Generate Report'            => 'إنشاء التقرير',
+    'Generating...'              => 'جارٍ الإنشاء...',
+    'Print Report'               => 'طباعة التقرير',
+    'No records found'           => 'لا توجد سجلات',
+    'Generated at'               => 'تم الإنشاء في',
+    'report_max_rows_warning'    => 'النتائج محدودة بـ 1,000 سجل. قلّص نطاق التاريخ للحصول على بيانات كاملة.',
+    'Invalid date range'         => 'نطاق التاريخ غير صحيح: يجب أن يكون تاريخ البداية قبل تاريخ النهاية.',
+    'Invalid report type'        => 'نوع التقرير غير صحيح.',
+
+    // تصنيفات التقارير
+    'Sales Reports'              => 'تقارير المبيعات',
+    'Customer Reports'           => 'تقارير العملاء',
+    'Purchase Reports'           => 'تقارير المشتريات',
+    'Supplier Reports'           => 'تقارير الموردين',
+    'Employee Reports'           => 'تقارير الموظفين',
+    'Financial Reports'          => 'التقارير المالية',
+
+    // أنواع التقارير
+    'All Sale Bills'             => 'جميع فواتير البيع',
+    'Customer Bills'             => 'فواتير العميل',
+    'Customer Statement'         => 'كشف حساب العميل',
+    'Customer Balances'          => 'أرصدة العملاء',
+    'All Purchase Bills'         => 'جميع فواتير الشراء',
+    'Supplier Purchase Bills'    => 'فواتير شراء المورد',
+    'Supplier Balances'          => 'أرصدة الموردين',
+    'Employee Salary Payments'   => 'دفعات رواتب الموظفين',
+    'Employee Work Report'       => 'تقرير عمل الموظف',
+    'Expenses Report'            => 'تقرير المصروفات',
+
+    // تسميات الفلاتر
+    'Date From'                  => 'من تاريخ',
+    'Date To'                    => 'إلى تاريخ',
+    'All Customers'              => 'جميع العملاء',
+    'All Suppliers'              => 'جميع الموردين',
+    'All Employees'              => 'جميع الموظفين',
+    'Employee Account'           => 'حساب الموظف',
+    'Optional'                   => 'اختياري',
+    'From'                       => 'من',
+    'To'                         => 'إلى',
+
+    // أعمدة التقارير
+    'Bill #'                     => 'رقم الفاتورة',
+    'Phone'                      => 'الهاتف',
+    'Payment Type'               => 'نوع الدفع',
+    'Payment Date'               => 'تاريخ الدفع',
+    'Job Title'                  => 'المسمى الوظيفي',
+    'Email'                      => 'البريد الإلكتروني',
+    'Reference'                  => 'المرجع',
+    'Damaged'                    => 'تالف',
+    'Returned'                   => 'مرتجع',
+    'Supplier'                   => 'المورد',
+    'Employee'                   => 'الموظف',
+    'Amount'                     => 'المبلغ',
+    'Customer'                   => 'العميل',
+    'Title'                      => 'العنوان',
+    'Filters'                    => 'الفلاتر',
+
+    // ملخص التقرير
+    'Total Records'              => 'إجمالي السجلات',
+    'Total Amount'               => 'إجمالي المبلغ',
+    'Total Sales'                => 'إجمالي المبيعات',
+    'Total Profit'               => 'إجمالي الربح',
+    'Total Balance Owed'         => 'إجمالي الديون المستحقة',
+    'Total Credit Balance'       => 'إجمالي الرصيد الدائن',
+    'Current Balance'            => 'الرصيد الحالي',
+    'owes'                       => 'مديون لنا',
+    'credit'                     => 'رصيد دائن',
+
+    // صلاحيات
+    'View Reports'               => 'عرض التقارير',
 ];

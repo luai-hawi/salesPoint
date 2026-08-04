@@ -2375,4 +2375,79 @@ return [
     'No IMEIs recorded' => 'No IMEI codes recorded',
     'Created By' => 'Created By',
     'Product not found for barcode: {code}' => 'Product not found for barcode: {code}',
+
+    // ── Reports Center ──────────────────────────────────────────────────
+    'Reports Center'             => 'Reports Center',
+    'Select a Report'            => 'Select a Report',
+    'select_report_hint'         => 'Choose a report type from the sidebar to get started.',
+    'Generate Report'            => 'Generate Report',
+    'Generating...'              => 'Generating...',
+    'Print Report'               => 'Print Report',
+    'No records found'           => 'No records found',
+    'Generated at'               => 'Generated at',
+    'report_max_rows_warning'    => 'Results limited to 1,000 rows. Narrow your date range for complete data.',
+    'Invalid date range'         => 'Invalid date range: start date must be before end date.',
+    'Invalid report type'        => 'Invalid report type.',
+
+    // Report category labels
+    'Sales Reports'              => 'Sales Reports',
+    'Customer Reports'           => 'Customer Reports',
+    'Purchase Reports'           => 'Purchase Reports',
+    'Supplier Reports'           => 'Supplier Reports',
+    'Employee Reports'           => 'Employee Reports',
+    'Financial Reports'          => 'Financial Reports',
+
+    // Report type labels
+    'All Sale Bills'             => 'All Sale Bills',
+    'Customer Bills'             => 'Customer Bills',
+    'Customer Statement'         => 'Customer Statement',
+    'Customer Balances'          => 'Customer Balances',
+    'All Purchase Bills'         => 'All Purchase Bills',
+    'Supplier Purchase Bills'    => 'Supplier Purchase Bills',
+    'Supplier Balances'          => 'Supplier Balances',
+    'Employee Salary Payments'   => 'Employee Salary Payments',
+    'Employee Work Report'       => 'Employee Work Report',
+    'Expenses Report'            => 'Expenses Report',
+
+    // Report filter labels
+    'Date From'                  => 'Date From',
+    'Date To'                    => 'Date To',
+    'All Customers'              => 'All Customers',
+    'All Suppliers'              => 'All Suppliers',
+    'All Employees'              => 'All Employees',
+    'Employee Account'           => 'Employee Account',
+    'Optional'                   => 'Optional',
+    'From'                       => 'From',
+    'To'                         => 'To',
+
+    // Report column labels
+    'Bill #'                     => 'Bill #',
+    'Phone'                      => 'Phone',
+    'Payment Type'               => 'Payment Type',
+    'Payment Date'               => 'Payment Date',
+    'Job Title'                  => 'Job Title',
+    'Email'                      => 'Email',
+    'Reference'                  => 'Reference',
+    'Damaged'                    => 'Damaged',
+    'Returned'                   => 'Returned',
+    'Supplier'                   => 'Supplier',
+    'Employee'                   => 'Employee',
+    'Amount'                     => 'Amount',
+    'Customer'                   => 'Customer',
+    'Title'                      => 'Title',
+    'Filters'                    => 'Filters',
+
+    // Report summary labels
+    'Total Records'              => 'Total Records',
+    'Total Amount'               => 'Total Amount',
+    'Total Sales'                => 'Total Sales',
+    'Total Profit'               => 'Total Profit',
+    'Total Balance Owed'         => 'Total Balance Owed',
+    'Total Credit Balance'       => 'Total Credit Balance',
+    'Current Balance'            => 'Current Balance',
+    'owes'                       => 'owes us',
+    'credit'                     => 'credit',
+
+    // Permission label
+    'View Reports'               => 'View Reports',
 ];

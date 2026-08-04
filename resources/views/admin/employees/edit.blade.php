@@ -411,6 +411,13 @@
                                         <span
                                             class="ml-2 text-sm text-gray-700">{{ __('messages.Payments and Receipts') }}</span>
                                     </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="permissions[]" value="view_reports"
+                                            {{ in_array('view_reports', $employeePermissions) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span
+                                            class="ml-2 text-sm text-gray-700">{{ __('messages.View Reports') }}</span>
+                                    </label>
                                 </div>
                             </div>
 
