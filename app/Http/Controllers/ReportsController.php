@@ -48,7 +48,7 @@ class ReportsController extends Controller
             'customer_bills'         => $this->customerBillsReport($ownerId, $request, $from, $to),
             'customer_statement'     => $this->customerStatementReport($ownerId, $request, $from, $to),
             'supplier_payments'      => $this->supplierPaymentsReport($ownerId, $request, $from, $to),
-            'supplier_purchase_bills'=> $this->supplierPurchaseBillsReport($ownerId, $request, $from, $to),
+            'supplier_purchase_bills' => $this->supplierPurchaseBillsReport($ownerId, $request, $from, $to),
             'employee_payments'      => $this->employeePaymentsReport($ownerId, $request, $from, $to),
             'employee_work'          => $this->employeeWorkReport($ownerId, $request, $from, $to),
             'sale_bills'             => $this->saleBillsReport($ownerId, $request, $from, $to),
@@ -79,8 +79,15 @@ class ReportsController extends Controller
         $q = DB::table('customer_payments as cp')
             ->join('customers as c', 'c.id', '=', 'cp.customer_id')
             ->where('cp.user_id', $ownerId)
-            ->select('cp.id', 'cp.amount', 'cp.type', 'cp.note', 'cp.created_at',
-                     'c.name as customer_name', 'c.phone');
+            ->select(
+                'cp.id',
+                'cp.amount',
+                'cp.type',
+                'cp.note',
+                'cp.created_at',
+                'c.name as customer_name',
+                'c.phone'
+            );
 
         if ($customerId > 0) $q->where('cp.customer_id', $customerId);
         if ($from) $q->whereDate('cp.created_at', '>=', $from);
@@ -103,8 +110,14 @@ class ReportsController extends Controller
             ->leftJoin('customers as c', 'c.id', '=', 'b.customer_id')
             ->where('b.user_id', $ownerId)
             ->select(
-                'b.id', 'b.total_price', 'b.note', 'b.is_damaged', 'b.is_returned', 'b.created_at',
-                'c.name as customer_name', 'c.phone',
+                'b.id',
+                'b.total_price',
+                'b.note',
+                'b.is_damaged',
+                'b.is_returned',
+                'b.created_at',
+                'c.name as customer_name',
+                'c.phone',
                 DB::raw('(SELECT COALESCE(SUM((bp.selling_price - COALESCE(bp.cost_price,0)) * bp.quantity),0)
                           FROM bill_product bp WHERE bp.bill_id = b.id) as profit')
             );
@@ -134,8 +147,15 @@ class ReportsController extends Controller
             ->leftJoin('customers as c', 'c.id', '=', 'b.customer_id')
             ->where('b.user_id', $ownerId)
             ->select(
-                'b.id', 'b.total_price', 'b.note', 'b.is_damaged', 'b.is_returned', 'b.created_at',
-                'c.name as customer_name', 'c.phone', 'c.balance'
+                'b.id',
+                'b.total_price',
+                'b.note',
+                'b.is_damaged',
+                'b.is_returned',
+                'b.created_at',
+                'c.name as customer_name',
+                'c.phone',
+                'c.balance'
             );
 
         if ($customerId > 0) $q->where('b.customer_id', $customerId);
@@ -147,7 +167,7 @@ class ReportsController extends Controller
         // Fetch customer info separately for the statement header
         $customer = $customerId > 0
             ? DB::table('customers')->where('id', $customerId)->where('user_id', $ownerId)
-                  ->select('name', 'phone', 'balance')->first()
+            ->select('name', 'phone', 'balance')->first()
             : null;
 
         return response()->json([
@@ -168,8 +188,16 @@ class ReportsController extends Controller
         $q = DB::table('supplier_payments as sp')
             ->join('suppliers as s', 's.id', '=', 'sp.supplier_id')
             ->where('sp.user_id', $ownerId)
-            ->select('sp.id', 'sp.amount', 'sp.type', 'sp.note', 'sp.payment_date', 'sp.created_at',
-                     's.name as supplier_name', 's.phone');
+            ->select(
+                'sp.id',
+                'sp.amount',
+                'sp.type',
+                'sp.note',
+                'sp.payment_date',
+                'sp.created_at',
+                's.name as supplier_name',
+                's.phone'
+            );
 
         if ($supplierId > 0) $q->where('sp.supplier_id', $supplierId);
         if ($from) $q->whereDate('sp.payment_date', '>=', $from);
@@ -191,8 +219,14 @@ class ReportsController extends Controller
         $q = DB::table('purchase_bills as pb')
             ->leftJoin('suppliers as s', 's.id', '=', 'pb.supplier_id')
             ->where('pb.user_id', $ownerId)
-            ->select('pb.id', 'pb.total_amount', 'pb.notes', 'pb.reference_number',
-                     'pb.purchase_date', 's.name as supplier_name');
+            ->select(
+                'pb.id',
+                'pb.total_amount',
+                'pb.notes',
+                'pb.reference_number',
+                'pb.purchase_date',
+                's.name as supplier_name'
+            );
 
         if ($supplierId > 0) $q->where('pb.supplier_id', $supplierId);
         if ($from) $q->whereDate('pb.purchase_date', '>=', $from);
@@ -214,8 +248,15 @@ class ReportsController extends Controller
         $q = DB::table('employee_payments as ep')
             ->join('employees as e', 'e.id', '=', 'ep.employee_id')
             ->where('e.shop_owner_id', $ownerId)
-            ->select('ep.id', 'ep.amount', 'ep.type', 'ep.note', 'ep.payment_date',
-                     'e.name as employee_name', 'e.job_title');
+            ->select(
+                'ep.id',
+                'ep.amount',
+                'ep.type',
+                'ep.note',
+                'ep.payment_date',
+                'e.name as employee_name',
+                'e.job_title'
+            );
 
         if ($employeeId > 0) $q->where('ep.employee_id', $employeeId);
         if ($from) $q->whereDate('ep.payment_date', '>=', $from);
@@ -239,8 +280,14 @@ class ReportsController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'b.created_by')
             ->where('b.user_id', $ownerId)
             ->select(
-                'b.id', 'b.total_price', 'b.note', 'b.is_damaged', 'b.is_returned', 'b.created_at',
-                'c.name as customer_name', 'u.name as creator_name',
+                'b.id',
+                'b.total_price',
+                'b.note',
+                'b.is_damaged',
+                'b.is_returned',
+                'b.created_at',
+                'c.name as customer_name',
+                'u.name as creator_name',
                 DB::raw('(SELECT COALESCE(SUM((bp.selling_price - COALESCE(bp.cost_price,0)) * bp.quantity),0)
                           FROM bill_product bp WHERE bp.bill_id = b.id) as profit')
             );
@@ -277,8 +324,14 @@ class ReportsController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'b.created_by')
             ->where('b.user_id', $ownerId)
             ->select(
-                'b.id', 'b.total_price', 'b.note', 'b.is_damaged', 'b.is_returned', 'b.created_at',
-                'c.name as customer_name', 'u.name as creator_name',
+                'b.id',
+                'b.total_price',
+                'b.note',
+                'b.is_damaged',
+                'b.is_returned',
+                'b.created_at',
+                'c.name as customer_name',
+                'u.name as creator_name',
                 DB::raw('(SELECT COALESCE(SUM((bp.selling_price - COALESCE(bp.cost_price,0)) * bp.quantity),0)
                           FROM bill_product bp WHERE bp.bill_id = b.id) as profit')
             );
@@ -308,8 +361,15 @@ class ReportsController extends Controller
             ->leftJoin('suppliers as s', 's.id', '=', 'pb.supplier_id')
             ->leftJoin('users as u', 'u.id', '=', 'pb.created_by')
             ->where('pb.user_id', $ownerId)
-            ->select('pb.id', 'pb.total_amount', 'pb.notes', 'pb.reference_number',
-                     'pb.purchase_date', 's.name as supplier_name', 'u.name as creator_name');
+            ->select(
+                'pb.id',
+                'pb.total_amount',
+                'pb.notes',
+                'pb.reference_number',
+                'pb.purchase_date',
+                's.name as supplier_name',
+                'u.name as creator_name'
+            );
 
         if ($supplierId > 0) $q->where('pb.supplier_id', $supplierId);
         if ($from) $q->whereDate('pb.purchase_date', '>=', $from);
