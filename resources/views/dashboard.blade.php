@@ -3231,8 +3231,15 @@
                 })
                 .catch(error => {
                     if (currentPage === 1) {
-                        document.getElementById('product-results').innerHTML =
-                            '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
+                        const embedded = typeof products !== 'undefined' && products.length ? products : null;
+                        if (embedded) {
+                            allProducts = embedded;
+                            productsLoaded = true;
+                            renderFilteredProducts();
+                        } else {
+                            document.getElementById('product-results').innerHTML =
+                                '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
+                        }
                     }
                     console.error(error);
                     showNotification('{{ __('messages.Error loading products') }}', 'error');
