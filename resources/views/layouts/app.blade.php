@@ -16,6 +16,7 @@
     <link rel="manifest" href="{{ asset('pwa/manifest.json') }}">
     <meta name="theme-color" content="#3b82f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="SalesPoint">
 
@@ -891,6 +892,41 @@
     @auth
         <script src="{{ asset('js/salespoint-offline.js') }}"></script>
     @endauth
+
+    <script>
+        (function() {
+            function sendAuthState(state) {
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: state });
+                }
+            }
+
+            var isAuth = @auth true @else false @endauth;
+
+            function notifySW() {
+                if (navigator.serviceWorker) {
+                    if (navigator.serviceWorker.controller) {
+                        sendAuthState(isAuth);
+                    } else {
+                        navigator.serviceWorker.addEventListener('controllerchange', function() {
+                            sendAuthState(isAuth);
+                        }, { once: true });
+                    }
+                }
+            }
+
+            notifySW();
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var forms = document.querySelectorAll('form[action="{{ route('logout') }}"]');
+                forms.forEach(function(form) {
+                    form.addEventListener('submit', function() {
+                        sendAuthState(false);
+                    });
+                });
+            });
+        })();
+    </script>
 </body>
 
 </html>

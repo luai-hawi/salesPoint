@@ -3212,8 +3212,11 @@
             if (category) params.append('category', category);
 
             fetch(`/products/searchAll?${params}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('{{ __('messages.Search failed') }}');
+                .then(async response => {
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!response.ok || !contentType.includes('application/json')) {
+                        throw new Error('{{ __('messages.Search failed') }}');
+                    }
                     return response.json();
                 })
                 .then(data => {

@@ -28,17 +28,14 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        // Get the authenticated user and current session
+        $request->session()->regenerate();
+
         $user = Auth::user();
         $currentSessionId = Session::getId();
 
-        // IMPORTANT: Terminate other sessions BEFORE updating the session_id
         $this->logoutOtherSessions($user, $currentSessionId);
 
-        // Update user's session ID to the current one (this makes it the "valid" session)
         $user->update(['session_id' => $currentSessionId]);
-
-        $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -61,7 +58,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 
     /**

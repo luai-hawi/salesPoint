@@ -3,7 +3,8 @@
 
 const SHELL_CACHE = 'sp-shell-v5';
 const ASSET_CACHE = 'sp-assets-v5';
-const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE];
+const AUTH_CACHE = 'sp-auth-v1';
+const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE, AUTH_CACHE];
 
 const PRECACHE_URLS = [
     '/dashboard',
@@ -31,7 +32,8 @@ self.addEventListener('install', (event) => {
                 PRECACHE_URLS.map(async (url) => {
                     try {
                         const response = await fetch(url, { credentials: 'include' });
-                        if (response && response.ok) {
+                        const requestedUrl = new URL(url, self.location.origin).href;
+                        if (response && response.ok && response.url === requestedUrl) {
                             await cache.put(url, response.clone());
                         }
                     } catch (_) {
@@ -84,6 +86,27 @@ self.addEventListener('fetch', (event) => {
     // Bypass everything else (API calls, etc.)
 });
 
+// -- Auth State --------------------------------------------------------------
+async function setAuthState(authenticated) {
+    const cache = await caches.open(AUTH_CACHE);
+    const response = new Response(JSON.stringify({ authenticated }), {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    await cache.put('/state', response);
+}
+
+async function getAuthState() {
+    try {
+        const cache = await caches.open(AUTH_CACHE);
+        const response = await cache.match('/state');
+        if (!response) return false;
+        const data = await response.json();
+        return data.authenticated === true;
+    } catch {
+        return false;
+    }
+}
+
 // Cache-first: return cached copy; fetch & cache on miss
 async function cacheFirst(request, cacheName) {
     const cached = await caches.match(request);
@@ -102,6 +125,12 @@ async function staleWhileRevalidate(request, cacheName) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
 
+    const url = new URL(request.url);
+    const isProtectedPage = request.mode === 'navigate' && (url.pathname === '/dashboard' || url.pathname === '/bills/create');
+    if (cached && isProtectedPage && !(await getAuthState())) {
+        cached = undefined;
+    }
+
     if (cached) {
         fetch(request).then((res) => {
             if (res.ok) cache.put(request, res.clone());
@@ -116,6 +145,17 @@ async function staleWhileRevalidate(request, cacheName) {
     } catch {
         if (request.mode === 'navigate') {
             const fallback = await caches.match('/dashboard');
+            if (fallback && !(await getAuthState())) {
+                return new Response(
+                    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
+                    '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+                    'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
+                    'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
+                    '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
+                    '<button onclick="location.reload()">Retry</button></body></html>',
+                    { headers: { 'Content-Type': 'text/html' } }
+                );
+            }
             if (fallback) return fallback;
             const salesFallback = await caches.match('/bills/create');
             if (salesFallback) return salesFallback;
@@ -144,6 +184,9 @@ async function offlineRedirectToDashboard(request, cacheName) {
         return response;
     } catch {
         const fallback = await caches.match('/dashboard');
+        if (fallback && !(await getAuthState())) {
+            return new Response('', { status: 503 });
+        }
         if (fallback) return fallback;
         const salesFallback = await caches.match('/bills/create');
         if (salesFallback) return salesFallback;
@@ -169,6 +212,11 @@ self.addEventListener('message', (event) => {
         return;
     }
 
+    if (event.data?.type === 'SP_SET_AUTH') {
+        event.waitUntil(setAuthState(!!event.data.authenticated));
+        return;
+    }
+
     if (event.data?.type === 'SP_WARM_CACHE') {
         const urls = Array.isArray(event.data.urls) ? event.data.urls : [];
         event.waitUntil(
@@ -177,7 +225,8 @@ self.addEventListener('message', (event) => {
                 await Promise.allSettled(urls.map(async (url) => {
                     try {
                         const response = await fetch(url, { credentials: 'include' });
-                        if (response && response.ok) {
+                        const requestedUrl = new URL(url, self.location.origin).href;
+                        if (response && response.ok && response.url === requestedUrl) {
                             await cache.put(url, response.clone());
                         }
                     } catch (_) {
