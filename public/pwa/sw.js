@@ -134,5 +134,27 @@ self.addEventListener('sync', (event) => {
 
 // -- Message Handler --------------------------------------------------------
 self.addEventListener('message', (event) => {
-    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+        return;
+    }
+
+    if (event.data?.type === 'SP_WARM_CACHE') {
+        const urls = Array.isArray(event.data.urls) ? event.data.urls : [];
+        event.waitUntil(
+            (async () => {
+                const cache = await caches.open(SHELL_CACHE);
+                await Promise.allSettled(urls.map(async (url) => {
+                    try {
+                        const response = await fetch(url, { credentials: 'include' });
+                        if (response && response.ok) {
+                            await cache.put(url, response.clone());
+                        }
+                    } catch (_) {
+                        // Ignore warm-up failures; runtime caching will retry.
+                    }
+                }));
+            })()
+        );
+    }
 });

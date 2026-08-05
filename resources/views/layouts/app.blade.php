@@ -803,33 +803,51 @@
     <!-- PWA Registration Script -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/pwa/sw.js')
-                    .then(function(registration) {
-                        console.log('[SW] Registered, scope:', registration.scope);
-                        // Tell any waiting SW to activate immediately
-                        if (registration.waiting) {
-                            registration.waiting.postMessage({
-                                type: 'SKIP_WAITING'
+            const OFFLINE_WARM_URLS = ['/dashboard', '/bills/create'];
+
+            function warmOfflineCache(registration) {
+                if (!registration || !registration.active) return;
+                registration.active.postMessage({
+                    type: 'SP_WARM_CACHE',
+                    urls: OFFLINE_WARM_URLS
+                });
+            }
+
+            navigator.serviceWorker.register('/pwa/sw.js')
+                .then(async function(registration) {
+                    console.log('[SW] Registered, scope:', registration.scope);
+
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({
+                            type: 'SKIP_WAITING'
+                        });
+                    }
+
+                    registration.addEventListener('updatefound', () => {
+                        const newSW = registration.installing;
+                        if (newSW) {
+                            newSW.addEventListener('statechange', () => {
+                                if (newSW.state === 'installed' && navigator.serviceWorker
+                                    .controller) {
+                                    newSW.postMessage({
+                                        type: 'SKIP_WAITING'
+                                    });
+                                }
                             });
                         }
-                        registration.addEventListener('updatefound', () => {
-                            const newSW = registration.installing;
-                            if (newSW) {
-                                newSW.addEventListener('statechange', () => {
-                                    if (newSW.state === 'installed' && navigator.serviceWorker
-                                        .controller) {
-                                        newSW.postMessage({
-                                            type: 'SKIP_WAITING'
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    })
-                    .catch(function(error) {
-                        console.warn('[SW] Registration failed:', error);
                     });
+
+                    const readyReg = await navigator.serviceWorker.ready;
+                    warmOfflineCache(readyReg);
+                })
+                .catch(function(error) {
+                    console.warn('[SW] Registration failed:', error);
+                });
+
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (sessionStorage.getItem('sp-sw-refreshed')) return;
+                sessionStorage.setItem('sp-sw-refreshed', '1');
+                window.location.reload();
             });
         }
 
