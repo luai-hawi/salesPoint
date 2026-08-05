@@ -1,12 +1,12 @@
-// SalesPoint Enhanced Service Worker v3
+// SalesPoint Enhanced Service Worker v4
 // Pages: stale-while-revalidate | Vite assets: cache-first | Images: skip
 
-const SHELL_CACHE = 'sp-shell-v3';
-const ASSET_CACHE = 'sp-assets-v3';
+const SHELL_CACHE = 'sp-shell-v4';
+const ASSET_CACHE = 'sp-assets-v4';
 const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE];
 
 // Pre-cache these on install so the dashboard loads offline immediately
-const PRECACHE_URLS = ['/dashboard'];
+const PRECACHE_URLS = ['/dashboard', '/bills/create'];
 
 // Never cache these (mutations, images, external CDN)
 const BYPASS_TESTS = [
@@ -22,10 +22,22 @@ const isViteAsset = (url) => url.pathname.startsWith('/build/assets/');
 // -- Install ----------------------------------------------------------------
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(SHELL_CACHE)
-            .then((cache) => cache.addAll(PRECACHE_URLS))
-            .catch(() => {}) // non-fatal if pre-cache fails
-            .then(() => self.skipWaiting())
+        (async () => {
+            const cache = await caches.open(SHELL_CACHE);
+            await Promise.allSettled(
+                PRECACHE_URLS.map(async (url) => {
+                    try {
+                        const response = await fetch(url, { credentials: 'include' });
+                        if (response && response.ok) {
+                            await cache.put(url, response.clone());
+                        }
+                    } catch (_) {
+                        // Non-fatal: runtime caching will still populate entries.
+                    }
+                })
+            );
+            await self.skipWaiting();
+        })()
     );
 });
 
@@ -94,6 +106,8 @@ async function staleWhileRevalidate(request, cacheName) {
     if (request.mode === 'navigate') {
         const fallback = await caches.match('/dashboard');
         if (fallback) return fallback;
+        const salesFallback = await caches.match('/bills/create');
+        if (salesFallback) return salesFallback;
         return new Response(
             '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
             '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +

@@ -23,6 +23,15 @@
     let isSyncing = false;
     let userId    = null;
 
+    function getLocalId(record) {
+        return record?.localId || record?.local_id || null;
+    }
+
+    function normalizeForSync(record) {
+        const localId = getLocalId(record);
+        return localId ? { ...record, local_id: localId } : { ...record };
+    }
+
     // ── IndexedDB ───────────────────────────────────────────────────────────
     function openDB() {
         return new Promise((resolve, reject) => {
@@ -69,7 +78,15 @@
         const d = await getDB();
         return new Promise((resolve, reject) => {
             const tx = d.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).put({ ...data, userId, status: 'pending', savedAt: new Date().toISOString() });
+            const localId = getLocalId(data) || ('rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
+            tx.objectStore(storeName).put({
+                ...data,
+                localId,
+                local_id: data?.local_id || localId,
+                userId,
+                status: 'pending',
+                savedAt: new Date().toISOString(),
+            });
             tx.oncomplete = () => resolve();
             tx.onerror    = (e) => reject(e.target.error);
         });
@@ -207,6 +224,10 @@
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
         try {
+            const billsPayload = bills.map(normalizeForSync);
+            const paymentsPayload = payments.map(normalizeForSync);
+            const installmentsPayload = installments.map(normalizeForSync);
+
             const res = await fetch(SYNC_URL, {
                 method : 'POST',
                 headers: {
@@ -215,7 +236,11 @@
                     'X-CSRF-TOKEN'    : csrf,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ bills, payments, installments }),
+                body: JSON.stringify({
+                    bills: billsPayload,
+                    payments: paymentsPayload,
+                    installments: installmentsPayload,
+                }),
             });
 
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -225,17 +250,20 @@
 
             // Process bills
             for (const r of (data.bills?.results || [])) {
-                if (r.success) { await markSynced(STORE_BILLS, r.local_id); synced++; }
+                const localId = r.local_id || r.localId;
+                if (r.success && localId) { await markSynced(STORE_BILLS, localId); synced++; }
                 else failed++;
             }
             // Process payments
             for (const r of (data.payments?.results || [])) {
-                if (r.success) { await markSynced(STORE_PAYMENTS, r.local_id); synced++; }
+                const localId = r.local_id || r.localId;
+                if (r.success && localId) { await markSynced(STORE_PAYMENTS, localId); synced++; }
                 else failed++;
             }
             // Process installments
             for (const r of (data.installments?.results || [])) {
-                if (r.success) { await markSynced(STORE_INSTALLMENTS, r.local_id); synced++; }
+                const localId = r.local_id || r.localId;
+                if (r.success && localId) { await markSynced(STORE_INSTALLMENTS, localId); synced++; }
                 else failed++;
             }
 
@@ -286,12 +314,12 @@
             if (navigator.onLine) return _fetch.apply(this, arguments);
 
             const url    = typeof input === 'string' ? input : (input?.url ?? String(input));
-            const method = ((init?.method) || 'GET').toUpperCase();
+            const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
 
             if (method !== 'POST') return _fetch.apply(this, arguments);
 
             // ── Customer payment: POST /customers/{id}/payments ─────────────
-            const payMatch = url.match(/\/customers\/(\d+)\/payments$/);
+            const payMatch = url.match(/\/customers\/(\d+)\/payments(?:\?.*)?$/);
             if (payMatch) {
                 try {
                     const customerId = parseInt(payMatch[1], 10);
@@ -320,9 +348,10 @@
             }
 
             // ── Installment plan: POST /installments/from-bill ──────────────
-            if (/\/installments\/from-bill$/.test(url)) {
+            if (/\/installments\/from-bill(?:\?.*)?$/.test(url)) {
                 try {
-                    const body    = JSON.parse(init.body);
+                    const rawBody = init?.body;
+                    const body    = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
                     const localId = 'inst_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
                     await saveRecord(STORE_INSTALLMENTS, { ...body, localId });
                     await refreshSyncUI();
