@@ -99,11 +99,11 @@ async function getAuthState() {
     try {
         const cache = await caches.open(AUTH_CACHE);
         const response = await cache.match('/state');
-        if (!response) return false;
+        if (!response) return null;
         const data = await response.json();
-        return data.authenticated === true;
+        return data.authenticated === true ? true : false;
     } catch {
-        return false;
+        return null;
     }
 }
 
@@ -125,12 +125,6 @@ async function staleWhileRevalidate(request, cacheName) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
 
-    const url = new URL(request.url);
-    const isProtectedPage = request.mode === 'navigate' && (url.pathname === '/dashboard' || url.pathname === '/bills/create');
-    if (cached && isProtectedPage && !(await getAuthState())) {
-        cached = undefined;
-    }
-
     if (cached) {
         fetch(request).then((res) => {
             if (res.ok) cache.put(request, res.clone());
@@ -145,7 +139,8 @@ async function staleWhileRevalidate(request, cacheName) {
     } catch {
         if (request.mode === 'navigate') {
             const fallback = await caches.match('/dashboard');
-            if (fallback && !(await getAuthState())) {
+            const isAuthenticated = await getAuthState();
+            if (fallback && isAuthenticated === false) {
                 return new Response(
                     '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
                     '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
@@ -184,7 +179,7 @@ async function offlineRedirectToDashboard(request, cacheName) {
         return response;
     } catch {
         const fallback = await caches.match('/dashboard');
-        if (fallback && !(await getAuthState())) {
+        if (fallback && (await getAuthState()) === false) {
             return new Response('', { status: 503 });
         }
         if (fallback) return fallback;
