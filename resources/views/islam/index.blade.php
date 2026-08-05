@@ -1364,7 +1364,7 @@
             function setupPWA() {
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('/islam-pwa/sw.js').then(function(registration) {
+                    navigator.serviceWorker.register('/islam-pwa/sw.js', { scope: '/islam' }).then(function(registration) {
                         console.log('Service Worker registered:', registration);
                     }).catch(function(error) {
                         console.log('Service Worker registration failed:', error);
