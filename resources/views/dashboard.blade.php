@@ -3239,10 +3239,12 @@
                         } else {
                             document.getElementById('product-results').innerHTML =
                                 '<p class="text-red-500 text-center py-4 col-span-full">{{ __('messages.Error loading products') }}</p>';
+                            console.error(error);
+                            showNotification('{{ __('messages.Error loading products') }}', 'error');
                         }
+                    } else {
+                        console.error(error);
                     }
-                    console.error(error);
-                    showNotification('{{ __('messages.Error loading products') }}', 'error');
                 })
                 .finally(() => {
                     isLoading = false;
@@ -5468,7 +5470,7 @@
         const drawerManager = new CashDrawerManager();
 
         // Barcode Scanner Function using HTML5 QR Code
-        function initBarcodeScanner(inputId) {
+        async function initBarcodeScanner(inputId) {
             // Check if scanner modal already exists
             if (document.getElementById('barcode-scanner-modal')) {
                 return;
@@ -5496,6 +5498,27 @@
             const inputElement = document.getElementById(inputId);
             let hasScanned = false;
             let html5Qrcode = null;
+
+            if (typeof Html5Qrcode === 'undefined') {
+                if (!navigator.onLine) {
+                    showNotification('{{ __('messages.Barcode scanner is unavailable offline') }}', 'warning');
+                    scannerModal.remove();
+                    return;
+                }
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/html5-qrcode';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            if (typeof Html5Qrcode === 'undefined') {
+                showNotification('{{ __('messages.Error loading scanner') }}', 'error');
+                scannerModal.remove();
+                return;
+            }
 
             // Use HTML5 QR Code - Direct camera start
             try {

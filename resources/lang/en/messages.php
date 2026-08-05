@@ -2450,4 +2450,6 @@ return [
 
     // Permission label
     'View Reports'               => 'View Reports',
+    'Barcode scanner is unavailable offline' => 'Barcode scanner is unavailable offline',
+    'Error loading scanner'      => 'Error loading scanner',
 ];

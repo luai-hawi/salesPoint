@@ -699,6 +699,10 @@
                 videoElement.setAttribute('playsinline', 'true');
                 scannerContainer.appendChild(videoElement);
 
+                if (typeof Html5Qrcode === 'undefined') {
+                    showNotification('Barcode scanner unavailable', 'warning');
+                    return;
+                }
                 html5Qrcode = new Html5Qrcode("scanner-container");
 
                 html5Qrcode.start({
@@ -1295,6 +1299,10 @@
                 videoElement.setAttribute('playsinline', 'true');
                 scannerContainer.appendChild(videoElement);
 
+                if (typeof Html5Qrcode === 'undefined') {
+                    showNotification('Barcode scanner unavailable', 'warning');
+                    return;
+                }
                 html5Qrcode = new Html5Qrcode("scanner-container");
 
                 // Start camera directly

@@ -2599,4 +2599,6 @@ return [
 
     // صلاحيات
     'View Reports'               => 'عرض التقارير',
+    'Barcode scanner is unavailable offline' => 'ماسح الباركود غير متاح في وضع عدم الاتصال',
+    'Error loading scanner'      => 'خطأ في تحميل الماسح',
 ];
