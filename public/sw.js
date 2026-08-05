@@ -1,23 +1,26 @@
-// SalesPoint Enhanced Service Worker v4
-// Pages: stale-while-revalidate | Vite assets: cache-first | Images: skip
+// SalesPoint Enhanced Service Worker v5
+// Navigation + critical static assets only. API calls are bypassed.
 
-const SHELL_CACHE = 'sp-shell-v4';
-const ASSET_CACHE = 'sp-assets-v4';
+const SHELL_CACHE = 'sp-shell-v5';
+const ASSET_CACHE = 'sp-assets-v5';
 const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE];
 
-// Pre-cache these on install so the dashboard loads offline immediately
-const PRECACHE_URLS = ['/dashboard', '/bills/create'];
+const PRECACHE_URLS = [
+    '/dashboard',
+    '/bills/create',
+    '/js/salespoint-offline.js',
+];
 
-// Never cache these (mutations, images, external CDN)
 const BYPASS_TESTS = [
     (url, req) => req.method !== 'GET',
     (url) => url.origin !== self.location.origin,
     (url) => /\.(png|jpe?g|gif|webp|ico|svg|woff2?|ttf|eot)(\?|$)/i.test(url.pathname),
-    (url) => /\/(offline\/sync|bills\/store|products\/search|api\/)/i.test(url.pathname),
+    (url) => /\/(api\/|offline\/sync|bills\/store|products\/search|customers\/search|customers\/\d+\/payments|products\/searchWithoutBarcode|products\/searchAll|products\/search-barcode|api\/tags|api\/active-sales|bills\/quick-stats|tags|sales|installments|suppliers|purchase-bills|payments-receipts|settings|profile|admin|shopowner|products\/\d+|customers\/\d+|bills\/\d+)/i.test(url.pathname),
 ];
 
-// Vite build assets have content hashes ? safe for long-lived cache
 const isViteAsset = (url) => url.pathname.startsWith('/build/assets/');
+
+const isCriticalStatic = (url) => /^\/(js|css)\//i.test(url.pathname);
 
 // -- Install ----------------------------------------------------------------
 self.addEventListener('install', (event) => {
@@ -56,17 +59,24 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Skip anything in the bypass list
     if (BYPASS_TESTS.some((fn) => fn(url, event.request))) return;
 
     if (isViteAsset(url)) {
-        // Content-hashed assets: serve from cache forever, fetch if missing
         event.respondWith(cacheFirst(event.request, ASSET_CACHE));
         return;
     }
 
-    // Everything else (navigation + misc GETs): stale-while-revalidate
-    event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+    if (event.request.mode === 'navigate') {
+        event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+        return;
+    }
+
+    if (isCriticalStatic(url)) {
+        event.respondWith(cacheFirst(event.request, SHELL_CACHE));
+        return;
+    }
+
+    // Bypass everything else (API calls, etc.)
 });
 
 // Cache-first: return cached copy; fetch & cache on miss
@@ -87,38 +97,35 @@ async function staleWhileRevalidate(request, cacheName) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
 
-    // Always kick off a background network fetch to keep cache fresh
-    const networkFetch = fetch(request).then((res) => {
-        if (res.ok) cache.put(request, res.clone());
-        return res;
-    }).catch(() => null);
-
     if (cached) {
-        networkFetch.catch(() => {}); // background update, do not await
+        fetch(request).then((res) => {
+            if (res.ok) cache.put(request, res.clone());
+        }).catch(() => {});
         return cached;
     }
 
-    // No cache � must wait for network
-    const response = await networkFetch;
-    if (response) return response;
-
-    // Network failed and no cache � return offline fallback for navigation
-    if (request.mode === 'navigate') {
-        const fallback = await caches.match('/dashboard');
-        if (fallback) return fallback;
-        const salesFallback = await caches.match('/bills/create');
-        if (salesFallback) return salesFallback;
-        return new Response(
-            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
-            '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-            'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
-            'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
-            '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
-            '<button onclick="location.reload()">Retry</button></body></html>',
-            { headers: { 'Content-Type': 'text/html' } }
-        );
+    try {
+        const response = await fetch(request);
+        if (response.ok) cache.put(request, response.clone());
+        return response;
+    } catch {
+        if (request.mode === 'navigate') {
+            const fallback = await caches.match('/dashboard');
+            if (fallback) return fallback;
+            const salesFallback = await caches.match('/bills/create');
+            if (salesFallback) return salesFallback;
+            return new Response(
+                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
+                '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+                'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
+                'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
+                '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
+                '<button onclick="location.reload()">Retry</button></body></html>',
+                { headers: { 'Content-Type': 'text/html' } }
+            );
+        }
+        return new Response('', { status: 503 });
     }
-    return new Response('', { status: 503 });
 }
 
 // -- Background Sync --------------------------------------------------------

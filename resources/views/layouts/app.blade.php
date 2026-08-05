@@ -813,7 +813,7 @@
                 });
             }
 
-            navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' })
+            navigator.serviceWorker.register('/sw.js', { scope: '/' })
                 .then(async function(registration) {
                     console.log('[SW] Registered, scope:', registration.scope);
 
