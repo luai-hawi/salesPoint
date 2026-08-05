@@ -15,7 +15,7 @@ const BYPASS_TESTS = [
     (url, req) => req.method !== 'GET',
     (url) => url.origin !== self.location.origin,
     (url) => /\.(png|jpe?g|gif|webp|ico|svg|woff2?|ttf|eot)(\?|$)/i.test(url.pathname),
-    (url) => /\/(api\/|offline\/sync|bills\/store|products\/search|customers\/search|customers\/\d+\/payments|products\/searchWithoutBarcode|products\/searchAll|products\/search-barcode|api\/tags|api\/active-sales|bills\/quick-stats|tags|sales|installments|suppliers|purchase-bills|payments-receipts|settings|profile|admin|shopowner|products\/\d+|customers\/\d+|bills\/\d+)/i.test(url.pathname),
+    (url) => /^\/(api\/|offline\/sync|bills\/store|products\/search|customers\/search|customers\/\d+\/payments|products\/searchWithoutBarcode|products\/searchAll|products\/search-barcode|api\/tags|api\/active-sales|bills\/quick-stats|tags|sales|installments|suppliers|purchase-bills|payments-receipts|settings|profile|admin|shopowner|products\/\d+|customers\/\d+|bills\/\d+|uploads\/)/i.test(url.pathname),
 ];
 
 const isViteAsset = (url) => url.pathname.startsWith('/build/assets/');
@@ -67,7 +67,12 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (event.request.mode === 'navigate') {
-        event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+        const url = new URL(event.request.url);
+        if (url.pathname === '/dashboard' || url.pathname === '/bills/create') {
+            event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+        } else {
+            event.respondWith(offlineRedirectToDashboard(event.request, SHELL_CACHE));
+        }
         return;
     }
 
@@ -124,6 +129,24 @@ async function staleWhileRevalidate(request, cacheName) {
                 { headers: { 'Content-Type': 'text/html' } }
             );
         }
+        return new Response('', { status: 503 });
+    }
+}
+
+// Network-first with dashboard fallback for all other navigation requests
+async function offlineRedirectToDashboard(request, cacheName) {
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            const cache = await caches.open(cacheName);
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch {
+        const fallback = await caches.match('/dashboard');
+        if (fallback) return fallback;
+        const salesFallback = await caches.match('/bills/create');
+        if (salesFallback) return salesFallback;
         return new Response('', { status: 503 });
     }
 }
