@@ -1800,9 +1800,18 @@
                     }
                 }
             } catch (error) {
-                showNotification('{{ __('messages.Failed to create bill - network error') }}', 'error');
-                // Refresh page on failed submission (likely logged out)
-                setTimeout(() => location.reload(), 2000);
+                const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
+                if (isNetworkError && window.spSaveBillOffline) {
+                    try {
+                        await window.spSaveBillOffline(form);
+                        clearBillForm();
+                    } catch (saveError) {
+                        showNotification('{{ __('messages.Failed to save bill offline') }}', 'error');
+                    }
+                } else {
+                    showNotification('{{ __('messages.Failed to create bill - network error') }}', 'error');
+                    setTimeout(() => location.reload(), 2000);
+                }
             } finally {
                 // Reset button state
                 submitButton.disabled = false;

@@ -205,6 +205,25 @@
         };
     }
 
+    function collectBillDataFromFormData(fd) {
+        return {
+            localId        : 'bill_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+            product_ids    : fd.getAll('product_ids[]').filter(Boolean),
+            quantities     : fd.getAll('quantities[]'),
+            discounts      : fd.getAll('discounts[]'),
+            cost_prices    : fd.getAll('cost_prices[]'),
+            selling_prices : fd.getAll('selling_prices[]'),
+            discount_types : fd.getAll('discount_types[]'),
+            product_tags   : fd.getAll('product_tags[]'),
+            return_costs   : fd.getAll('return_costs[]'),
+            customer_id    : fd.get('customer_id') || null,
+            note           : fd.get('note') || '',
+            bill_date      : fd.get('bill_date') || new Date().toISOString().slice(0, 10),
+            is_damaged     : fd.get('is_damaged') === 'on' || fd.get('is_damaged') === '1',
+            is_returned    : fd.get('is_returned') === 'on' || fd.get('is_returned') === '1',
+        };
+    }
+
     // ── Sync all pending items ──────────────────────────────────────────────
     async function syncAll() {
         if (isSyncing || !navigator.onLine || !userId) return;
@@ -365,6 +384,24 @@
                 }
             }
 
+            // ── Bill creation: POST /bills ────────────────────────────────────
+            const billMatch = url.match(/\/bills(?:\/.*)?$/);
+            if (billMatch && method === 'POST') {
+                try {
+                    const fd = init.body instanceof FormData ? init.body : new FormData();
+                    const data = collectBillDataFromFormData(fd);
+                    await saveRecord(STORE_BILLS, data);
+                    await refreshSyncUI();
+                    notify(t('bill_saved_offline'), 'success');
+                    return new Response(
+                        JSON.stringify({ success: true, offline: true, local_id: data.localId }),
+                        { status: 200, headers: { 'Content-Type': 'application/json' } }
+                    );
+                } catch {
+                    return _fetch.apply(this, arguments);
+                }
+            }
+
             return _fetch.apply(this, arguments);
         };
     }
@@ -399,6 +436,14 @@
 
     // ── Public API ──────────────────────────────────────────────────────────
     window.spSyncNow = syncAll;
+
+    window.spSaveBillOffline = async function(form) {
+        const data = collectBillData(form);
+        await saveRecord(STORE_BILLS, data);
+        await refreshSyncUI();
+        notify(t('bill_saved_offline'), 'success');
+        return data.localId;
+    };
 
     // ── Init ────────────────────────────────────────────────────────────────
     async function init() {
