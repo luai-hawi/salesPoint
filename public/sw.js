@@ -16,6 +16,7 @@ const BYPASS_TESTS = [
     (url, req) => req.method !== 'GET',
     (url) => url.origin !== self.location.origin,
     (url) => /\.(png|jpe?g|gif|webp|ico|svg|woff2?|ttf|eot)(\?|$)/i.test(url.pathname),
+    (url) => url.href.includes('_sp_probe'),
     (url) => /^\/(api\/|offline\/sync|bills\/store|products\/search|customers\/search|customers\/\d+\/payments|products\/searchWithoutBarcode|products\/searchAll|products\/search-barcode|api\/tags|api\/active-sales|bills\/quick-stats|tags|sales|installments|suppliers|purchase-bills|payments-receipts|settings|profile|admin|shopowner|products\/\d+|customers\/\d+|bills\/\d+|uploads\/)/i.test(url.pathname),
 ];
 

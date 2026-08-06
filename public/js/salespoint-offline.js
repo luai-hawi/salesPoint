@@ -454,11 +454,14 @@
             let isOffline = !navigator.onLine;
             if (!isOffline) {
                 try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 3000);
                     await fetch('/?_sp_probe=' + Date.now(), {
-                        method: 'GET',
+                        method: 'HEAD',
                         cache: 'no-store',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        signal: controller.signal,
                     });
+                    clearTimeout(timeout);
                 } catch {
                     isOffline = true;
                 }
