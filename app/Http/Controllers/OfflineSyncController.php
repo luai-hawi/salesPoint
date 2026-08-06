@@ -80,7 +80,7 @@ class OfflineSyncController extends Controller
             // Installment plans
             'installments' => 'nullable|array|max:100',
             'installments.*.local_id' => 'required|string|max:100',
-            'installments.*.bill_id' => 'nullable|integer',
+            'installments.*.bill_id' => 'nullable|string|max:100',
             'installments.*.customer_id' => 'required|integer|min:1',
             'installments.*.total_amount' => 'required|numeric|min:0.01',
             'installments.*.initial_payment' => 'nullable|numeric|min:0',
@@ -92,8 +92,17 @@ class OfflineSyncController extends Controller
         ]);
 
         $billResults = $this->syncBills($validated['bills'] ?? [], $user, $ownerId);
+
+        // Build local bill ID -> server bill ID mapping from synced bills
+        $localBillIdMap = [];
+        foreach ($billResults as $result) {
+            if ($result['success'] && !empty($result['bill_id'])) {
+                $localBillIdMap[$result['local_id']] = $result['bill_id'];
+            }
+        }
+
         $paymentResults = $this->syncPayments($validated['payments'] ?? [], $user, $ownerId);
-        $installmentResults = $this->syncInstallments($validated['installments'] ?? [], $user, $ownerId);
+        $installmentResults = $this->syncInstallments($validated['installments'] ?? [], $user, $ownerId, $localBillIdMap);
 
         return response()->json([
             'bills' => [
@@ -293,7 +302,7 @@ class OfflineSyncController extends Controller
     }
 
     // ── Installment Plans ──────────────────────────────────────────────────
-    private function syncInstallments(array $items, $user, int $ownerId): array
+    private function syncInstallments(array $items, $user, int $ownerId, array $localBillIdMap = []): array
     {
         // Installments require the installments tier feature — silently skip if unavailable
         if (! $user->canAccessFeature('installments')) {
@@ -324,8 +333,15 @@ class OfflineSyncController extends Controller
                     // Verify bill if provided
                     $billId = null;
                     if (! empty($item['bill_id'])) {
-                        $bill = Bill::where('id', $item['bill_id'])->where('user_id', $ownerId)->firstOrFail();
-                        $billId = $bill->id;
+                        $rawBillId = $item['bill_id'];
+
+                        // If it's a local offline bill ID, resolve it to the real server bill ID
+                        if (isset($localBillIdMap[$rawBillId])) {
+                            $billId = $localBillIdMap[$rawBillId];
+                        } elseif (is_numeric($rawBillId)) {
+                            $bill = Bill::where('id', $rawBillId)->where('user_id', $ownerId)->firstOrFail();
+                            $billId = $bill->id;
+                        }
                     }
 
                     $initial = (float) ($item['initial_payment'] ?? 0);
