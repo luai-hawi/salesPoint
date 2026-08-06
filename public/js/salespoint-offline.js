@@ -1,550 +1,737 @@
 /**
- * SalesPoint Offline Module v2
- * Covers: bills, customer payments, installment plans
+ * SalesPoint Offline Module
  *
- * Security: every record is tagged with the server-rendered userId.
- * Only the current user's records are synced.
- * The server resolves ownership entirely from the auth session.
+ * Provides offline-first capabilities for:
+ * - Bill creation
+ * - Customer payments
+ * - Installment plans
+ *
+ * All operations are queued in IndexedDB and synced when connectivity returns.
+ *
+ * Security: records are tagged with userId. Only current user's records are synced.
  */
 (function () {
     'use strict';
 
-    // ── Config ─────────────────────────────────────────────────────────────
-    const DB_NAME            = 'sp_offline';
-    const DB_VERSION         = 2;           // bump when adding stores
-    const STORE_BILLS        = 'pending_bills';
-    const STORE_PAYMENTS     = 'pending_payments';
-    const STORE_INSTALLMENTS = 'pending_installments';
-    const SYNC_URL           = '/offline/sync';
-    const SYNC_TAG           = 'sp-sync-bills';
+    // ── Configuration ─────────────────────────────────────────────────────
+    const CONFIG = {
+        dbName: 'sp_offline',
+        dbVersion: 2,
+        stores: {
+            bills: 'pending_bills',
+            payments: 'pending_payments',
+            installments: 'pending_installments',
+        },
+        syncUrl: '/offline/sync',
+        syncTag: 'sp-sync-bills',
+        probePath: '/?_sp_probe=',
+        connectivityInterval: 5000,
+        probeTimeout: 5000,
+    };
 
-    // ── State ───────────────────────────────────────────────────────────────
-    let db        = null;
+    const STORE_NAMES = Object.values(CONFIG.stores);
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let db = null;
     let isSyncing = false;
-    let userId    = null;
+    let userId = null;
+    let isOffline = false;
 
-    function getLocalId(record) {
-        return record?.localId || record?.local_id || null;
-    }
+    // ── IndexedDB ──────────────────────────────────────────────────────────
 
-    function normalizeForSync(record) {
-        const localId = getLocalId(record);
-        return localId ? { ...record, local_id: localId } : { ...record };
-    }
-
-    // ── IndexedDB ───────────────────────────────────────────────────────────
-    function openDB() {
+    /**
+     * Open (or create) the offline database.
+     */
+    function openDatabase() {
         return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            const request = indexedDB.open(CONFIG.dbName, CONFIG.dbVersion);
 
-            req.onupgradeneeded = (e) => {
-                const d = e.target.result;
-                const oldV = e.oldVersion;
+            request.onupgradeneeded = (event) => {
+                const database = event.target.result;
+                const oldVersion = event.oldVersion;
 
-                // v1: bills store
-                if (oldV < 1 && !d.objectStoreNames.contains(STORE_BILLS)) {
-                    const s = d.createObjectStore(STORE_BILLS, { keyPath: 'localId' });
-                    s.createIndex('byUser',   'userId', { unique: false });
-                    s.createIndex('byStatus', 'status', { unique: false });
+                // Bills store
+                if (oldVersion < 1 && !database.objectStoreNames.contains(CONFIG.stores.bills)) {
+                    const store = database.createObjectStore(CONFIG.stores.bills, { keyPath: 'localId' });
+                    store.createIndex('byUser', 'userId', { unique: false });
+                    store.createIndex('byStatus', 'status', { unique: false });
                 }
 
-                // v2: payments + installments stores
-                if (oldV < 2) {
-                    if (!d.objectStoreNames.contains(STORE_PAYMENTS)) {
-                        const s = d.createObjectStore(STORE_PAYMENTS, { keyPath: 'localId' });
-                        s.createIndex('byUser',   'userId', { unique: false });
-                        s.createIndex('byStatus', 'status', { unique: false });
-                    }
-                    if (!d.objectStoreNames.contains(STORE_INSTALLMENTS)) {
-                        const s = d.createObjectStore(STORE_INSTALLMENTS, { keyPath: 'localId' });
-                        s.createIndex('byUser',   'userId', { unique: false });
-                        s.createIndex('byStatus', 'status', { unique: false });
-                    }
+                // Payments store
+                if (oldVersion < 2 && !database.objectStoreNames.contains(CONFIG.stores.payments)) {
+                    const store = database.createObjectStore(CONFIG.stores.payments, { keyPath: 'localId' });
+                    store.createIndex('byUser', 'userId', { unique: false });
+                    store.createIndex('byStatus', 'status', { unique: false });
+                }
+
+                // Installments store
+                if (oldVersion < 2 && !database.objectStoreNames.contains(CONFIG.stores.installments)) {
+                    const store = database.createObjectStore(CONFIG.stores.installments, { keyPath: 'localId' });
+                    store.createIndex('byUser', 'userId', { unique: false });
+                    store.createIndex('byStatus', 'status', { unique: false });
                 }
             };
 
-            req.onsuccess = (e) => resolve(e.target.result);
-            req.onerror   = (e) => reject(e.target.error);
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => reject(event.target.error);
         });
     }
 
-    async function getDB() {
-        if (!db) db = await openDB();
+    /**
+     * Get the database instance, opening it if necessary.
+     */
+    async function getDatabase() {
+        if (!db) {
+            db = await openDatabase();
+        }
         return db;
     }
 
-    // Generic: save a record to any pending store
+    // ── Generic Record Operations ──────────────────────────────────────────
+
+    /**
+     * Save a record to the specified store.
+     */
     async function saveRecord(storeName, data) {
-        const d = await getDB();
+        const database = await getDatabase();
+
         return new Promise((resolve, reject) => {
-            const tx = d.transaction(storeName, 'readwrite');
-            const localId = getLocalId(data) || ('rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
-            tx.objectStore(storeName).put({
+            const transaction = database.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const localId = data.localId || data.local_id || generateLocalId();
+
+            store.put({
                 ...data,
                 localId,
-                local_id: data?.local_id || localId,
+                local_id: data.local_id || localId,
                 userId,
                 status: 'pending',
                 savedAt: new Date().toISOString(),
             });
-            tx.oncomplete = () => resolve();
-            tx.onerror    = (e) => reject(e.target.error);
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (event) => reject(event.target.error);
         });
     }
 
-    // Generic: get all pending records for current user from a store
-    async function getPending(storeName) {
-        const d = await getDB();
-        return new Promise((resolve, reject) => {
-            const tx  = d.transaction(storeName, 'readonly');
-            const req = tx.objectStore(storeName).index('byUser').getAll(IDBKeyRange.only(userId));
-            req.onsuccess = (e) => resolve((e.target.result || []).filter((r) => r.status === 'pending'));
-            req.onerror   = (e) => reject(e.target.error);
-        });
-    }
+    /**
+     * Get all pending records for the current user from a store.
+     */
+    async function getPendingRecords(storeName) {
+        const database = await getDatabase();
 
-    // Generic: mark a record as synced
-    async function markSynced(storeName, localId) {
-        const d = await getDB();
         return new Promise((resolve, reject) => {
-            const tx  = d.transaction(storeName, 'readwrite');
-            const st  = tx.objectStore(storeName);
-            const req = st.get(localId);
-            req.onsuccess = (e) => {
-                const rec = e.target.result;
-                if (rec) { rec.status = 'synced'; st.put(rec); }
+            const transaction = database.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const index = store.index('byUser');
+            const request = index.getAll(IDBKeyRange.only(userId));
+
+            request.onsuccess = (event) => {
+                const results = event.target.result || [];
+                resolve(results.filter((record) => record.status === 'pending'));
             };
-            tx.oncomplete = () => resolve();
-            tx.onerror    = (e) => reject(e.target.error);
+            request.onerror = (event) => reject(event.target.error);
         });
     }
 
-    async function getTotalPending() {
-        const [b, p, i] = await Promise.all([
-            getPending(STORE_BILLS),
-            getPending(STORE_PAYMENTS),
-            getPending(STORE_INSTALLMENTS),
-        ]);
-        return b.length + p.length + i.length;
-    }
+    /**
+     * Mark a record as synced.
+     */
+    async function markRecordSynced(storeName, localId) {
+        const database = await getDatabase();
 
-    // ── Translation + Notification helpers ─────────────────────────────────
-    function t(key, replace) {
-        const map = window.offlineTranslations || {};
-        let str   = map[key] || key;
-        if (replace) Object.keys(replace).forEach((k) => { str = str.replace(':' + k, replace[k]); });
-        return str;
-    }
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const getRequest = store.get(localId);
 
-    function notify(message, type) {
-        if (typeof window.showNotification === 'function') window.showNotification(message, type || 'info');
-    }
+            getRequest.onsuccess = (event) => {
+                const record = event.target.result;
+                if (record) {
+                    record.status = 'synced';
+                    store.put(record);
+                }
+            };
 
-    // ── Offline Banner ──────────────────────────────────────────────────────
-    function setBannerVisible(visible) {
-        const el = document.getElementById('sp-offline-banner');
-        if (el) el.style.display = visible ? 'flex' : 'none';
-    }
-
-    // ── Sync Button ─────────────────────────────────────────────────────────
-    async function refreshSyncUI() {
-        const count  = await getTotalPending();
-        const btn    = document.getElementById('sp-sync-btn');
-        const badge  = document.getElementById('sp-sync-badge');
-        const label  = document.getElementById('sp-sync-label');
-        if (!btn) return;
-        if (count > 0) {
-            btn.style.display = 'flex';
-            if (badge) badge.textContent = count;
-            if (label) label.textContent = t('pending_count', { count });
-        } else {
-            btn.style.display = 'none';
-        }
-    }
-
-    function setSyncButtonState(syncing) {
-        const btn     = document.getElementById('sp-sync-btn');
-        const spinner = document.getElementById('sp-sync-spinner');
-        const icon    = document.getElementById('sp-sync-icon');
-        if (!btn) return;
-        btn.disabled = syncing;
-        if (spinner) spinner.style.display = syncing ? 'block' : 'none';
-        if (icon)    icon.style.display    = syncing ? 'none'  : 'block';
-    }
-
-    // ── Collect bill form data ──────────────────────────────────────────────
-    function populateReturnCosts(form) {
-        const map = window.spReturnCostsMap;
-        if (!map || !map.size) return;
-        const pids  = [...form.querySelectorAll('input[name="product_ids[]"]')];
-        const costs = [...form.querySelectorAll('input[name="return_costs[]"]')];
-        pids.forEach((p, i) => {
-            const pid = parseInt(p.value, 10);
-            if (map.has(pid) && costs[i] !== undefined) costs[i].value = map.get(pid);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (event) => reject(event.target.error);
         });
     }
 
-    function collectBillData(form) {
-        populateReturnCosts(form);
-        const fd = new FormData(form);
-        return {
-            localId        : 'bill_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
-            product_ids    : fd.getAll('product_ids[]').filter(Boolean),
-            quantities     : fd.getAll('quantities[]'),
-            discounts      : fd.getAll('discounts[]'),
-            cost_prices    : fd.getAll('cost_prices[]'),
-            selling_prices : fd.getAll('selling_prices[]'),
-            discount_types : fd.getAll('discount_types[]'),
-            product_tags   : fd.getAll('product_tags[]'),
-            return_costs   : fd.getAll('return_costs[]'),
-            customer_id    : fd.get('customer_id') || null,
-            note           : fd.get('note') || '',
-            bill_date      : fd.get('bill_date') || new Date().toISOString().slice(0, 10),
-            is_damaged     : !!(form.querySelector('#is_damaged') || { checked: false }).checked,
-            is_returned    : !!(form.querySelector('#is_returned') || { checked: false }).checked,
-        };
-    }
-
-    function collectBillDataFromFormData(fd) {
-        return {
-            localId        : 'bill_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
-            product_ids    : fd.getAll('product_ids[]').filter(Boolean),
-            quantities     : fd.getAll('quantities[]'),
-            discounts      : fd.getAll('discounts[]'),
-            cost_prices    : fd.getAll('cost_prices[]'),
-            selling_prices : fd.getAll('selling_prices[]'),
-            discount_types : fd.getAll('discount_types[]'),
-            product_tags   : fd.getAll('product_tags[]'),
-            return_costs   : fd.getAll('return_costs[]'),
-            customer_id    : fd.get('customer_id') || null,
-            note           : fd.get('note') || '',
-            bill_date      : fd.get('bill_date') || new Date().toISOString().slice(0, 10),
-            is_damaged     : fd.get('is_damaged') === 'on' || fd.get('is_damaged') === '1',
-            is_returned    : fd.get('is_returned') === 'on' || fd.get('is_returned') === '1',
-        };
-    }
-
-    // ── Sync all pending items ──────────────────────────────────────────────
-    async function syncAll() {
-        if (isSyncing || !navigator.onLine || !userId) return;
-
+    /**
+     * Get total count of pending records across all stores.
+     */
+    async function getTotalPendingCount() {
         const [bills, payments, installments] = await Promise.all([
-            getPending(STORE_BILLS),
-            getPending(STORE_PAYMENTS),
-            getPending(STORE_INSTALLMENTS),
+            getPendingRecords(CONFIG.stores.bills),
+            getPendingRecords(CONFIG.stores.payments),
+            getPendingRecords(CONFIG.stores.installments),
         ]);
 
-        if (!bills.length && !payments.length && !installments.length) return;
+        return bills.length + payments.length + installments.length;
+    }
 
-        isSyncing = true;
-        setSyncButtonState(true);
-        notify(t('syncing'), 'info');
+    // ── Helpers ────────────────────────────────────────────────────────────
 
-        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    function generateLocalId() {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).slice(2, 9);
+        return `rec_${timestamp}_${random}`;
+    }
 
-        try {
-            const billsPayload = bills.map(normalizeForSync);
-            const paymentsPayload = payments.map(normalizeForSync);
-            const installmentsPayload = installments.map(normalizeForSync);
+    function translate(key, replacements) {
+        const translations = window.offlineTranslations || {};
+        let text = translations[key] || key;
 
-            const res = await fetch(SYNC_URL, {
-                method : 'POST',
-                headers: {
-                    'Content-Type'    : 'application/json',
-                    'Accept'          : 'application/json',
-                    'X-CSRF-TOKEN'    : csrf,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    bills: billsPayload,
-                    payments: paymentsPayload,
-                    installments: installmentsPayload,
-                }),
+        if (replacements) {
+            Object.entries(replacements).forEach(([placeholder, value]) => {
+                text = text.replace(`:${placeholder}`, value);
             });
+        }
 
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
+        return text;
+    }
 
-            let synced = 0, failed = 0;
-
-            // Process bills
-            for (const r of (data.bills?.results || [])) {
-                const localId = r.local_id || r.localId;
-                if (r.success && localId) { await markSynced(STORE_BILLS, localId); synced++; }
-                else failed++;
-            }
-            // Process payments
-            for (const r of (data.payments?.results || [])) {
-                const localId = r.local_id || r.localId;
-                if (r.success && localId) { await markSynced(STORE_PAYMENTS, localId); synced++; }
-                else failed++;
-            }
-            // Process installments
-            for (const r of (data.installments?.results || [])) {
-                const localId = r.local_id || r.localId;
-                if (r.success && localId) { await markSynced(STORE_INSTALLMENTS, localId); synced++; }
-                else failed++;
-            }
-
-            await refreshSyncUI();
-            if (synced) notify(t('synced_success', { count: synced }), 'success');
-            if (failed) notify(t('sync_partial_fail', { count: failed }), 'warning');
-
-        } catch (err) {
-            console.error('[SP Offline] sync error:', err);
-            notify(t('sync_failed'), 'error');
-        } finally {
-            isSyncing = false;
-            setSyncButtonState(false);
+    function notify(message, type = 'info') {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
         }
     }
 
-    // ── Bill form interception (capture phase — runs before existing handlers)
-    function interceptBillForm() {
-        const form = document.getElementById('create-bill');
-        if (!form) return;
-
-        form.addEventListener('submit', async (e) => {
-            if (navigator.onLine) return;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-
-            if (!document.querySelectorAll('.product-row').length) {
-                notify(t('no_products'), 'warning');
-                return;
-            }
-            try {
-                await saveRecord(STORE_BILLS, collectBillData(form));
-                if (typeof window.clearBillForm === 'function') window.clearBillForm();
-                await refreshSyncUI();
-                notify(t('bill_saved_offline'), 'success');
-            } catch (err) {
-                console.error('[SP Offline] bill save error:', err);
-                notify(t('save_failed'), 'error');
-            }
-        }, { capture: true });
+    function normalizeRecord(record) {
+        const localId = record.localId || record.local_id;
+        return localId ? { ...record, local_id: localId } : { ...record };
     }
 
-    // ── Fetch interceptor: catches customer payments + installment saves + bills ────
-    function installFetchInterceptor() {
-        const _fetch = window.fetch;
+    // ── UI Helpers ─────────────────────────────────────────────────────────
 
-        window.fetch = async function (input, init) {
-            const url = typeof input === 'string' ? input : (input?.url ?? String(input));
-            const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
-
-            if (method !== 'POST') {
-                try {
-                    const response = await _fetch.apply(this, arguments);
-                    if (response.status === 401 || response.status === 403) {
-                        handleUnauthorized(response);
-                    }
-                    return response;
-                } catch {
-                    return _fetch.apply(this, arguments);
-                }
-            }
-
-            const payMatch = url.match(/\/customers\/(\d+)\/payments(?:\?.*)?$/);
-            const instMatch = url.match(/\/installments\/from-bill(?:\?.*)?$/);
-            const billMatch = url.match(/\/bills(?:\/.*)?$/);
-
-            if (!payMatch && !instMatch && !billMatch) {
-                try {
-                    const response = await _fetch.apply(this, arguments);
-                    if (response.status === 401 || response.status === 403) {
-                        handleUnauthorized(response);
-                    }
-                    return response;
-                } catch {
-                    return _fetch.apply(this, arguments);
-                }
-            }
-
-            try {
-                const response = await _fetch.apply(this, arguments);
-                if (response.status === 401 || response.status === 403) {
-                    handleUnauthorized(response);
-                    return response;
-                }
-                return response;
-            } catch {
-                setOfflineState();
-                if (payMatch) {
-                    try {
-                        const customerId = parseInt(payMatch[1], 10);
-                        const payData = {};
-                        if (init.body instanceof FormData) {
-                            for (const [k, v] of init.body.entries()) payData[k] = v;
-                        }
-                        const localId = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-                        await saveRecord(STORE_PAYMENTS, {
-                            localId,
-                            customer_id : customerId,
-                            amount      : payData.amount,
-                            type        : payData.type        || 'cash',
-                            note        : payData.note        || '',
-                            payment_date: payData.payment_date || new Date().toISOString().slice(0, 10),
-                        });
-                        await refreshSyncUI();
-                        notify(t('payment_saved_offline'), 'success');
-                        return new Response(
-                            JSON.stringify({ success: true, new_balance: null, offline: true }),
-                            { status: 200, headers: { 'Content-Type': 'application/json' } }
-                        );
-                    } catch {
-                        return _fetch.apply(this, arguments);
-                    }
-                }
-
-                if (instMatch) {
-                    try {
-                        const rawBody = init?.body;
-                        const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
-                        const localId = 'inst_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-                        await saveRecord(STORE_INSTALLMENTS, { ...body, localId });
-                        await refreshSyncUI();
-                        notify(t('installment_saved_offline'), 'success');
-                        return new Response(
-                            JSON.stringify({ success: true, offline: true }),
-                            { status: 200, headers: { 'Content-Type': 'application/json' } }
-                        );
-                    } catch {
-                        return _fetch.apply(this, arguments);
-                    }
-                }
-
-                if (billMatch) {
-                    try {
-                        const fd = init.body instanceof FormData ? init.body : new FormData();
-                        const data = collectBillDataFromFormData(fd);
-                        await saveRecord(STORE_BILLS, data);
-                        await refreshSyncUI();
-                        notify(t('bill_saved_offline'), 'success');
-                        return new Response(
-                            JSON.stringify({ success: true, offline: true, local_id: data.localId }),
-                            { status: 200, headers: { 'Content-Type': 'application/json' } }
-                        );
-                    } catch {
-                        return _fetch.apply(this, arguments);
-                    }
-                }
-
-                return _fetch.apply(this, arguments);
-            }
-        };
-    }
-
-    function handleUnauthorized(response) {
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
-        }
-        const path = window.location.pathname;
-        const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path.startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path.startsWith('/installments') || path.startsWith('/purchase-bills');
-        if (isProtected && !path.includes('/login')) {
-            showNotification('You have been logged out', 'warning');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1500);
+    function setOfflineBannerVisibility(visible) {
+        const banner = document.getElementById('sp-offline-banner');
+        if (banner) {
+            banner.style.display = visible ? 'flex' : 'none';
         }
     }
 
-    // ── Connectivity ────────────────────────────────────────────────────────
-    let isOffline = false;
+    async function updateSyncButton() {
+        const pendingCount = await getTotalPendingCount();
+        const button = document.getElementById('sp-sync-btn');
+        const badge = document.getElementById('sp-sync-badge');
+        const label = document.getElementById('sp-sync-label');
+
+        if (!button) return;
+
+        if (pendingCount > 0) {
+            button.style.display = 'flex';
+            if (badge) badge.textContent = pendingCount;
+            if (label) label.textContent = translate('pending_count', { count: pendingCount });
+        } else {
+            button.style.display = 'none';
+        }
+    }
+
+    // Alias for backward compatibility
+    const refreshSyncUI = updateSyncButton;
+
+    function setSyncButtonLoading(loading) {
+        const button = document.getElementById('sp-sync-btn');
+        const spinner = document.getElementById('sp-sync-spinner');
+        const icon = document.getElementById('sp-sync-icon');
+
+        if (!button) return;
+
+        button.disabled = loading;
+        if (spinner) spinner.style.display = loading ? 'block' : 'none';
+        if (icon) icon.style.display = loading ? 'none' : 'block';
+    }
+
+    // ── Connectivity ───────────────────────────────────────────────────────
 
     function setOfflineState() {
         if (!isOffline) {
             isOffline = true;
-            setBannerVisible(true);
+            setOfflineBannerVisibility(true);
         }
     }
 
     function setOnlineState() {
         if (isOffline) {
             isOffline = false;
-            setBannerVisible(false);
+            setOfflineBannerVisibility(false);
             syncAll();
         }
     }
 
-    function watchConnectivity() {
-        const probe = async () => {
-            let offline = !navigator.onLine;
-            if (!offline) {
-                try {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 5000);
-                    await fetch('/?_sp_probe=' + Date.now(), {
-                        method: 'HEAD',
-                        cache: 'no-store',
-                        signal: controller.signal,
-                    });
-                    clearTimeout(timeout);
-                } catch {
-                    offline = true;
-                }
-            }
-            if (offline) {
-                setOfflineState();
-            } else {
-                setOnlineState();
-            }
-        };
+    /**
+     * Probe the network to detect connectivity changes.
+     * Uses a HEAD request to bypass HTTP cache and service worker cache.
+     */
+    async function probeConnectivity() {
+        let offline = !navigator.onLine;
 
-        window.addEventListener('online',  probe);
-        window.addEventListener('offline', probe);
-        probe();
-        setInterval(probe, 5000);
+        if (!offline) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), CONFIG.probeTimeout);
+
+                await fetch(`${CONFIG.probePath}${Date.now()}`, {
+                    method: 'HEAD',
+                    cache: 'no-store',
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+            } catch {
+                offline = true;
+            }
+        }
+
+        if (offline) {
+            setOfflineState();
+        } else {
+            setOnlineState();
+        }
     }
 
-    watchConnectivity();
+    function watchConnectivity() {
+        window.addEventListener('online', probeConnectivity);
+        window.addEventListener('offline', probeConnectivity);
+        probeConnectivity();
+        setInterval(probeConnectivity, CONFIG.connectivityInterval);
+    }
 
-    // Background sync from SW message
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', (e) => {
-            if (e.data?.type === 'SP_TRIGGER_SYNC') syncAll();
+    // ── Data Collection ────────────────────────────────────────────────────
+
+    function populateReturnCosts(form) {
+        const returnCostsMap = window.spReturnCostsMap;
+        if (!returnCostsMap || !returnCostsMap.size) return;
+
+        const productIdInputs = [...form.querySelectorAll('input[name="product_ids[]"]')];
+        const returnCostInputs = [...form.querySelectorAll('input[name="return_costs[]"]')];
+
+        productIdInputs.forEach((input, index) => {
+            const productId = parseInt(input.value, 10);
+            const costInput = returnCostInputs[index];
+
+            if (returnCostsMap.has(productId) && costInput) {
+                costInput.value = returnCostsMap.get(productId);
+            }
         });
     }
 
-    // Register background sync tag when going offline
-    window.addEventListener('offline', async () => {
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                await reg.sync.register(SYNC_TAG);
-            } catch (_) { /* fallback: online event handles it */ }
-        }
-    });
+    function extractBillData(form) {
+        populateReturnCosts(form);
+        const formData = new FormData(form);
 
-    // ── Public API ──────────────────────────────────────────────────────────
+        return {
+            localId: generateLocalId(),
+            product_ids: formData.getAll('product_ids[]').filter(Boolean),
+            quantities: formData.getAll('quantities[]'),
+            discounts: formData.getAll('discounts[]'),
+            cost_prices: formData.getAll('cost_prices[]'),
+            selling_prices: formData.getAll('selling_prices[]'),
+            discount_types: formData.getAll('discount_types[]'),
+            product_tags: formData.getAll('product_tags[]'),
+            return_costs: formData.getAll('return_costs[]'),
+            customer_id: formData.get('customer_id') || null,
+            note: formData.get('note') || '',
+            bill_date: formData.get('bill_date') || new Date().toISOString().slice(0, 10),
+            is_damaged: !!(form.querySelector('#is_damaged') || { checked: false }).checked,
+            is_returned: !!(form.querySelector('#is_returned') || { checked: false }).checked,
+        };
+    }
+
+    function extractBillDataFromFormData(formData) {
+        return {
+            localId: generateLocalId(),
+            product_ids: formData.getAll('product_ids[]').filter(Boolean),
+            quantities: formData.getAll('quantities[]'),
+            discounts: formData.getAll('discounts[]'),
+            cost_prices: formData.getAll('cost_prices[]'),
+            selling_prices: formData.getAll('selling_prices[]'),
+            discount_types: formData.getAll('discount_types[]'),
+            product_tags: formData.getAll('product_tags[]'),
+            return_costs: formData.getAll('return_costs[]'),
+            customer_id: formData.get('customer_id') || null,
+            note: formData.get('note') || '',
+            bill_date: formData.get('bill_date') || new Date().toISOString().slice(0, 10),
+            is_damaged: formData.get('is_damaged') === 'on' || formData.get('is_damaged') === '1',
+            is_returned: formData.get('is_returned') === 'on' || formData.get('is_returned') === '1',
+        };
+    }
+
+    // ── Sync ───────────────────────────────────────────────────────────────
+
+    /**
+     * Sync all pending records to the server.
+     */
+    async function syncAll() {
+        if (isSyncing || !navigator.onLine || !userId) return;
+
+        const [bills, payments, installments] = await Promise.all([
+            getPendingRecords(CONFIG.stores.bills),
+            getPendingRecords(CONFIG.stores.payments),
+            getPendingRecords(CONFIG.stores.installments),
+        ]);
+
+        if (!bills.length && !payments.length && !installments.length) return;
+
+        isSyncing = true;
+        setSyncButtonLoading(true);
+        notify(translate('syncing'), 'info');
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        try {
+            const response = await fetch(CONFIG.syncUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    bills: bills.map(normalizeRecord),
+                    payments: payments.map(normalizeRecord),
+                    installments: installments.map(normalizeRecord),
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const results = await response.json();
+            let syncedCount = 0;
+            let failedCount = 0;
+
+            // Process synced bills
+            for (const result of results.bills?.results || []) {
+                const localId = result.local_id || result.localId;
+                if (result.success && localId) {
+                    await markRecordSynced(CONFIG.stores.bills, localId);
+                    syncedCount++;
+                } else {
+                    failedCount++;
+                }
+            }
+
+            // Process synced payments
+            for (const result of results.payments?.results || []) {
+                const localId = result.local_id || result.localId;
+                if (result.success && localId) {
+                    await markRecordSynced(CONFIG.stores.payments, localId);
+                    syncedCount++;
+                } else {
+                    failedCount++;
+                }
+            }
+
+            // Process synced installments
+            for (const result of results.installments?.results || []) {
+                const localId = result.local_id || result.localId;
+                if (result.success && localId) {
+                    await markRecordSynced(CONFIG.stores.installments, localId);
+                    syncedCount++;
+                } else {
+                    failedCount++;
+                }
+            }
+
+            await updateSyncButton();
+
+            if (syncedCount) {
+                notify(translate('synced_success', { count: syncedCount }), 'success');
+            }
+            if (failedCount) {
+                notify(translate('sync_partial_fail', { count: failedCount }), 'warning');
+            }
+
+        } catch (error) {
+            console.error('[SP Offline] sync error:', error);
+            notify(translate('sync_failed'), 'error');
+        } finally {
+            isSyncing = false;
+            setSyncButtonLoading(false);
+        }
+    }
+
+    // ── Interceptors ───────────────────────────────────────────────────────
+
+    /**
+     * Intercept bill form submission when offline.
+     */
+    function interceptBillForm() {
+        const form = document.getElementById('create-bill');
+        if (!form) return;
+
+        form.addEventListener('submit', async (event) => {
+            if (navigator.onLine) return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const productRows = document.querySelectorAll('.product-row');
+            if (!productRows.length) {
+                notify(translate('no_products'), 'warning');
+                return;
+            }
+
+            try {
+                await saveRecord(CONFIG.stores.bills, extractBillData(form));
+
+                if (typeof window.clearBillForm === 'function') {
+                    window.clearBillForm();
+                }
+
+                await updateSyncButton();
+                notify(translate('bill_saved_offline'), 'success');
+            } catch (error) {
+                console.error('[SP Offline] bill save error:', error);
+                notify(translate('save_failed'), 'error');
+            }
+        }, { capture: true });
+    }
+
+    /**
+     * Wrap window.fetch to intercept POST requests when offline.
+     */
+    function installFetchInterceptor() {
+        const originalFetch = window.fetch;
+
+        window.fetch = async function (input, init) {
+            const url = typeof input === 'string' ? input : (input?.url ?? String(input));
+            const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
+
+            // For non-POST requests, just pass through and check for auth errors
+            if (method !== 'POST') {
+                try {
+                    const response = await originalFetch.apply(this, arguments);
+                    if (response.status === 401 || response.status === 403) {
+                        handleUnauthorized();
+                    }
+                    return response;
+                } catch {
+                    return originalFetch.apply(this, arguments);
+                }
+            }
+
+            // Check if this is a bill/payment/installment request
+            const isPayment = /\/customers\/(\d+)\/payments(?:\?.*)?$/.test(url);
+            const isInstallment = /\/installments\/from-bill(?:\?.*)?$/.test(url);
+            const isBill = /\/bills(?:\/.*)?$/.test(url);
+
+            if (!isPayment && !isInstallment && !isBill) {
+                try {
+                    const response = await originalFetch.apply(this, arguments);
+                    if (response.status === 401 || response.status === 403) {
+                        handleUnauthorized();
+                    }
+                    return response;
+                } catch {
+                    return originalFetch.apply(this, arguments);
+                }
+            }
+
+            // Try the real request first
+            try {
+                const response = await originalFetch.apply(this, arguments);
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                }
+                return response;
+            } catch {
+                // Network failed: save offline
+                setOfflineState();
+
+                if (isPayment) {
+                    return handlePaymentOffline(url, init);
+                }
+                if (isInstallment) {
+                    return handleInstallmentOffline(init);
+                }
+                if (isBill) {
+                    return handleBillOffline(init);
+                }
+
+                return originalFetch.apply(this, arguments);
+            }
+        };
+    }
+
+    async function handlePaymentOffline(url, init) {
+        const customerId = parseInt(url.match(/\/customers\/(\d+)\/payments/)?.[1] || '0', 10);
+        const paymentData = {};
+
+        if (init.body instanceof FormData) {
+            for (const [key, value] of init.body.entries()) {
+                paymentData[key] = value;
+            }
+        }
+
+        const localId = `pay_${Date.now()}_${generateRandomSuffix()}`;
+
+        try {
+            await saveRecord(CONFIG.stores.payments, {
+                localId,
+                customer_id: customerId,
+                amount: paymentData.amount,
+                type: paymentData.type || 'cash',
+                note: paymentData.note || '',
+                payment_date: paymentData.payment_date || new Date().toISOString().slice(0, 10),
+            });
+
+            await updateSyncButton();
+            notify(translate('payment_saved_offline'), 'success');
+
+            return new Response(
+                JSON.stringify({ success: true, new_balance: null, offline: true }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+        } catch {
+            return window.fetch.apply(this, arguments);
+        }
+    }
+
+    async function handleInstallmentOffline(init) {
+        const rawBody = init?.body;
+        const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
+        const localId = `inst_${Date.now()}_${generateRandomSuffix()}`;
+
+        try {
+            await saveRecord(CONFIG.stores.installments, { ...body, localId });
+            await updateSyncButton();
+            notify(translate('installment_saved_offline'), 'success');
+
+            return new Response(
+                JSON.stringify({ success: true, offline: true }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+        } catch {
+            return window.fetch.apply(this, arguments);
+        }
+    }
+
+    async function handleBillOffline(init) {
+        const formData = init.body instanceof FormData ? init.body : new FormData();
+        const billData = extractBillDataFromFormData(formData);
+
+        try {
+            await saveRecord(CONFIG.stores.bills, billData);
+            await updateSyncButton();
+            notify(translate('bill_saved_offline'), 'success');
+
+            return new Response(
+                JSON.stringify({ success: true, offline: true, local_id: billData.localId }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+        } catch {
+            return window.fetch.apply(this, arguments);
+        }
+    }
+
+    function generateRandomSuffix() {
+        return Math.random().toString(36).slice(2, 9);
+    }
+
+    // ── Auth Handling ──────────────────────────────────────────────────────
+
+    function handleUnauthorized() {
+        // Tell the service worker the user is no longer authenticated
+        if (navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SP_SET_AUTH',
+                authenticated: false,
+            });
+        }
+
+        const path = window.location.pathname;
+        const protectedPaths = [
+            '/dashboard', '/bills/create',
+            '/bills/', '/products/', '/customers/', '/settings',
+            '/installments', '/purchase-bills',
+        ];
+
+        const isProtected = protectedPaths.some((prefix) => {
+            if (prefix.endsWith('/')) {
+                return path.startsWith(prefix);
+            }
+            return path === prefix;
+        });
+
+        if (isProtected && !path.includes('/login')) {
+            notify('You have been logged out', 'warning');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
+        }
+    }
+
+    // ── Public API ─────────────────────────────────────────────────────────
+
+    /**
+     * Manually trigger a sync of all pending records.
+     */
     window.spSyncNow = syncAll;
 
-    window.spSaveBillOffline = async function(form) {
-        const data = collectBillData(form);
-        await saveRecord(STORE_BILLS, data);
-        await refreshSyncUI();
-        notify(t('bill_saved_offline'), 'success');
+    /**
+     * Save a bill offline without going through the fetch interceptor.
+     */
+    window.spSaveBillOffline = async function (form) {
+        const data = extractBillData(form);
+        await saveRecord(CONFIG.stores.bills, data);
+        await updateSyncButton();
+        notify(translate('bill_saved_offline'), 'success');
         return data.localId;
     };
 
-    // ── Init ────────────────────────────────────────────────────────────────
-    async function init() {
+    // ── Initialization ─────────────────────────────────────────────────────
+
+    async function initialize() {
         userId = window.spCurrentUserId;
         if (!userId) return;
 
-        try { await getDB(); } catch (err) {
-            console.warn('[SP Offline] IndexedDB unavailable:', err);
+        try {
+            await getDatabase();
+        } catch (error) {
+            console.warn('[SP Offline] IndexedDB unavailable:', error);
             return;
         }
 
-        installFetchInterceptor(); // must be early so it wraps fetch before page JS uses it
+        // Install interceptors early so they wrap fetch before other scripts use it
+        installFetchInterceptor();
         interceptBillForm();
-        await refreshSyncUI();
+        await updateSyncButton();
     }
 
+    // Start connectivity monitoring immediately
+    watchConnectivity();
+
+    // Register background sync when going offline
+    window.addEventListener('offline', async () => {
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.sync.register(CONFIG.syncTag);
+            } catch {
+                // Fallback: online event will trigger sync
+            }
+        }
+    });
+
+    // Listen for sync triggers from the service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'SP_TRIGGER_SYNC') {
+                syncAll();
+            }
+        });
+    }
+
+    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', initialize);
     } else {
-        init();
+        initialize();
     }
 })();

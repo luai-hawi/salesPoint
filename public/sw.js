@@ -1,8 +1,9 @@
-// SalesPoint Enhanced Service Worker v5
-// Navigation + critical static assets only. API calls are bypassed.
+// SalesPoint Service Worker
+// Strategy: network-first for protected pages, stale-while-revalidate for shell,
+// cache-first for static assets. All API calls bypass the SW.
 
-const SHELL_CACHE = 'sp-shell-v8';
-const ASSET_CACHE = 'sp-assets-v8';
+const SHELL_CACHE = 'sp-shell-v9';
+const ASSET_CACHE = 'sp-assets-v9';
 const AUTH_CACHE = 'sp-auth-v1';
 const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE, AUTH_CACHE];
 
@@ -21,8 +22,8 @@ const BYPASS_TESTS = [
 ];
 
 const isViteAsset = (url) => url.pathname.startsWith('/build/assets/');
-
 const isCriticalStatic = (url) => /^\/(js|css)\//i.test(url.pathname);
+const PROTECTED_PAGES = ['/dashboard', '/bills/create'];
 
 // -- Install ----------------------------------------------------------------
 self.addEventListener('install', (event) => {
@@ -70,9 +71,8 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (event.request.mode === 'navigate') {
-        const url = new URL(event.request.url);
-        if (url.pathname === '/dashboard' || url.pathname === '/bills/create') {
-            event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+        if (PROTECTED_PAGES.includes(url.pathname)) {
+            event.respondWith(protectedPageNetworkFirst(event.request, SHELL_CACHE));
         } else {
             event.respondWith(offlineRedirectToDashboard(event.request, SHELL_CACHE));
         }
@@ -108,6 +108,8 @@ async function getAuthState() {
     }
 }
 
+// -- Caching Strategies -----------------------------------------------------
+
 // Cache-first: return cached copy; fetch & cache on miss
 async function cacheFirst(request, cacheName) {
     const cached = await caches.match(request);
@@ -121,44 +123,34 @@ async function cacheFirst(request, cacheName) {
     }
 }
 
-// Stale-while-revalidate: return cached immediately and refresh in background
+// Network-first for protected pages: always try server first when online,
+// fall back to cache only on network failure.
+async function protectedPageNetworkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const requestedUrl = new URL(request.url).href;
+
+    try {
+        const response = await fetch(request);
+        // Don't cache redirect responses (e.g., /dashboard -> /login)
+        if (response.ok && response.url === requestedUrl) {
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch {
+        // Network failed: try cache if user was previously authenticated
+        const cached = await cache.match(request);
+        if (cached && (await getAuthState()) === true) {
+            return cached;
+        }
+        // No valid cache or user not authenticated
+        return authRequiredResponse();
+    }
+}
+
+// Stale-while-revalidate for shell pages that are not protected
 async function staleWhileRevalidate(request, cacheName) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
-
-    const url = new URL(request.url);
-    const isProtectedPage = request.mode === 'navigate' && (url.pathname === '/dashboard' || url.pathname === '/bills/create');
-    const isAuthenticated = await getAuthState();
-
-    if (isProtectedPage && isAuthenticated !== true) {
-        try {
-            const response = await fetch(request);
-            const requestedUrl = new URL(request.url).href;
-            if (response && response.ok && response.url === requestedUrl) {
-                cache.put(request, response.clone());
-            }
-            return response;
-        } catch {
-            if (isAuthenticated === false) {
-                return new Response(
-                    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
-                    '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                    'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
-                    '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
-                    { headers: { 'Content-Type': 'text/html' } }
-                );
-            }
-            return new Response(
-                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
-                '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
-                'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
-                '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
-                '<button onclick="location.reload()">Retry</button></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-            );
-        }
-    }
 
     if (cached) {
         fetch(request).then((res) => {
@@ -172,34 +164,7 @@ async function staleWhileRevalidate(request, cacheName) {
         if (response.ok) cache.put(request, response.clone());
         return response;
     } catch {
-        if (request.mode === 'navigate') {
-            const fallback = await caches.match('/dashboard');
-            if (fallback && (await getAuthState()) !== true) {
-                return new Response(
-                    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
-                    '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                    'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
-                    '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
-                    { headers: { 'Content-Type': 'text/html' } }
-                );
-            }
-            if (fallback) return fallback;
-            const salesFallback = await caches.match('/bills/create');
-            if (salesFallback && (await getAuthState()) !== true) {
-                return new Response('', { status: 503 });
-            }
-            if (salesFallback) return salesFallback;
-            return new Response(
-                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
-                '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
-                'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
-                '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
-                '<button onclick="location.reload()">Retry</button></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-            );
-        }
-        return new Response('', { status: 503 });
+        return offlineOrAuthRequiredResponse(request, cache);
     }
 }
 
@@ -215,21 +180,55 @@ async function offlineRedirectToDashboard(request, cacheName) {
     } catch {
         const fallback = await caches.match('/dashboard');
         if (fallback && (await getAuthState()) !== true) {
-            return new Response(
-                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
-                '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
-                '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-            );
+            return authRequiredResponse();
         }
         if (fallback) return fallback;
         const salesFallback = await caches.match('/bills/create');
         if (salesFallback && (await getAuthState()) !== true) {
             return salesFallback;
         }
-        return new Response('', { status: 503 });
+        return offlineResponse();
     }
+}
+
+// -- Response Helpers -------------------------------------------------------
+
+function authRequiredResponse() {
+    return new Response(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
+        '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+        'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
+        '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
+        { headers: { 'Content-Type': 'text/html' } }
+    );
+}
+
+function offlineResponse() {
+    return new Response(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
+        '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+        'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
+        'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
+        '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
+        '<button onclick="location.reload()">Retry</button></body></html>',
+        { headers: { 'Content-Type': 'text/html' } }
+    );
+}
+
+async function offlineOrAuthRequiredResponse(request, cache) {
+    if (request.mode !== 'navigate') return new Response('', { status: 503 });
+
+    const fallback = await cache.match('/dashboard');
+    if (fallback && (await getAuthState()) !== true) {
+        return authRequiredResponse();
+    }
+    if (fallback) return fallback;
+
+    const salesFallback = await cache.match('/bills/create');
+    if (salesFallback && (await getAuthState()) !== true) {
+        return salesFallback;
+    }
+    return offlineResponse();
 }
 
 // -- Background Sync --------------------------------------------------------
