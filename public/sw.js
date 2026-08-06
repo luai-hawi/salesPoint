@@ -1,8 +1,8 @@
 // SalesPoint Enhanced Service Worker v5
 // Navigation + critical static assets only. API calls are bypassed.
 
-const SHELL_CACHE = 'sp-shell-v7';
-const ASSET_CACHE = 'sp-assets-v7';
+const SHELL_CACHE = 'sp-shell-v8';
+const ASSET_CACHE = 'sp-assets-v8';
 const AUTH_CACHE = 'sp-auth-v1';
 const ALL_CACHES = [SHELL_CACHE, ASSET_CACHE, AUTH_CACHE];
 

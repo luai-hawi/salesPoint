@@ -745,7 +745,7 @@
             if (isProtected && !path.includes('/login')) {
                 fetch('/auth/check', { method: 'GET', credentials: 'include', cache: 'no-store', redirect: 'manual' })
                     .then(r => {
-                        if (r.status === 401 || r.status === 403 || r.status === 302 || r.status === 301) {
+                        if (r.status === 0 || r.status === 401 || r.status === 403 || r.status === 302 || r.status === 301) {
                             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                                 navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
                             }
