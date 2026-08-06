@@ -663,7 +663,7 @@
         }
 
         // Scanner function for additional barcodes
-        function initBarcodeScannerForAdditionalBarcode(inputElement) {
+        async function initBarcodeScannerForAdditionalBarcode(inputElement) {
             if (document.getElementById('barcode-scanner-modal')) {
                 return;
             }
@@ -700,7 +700,23 @@
                 scannerContainer.appendChild(videoElement);
 
                 if (typeof Html5Qrcode === 'undefined') {
-                    showNotification('Barcode scanner unavailable', 'warning');
+                    if (!navigator.onLine) {
+                        showNotification('Barcode scanner is unavailable offline', 'warning');
+                        scannerModal.remove();
+                        return;
+                    }
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://unpkg.com/html5-qrcode';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                }
+
+                if (typeof Html5Qrcode === 'undefined') {
+                    showNotification('Error loading scanner', 'error');
+                    scannerModal.remove();
                     return;
                 }
                 html5Qrcode = new Html5Qrcode("scanner-container");
@@ -1258,7 +1274,7 @@
     <!-- Barcode Scanner for Products Create -->
     <script>
         // Barcode Scanner Function using HTML5 QR Code
-        function initBarcodeScanner(inputId) {
+        async function initBarcodeScanner(inputId) {
             // Check if scanner modal already exists
             if (document.getElementById('barcode-scanner-modal')) {
                 return;
@@ -1300,7 +1316,23 @@
                 scannerContainer.appendChild(videoElement);
 
                 if (typeof Html5Qrcode === 'undefined') {
-                    showNotification('Barcode scanner unavailable', 'warning');
+                    if (!navigator.onLine) {
+                        showNotification('Barcode scanner is unavailable offline', 'warning');
+                        scannerModal.remove();
+                        return;
+                    }
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://unpkg.com/html5-qrcode';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                }
+
+                if (typeof Html5Qrcode === 'undefined') {
+                    showNotification('Error loading scanner', 'error');
+                    scannerModal.remove();
                     return;
                 }
                 html5Qrcode = new Html5Qrcode("scanner-container");

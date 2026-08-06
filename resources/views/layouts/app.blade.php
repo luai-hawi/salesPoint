@@ -795,16 +795,6 @@
         </div>
     </div>
 
-    <!-- HTML5 QR Code Scanner Library loaded dynamically when online -->
-    <script>
-        if (navigator.onLine) {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/html5-qrcode';
-            script.type = 'text/javascript';
-            document.head.appendChild(script);
-        }
-    </script>
-
     <!-- Add this line to include pushed scripts -->
     @stack('scripts')
 
