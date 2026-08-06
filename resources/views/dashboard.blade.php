@@ -1786,6 +1786,8 @@
                         await updateUIAfterBillCreation(result.bill);
                     } else if (result.offline) {
                         // Offline bill saved successfully - update UI and clear form
+                        currentBillId = result.local_id;
+                        window.currentBillId = currentBillId;
                         await updateUIAfterOfflineBillCreation(form);
                         clearBillForm();
                     }
