@@ -127,18 +127,33 @@ async function staleWhileRevalidate(request, cacheName) {
 
     const url = new URL(request.url);
     const isProtectedPage = request.mode === 'navigate' && (url.pathname === '/dashboard' || url.pathname === '/bills/create');
+    const isAuthenticated = await getAuthState();
 
-    if (isProtectedPage && (await getAuthState()) === false) {
+    if (isProtectedPage && isAuthenticated !== true) {
         try {
             const response = await fetch(request);
-            if (response.ok) cache.put(request, response.clone());
+            const requestedUrl = new URL(request.url).href;
+            if (response && response.ok && response.url === requestedUrl) {
+                cache.put(request, response.clone());
+            }
             return response;
         } catch {
+            if (isAuthenticated === false) {
+                return new Response(
+                    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
+                    '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
+                    'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
+                    '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
+                    { headers: { 'Content-Type': 'text/html' } }
+                );
+            }
             return new Response(
-                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
+                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
                 '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
-                'h2{color:#1e40af}p{color:#6b7280}</style></head>' +
-                '<body><h2>Login Required</h2><p>You have been logged out. Please go to the login page.</p></body></html>',
+                'h2{color:#1e40af}button{margin-top:16px;padding:10px 24px;background:#3b82f6;color:#fff;' +
+                'border:none;border-radius:8px;font-size:1rem;cursor:pointer}</style></head>' +
+                '<body><h2>You are offline</h2><p>Check your internet connection and try again.</p>' +
+                '<button onclick="location.reload()">Retry</button></body></html>',
                 { headers: { 'Content-Type': 'text/html' } }
             );
         }
@@ -158,7 +173,7 @@ async function staleWhileRevalidate(request, cacheName) {
     } catch {
         if (request.mode === 'navigate') {
             const fallback = await caches.match('/dashboard');
-            if (fallback && (await getAuthState()) === false) {
+            if (fallback && (await getAuthState()) !== true) {
                 return new Response(
                     '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
                     '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
@@ -169,6 +184,9 @@ async function staleWhileRevalidate(request, cacheName) {
             }
             if (fallback) return fallback;
             const salesFallback = await caches.match('/bills/create');
+            if (salesFallback && (await getAuthState()) !== true) {
+                return new Response('', { status: 503 });
+            }
             if (salesFallback) return salesFallback;
             return new Response(
                 '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline</title>' +
@@ -195,7 +213,7 @@ async function offlineRedirectToDashboard(request, cacheName) {
         return response;
     } catch {
         const fallback = await caches.match('/dashboard');
-        if (fallback && (await getAuthState()) === false) {
+        if (fallback && (await getAuthState()) !== true) {
             return new Response(
                 '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Login Required</title>' +
                 '<style>body{font-family:sans-serif;text-align:center;padding:60px;background:#f8fafc}' +
@@ -206,7 +224,7 @@ async function offlineRedirectToDashboard(request, cacheName) {
         }
         if (fallback) return fallback;
         const salesFallback = await caches.match('/bills/create');
-        if (salesFallback && (await getAuthState()) !== false) {
+        if (salesFallback && (await getAuthState()) !== true) {
             return salesFallback;
         }
         return new Response('', { status: 503 });

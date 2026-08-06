@@ -325,84 +325,88 @@
         }, { capture: true });
     }
 
-    // ── Fetch interceptor: catches customer payments + installment saves ────
+    // ── Fetch interceptor: catches customer payments + installment saves + bills ────
     function installFetchInterceptor() {
         const _fetch = window.fetch;
 
         window.fetch = async function (input, init) {
-            if (navigator.onLine) return _fetch.apply(this, arguments);
-
-            const url    = typeof input === 'string' ? input : (input?.url ?? String(input));
+            const url = typeof input === 'string' ? input : (input?.url ?? String(input));
             const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
 
             if (method !== 'POST') return _fetch.apply(this, arguments);
 
-            // ── Customer payment: POST /customers/{id}/payments ─────────────
             const payMatch = url.match(/\/customers\/(\d+)\/payments(?:\?.*)?$/);
-            if (payMatch) {
-                try {
-                    const customerId = parseInt(payMatch[1], 10);
-                    const payData    = {};
-                    if (init.body instanceof FormData) {
-                        for (const [k, v] of init.body.entries()) payData[k] = v;
-                    }
-                    const localId = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-                    await saveRecord(STORE_PAYMENTS, {
-                        localId,
-                        customer_id : customerId,
-                        amount      : payData.amount,
-                        type        : payData.type        || 'cash',
-                        note        : payData.note        || '',
-                        payment_date: payData.payment_date || new Date().toISOString().slice(0, 10),
-                    });
-                    await refreshSyncUI();
-                    notify(t('payment_saved_offline'), 'success');
-                    return new Response(
-                        JSON.stringify({ success: true, new_balance: null, offline: true }),
-                        { status: 200, headers: { 'Content-Type': 'application/json' } }
-                    );
-                } catch {
-                    return _fetch.apply(this, arguments);
-                }
-            }
-
-            // ── Installment plan: POST /installments/from-bill ──────────────
-            if (/\/installments\/from-bill(?:\?.*)?$/.test(url)) {
-                try {
-                    const rawBody = init?.body;
-                    const body    = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
-                    const localId = 'inst_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-                    await saveRecord(STORE_INSTALLMENTS, { ...body, localId });
-                    await refreshSyncUI();
-                    notify(t('installment_saved_offline'), 'success');
-                    return new Response(
-                        JSON.stringify({ success: true, offline: true }),
-                        { status: 200, headers: { 'Content-Type': 'application/json' } }
-                    );
-                } catch {
-                    return _fetch.apply(this, arguments);
-                }
-            }
-
-            // ── Bill creation: POST /bills ────────────────────────────────────
+            const instMatch = url.match(/\/installments\/from-bill(?:\?.*)?$/);
             const billMatch = url.match(/\/bills(?:\/.*)?$/);
-            if (billMatch && method === 'POST') {
-                try {
-                    const fd = init.body instanceof FormData ? init.body : new FormData();
-                    const data = collectBillDataFromFormData(fd);
-                    await saveRecord(STORE_BILLS, data);
-                    await refreshSyncUI();
-                    notify(t('bill_saved_offline'), 'success');
-                    return new Response(
-                        JSON.stringify({ success: true, offline: true, local_id: data.localId }),
-                        { status: 200, headers: { 'Content-Type': 'application/json' } }
-                    );
-                } catch {
-                    return _fetch.apply(this, arguments);
-                }
-            }
 
-            return _fetch.apply(this, arguments);
+            if (!payMatch && !instMatch && !billMatch) return _fetch.apply(this, arguments);
+
+            try {
+                const response = await _fetch.apply(this, arguments);
+                return response;
+            } catch {
+                if (payMatch) {
+                    try {
+                        const customerId = parseInt(payMatch[1], 10);
+                        const payData = {};
+                        if (init.body instanceof FormData) {
+                            for (const [k, v] of init.body.entries()) payData[k] = v;
+                        }
+                        const localId = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+                        await saveRecord(STORE_PAYMENTS, {
+                            localId,
+                            customer_id : customerId,
+                            amount      : payData.amount,
+                            type        : payData.type        || 'cash',
+                            note        : payData.note        || '',
+                            payment_date: payData.payment_date || new Date().toISOString().slice(0, 10),
+                        });
+                        await refreshSyncUI();
+                        notify(t('payment_saved_offline'), 'success');
+                        return new Response(
+                            JSON.stringify({ success: true, new_balance: null, offline: true }),
+                            { status: 200, headers: { 'Content-Type': 'application/json' } }
+                        );
+                    } catch {
+                        return _fetch.apply(this, arguments);
+                    }
+                }
+
+                if (instMatch) {
+                    try {
+                        const rawBody = init?.body;
+                        const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
+                        const localId = 'inst_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+                        await saveRecord(STORE_INSTALLMENTS, { ...body, localId });
+                        await refreshSyncUI();
+                        notify(t('installment_saved_offline'), 'success');
+                        return new Response(
+                            JSON.stringify({ success: true, offline: true }),
+                            { status: 200, headers: { 'Content-Type': 'application/json' } }
+                        );
+                    } catch {
+                        return _fetch.apply(this, arguments);
+                    }
+                }
+
+                if (billMatch) {
+                    try {
+                        const fd = init.body instanceof FormData ? init.body : new FormData();
+                        const data = collectBillDataFromFormData(fd);
+                        await saveRecord(STORE_BILLS, data);
+                        await refreshSyncUI();
+                        notify(t('bill_saved_offline'), 'success');
+                        return new Response(
+                            JSON.stringify({ success: true, offline: true, local_id: data.localId }),
+                            { status: 200, headers: { 'Content-Type': 'application/json' } }
+                        );
+                    } catch {
+                        return _fetch.apply(this, arguments);
+                    }
+                }
+
+                return _fetch.apply(this, arguments);
+            }
         };
     }
 
