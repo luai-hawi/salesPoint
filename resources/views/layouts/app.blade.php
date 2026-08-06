@@ -738,6 +738,25 @@
 
 <body class="font-sans antialiased">
 
+    <script>
+        (function() {
+            const path = window.location.pathname;
+            const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path.startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path.startsWith('/installments') || path.startsWith('/purchase-bills');
+            if (isProtected && !path.includes('/login')) {
+                fetch('/auth/check', { method: 'GET', credentials: 'include', cache: 'no-store', redirect: 'manual' })
+                    .then(r => {
+                        if (r.status === 401 || r.status === 403 || r.status === 302 || r.status === 301) {
+                            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
+                            }
+                            window.location.replace('/login');
+                        }
+                    })
+                    .catch(() => {});
+            }
+        })();
+    </script>
+
     {{-- ── Offline Banner ────────────────────────────────────────────────────── --}}
     <div id="sp-offline-banner" style="display:none"
         class="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 bg-red-600 text-white text-sm font-medium px-4 py-2 shadow-lg">

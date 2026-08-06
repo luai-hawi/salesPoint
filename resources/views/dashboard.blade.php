@@ -1800,8 +1800,14 @@
                     }
                 }
             } catch (error) {
-                const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
-                if (isNetworkError && window.spSaveBillOffline) {
+                const isNetworkError = error instanceof TypeError && (
+                    error.message === 'Failed to fetch' ||
+                    error.message.includes('NetworkError') ||
+                    error.message.includes('fetch') ||
+                    error.message.includes('network')
+                );
+                const isOffline = !navigator.onLine;
+                if ((isNetworkError || isOffline) && window.spSaveBillOffline) {
                     try {
                         await window.spSaveBillOffline(form);
                         clearBillForm();
@@ -1809,7 +1815,7 @@
                         showNotification('{{ __('messages.Failed to save bill offline') }}', 'error');
                     }
                 } else {
-                    showNotification('{{ __('messages.Failed to create bill - network error') }}', 'error');
+                    showNotification(error.message || '{{ __('messages.Failed to create bill') }}', 'error');
                     setTimeout(() => location.reload(), 2000);
                 }
             } finally {

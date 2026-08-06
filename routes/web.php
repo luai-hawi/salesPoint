@@ -35,6 +35,10 @@ Route::get('/portfolio', function () {
     return view('portfolio');
 })->name('portfolio');
 
+Route::get('/auth/check', function () {
+    return response()->json(['authenticated' => auth()->check()]);
+})->middleware('auth');
+
 // ------------------- DASHBOARD WITH ROLE-BASED REDIRECT -------------------
 Route::get('/dashboard', function () {
     $user = auth()->user();

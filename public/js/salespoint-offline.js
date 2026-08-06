@@ -369,6 +369,7 @@
                 }
                 return response;
             } catch {
+                setOfflineState();
                 if (payMatch) {
                     try {
                         const customerId = parseInt(payMatch[1], 10);
@@ -449,13 +450,30 @@
     }
 
     // ── Connectivity ────────────────────────────────────────────────────────
+    let isOffline = false;
+
+    function setOfflineState() {
+        if (!isOffline) {
+            isOffline = true;
+            setBannerVisible(true);
+        }
+    }
+
+    function setOnlineState() {
+        if (isOffline) {
+            isOffline = false;
+            setBannerVisible(false);
+            syncAll();
+        }
+    }
+
     function watchConnectivity() {
         const probe = async () => {
-            let isOffline = !navigator.onLine;
-            if (!isOffline) {
+            let offline = !navigator.onLine;
+            if (!offline) {
                 try {
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 3000);
+                    const timeout = setTimeout(() => controller.abort(), 5000);
                     await fetch('/?_sp_probe=' + Date.now(), {
                         method: 'HEAD',
                         cache: 'no-store',
@@ -463,11 +481,14 @@
                     });
                     clearTimeout(timeout);
                 } catch {
-                    isOffline = true;
+                    offline = true;
                 }
             }
-            setBannerVisible(isOffline);
-            if (!isOffline) syncAll();
+            if (offline) {
+                setOfflineState();
+            } else {
+                setOnlineState();
+            }
         };
 
         window.addEventListener('online',  probe);
