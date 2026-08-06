@@ -333,16 +333,40 @@
             const url = typeof input === 'string' ? input : (input?.url ?? String(input));
             const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
 
-            if (method !== 'POST') return _fetch.apply(this, arguments);
+            if (method !== 'POST') {
+                try {
+                    const response = await _fetch.apply(this, arguments);
+                    if (response.status === 401 || response.status === 403) {
+                        handleUnauthorized(response);
+                    }
+                    return response;
+                } catch {
+                    return _fetch.apply(this, arguments);
+                }
+            }
 
             const payMatch = url.match(/\/customers\/(\d+)\/payments(?:\?.*)?$/);
             const instMatch = url.match(/\/installments\/from-bill(?:\?.*)?$/);
             const billMatch = url.match(/\/bills(?:\/.*)?$/);
 
-            if (!payMatch && !instMatch && !billMatch) return _fetch.apply(this, arguments);
+            if (!payMatch && !instMatch && !billMatch) {
+                try {
+                    const response = await _fetch.apply(this, arguments);
+                    if (response.status === 401 || response.status === 403) {
+                        handleUnauthorized(response);
+                    }
+                    return response;
+                } catch {
+                    return _fetch.apply(this, arguments);
+                }
+            }
 
             try {
                 const response = await _fetch.apply(this, arguments);
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized(response);
+                    return response;
+                }
                 return response;
             } catch {
                 if (payMatch) {
@@ -410,15 +434,43 @@
         };
     }
 
+    function handleUnauthorized(response) {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
+        }
+        const path = window.location.pathname;
+        const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path.startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path.startsWith('/installments') || path.startsWith('/purchase-bills');
+        if (isProtected && !path.includes('/login')) {
+            showNotification('You have been logged out', 'warning');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
+        }
+    }
+
     // ── Connectivity ────────────────────────────────────────────────────────
     function watchConnectivity() {
-        const update = () => {
-            setBannerVisible(!navigator.onLine);
-            if (navigator.onLine) syncAll();
+        const probe = async () => {
+            let isOffline = !navigator.onLine;
+            if (!isOffline) {
+                try {
+                    await fetch('/?_sp_probe=' + Date.now(), {
+                        method: 'GET',
+                        cache: 'no-store',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                } catch {
+                    isOffline = true;
+                }
+            }
+            setBannerVisible(isOffline);
+            if (!isOffline) syncAll();
         };
-        window.addEventListener('online',  update);
-        window.addEventListener('offline', update);
-        update();
+
+        window.addEventListener('online',  probe);
+        window.addEventListener('offline', probe);
+        probe();
+        setInterval(probe, 5000);
     }
 
     // Background sync from SW message
