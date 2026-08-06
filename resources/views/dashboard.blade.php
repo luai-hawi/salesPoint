@@ -1784,6 +1784,10 @@
 
                         // Update UI after successful bill creation
                         await updateUIAfterBillCreation(result.bill);
+                    } else if (result.offline) {
+                        // Offline bill saved successfully - update UI and clear form
+                        await updateUIAfterOfflineBillCreation(form);
+                        clearBillForm();
                     }
                 } else {
                     try {
@@ -1824,6 +1828,117 @@
                 submitButton.innerHTML = originalButtonText;
             }
         };
+
+        // Function to update UI after offline bill creation
+        async function updateUIAfterOfflineBillCreation(form) {
+            try {
+                const formData = new FormData(form);
+                const productIds = formData.getAll('product_ids[]').filter(Boolean);
+                const quantities = formData.getAll('quantities[]').map(Number);
+                const sellingPrices = formData.getAll('selling_prices[]').map(Number);
+                const discounts = formData.getAll('discounts[]').map(Number);
+                const discountTypes = formData.getAll('discount_types[]');
+                const productTags = formData.getAll('product_tags[]');
+                const isReturned = document.getElementById('is_returned')?.checked || false;
+
+                let total = 0;
+
+                productIds.forEach((productId, index) => {
+                    const qty = quantities[index] || 0;
+                    const price = sellingPrices[index] || 0;
+                    const discount = discounts[index] || 0;
+                    const discountType = discountTypes[index] || 'total';
+                    const tagsString = productTags[index] || '';
+
+                    let tagsTotal = 0;
+                    if (tagsString) {
+                        const tagPairs = tagsString.split('&');
+                        for (const pair of tagPairs) {
+                            if (pair.includes('@')) {
+                                const [name, tagPrice] = pair.split('@');
+                                tagsTotal += parseFloat(tagPrice) || 0;
+                            }
+                        }
+                    }
+
+                    let subtotal = (price * qty) + (tagsTotal * qty);
+                    let appliedDiscount = discountType === 'per-unit' ? discount * qty : discount;
+                    const finalSubtotal = Math.max(0, subtotal - appliedDiscount);
+                    total += finalSubtotal;
+
+                    const productIndex = allProducts.findIndex(p => p.id == productId);
+                    if (productIndex !== -1) {
+                        const quantitySold = isReturned ? -1 * Math.abs(qty) : qty;
+                        allProducts[productIndex].quantity = Math.max(0, allProducts[productIndex].quantity - quantitySold);
+                    }
+
+                    const productCards = document.querySelectorAll(`[data-product-id="${productId}"]`);
+                    productCards.forEach(productCard => {
+                        const quantitySpans = productCard.querySelectorAll('span');
+                        let quantitySpan = null;
+                        for (const span of quantitySpans) {
+                            const text = span.textContent.trim();
+                            if (text.includes('in stock') || text.includes('Out of Stock') ||
+                                text.includes('متوفر') || text.includes('غير متوفر')) {
+                                quantitySpan = span;
+                                break;
+                            }
+                        }
+
+                        if (quantitySpan) {
+                            const currentText = quantitySpan.textContent.trim();
+                            const qtyMatch = currentText.match(/(\d+\.?\d*)/);
+                            const currentQty = qtyMatch ? parseFloat(qtyMatch[1]) : 0;
+                            const quantitySold = isReturned ? -1 * Math.abs(qty) : qty;
+                            const newQty = Math.max(0, currentQty - quantitySold);
+
+                            if (newQty === 0 && !isRestaurant) {
+                                quantitySpan.textContent = 'Out of Stock';
+                                quantitySpan.className =
+                                    'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                                productCard.classList.add('out-of-stock');
+                            } else {
+                                quantitySpan.textContent = `${newQty} in stock`;
+                                if (newQty <= 10) {
+                                    quantitySpan.className =
+                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
+                                } else {
+                                    quantitySpan.className =
+                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                                }
+                                productCard.classList.remove('out-of-stock');
+                            }
+                        }
+                    });
+                });
+
+                const headerSalesElements = document.querySelectorAll('.text-green-600');
+                headerSalesElements.forEach(element => {
+                    if (element.textContent.includes('₪')) {
+                        const currentTotalText = element.textContent.replace('₪', '').replace(',', '').trim();
+                        const currentTotal = parseFloat(currentTotalText) || 0;
+                        element.textContent = '₪' + (currentTotal + total).toFixed(2);
+                    }
+                });
+
+                const performanceSalesElements = document.querySelectorAll('.text-blue-800');
+                performanceSalesElements.forEach(element => {
+                    if (element.textContent.includes('₪')) {
+                        const currentTotalText = element.textContent.replace('₪', '').replace(',', '').trim();
+                        const currentTotal = parseFloat(currentTotalText) || 0;
+                        element.textContent = '₪' + (currentTotal + total).toFixed(2);
+                    }
+                });
+
+                const billsCountElement = document.getElementById('bills_count');
+                if (billsCountElement) {
+                    const currentCount = parseInt(billsCountElement.textContent.trim()) || 0;
+                    billsCountElement.textContent = currentCount + 1;
+                }
+            } catch (error) {
+                console.error('Error updating UI after offline bill:', error);
+            }
+        }
 
         // Function to update UI after bill creation
         async function updateUIAfterBillCreation(bill) {
@@ -2350,11 +2465,28 @@
 
                     // Update customer balance in dropdown if still selected
                     const paymentCustomerSelect = document.getElementById('payment_customer_select');
-                    if (result.new_balance !== undefined) {
+                    if (result.offline) {
+                        const paymentAmount = parseFloat(formData.get('amount') || 0);
+                        Array.from(paymentCustomerSelect.options).forEach(option => {
+                            if (option.value === customerId) {
+                                const currentBalance = parseFloat(option.dataset.balance || 0);
+                                const newBalance = currentBalance + paymentAmount;
+                                option.dataset.balance = newBalance;
+                                const parts = option.textContent.split(' (');
+                                const baseText = parts[0];
+                                if (newBalance != 0) {
+                                    option.textContent =
+                                        `${baseText} ({{ __('dashboard.Debt') }}: ₪${Math.abs(newBalance).toFixed(2)})`;
+                                } else {
+                                    option.textContent =
+                                        `${baseText} ({{ __('dashboard.No Debt') }})`;
+                                }
+                            }
+                        });
+                    } else if (result.new_balance !== undefined) {
                         Array.from(paymentCustomerSelect.options).forEach(option => {
                             if (option.value === customerId) {
                                 option.dataset.balance = result.new_balance;
-                                // Update option text to reflect new balance
                                 const parts = option.textContent.split(' (');
                                 const baseText = parts[0];
                                 if (result.new_balance != 0) {

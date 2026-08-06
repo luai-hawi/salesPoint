@@ -246,7 +246,7 @@ class OfflineSyncController extends Controller
             $bill->customer->payments()->create([
                 'amount' => -1 * $total,
                 'type' => 'cash',
-                'note' => "Bill #{$bill->id} (offline sync)",
+                'note' => "Bill #{$bill->id} created as debt",
                 'user_id' => $ownerId,
             ]);
             $bill->customer->update(['balance' => $bill->customer->balance - $total]);
