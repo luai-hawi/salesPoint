@@ -497,6 +497,8 @@
         setInterval(probe, 5000);
     }
 
+    watchConnectivity();
+
     // Background sync from SW message
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', (e) => {
@@ -537,7 +539,6 @@
 
         installFetchInterceptor(); // must be early so it wraps fetch before page JS uses it
         interceptBillForm();
-        watchConnectivity();
         await refreshSyncUI();
     }
 

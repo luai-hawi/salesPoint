@@ -752,7 +752,12 @@
                             window.location.replace('/login');
                         }
                     })
-                    .catch(() => {});
+                    .catch(() => {
+                        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
+                        }
+                        window.location.replace('/login');
+                    });
             }
         })();
     </script>
