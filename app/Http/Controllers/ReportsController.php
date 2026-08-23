@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Supplier;
 use App\Models\Employee;
 use App\Models\User;
+use App\Models\Bill;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
@@ -422,22 +423,80 @@ class ReportsController extends Controller
         ]);
     }
 
-    private function supplierBalancesReport(int $ownerId)
+    public function customerBillDetailsPage()
     {
-        $rows = DB::table('suppliers')
-            ->where('user_id', $ownerId)
-            ->select('id', 'name', 'phone', 'email', 'balance')
-            ->orderByDesc('balance')
-            ->limit(1000)
-            ->get();
+        return view('reports.customer-bill-details');
+    }
+
+    public function customerBillDetails(Request $request)
+    {
+        $ownerId = $this->getOwnerId();
+        $from    = $this->sanitizeDate($request->get('from'));
+        $to      = $this->sanitizeDate($request->get('to'));
+
+        if (!$from) {
+            $from = now()->subMonth()->format('Y-m-d');
+        }
+        if (!$to) {
+            $to = now()->format('Y-m-d');
+        }
+
+        if ($from > $to) {
+            return response()->json(['success' => false, 'message' => __('messages.Invalid date range')], 422);
+        }
+
+        $fromDateTime = $from . ' 00:00:00';
+        $toDateTime   = $to . ' 23:59:59';
+
+        $bills = Bill::where('user_id', $ownerId)
+            ->whereBetween('created_at', [$fromDateTime, $toDateTime])
+            ->with(['customer:id,name,phone', 'creator:id,name', 'products:id,name,barcode'])
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get([
+                'id',
+                'total_price',
+                'note',
+                'customer_id',
+                'created_by',
+                'created_at',
+                'is_damaged',
+                'is_returned',
+            ]);
+
+        $formatted = $bills->map(function ($bill) {
+            $products = $bill->products->map(function ($product) {
+                return [
+                    'id'          => $product->id,
+                    'name'        => $product->name,
+                    'barcode'     => $product->barcode,
+                    'quantity'    => (float) ($product->pivot->quantity ?? 0),
+                    'selling_price' => (float) ($product->pivot->selling_price ?? 0),
+                    'discount'    => (float) ($product->pivot->discount ?? 0),
+                    'tags'        => $product->pivot->tags ?? '',
+                ];
+            });
+
+            return [
+                'id'            => $bill->id,
+                'total_price'   => (float) $bill->total_price,
+                'note'          => $bill->note ?? '',
+                'created_at'    => $bill->created_at->format('Y-m-d H:i:s'),
+                'customer_name' => $bill->customer->name ?? __('bills.Walk-in Customer'),
+                'customer_phone' => $bill->customer->phone ?? '',
+                'creator_name'  => $bill->creator->name ?? '',
+                'is_damaged'    => (bool) $bill->is_damaged,
+                'is_returned'   => (bool) $bill->is_returned,
+                'products'      => $products,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'rows'    => $rows,
+            'bills'   => $formatted,
             'summary' => [
-                'total_owing'  => $rows->where('balance', '>', 0)->sum('balance'),
-                'total_credit' => abs($rows->where('balance', '<', 0)->sum('balance')),
-                'count'        => $rows->count(),
+                'count' => $formatted->count(),
+                'total' => $formatted->sum('total_price'),
             ],
         ]);
     }

@@ -66,7 +66,7 @@
     @click="$store.sidebar.closeMobile()" class="fixed inset-0 z-40 bg-black/40 lg:hidden">
 </div>
 
-<div x-data="{}"
+<div x-data="{}" id="mobile-nav-topbar"
     class="fixed inset-x-0 top-0 z-40 h-16 border-b border-gray-200 bg-white shadow-sm lg:hidden">
     <div class="relative flex h-full items-center justify-center px-4">
         <button @click="$store.sidebar.toggle()" type="button" style="{{ $isRTL ? 'right: 1rem;' : 'left: 1rem;' }}"

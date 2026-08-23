@@ -749,6 +749,8 @@ Route::get('/islam', [IslamicSalesController::class, 'index'])->name('islam');
 Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_reports'])->group(function () {
     Route::get('/reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/generate', [\App\Http\Controllers\ReportsController::class, 'generate'])->name('reports.generate');
+    Route::get('/reports/customer-bill-details', [\App\Http\Controllers\ReportsController::class, 'customerBillDetailsPage'])->name('reports.customer-bill-details');
+    Route::get('/reports/customer-bill-details/data', [\App\Http\Controllers\ReportsController::class, 'customerBillDetails'])->name('reports.customer-bill-details.data');
 });
 
 // ------------------- LANGUAGE ROUTES -------------------

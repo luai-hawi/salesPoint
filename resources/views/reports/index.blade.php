@@ -24,6 +24,7 @@
             'reports' => [
                 ['type' => 'customer_payments', 'label' => __('messages.Customer Payments'), 'icon' => 'cash'],
                 ['type' => 'customer_balances', 'label' => __('messages.Customer Balances'), 'icon' => 'balance'],
+                ['type' => 'customer_bill_details', 'label' => __('messages.Customer Bill Details Report'), 'icon' => 'receipt'],
             ],
         ],
         [
@@ -286,15 +287,23 @@
                             {{ $cat['label'] }}
                         </p>
                         @foreach ($cat['reports'] as $rpt)
-                            <button @click="selectReport('{{ $rpt['type'] }}')"
-                                :class="activeType === '{{ $rpt['type'] }}' ? '{{ $c['active'] }}' :
-                                    'text-gray-600 {{ $c['hover'] }}'"
-                                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-{{ $isRTL ? 'right' : 'left' }}">
-                                <span
-                                    :class="activeType === '{{ $rpt['type'] }}' ? '{{ $c['dot'] }}' : 'bg-gray-300'"
-                                    class="w-2 h-2 rounded-full flex-shrink-0 transition-colors"></span>
-                                {{ $rpt['label'] }}
-                            </button>
+                            @if ($rpt['type'] === 'customer_bill_details')
+                                <a href="{{ route('reports.customer-bill-details') }}"
+                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-{{ $isRTL ? 'right' : 'left' }} text-gray-600 hover:bg-emerald-50 hover:text-emerald-700">
+                                    <span class="w-2 h-2 rounded-full flex-shrink-0 transition-colors bg-gray-300"></span>
+                                    {{ $rpt['label'] }}
+                                </a>
+                            @else
+                                <button @click="selectReport('{{ $rpt['type'] }}')"
+                                    :class="activeType === '{{ $rpt['type'] }}' ? '{{ $c['active'] }}' :
+                                        'text-gray-600 {{ $c['hover'] }}'"
+                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-{{ $isRTL ? 'right' : 'left' }}">
+                                    <span
+                                        :class="activeType === '{{ $rpt['type'] }}' ? '{{ $c['dot'] }}' : 'bg-gray-300'"
+                                        class="w-2 h-2 rounded-full flex-shrink-0 transition-colors"></span>
+                                    {{ $rpt['label'] }}
+                                </button>
+                            @endif
                         @endforeach
                     </div>
                 @endforeach
