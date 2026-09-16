@@ -165,7 +165,7 @@
                                 @click="toggleBill(bill.id)">
                                 <div class="px-5 py-4 flex items-center gap-4">
                                     <div class="flex-shrink-0">
-                                        <input type="checkbox" :value="bill.id" x-model="selectedBills"
+                                        <input type="checkbox" :value="bill.id" x-model.number="selectedBills"
                                             @click.stop
                                             class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
                                     </div>
