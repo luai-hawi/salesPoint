@@ -741,22 +741,30 @@
     <script>
         (function() {
             const path = window.location.pathname;
-            const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path.startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path.startsWith('/installments') || path.startsWith('/purchase-bills');
+            const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path
+                .startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path
+                .startsWith('/installments') || path.startsWith('/purchase-bills');
             if (isProtected && !path.includes('/login')) {
-                fetch('/auth/check', { method: 'GET', credentials: 'include', cache: 'no-store', redirect: 'manual' })
+                fetch('/auth/check', {
+                        method: 'GET',
+                        credentials: 'include',
+                        cache: 'no-store',
+                        redirect: 'manual'
+                    })
                     .then(r => {
-                        if (r.status === 0 || r.status === 401 || r.status === 403 || r.status === 302 || r.status === 301) {
+                        if (r.status === 0 || r.status === 401 || r.status === 403 || r.status === 302 || r
+                            .status === 301) {
                             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                                navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
+                                navigator.serviceWorker.controller.postMessage({
+                                    type: 'SP_SET_AUTH',
+                                    authenticated: false
+                                });
                             }
                             window.location.replace('/login');
                         }
                     })
                     .catch(() => {
-                        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: false });
-                        }
-                        window.location.replace('/login');
+                        // Network failure (offline) is not a logout; the SW decides offline access.
                     });
             }
         })();
@@ -835,7 +843,9 @@
                 });
             }
 
-            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            navigator.serviceWorker.register('/sw.js', {
+                    scope: '/'
+                })
                 .then(async function(registration) {
                     console.log('[SW] Registered, scope:', registration.scope);
 
@@ -916,13 +926,19 @@
 
     <script>
         (function() {
-            function sendAuthState(state) {
-                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({ type: 'SP_SET_AUTH', authenticated: state });
+                function sendAuthState(state) {
+                    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'SP_SET_AUTH',
+                            authenticated: state
+                        });
+                    }
                 }
-            }
 
-            var isAuth = @auth true @else false @endauth;
+                var isAuth = @auth true
+            @else
+                false
+            @endauth ;
 
             function notifySW() {
                 if (navigator.serviceWorker) {
@@ -931,7 +947,9 @@
                     } else {
                         navigator.serviceWorker.addEventListener('controllerchange', function() {
                             sendAuthState(isAuth);
-                        }, { once: true });
+                        }, {
+                            once: true
+                        });
                     }
                 }
             }
