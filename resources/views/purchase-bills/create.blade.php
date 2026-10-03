@@ -221,6 +221,51 @@
                             </div>
                         </div>
 
+                        <div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+                            <div class="mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">{{ __('payables.sections.payment_block') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('payables.subtitles.create_purchase_bill') }}</p>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label for="paid_now" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.paid_now') }}
+                                    </label>
+                                    <input id="paid_now" name="paid_now" type="number" step="0.01" min="0"
+                                        value="{{ old('paid_now', 0) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="payment_method" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.method') }}
+                                    </label>
+                                    <select id="payment_method" name="payment_method"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                        @foreach (['cash', 'card', 'transfer', 'check'] as $method)
+                                            <option value="{{ $method }}" @selected(old('payment_method', 'cash') === $method)>
+                                                {{ __('payables.methods.' . $method) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="payment_date" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.payment_date') }}
+                                    </label>
+                                    <input id="payment_date" name="payment_date" type="date"
+                                        value="{{ old('payment_date', old('purchase_date', date('Y-m-d'))) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="payment_note" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.payment_note') }}
+                                    </label>
+                                    <textarea id="payment_note" name="payment_note" rows="2"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">{{ old('payment_note') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="flex justify-end space-x-3">
                             <a href="{{ route('purchase-bills.index') }}"

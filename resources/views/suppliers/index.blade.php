@@ -1,115 +1,129 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('messages.Suppliers Management') }}
-            </h2>
-            <a href="{{ route('suppliers.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                {{ __('messages.Add New Supplier') }}
+        <x-ui.page-header :title="__('payables.titles.suppliers')" :subtitle="__('payables.subtitles.suppliers')">
+            <a href="{{ route('suppliers.create') }}"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500">
+                {{ __('payables.actions.create_supplier') }}
             </a>
-        </div>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Search Filter -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
-                <div class="p-6">
-                    <form method="GET" action="{{ route('suppliers.index') }}" class="flex gap-4">
-                        <input type="text" name="search" value="{{ request('search') }}" 
-                               placeholder="{{ __('messages.Search suppliers...') }}" 
-                               class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors">
-                            {{ __('messages.Search') }}
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
+
+            <x-ui.card :title="__('payables.actions.filters')">
+                <form method="GET" action="{{ route('suppliers.index') }}"
+                    class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                        <label for="search" class="mb-1 block text-sm font-medium text-gray-700">
+                            {{ __('payables.fields.search') }}
+                        </label>
+                        <input id="search" name="search" type="text" value="{{ request('search') }}"
+                            placeholder="{{ __('payables.placeholders.search_suppliers') }}"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="balance" class="mb-1 block text-sm font-medium text-gray-700">
+                            {{ __('payables.fields.balance_status') }}
+                        </label>
+                        <select id="balance" name="balance"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">{{ __('payables.placeholders.all_balances') }}</option>
+                            <option value="owed" @selected(request('balance') === 'owed')>{{ __('payables.filters.owed') }}</option>
+                            <option value="credit" @selected(request('balance') === 'credit')>{{ __('payables.filters.credit') }}</option>
+                            <option value="settled" @selected(request('balance') === 'settled')>{{ __('payables.filters.settled') }}</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button type="submit"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            {{ __('payables.actions.apply') }}
                         </button>
-                        @if(request('search'))
-                            <a href="{{ route('suppliers.index') }}" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors">
-                                {{ __('messages.Clear') }}
-                            </a>
-                        @endif
-                    </form>
-                </div>
+                        <a href="{{ route('suppliers.index') }}"
+                            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                            {{ __('payables.actions.clear') }}
+                        </a>
+                    </div>
+                </form>
+            </x-ui.card>
+
+            @php
+                $owedCount = $suppliers->getCollection()->where('balance', '>', 0)->count();
+                $creditCount = $suppliers->getCollection()->where('balance', '<', 0)->count();
+                $settledCount = $suppliers->getCollection()->where('balance', 0)->count();
+            @endphp
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <x-ui.stat :label="__('payables.titles.suppliers')" :value="$suppliers->total()" :hint="__('payables.subtitles.suppliers')" />
+                <x-ui.stat :label="__('payables.filters.owed')" :value="$owedCount" tone="red" />
+                <x-ui.stat :label="__('payables.filters.credit')" :value="$creditCount" tone="green" />
+                <x-ui.stat :label="__('payables.filters.settled')" :value="$settledCount" tone="gray" />
             </div>
 
-            <!-- Suppliers List -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                <div class="p-6">
-                    @if($suppliers->count() > 0)
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Name') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Contact') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Balance') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Last Purchase') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($suppliers as $supplier)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="font-medium text-gray-900">{{ $supplier->name }}</div>
-                                            @if($supplier->email)
-                                                <div class="text-sm text-gray-500">{{ $supplier->email }}</div>
+            <x-ui.card :title="__('payables.titles.suppliers')">
+                @if ($suppliers->count() === 0)
+                    <x-ui.empty :title="__('payables.messages.no_suppliers')">
+                        <a href="{{ route('suppliers.create') }}"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            {{ __('payables.actions.create_supplier') }}
+                        </a>
+                    </x-ui.empty>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.name') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.phone') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.balance') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.status') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.notes') }}</th>
+                                    <th class="px-4 py-3 text-end">{{ __('payables.actions.view') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @foreach ($suppliers as $supplier)
+                                    @php
+                                        $balance = (float) $supplier->balance;
+                                        $tone = $balance > 0 ? 'red' : ($balance < 0 ? 'green' : 'gray');
+                                        $status = $balance > 0 ? __('payables.statuses.we_owe') : ($balance < 0 ? __('payables.statuses.supplier_owes') : __('payables.statuses.settled'));
+                                    @endphp
+                                    <tr class="align-top">
+                                        <td class="px-4 py-3">
+                                            <div class="font-semibold text-gray-900">{{ $supplier->name }}</div>
+                                            @if ($supplier->email)
+                                                <div class="text-xs text-gray-500">{{ $supplier->email }}</div>
+                                            @endif
+                                            @if ($supplier->system_key === \App\Services\SupplierLedger::WALK_IN_KEY)
+                                                <div class="mt-1">
+                                                    <x-ui.badge tone="blue">{{ __('payables.statuses.system_supplier') }}</x-ui.badge>
+                                                </div>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @if($supplier->phone)
-                                                <div class="text-sm text-gray-900">{{ $supplier->phone }}</div>
-                                            @endif
+                                        <td class="px-4 py-3 text-gray-700">{{ $supplier->phone ?: '—' }}</td>
+                                        <td class="px-4 py-3 font-semibold text-gray-900">₪{{ number_format(abs($balance), 2) }}</td>
+                                        <td class="px-4 py-3">
+                                            <x-ui.badge :tone="$tone">{{ $status }}</x-ui.badge>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                                {{ $supplier->balance > 0 ? 'bg-red-100 text-red-800' : 
-                                                   ($supplier->balance < 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') }}">
-                                                ₪{{ number_format(abs($supplier->balance), 2) }}
-                                                {{ $supplier->balance > 0 ? '(' . __('messages.We Owe') . ')' : ($supplier->balance < 0 ? '(' . __('messages.They Owe') . ')' : '') }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @php
-                                                $lastBill = $supplier->getLastPurchaseBillData(auth()->user()->role === 'employee' ? auth()->user()->shop_owner_id : auth()->id());
-                                            @endphp
-                                            @if($lastBill['amount'] > 0)
-                                                ₪{{ number_format($lastBill['amount'], 2) }}
-                                                <div class="text-xs">{{ $lastBill['date'] }}</div>
-                                            @else
-                                                {{ __('messages.No purchases') }}
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                            <a href="{{ route('suppliers.edit', $supplier) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('messages.Edit') }}</a>
-                                            <form method="POST" action="{{ route('suppliers.destroy', $supplier) }}" class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900" 
-                                                        onclick="return confirm('{{ __('messages.Are you sure you want to delete this supplier?') }}')">
-                                                    {{ __('messages.Delete') }}
-                                                </button>
-                                            </form>
+                                        <td class="px-4 py-3 text-gray-600">{{ $supplier->notes ? \Illuminate\Support\Str::limit($supplier->notes, 70) : '—' }}</td>
+                                        <td class="px-4 py-3 text-end">
+                                            <a href="{{ route('suppliers.edit', $supplier) }}"
+                                                class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                                                {{ __('payables.actions.view') }}
+                                            </a>
                                         </td>
                                     </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div class="mt-6">
-                            {{ $suppliers->appends(request()->query())->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-8">
-                            <div class="text-gray-500 text-lg">{{ __('messages.No suppliers found') }}</div>
-                            <a href="{{ route('suppliers.create') }}" class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                                {{ __('messages.Add Your First Supplier') }}
-                            </a>
-                        </div>
-                    @endif
-                </div>
-            </div>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pt-4">
+                        {{ $suppliers->links() }}
+                    </div>
+                @endif
+            </x-ui.card>
         </div>
     </div>
 </x-app-layout>

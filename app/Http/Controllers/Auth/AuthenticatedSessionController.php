@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Restaurant\RestaurantSupport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,14 +29,22 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        $request->session()->regenerate();
+        $user = DB::transaction(function () use ($request) {
+            $user = \App\Models\User::query()->whereKey(Auth::id())->lockForUpdate()->firstOrFail();
+            $user->forceFill(['remember_token' => \Illuminate\Support\Str::random(60)])->save();
+            Auth::guard('web')->login($user, $request->boolean('remember'));
+            $request->session()->regenerate();
+            $currentSessionId = Session::getId();
+            $user->update(['session_id' => $currentSessionId]);
+            $this->logoutOtherSessions($user, $currentSessionId);
 
-        $user = Auth::user();
-        $currentSessionId = Session::getId();
+            return $user;
+        });
+        $request->session()->put('program_session_claimed', $user->id);
 
-        $this->logoutOtherSessions($user, $currentSessionId);
-
-        $user->update(['session_id' => $currentSessionId]);
+        if ($user && RestaurantSupport::isKitchenOnly($user) && \Illuminate\Support\Facades\Route::has('kitchen.display')) {
+            return redirect()->intended(route('kitchen.display', absolute: false));
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -46,13 +55,14 @@ class AuthenticatedSessionController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $user = Auth::user();
-        
-        // Clear the session ID from user record
-        if ($user) {
-            $user->update(['session_id' => null]);
+
+        if ($user && ! $request->session()->has('impersonator_id')) {
+            $user->newQuery()->whereKey($user->id)
+                ->where('session_id', $request->session()->getId())
+                ->update(['session_id' => null, 'remember_token' => \Illuminate\Support\Str::random(60)]);
         }
 
-        Auth::guard('web')->logout();
+        Auth::guard('web')->logoutCurrentDevice();
 
         $request->session()->invalidate();
 

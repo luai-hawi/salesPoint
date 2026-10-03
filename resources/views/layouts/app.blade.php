@@ -13,7 +13,7 @@
     <link rel="icon" href="{{ asset('images/logo4.png') }}" type="image/png">
 
     <!-- PWA Manifest -->
-    <link rel="manifest" href="{{ asset('pwa/manifest.json') }}">
+    <link rel="manifest" href="{{ \App\Support\Assets::versioned('pwa/manifest.json') }}">
     <meta name="theme-color" content="#3b82f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -734,17 +734,22 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Shared UI helpers: toasts, confirm dialogs, CSRF-aware fetch -->
+    <script>
+        window.SP_I18N = @json(__('ui'));
+    </script>
+    <script src="{{ \App\Support\Assets::versioned('js/sp-ui.js') }}" defer></script>
 </head>
 
 <body class="font-sans antialiased">
 
     <script>
+        window.spCurrentUserId = @json(auth()->id());
+        window.SPOfflineTranslations = @json(__('sync'));
+
         (function() {
-            const path = window.location.pathname;
-            const isProtected = path === '/dashboard' || path === '/bills/create' || path.startsWith('/bills/') || path
-                .startsWith('/products/') || path.startsWith('/customers/') || path.startsWith('/settings') || path
-                .startsWith('/installments') || path.startsWith('/purchase-bills');
-            if (isProtected && !path.includes('/login')) {
+            if (@json(auth()->check())) {
                 fetch('/auth/check', {
                         method: 'GET',
                         credentials: 'include',
@@ -757,7 +762,8 @@
                             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                                 navigator.serviceWorker.controller.postMessage({
                                     type: 'SP_SET_AUTH',
-                                    authenticated: false
+                                    authenticated: false,
+                                    userId: null
                                 });
                             }
                             window.location.replace('/login');
@@ -772,7 +778,7 @@
 
     {{-- ── Offline Banner ────────────────────────────────────────────────────── --}}
     <div id="sp-offline-banner" style="display:none"
-        class="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 bg-red-600 text-white text-sm font-medium px-4 py-2 shadow-lg">
+        class="fixed start-0 end-0 top-0 z-[9999] flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 12h.01M8.464 8.464a5 5 0 000 7.072M5.636 5.636a9 9 0 000 12.728" />
@@ -782,7 +788,7 @@
 
     {{-- ── Floating Sync Button (shown when pending bills exist) ──────────────── --}}
     <button id="sp-sync-btn" type="button" onclick="window.spSyncNow && window.spSyncNow()" style="display:none"
-        class="fixed bottom-6 {{ app()->getLocale() === 'ar' ? 'left-6' : 'right-6' }} z-[9990]
+        class="fixed bottom-6 end-6 z-[9990]
                    flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700
                    text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-xl
                    transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2">
@@ -804,8 +810,9 @@
                      text-xs font-bold rounded-full">0</span>
     </button>
 
-    <div class="min-h-screen bg-gray-100">
+    <div id="app-root" class="min-h-screen bg-gray-100">
         @include('layouts.navigation')
+        @include('layouts.partials.billing-banner')
 
         {{-- Main content area — offset by the actual sidebar width on one side only --}}
         <div x-data="{}" class="app-shell min-w-0 pt-16 lg:pt-0 transition-all duration-300 ease-in-out"
@@ -833,7 +840,7 @@
     <!-- PWA Registration Script -->
     <script>
         if ('serviceWorker' in navigator) {
-            const OFFLINE_WARM_URLS = ['/dashboard', '/bills/create'];
+            const OFFLINE_WARM_URLS = ['/dashboard', '/offline', '/offline/queue'];
 
             function warmOfflineCache(registration) {
                 if (!registration || !registration.active) return;
@@ -843,7 +850,7 @@
                 });
             }
 
-            navigator.serviceWorker.register('/sw.js', {
+            navigator.serviceWorker.register(@json(\App\Support\Assets::versioned('sw.js')), {
                     scope: '/'
                 })
                 .then(async function(registration) {
@@ -922,6 +929,9 @@
     <!-- Offline module (IndexedDB + sync + UI) -->
     @auth
         <script src="{{ asset('js/salespoint-offline.js') }}"></script>
+        <script src="{{ \App\Support\Assets::versioned('js/sp-offline-shared.js') }}"></script>
+        <script src="{{ \App\Support\Assets::versioned('js/sp-offline-core.js') }}"></script>
+        <script src="{{ \App\Support\Assets::versioned('js/sp-offline-sync-center.js') }}"></script>
     @endauth
 
     <script>
@@ -930,7 +940,8 @@
                     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                         navigator.serviceWorker.controller.postMessage({
                             type: 'SP_SET_AUTH',
-                            authenticated: state
+                            authenticated: state,
+                            userId: state ? window.spCurrentUserId : null
                         });
                     }
                 }
@@ -956,10 +967,37 @@
 
             notifySW();
 
+            try {
+                var activeUserKey = 'sp-active-user-id';
+                var currentUserId = window.spCurrentUserId ? String(window.spCurrentUserId) : '';
+                var previousUserId = localStorage.getItem(activeUserKey);
+                if (currentUserId && previousUserId && previousUserId !== currentUserId) {
+                    if (window.SPOffline && typeof window.SPOffline.clearUserData === 'function') {
+                        window.SPOffline.clearUserData(previousUserId);
+                    }
+                    if (typeof window.spClearOfflineData === 'function') {
+                        window.spClearOfflineData(previousUserId);
+                    }
+                }
+
+                if (currentUserId) {
+                    localStorage.setItem(activeUserKey, currentUserId);
+                }
+            } catch (e) {}
+
             document.addEventListener('DOMContentLoaded', function() {
                 var forms = document.querySelectorAll('form[action="{{ route('logout') }}"]');
                 forms.forEach(function(form) {
                     form.addEventListener('submit', function() {
+                        if (window.SPOffline && typeof window.SPOffline.clearUserData === 'function') {
+                            window.SPOffline.clearUserData(window.spCurrentUserId);
+                        }
+                        if (typeof window.spClearOfflineData === 'function') {
+                            window.spClearOfflineData(window.spCurrentUserId);
+                        }
+                        try {
+                            localStorage.removeItem('sp-active-user-id');
+                        } catch (e) {}
                         sendAuthState(false);
                     });
                 });

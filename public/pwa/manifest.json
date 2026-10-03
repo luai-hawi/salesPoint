@@ -3,12 +3,13 @@
     "short_name": "SalesPoint",
     "description": "Sales management application with offline support",
     "start_url": "/dashboard",
+    "scope": "/",
     "display": "standalone",
     "orientation": "any",
     "background_color": "#f8fafc",
     "theme_color": "#3b82f6",
-    "dir": "ltr",
-    "lang": "en",
+    "dir": "auto",
+    "lang": "und",
     "categories": ["business", "productivity", "finance"],
     "icons": [
         {
@@ -27,7 +28,6 @@
     "screenshots": [],
     "related_applications": [],
     "prefer_related_applications": false,
-    "scope": "/",
     "serviceworker": {
         "src": "/sw.js",
         "scope": "/",
@@ -42,17 +42,17 @@
             "icons": []
         },
         {
-            "name": "New Sale",
-            "short_name": "New Sale",
-            "description": "Create new sale",
-            "url": "/bills/create",
-            "icons": []
-        },
-        {
             "name": "Products",
             "short_name": "Products",
             "description": "View products",
             "url": "/products",
+            "icons": []
+        },
+        {
+            "name": "Offline queue",
+            "short_name": "Queue",
+            "description": "Open the sync center queue",
+            "url": "/offline/queue",
             "icons": []
         }
     ]

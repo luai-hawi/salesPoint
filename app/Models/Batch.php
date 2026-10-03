@@ -15,6 +15,8 @@ class Batch extends Model
         'quantity',
         'cost_price',
         'user_id',
+        'purchase_bill_id',
+        'intake_client_uuid',
     ];
 
     public function product()

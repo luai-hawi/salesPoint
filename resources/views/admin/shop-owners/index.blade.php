@@ -1,432 +1,149 @@
-@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('messages.All Users Management') }}
-            </h2>
-            <div class="flex items-center space-x-4">
-                @php
-                    $expiredUsers = $users->filter(function ($user) {
-                        return $user->isTempExpired();
-                    });
-                    $expiredCount = $expiredUsers->count();
-                @endphp
-                @if ($expiredCount > 0)
-                    <button type="button"
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                        onclick="document.getElementById('deleteExpiredModal').classList.remove('hidden');">
-                        {{ __('messages.Delete All Expired') }} ({{ $expiredCount }})
-                    </button>
-                @endif
-                <a href="{{ route('admin.shop-owners.create') }}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    {{ __('messages.Add New User') }}
-                </a>
-            </div>
-        </div>
+        <x-ui.page-header :title="__('admin.titles.shops')" :subtitle="__('admin.filters.needs_attention')">
+            <a href="{{ route('admin.shop-owners.create') }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('admin.titles.create_shop') }}</a>
+        </x-ui.page-header>
     </x-slot>
 
-    {{-- Delete Expired Modal --}}
-    @if ($expiredCount > 0)
-        <div id="deleteExpiredModal"
-            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-                <form action="{{ route('admin.shop-owners.delete-expired') }}" method="POST" id="deleteExpiredForm">
-                    @csrf
-                    @method('DELETE')
-                    <div class="flex flex-col">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-red-600">
-                                {{ __('messages.Confirm Delete Expired Accounts') }}
-                            </h3>
-                            <button type="button"
-                                onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
-                                class="text-gray-400 hover:text-gray-600">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <p class="text-gray-600 mb-2">
-                            {{ __('messages.You are about to permanently delete the following expired accounts:') }}
-                        </p>
-                        <p class="text-xs text-gray-500 mb-3">
-                            {{ __('messages.Uncheck accounts you want to keep.') }}
-                        </p>
-                        <p class="text-sm text-red-500 mb-4">
-                            {{ __('messages.This action cannot be undone!') }}
-                        </p>
-                        <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-60 overflow-y-auto">
-                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-                                <label class="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
-                                    <input type="checkbox" id="selectAllExpired" checked
-                                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                        onchange="toggleAllExpired(this.checked)">
-                                    {{ __('messages.Select All') }}
-                                </label>
-                                <span id="expiredSelectedCount" class="text-xs text-gray-500">
-                                    {{ $expiredCount }} {{ __('messages.selected') }}
-                                </span>
-                            </div>
-                            <ul class="space-y-1">
-                                @foreach ($expiredUsers as $account)
-                                    <li class="flex items-center gap-3 py-1.5 px-1 hover:bg-gray-100 rounded">
-                                        <input type="checkbox" name="user_ids[]" value="{{ $account->id }}" checked
-                                            class="expired-account-checkbox rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                            onchange="updateExpiredCount()">
-                                        <div>
-                                            <span class="font-medium text-sm text-gray-800">{{ $account->name }}</span>
-                                            <span class="text-gray-400 text-xs block">{{ $account->email }}</span>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                        <div class="flex justify-end space-x-3">
-                            <button type="button"
-                                onclick="document.getElementById('deleteExpiredModal').classList.add('hidden');"
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                                {{ __('messages.Cancel') }}
-                            </button>
-                            <button type="submit" id="deleteExpiredSubmit"
-                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ __('messages.Delete Selected') }} (<span
-                                    id="deleteExpiredCountLabel">{{ $expiredCount }}</span>)
-                            </button>
-                        </div>
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
+
+            <x-ui.card>
+                <form method="GET" class="grid grid-cols-1 gap-4 lg:grid-cols-5">
+                    <div class="lg:col-span-2">
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">{{ __('admin.fields.search') }}</label>
+                        <input type="search" name="search" value="{{ request('search') }}" class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">{{ __('admin.fields.status') }}</label>
+                        <select name="status" class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            @foreach (['all', 'active', 'has_to_pay', 'trial', 'trial_ended', 'disabled', 'needs_attention'] as $filter)
+                                <option value="{{ $filter === 'all' ? '' : $filter }}" @selected(request('status', 'all') === $filter || (request('status') === null && $filter === 'all'))>{{ __('admin.filters.' . $filter) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">{{ __('admin.actions.filter') }}</label>
+                        <select name="sort" class="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="latest" @selected(request('sort') === 'latest')>{{ __('admin.sort.latest') }}</option>
+                            <option value="name" @selected(request('sort') === 'name')>{{ __('admin.fields.shop_name') }}</option>
+                            <option value="next_payment" @selected(request('sort') === 'next_payment')>{{ __('admin.fields.next_payment') }}</option>
+                            <option value="last_activity" @selected(request('sort') === 'last_activity')>{{ __('admin.fields.last_activity') }}</option>
+                            <option value="usage" @selected(request('sort') === 'usage')>{{ __('admin.fields.usage') }}</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('admin.actions.filter') }}</button>
+                        <a href="{{ route('admin.shop-owners.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.clear') }}</a>
                     </div>
                 </form>
+            </x-ui.card>
+
+            <div class="flex flex-wrap gap-2">
+                @foreach ($counts as $filter => $count)
+                    <a href="{{ route('admin.shop-owners.index', array_filter(array_merge(request()->query(), ['status' => $filter === 'all' ? null : $filter]))) }}"
+                        class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm {{ (request('status', 'all') === $filter || ($filter === 'all' && ! request('status'))) ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-300 bg-white text-gray-700' }}">
+                        <span>{{ __('admin.filters.' . $filter) }}</span>
+                        <span class="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{{ $count }}</span>
+                    </a>
+                @endforeach
             </div>
-        </div>
 
-        <script>
-            function toggleAllExpired(checked) {
-                document.querySelectorAll('.expired-account-checkbox').forEach(cb => cb.checked = checked);
-                updateExpiredCount();
-            }
-
-            function updateExpiredCount() {
-                const checkboxes = document.querySelectorAll('.expired-account-checkbox');
-                const total = checkboxes.length;
-                const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
-
-                document.getElementById('expiredSelectedCount').textContent = checked + ' {{ __('messages.selected') }}';
-                document.getElementById('deleteExpiredCountLabel').textContent = checked;
-                document.getElementById('deleteExpiredSubmit').disabled = checked === 0;
-                document.getElementById('selectAllExpired').checked = checked === total;
-                document.getElementById('selectAllExpired').indeterminate = checked > 0 && checked < total;
-            }
-        </script>
-    @endif
-
-    <div class="py-8">
-        <div class="mx-auto sm:px-6 lg:px-8">
-
-            @if (session('success'))
-                <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if (session('info'))
-                <div class="mb-6 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg">
-                    {{ session('info') }}
-                </div>
-            @endif
-
-            <!-- Users Table -->
-            <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Users List') }}</h3>
-                </div>
-
+            <x-ui.card :title="__('admin.titles.shops')" :subtitle="__('admin.meta.total_count', ['count' => $users->total()])">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.User') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Phone') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Role') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Account Type') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Status') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Subscription') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Joined') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Actions') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.shop_name') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.business_type') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.status') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.next_payment') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.usage') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('charts.admin.month_performance') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.images') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.employees') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.last_activity') }}</th>
+                                <th class="px-3 py-3 text-start">{{ __('admin.fields.notes') }}</th>
+                                <th class="px-3 py-3 text-start">—</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($users as $user)
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            @forelse ($users as $user)
                                 @php
-                                    $isExpired = $user->isTempExpired();
+                                    $status = $statusMap[$user->id];
+                                    $used = (int) ($user->products_count + $user->customers_count + $user->bills_count + $user->purchase_bills_count);
+                                    $limit = $user->entry_limit;
+                                    $remaining = $limit ? max(0, $limit - $used) : null;
+                                    $percent = $limit ? min(100, (int) round(($used / max(1, $limit)) * 100)) : 0;
+                                    $stats = $imageStats[$user->id] ?? ['count' => 0, 'bytes' => 0];
+                                    $perf = $performance->get((int) $user->id) ?? \App\Services\Admin\ShopPerformanceService::emptySummary();
                                 @endphp
-                                <tr
-                                    class="{{ $isExpired ? 'bg-red-50' : '' }} hover:{{ $isExpired ? 'bg-red-100' : 'bg-gray-50' }} transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div
-                                                class="w-10 h-10 bg-gradient-to-br
-                                                {{ $user->role === 'admin' ? 'from-red-500 to-pink-600' : ($isExpired ? 'from-red-400 to-red-600' : 'from-indigo-500 to-purple-600') }}
-                                                rounded-full flex items-center justify-center">
-                                                <span
-                                                    class="text-white font-bold text-sm">{{ strtoupper(substr($user->name, 0, 2)) }}</span>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div
-                                                    class="text-sm font-medium {{ $isExpired ? 'text-red-700' : 'text-gray-900' }}">
-                                                    {{ $user->name }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">{{ $user->email }}</div>
-                                            </div>
-                                        </div>
+                                <tr class="align-top">
+                                    <td class="px-3 py-3">
+                                        <a href="{{ route('admin.shop-owners.show', $user) }}" class="font-semibold text-indigo-700">{{ $user->name }}</a>
+                                        <div class="text-xs text-gray-500">{{ $user->owner_name ?: '—' }}</div>
+                                        <div class="text-xs text-gray-500">{{ $user->email }}</div>
+                                        <div class="text-xs text-gray-500">{{ $user->phone_number ?: '—' }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $user->phone_number ?: '-' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            {{ $user->role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800' }}">
-                                            {{ ucfirst(str_replace('_', ' ', $user->role)) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($user->account_type === 'temp')
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                {{ $isExpired ? 'bg-red-600 text-white' : 'bg-yellow-100 text-yellow-800' }}">
-                                                {{ $isExpired ? __('messages.Expired') : __('messages.Temporary') }}
-                                            </span>
-                                            @if ($user->temp_expires_at)
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    @if ($isExpired)
-                                                        {{ __('messages.Expired:') }}
-                                                        {{ $user->temp_expires_at->format('M j, Y') }}
-                                                    @else
-                                                        {{ __('messages.Expires:') }}
-                                                        {{ $user->temp_expires_at->format('M j, Y') }}
-                                                    @endif
-                                                </div>
-                                            @endif
-                                        @elseif($user->account_type === 'full')
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {{ __('messages.Full Account') }}
-                                            </span>
-                                        @else
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                -
-                                            </span>
+                                    <td class="px-3 py-3"><x-ui.badge tone="gray">{{ __('admin.types.' . $user->businessRole()) }}</x-ui.badge></td>
+                                    <td class="px-3 py-3">
+                                        <x-ui.badge :tone="$status['tone']">{{ $status['label'] }}</x-ui.badge>
+                                        @if ($status['reason'])
+                                            <div class="mt-1 text-xs text-red-600">{{ $status['reason'] }}</div>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            {{ $user->role === 'disabled' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                                            {{ $user->role === 'disabled' ? __('messages.Disabled') : __('messages.Active') }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($user->subscription_paid)
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {{ __('messages.Paid') }}
-                                            </span>
-                                            @if ($user->subscription_cost)
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    ₪{{ number_format($user->subscription_cost, 2) }}</div>
-                                            @endif
-                                            @if ($user->account_type === 'full' && $user->license_expires_at)
-                                                @php $licDays = (int) now()->diffInDays($user->license_expires_at, false); @endphp
-                                                <div
-                                                    class="text-xs mt-1 {{ $licDays < 0 ? 'text-red-600 font-semibold' : ($licDays <= 30 ? 'text-orange-500' : 'text-gray-400') }}">
-                                                    🗓 {{ $user->license_expires_at->format('M j, Y') }}
-                                                    ({{ $licDays < 0 ? 'exp.' : $licDays . 'd left' }})
-                                                </div>
-                                            @endif
-                                            <!-- Renew license button (always available for full accounts) -->
-                                            @if ($user->account_type === 'full')
-                                                <button type="button"
-                                                    onclick="openMarkPaidModal({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->subscription_cost ?? 0 }})"
-                                                    class="mt-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-medium transition-colors duration-200">
-                                                    {{ __('messages.Renew License') }}
-                                                </button>
-                                            @endif
-                                        @else
-                                            <div class="flex items-center space-x-2">
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    {{ __('messages.Unpaid') }}
-                                                </span>
-                                                <button type="button"
-                                                    onclick="openMarkPaidModal({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->subscription_cost ?? 0 }})"
-                                                    class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200">
-                                                    {{ __('messages.Mark Paid') }}
-                                                </button>
-                                            </div>
-                                            @if ($user->subscription_cost)
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    ₪{{ number_format($user->subscription_cost, 2) }}</div>
-                                            @endif
+                                    <td class="px-3 py-3">
+                                        <div>{{ $status['next_payment_date'] ?: '—' }}</div>
+                                        @if ($status['days_left'] !== null)
+                                            <div class="text-xs text-gray-500">{{ $status['days_left'] }}</div>
+                                        @endif
+                                        @if ($status['amount'] !== null)
+                                            <div class="text-xs text-gray-500">{{ $currencies->format($status['amount'], $status['currency']) }}</div>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $user->created_at->format('M j, Y') }}
+                                    <td class="px-3 py-3">
+                                        <div class="text-xs">{{ $used }} / {{ $limit ?: '∞' }} @if (! is_null($remaining)) ({{ $remaining }}) @endif</div>
+                                        @if ($limit)
+                                            <div class="mt-1 h-2 w-28 overflow-hidden rounded-full bg-gray-100"><div class="h-2 {{ $percent >= 100 ? 'bg-red-500' : ($percent >= 90 ? 'bg-amber-500' : 'bg-green-500') }}" style="width: {{ $percent }}%"></div></div>
+                                        @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex items-center space-x-3">
-                                            @if ($user->role === 'shop_owner' || $user->role === 'restaurant' || $user->role === 'merchant')
-                                                <a href="{{ route('admin.shop-owners.show', $user->id) }}"
-                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
-                                                    {{ __('messages.View Shop') }}
-                                                </a>
-                                            @endif
-                                            @if ($user->account_type === 'temp')
-                                                <form
-                                                    action="{{ route('admin.shop-owners.convert-to-full', $user->id) }}"
-                                                    method="POST" class="inline"
-                                                    onsubmit="return confirm('{{ __('messages.Convert to full account?') }}');">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="text-green-600 hover:text-green-900 transition-colors duration-200">
-                                                        {{ __('messages.Convert to Full') }}
-                                                    </button>
-                                                </form>
-                                            @endif
-                                            <a href="{{ route('admin.shop-owners.edit', $user->id) }}"
-                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                {{ __('messages.Edit') }}
-                                            </a>
-                                            <form action="{{ route('admin.shop-owners.destroy', $user->id) }}"
-                                                method="POST" class="inline"
-                                                onsubmit="return confirm('{{ __('messages.Are you sure you want to delete this user?') }}');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    {{ __('messages.Delete') }}
-                                                </button>
-                                            </form>
+                                    <td class="whitespace-nowrap px-3 py-3 text-xs">
+                                        <div><span class="text-gray-500">{{ __('charts.sales') }}:</span> <span class="font-semibold tabular-nums">{{ number_format($perf['sales_month'], 2) }}</span></div>
+                                        <div><span class="text-gray-500">{{ __('charts.gross_profit') }}:</span> <span @class(['font-semibold tabular-nums', 'text-emerald-700' => $perf['profit_month'] > 0, 'text-rose-700' => $perf['profit_month'] < 0])>{{ number_format($perf['profit_month'], 2) }}</span></div>
+                                        <div class="text-gray-400">{{ __('charts.admin.bills_count', ['count' => $perf['bills_month']]) }}@if ($perf['margin'] !== null) · {{ $perf['margin'] }}%@endif</div>
+                                    </td>
+                                    <td class="px-3 py-3 text-xs">
+                                        <div>{{ $stats['count'] }}</div>
+                                        <div class="text-gray-500">{{ \App\Services\Admin\ShopStorageService::humanBytes($stats['bytes']) }}</div>
+                                    </td>
+                                    <td class="px-3 py-3">{{ $user->employees_count }}</td>
+                                    <td class="px-3 py-3 text-xs">{{ $user->last_activity_at ? \Carbon\Carbon::parse($user->last_activity_at)->diffForHumans() : '—' }}</td>
+                                    <td class="px-3 py-3">
+                                        <form method="POST" action="{{ route('admin.shop-owners.note', $user) }}" class="space-y-2">
+                                            @csrf
+                                            @method('PUT')
+                                            <textarea name="admin_notes" rows="2" class="w-52 rounded-lg border-gray-300 text-xs focus:border-indigo-500 focus:ring-indigo-500">{{ $user->admin_notes }}</textarea>
+                                            <button class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.save_note') }}</button>
+                                        </form>
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <div class="flex flex-col gap-2">
+                                            <a href="{{ route('admin.shop-owners.show', $user) }}" class="text-xs font-semibold text-indigo-700">{{ __('admin.actions.details') }}</a>
+                                            <a href="{{ route('admin.shop-owners.edit', $user) }}" class="text-xs font-semibold text-gray-700">{{ __('admin.actions.edit') }}</a>
+                                            <form method="POST" action="{{ route('admin.shop-owners.toggle-status', $user) }}">@csrf<button class="text-xs font-semibold {{ $user->role === 'disabled' ? 'text-green-700' : 'text-red-700' }}">{{ $user->role === 'disabled' ? __('admin.actions.enable') : __('admin.actions.disable') }}</button></form>
+                                            <form method="POST" action="{{ route('admin.shop-owners.impersonate', $user) }}">@csrf<button class="text-xs font-semibold text-gray-700">{{ __('admin.actions.login_as') }}</button></form>
                                         </div>
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="8" class="px-6 py-12 text-center">
-                                        <div class="text-gray-500">
-                                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
-                                                </path>
-                                            </svg>
-                                            <p class="text-lg font-medium">{{ __('messages.No users found') }}</p>
-                                            <p class="text-sm text-gray-400 mt-1">
-                                                {{ __('messages.Get started by creating your first user.') }}</p>
-                                            <a href="{{ route('admin.shop-owners.create') }}"
-                                                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                                {{ __('messages.Add User') }}
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="11" class="px-3 py-10"><x-ui.empty :title="__('admin.titles.shops')" /></td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-            </div>
+                <div class="mt-4">{{ $users->links() }}</div>
+            </x-ui.card>
         </div>
     </div>
-
-    <!-- Mark Paid / Renew License Modal -->
-    <div id="mark-paid-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-            <div class="fixed inset-0 bg-black bg-opacity-50" onclick="closeMarkPaidModal()"></div>
-            <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md z-10 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">
-                        {{ __('messages.Mark Subscription Paid') }}</h3>
-                    <button onclick="closeMarkPaidModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <p class="text-sm text-gray-600 mb-5">
-                    {{ __('messages.Marking paid for:') }} <strong id="modal-user-name"></strong>
-                </p>
-                <form id="mark-paid-form" method="POST" action="">
-                    @csrf
-                    <div class="space-y-4">
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Number of Months') }}</label>
-                            <input type="number" name="months" id="modal-months" value="1" min="1"
-                                max="120" required
-                                class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <p class="text-xs text-gray-500 mt-1">
-                                {{ __('messages.License will be extended from the current expiry date (or today if expired).') }}
-                            </p>
-                        </div>
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Amount Charged (₪)') }}</label>
-                            <input type="number" name="amount" id="modal-amount" step="0.01" min="0"
-                                class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                placeholder="{{ __('messages.Leave empty to use subscription cost') }}">
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                        <button type="button" onclick="closeMarkPaidModal()"
-                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                            {{ __('messages.Cancel') }}
-                        </button>
-                        <button type="submit"
-                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
-                            {{ __('messages.Confirm & Mark Paid') }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function openMarkPaidModal(userId, userName, defaultAmount) {
-            document.getElementById('modal-user-name').textContent = userName;
-            document.getElementById('mark-paid-form').action = '/admin/shop-owners/' + userId + '/mark-paid';
-            document.getElementById('modal-amount').value = defaultAmount > 0 ? defaultAmount : '';
-            document.getElementById('modal-months').value = 1;
-            document.getElementById('mark-paid-modal').classList.remove('hidden');
-        }
-
-        function closeMarkPaidModal() {
-            document.getElementById('mark-paid-modal').classList.add('hidden');
-        }
-    </script>
 </x-app-layout>

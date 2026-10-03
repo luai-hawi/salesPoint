@@ -102,4 +102,11 @@ return [
     'Create Bill' => 'Create Bill',
     'Classic' => 'Classic',
     'Focus' => 'Focus',
+
+    // POS payment hints and cash drawer
+    'Cash drawer opened successfully' => 'Cash drawer opened successfully',
+    'Exact payment for bill' => 'Exact payment for the bill',
+    'Opening...' => 'Opening...',
+    'Payment without recent bill' => 'Payment without a recent bill',
+    'Still owes for this bill' => 'Still owes for this bill',
 ];

@@ -13,6 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
+        // MySQL-only raw SQL; other drivers (e.g. SQLite used by the test suite) are dynamically typed.
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         // Disable strict mode for this session to handle conversions on shared hosting
         DB::statement('SET SESSION sql_mode = ""');
 
@@ -38,6 +43,10 @@ return new class extends Migration
      */
     public function down()
     {
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         // Revert back to integer if needed
         DB::statement('ALTER TABLE bill_product MODIFY quantity INT');
         DB::statement('ALTER TABLE products MODIFY quantity INT');

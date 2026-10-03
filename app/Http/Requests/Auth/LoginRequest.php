@@ -49,13 +49,36 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // Check if the user's role is disabled
         $user = Auth::user();
+        if ($user && $user->is_active === false) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.account_suspended'),
+            ]);
+        }
+
         if ($user && $user->role === 'disabled') {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'email' => trans('auth.disabled'),
+            ]);
+        }
+
+        if ($user && $user->role === 'employee' && $user->shopOwner && $user->shopOwner->role === 'disabled') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.shop_disabled'),
+            ]);
+        }
+
+        if ($user && $user->role === 'employee' && $user->shopOwner && $user->shopOwner->is_active === false) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.account_suspended'),
             ]);
         }
 

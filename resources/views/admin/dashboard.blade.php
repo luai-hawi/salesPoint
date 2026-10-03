@@ -1,886 +1,282 @@
-@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                {{ __('messages.Admin Dashboard') }}
-            </h2>
-            <div class="flex flex-col md:flex-row gap-1 items-center space-x-4">
-                <span class="text-sm text-gray-600">{{ now()->format('F j, Y') }}</span>
-                @if ($expiredTempAccounts->count() > 0)
-                    <button type="button"
-                        class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                        onclick="document.getElementById('disableExpiredModal').classList.remove('hidden');">
-                        {{ __('messages.Disable All Expired') }} ({{ $expiredTempAccounts->count() }})
-                    </button>
-                @endif
-                @if ($disabledExpiredAccounts->count() > 0)
-                    <button type="button"
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                        onclick="document.getElementById('deleteDisabledModal').classList.remove('hidden');">
-                        {{ __('messages.Delete Disabled') }} ({{ $disabledExpiredAccounts->count() }})
-                    </button>
-                @endif
-                <a href="{{ route('admin.shop-owners.create') }}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    {{ __('messages.Add New User') }}
-                </a>
-                <a href="{{ route('admin.dashboard.download-backup') }}" id="downloadBackupBtn"
-                    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                    onclick="startBackupDownload(this)">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span id="downloadBackupLabel">{{ __('messages.Download Backup') }}</span>
-                </a>
-            </div>
-        </div>
+        <x-ui.page-header :title="__('admin.titles.dashboard')" :subtitle="__('charts.admin.subtitle')">
+            <a href="{{ route('admin.shop-owners.create') }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('admin.titles.create_shop') }}</a>
+            <a href="{{ route('admin.dashboard', ['refresh' => 1]) }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.refresh') }}</a>
+            <a href="{{ route('admin.dashboard.download-backup') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.download_backup') }}</a>
+            @if (Route::has('admin.storage.index'))
+                <a href="{{ route('admin.storage.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.open_storage') }}</a>
+            @endif
+        </x-ui.page-header>
     </x-slot>
 
-    <!-- Disable Expired Modal -->
-    @if ($expiredTempAccounts->count() > 0)
-        <div id="disableExpiredModal"
-            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-orange-600">
-                            {{ __('messages.Confirm Disable Expired Accounts') }}
-                        </h3>
-                        <button onclick="document.getElementById('disableExpiredModal').classList.add('hidden');"
-                            class="text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <p class="text-gray-600 mb-4">
-                        {{ __('messages.You are about to disable the following expired accounts:') }}
-                    </p>
-                    <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
-                        <ul class="list-disc list-inside text-sm text-gray-700">
-                            @foreach ($expiredTempAccounts as $account)
-                                <li class="py-1">
-                                    <span class="font-medium">{{ $account->name }}</span>
-                                    <span class="text-gray-500 text-xs">({{ $account->email }})</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <p class="text-sm text-gray-500 mb-4">
-                        {{ __('messages.Disabling will prevent them from logging in but their data will be preserved.') }}
-                    </p>
-                    <div class="flex justify-end space-x-3">
-                        <button onclick="document.getElementById('disableExpiredModal').classList.add('hidden');"
-                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                            {{ __('messages.Cancel') }}
-                        </button>
-                        <form action="{{ route('admin.shop-owners.disable-expired') }}" method="POST">
-                            @csrf
-                            <button type="submit"
-                                class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
-                                {{ __('messages.Disable All') }} ({{ $expiredTempAccounts->count() }})
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
+    @php($money = fn ($value) => number_format((float) $value, 2))
 
-    <!-- Delete Disabled Modal -->
-    @if ($disabledExpiredAccounts->count() > 0)
-        <div id="deleteDisabledModal"
-            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-                <form action="{{ route('admin.shop-owners.delete-disabled-expired') }}" method="POST"
-                    id="deleteDisabledForm">
-                    @csrf
-                    @method('DELETE')
-                    <div class="flex flex-col">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-red-600">
-                                {{ __('messages.Confirm Delete Disabled Accounts') }}
-                            </h3>
-                            <button type="button"
-                                onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
-                                class="text-gray-400 hover:text-gray-600">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <p class="text-gray-600 mb-2">
-                            {{ __('messages.You are about to permanently delete the following disabled expired accounts:') }}
-                        </p>
-                        <p class="text-xs text-gray-500 mb-3">
-                            {{ __('messages.Uncheck accounts you want to keep.') }}
-                        </p>
-                        <p class="text-sm text-red-500 mb-4">
-                            {{ __('messages.This action cannot be undone!') }}
-                        </p>
-                        <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-60 overflow-y-auto">
-                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-                                <label class="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
-                                    <input type="checkbox" id="selectAllDisabled" checked
-                                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                        onchange="toggleAllDisabled(this.checked)">
-                                    {{ __('messages.Select All') }}
-                                </label>
-                                <span id="disabledSelectedCount" class="text-xs text-gray-500">
-                                    {{ $disabledExpiredAccounts->count() }} {{ __('messages.selected') }}
-                                </span>
-                            </div>
-                            <ul class="space-y-1">
-                                @foreach ($disabledExpiredAccounts as $account)
-                                    <li class="flex items-center gap-3 py-1.5 px-1 hover:bg-gray-100 rounded">
-                                        <input type="checkbox" name="user_ids[]" value="{{ $account->id }}" checked
-                                            class="disabled-account-checkbox rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                            onchange="updateDisabledCount()">
-                                        <div>
-                                            <span class="font-medium text-sm text-gray-800">{{ $account->name }}</span>
-                                            <span class="text-gray-400 text-xs block">{{ $account->email }}</span>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                        <div class="flex justify-end space-x-3">
-                            <button type="button"
-                                onclick="document.getElementById('deleteDisabledModal').classList.add('hidden');"
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                                {{ __('messages.Cancel') }}
-                            </button>
-                            <button type="submit" id="deleteDisabledSubmit"
-                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ __('messages.Delete Selected') }} (<span
-                                    id="deleteDisabledCountLabel">{{ $disabledExpiredAccounts->count() }}</span>)
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
-        <script>
-            function toggleAllDisabled(checked) {
-                document.querySelectorAll('.disabled-account-checkbox').forEach(cb => cb.checked = checked);
-                updateDisabledCount();
-            }
-
-            function updateDisabledCount() {
-                const checkboxes = document.querySelectorAll('.disabled-account-checkbox');
-                const total = checkboxes.length;
-                const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
-
-                document.getElementById('disabledSelectedCount').textContent = checked + ' {{ __('messages.selected') }}';
-                document.getElementById('deleteDisabledCountLabel').textContent = checked;
-                document.getElementById('deleteDisabledSubmit').disabled = checked === 0;
-                document.getElementById('selectAllDisabled').checked = checked === total;
-                document.getElementById('selectAllDisabled').indeterminate = checked > 0 && checked < total;
-            }
-        </script>
-    @endif
-
-    <div class="py-8">
-        <div class="max-w-8xl mx-auto sm:px-6 lg:px-8">
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Shop Owners') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['total_shop_owners'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Total Employees') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['total_employees'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Today\'s Sales') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">
-                                    ${{ number_format($stats['total_sales_today'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Monthly Sales') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">
-                                    ${{ number_format($stats['total_sales_month'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Profit Today -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit Today') }}</p>
-                                <p class="text-2xl font-bold text-emerald-600">
-                                    ${{ number_format($stats['profit_today'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Profit This Month -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Profit This Month') }}
-                                </p>
-                                <p class="text-2xl font-bold text-teal-600">
-                                    ${{ number_format($stats['profit_month'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Full Accounts -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Full Accounts') }}</p>
-                                <p class="text-2xl font-bold text-green-600">{{ $stats['full_accounts_count'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Active Full Accounts (Shop Owners Only) -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Active Full Accounts') }}
-                                </p>
-                                <p class="text-2xl font-bold text-emerald-600">
-                                    {{ $stats['active_full_accounts_count'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Temp Accounts -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Temp Accounts') }}</p>
-                                <p class="text-2xl font-bold text-yellow-600">{{ $stats['temp_accounts_count'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Expired Temp Accounts -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">
-                                    {{ __('messages.Expired Temp Accounts') }}</p>
-                                <p class="text-2xl font-bold text-red-600">{{ $stats['expired_temp_accounts_count'] }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bills Today -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Bills Today') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['bills_count_today'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bills This Month -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Bills This Month') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['bills_count_month'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Products Sold Today -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Products Sold Today') }}
-                                </p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['products_sold_today'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Products Sold This Month -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Products Sold Month') }}
-                                </p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $stats['products_sold_month'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Average Bill Today -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Avg Bill Today') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">
-                                    ${{ number_format($stats['avg_bill_value_today'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Average Bill This Month -->
-                <div class="bg-white overflow-hidden shadow-lg rounded-xl">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">{{ __('messages.Avg Bill Month') }}</p>
-                                <p class="text-2xl font-bold text-gray-900">
-                                    ${{ number_format($stats['avg_bill_value_month'], 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                @foreach ([
+                    ['key' => 'all', 'value' => $statusCounts['all'], 'tone' => 'gray'],
+                    ['key' => 'active', 'value' => $statusCounts['active'], 'tone' => 'green'],
+                    ['key' => 'has_to_pay', 'value' => $statusCounts['has_to_pay'], 'tone' => 'amber'],
+                    ['key' => 'trial', 'value' => $statusCounts['trial'], 'tone' => 'blue'],
+                    ['key' => 'trial_ended', 'value' => $statusCounts['trial_ended'], 'tone' => 'red'],
+                    ['key' => 'needs_attention', 'value' => $statusCounts['needs_attention'], 'tone' => 'purple'],
+                ] as $card)
+                    <a href="{{ route('admin.shop-owners.index', ['status' => $card['key'] === 'all' ? null : $card['key']]) }}" class="block">
+                        <x-ui.stat :label="__('admin.filters.' . $card['key'])" :value="$card['value']" :tone="$card['tone']" />
+                    </a>
+                @endforeach
             </div>
 
-            <!-- Top Performers and Chart -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <!-- Top Performing Shop Owners -->
-                <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Top Performers This Month') }}
-                        </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <x-ui.kpi :label="__('admin.dashboard.today_sales')" :value="$money($kpis['sales_today'])" icon="cash" tone="green"
+                    :hint="__('charts.admin.bills_count', ['count' => $kpis['bills_today']])" />
+                <x-ui.kpi :label="__('admin.dashboard.today_profit')" :value="$money($kpis['profit_today'])" icon="trend" tone="indigo" />
+                <x-ui.kpi :label="__('admin.dashboard.month_sales')" :value="$money($kpis['sales_month'])" icon="receipt" tone="blue"
+                    :delta="$kpis['sales_growth']" />
+                <x-ui.kpi :label="__('admin.dashboard.month_profit')" :value="$money($kpis['profit_month'])" icon="wallet" tone="purple"
+                    :delta="$kpis['profit_growth']" />
+                <x-ui.kpi :label="__('charts.gross_margin')" :value="$kpis['margin_month'] === null ? '—' : $kpis['margin_month'] . '%'" icon="percent" tone="amber"
+                    :hint="__('charts.this_month')" />
+                <x-ui.kpi :label="__('charts.avg_bill')" :value="$money($kpis['avg_bill_month'])" icon="receipt" tone="gray"
+                    :hint="__('charts.admin.bills_count', ['count' => $kpis['bills_month']])" />
+                <x-ui.kpi :label="__('charts.returns')" :value="$money($kpis['returns_month'])" icon="return" tone="red"
+                    :hint="__('charts.this_month')" />
+                <x-ui.kpi :label="__('charts.admin.selling_shops')" :value="$kpis['selling_shops'] . ' / ' . $statusCounts['all']" icon="users" tone="green"
+                    :hint="__('charts.admin.selling_shops_hint')" />
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <x-ui.card :title="__('charts.admin.sales_profit_30')" :subtitle="__('charts.admin.all_shops')" class="xl:col-span-2">
+                    <x-ui.chart type="bar" :height="300" :label="__('charts.admin.sales_profit_30')"
+                        :labels="collect($salesChartData)->pluck('date')->all()"
+                        :datasets="[
+                            ['label' => __('charts.sales'), 'data' => collect($salesChartData)->pluck('sales')->all(), 'color' => '#6366f1'],
+                            ['label' => __('charts.gross_profit'), 'type' => 'line', 'data' => collect($salesChartData)->pluck('profit')->all(), 'color' => '#10b981', 'fill' => false],
+                        ]" />
+                </x-ui.card>
+                <x-ui.card :title="__('charts.admin.sales_share')" :subtitle="__('charts.this_month')">
+                    <x-ui.chart type="doughnut" :height="300" :label="__('charts.admin.sales_share')"
+                        :labels="$salesShare['labels']"
+                        :datasets="[['label' => __('charts.sales'), 'data' => $salesShare['data']]]" />
+                </x-ui.card>
+            </div>
+
+            <x-ui.card :title="__('charts.admin.shop_performance')" :subtitle="__('charts.admin.shop_performance_hint')" :padding="false">
+                <div x-data="adminShopPerformance()" class="space-y-3">
+                    <div class="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-5">
+                        <input type="search" x-model="query" placeholder="{{ __('charts.admin.search_shop') }}" aria-label="{{ __('charts.admin.search_shop') }}"
+                            class="w-full rounded-lg border-gray-300 text-sm sm:w-72">
+                        <label class="flex items-center gap-2 text-sm text-gray-600">
+                            <input type="checkbox" x-model="onlySelling" class="rounded border-gray-300 text-indigo-600">
+                            {{ __('charts.admin.only_selling') }}
+                        </label>
+                        <span class="text-xs text-gray-400">{{ __('charts.admin.click_to_sort') }}</span>
                     </div>
-                    <div class="p-6">
-                        @forelse($topShopOwners as $index => $shopOwner)
-                            <div
-                                class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                        {{ $index + 1 }}
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-medium text-gray-900">{{ $shopOwner->name }}</p>
-                                        <p class="text-xs text-gray-500">{{ $shopOwner->employees_count }}
-                                            {{ __('messages.employees') }}</p>
-                                    </div>
+                    <div class="max-h-[34rem] overflow-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="sticky top-0 z-10 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-start">{{ __('admin.fields.shop_name') }}</th>
+                                    <th class="px-3 py-2 text-start">{{ __('admin.fields.status') }}</th>
+                                    @foreach ([
+                                        'sales_today' => __('admin.dashboard.today_sales'),
+                                        'profit_today' => __('admin.dashboard.today_profit'),
+                                        'sales_month' => __('admin.dashboard.month_sales'),
+                                        'profit_month' => __('admin.dashboard.month_profit'),
+                                        'margin' => __('charts.margin'),
+                                        'bills_month' => __('admin.dashboard.month_bills'),
+                                        'avg_bill' => __('charts.avg_bill'),
+                                        'last_bill' => __('charts.admin.last_sale'),
+                                    ] as $column => $label)
+                                        <th class="whitespace-nowrap px-3 py-2 text-start">
+                                            <button type="button" class="inline-flex items-center gap-1 uppercase hover:text-indigo-700" @click="sortBy('{{ $column }}')">
+                                                {{ $label }}
+                                                <span x-show="sortKey === '{{ $column }}'" x-text="sortDir === 'desc' ? '▼' : '▲'"></span>
+                                            </button>
+                                        </th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody x-ref="rows" class="divide-y divide-gray-100 bg-white">
+                                @forelse ($shopPerformance as $row)
+                                    @php($status = $statusService->describe($row['shop']))
+                                    <tr data-name="{{ mb_strtolower($row['shop']->name . ' ' . $row['shop']->email) }}"
+                                        data-sales_today="{{ $row['sales_today'] }}" data-profit_today="{{ $row['profit_today'] }}"
+                                        data-sales_month="{{ $row['sales_month'] }}" data-profit_month="{{ $row['profit_month'] }}"
+                                        data-margin="{{ $row['margin'] ?? -999999 }}" data-bills_month="{{ $row['bills_month'] }}"
+                                        data-avg_bill="{{ $row['avg_bill'] }}" data-last_bill="{{ $row['last_bill_at'] ? strtotime($row['last_bill_at']) : 0 }}"
+                                        x-show="visible($el)" class="hover:bg-indigo-50/40">
+                                        <td class="px-3 py-2">
+                                            <a class="font-medium text-indigo-700 hover:underline" href="{{ route('admin.shop-owners.show', $row['shop']) }}">{{ $row['shop']->name }}</a>
+                                            <div class="text-xs text-gray-400">{{ __('admin.types.' . $row['shop']->businessRole()) }}</div>
+                                        </td>
+                                        <td class="px-3 py-2"><x-ui.badge :tone="$status['tone']">{{ $status['label'] }}</x-ui.badge></td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $money($row['sales_today']) }}</td>
+                                        <td @class(['px-3 py-2 tabular-nums font-medium', 'text-emerald-700' => $row['profit_today'] > 0, 'text-rose-700' => $row['profit_today'] < 0])>{{ $money($row['profit_today']) }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $money($row['sales_month']) }}</td>
+                                        <td @class(['px-3 py-2 tabular-nums font-semibold', 'text-emerald-700' => $row['profit_month'] > 0, 'text-rose-700' => $row['profit_month'] < 0])>{{ $money($row['profit_month']) }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $row['margin'] === null ? '—' : $row['margin'] . '%' }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $row['bills_month'] }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $money($row['avg_bill']) }}</td>
+                                        <td class="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{{ $row['last_bill_at'] ? \Carbon\Carbon::parse($row['last_bill_at'], 'UTC')->diffForHumans() : '—' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="10" class="px-3 py-8 text-center text-gray-500">{{ __('charts.no_data') }}</td></tr>
+                                @endforelse
+                            </tbody>
+                            <tfoot class="sticky bottom-0 bg-gray-50 text-sm font-semibold text-gray-900">
+                                <tr>
+                                    <td class="px-3 py-2" colspan="2">{{ __('charts.total') }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $money($kpis['sales_today']) }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $money($kpis['profit_today']) }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $money($kpis['sales_month']) }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $money($kpis['profit_month']) }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $kpis['margin_month'] === null ? '—' : $kpis['margin_month'] . '%' }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $kpis['bills_month'] }}</td>
+                                    <td class="px-3 py-2 tabular-nums">{{ $money($kpis['avg_bill_month']) }}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </x-ui.card>
+
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <x-ui.card :title="__('admin.dashboard.collections')" class="lg:col-span-1">
+                    <div class="space-y-3">
+                        @forelse ($collectionGroups as $currency => $totals)
+                            <div class="rounded-xl border border-gray-200 p-3">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <x-ui.badge tone="indigo">{{ $currency }}</x-ui.badge>
+                                    <span class="text-xs text-gray-500">{{ $currencies->symbol($currency) }}</span>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-bold text-green-600">
-                                        ${{ number_format($shopOwner->sales_this_month, 2) }}</p>
-                                    <p class="text-xs text-emerald-500">
-                                        ${{ number_format($shopOwner->profit_this_month, 2) }}
-                                        {{ __('messages.Profit') }}</p>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between"><span>{{ __('admin.dashboard.overdue') }}</span><span class="font-semibold text-rose-700">{{ number_format($totals['overdue'], 2) }}</span></div>
+                                    <div class="flex justify-between"><span>{{ __('admin.dashboard.next_30_days') }}</span><span class="font-semibold">{{ number_format($totals['next_30_days'], 2) }}</span></div>
                                 </div>
                             </div>
                         @empty
-                            <p class="text-gray-500 text-center py-8">{{ __('messages.No sales data available') }}</p>
+                            <x-ui.empty :title="__('admin.dashboard.collections')" :text="__('admin.filters.all')" />
                         @endforelse
                     </div>
-                </div>
+                </x-ui.card>
 
-                <!-- Sales Chart -->
-                <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Sales Overview') }}</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="h-64 lg:h-80">
-                            <canvas id="salesChart"></canvas>
+                <x-ui.card :title="__('admin.dashboard.alerts')" class="lg:col-span-2">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div class="space-y-3">
+                            <h4 class="text-sm font-semibold text-gray-900">{{ __('admin.dashboard.usage_alerts') }}</h4>
+                            @forelse ($usageAlerts as $alert)
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <a href="{{ route('admin.shop-owners.show', $alert['shop']) }}" class="font-semibold text-amber-900">{{ $alert['shop']->name }}</a>
+                                        <span class="text-xs text-amber-700">{{ $alert['percent'] }}%</span>
+                                    </div>
+                                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-amber-100"><div class="h-full rounded-full bg-amber-500" style="width: {{ min(100, (int) $alert['percent']) }}%"></div></div>
+                                    <p class="mt-1 text-amber-800">{{ $alert['used'] }} / {{ $alert['limit'] }}</p>
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-500">—</p>
+                            @endforelse
+                        </div>
+                        <div class="space-y-3">
+                            <h4 class="text-sm font-semibold text-gray-900">{{ __('admin.dashboard.image_alerts') }}</h4>
+                            @forelse ($imageAlerts as $alert)
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <a href="{{ route('admin.shop-owners.show', $alert['shop']) }}" class="font-semibold text-blue-900">{{ $alert['shop']->name }}</a>
+                                        <span class="text-xs text-blue-700">{{ \App\Services\Admin\ShopStorageService::humanBytes($alert['stats']['bytes']) }}</span>
+                                    </div>
+                                    <p class="mt-1 text-blue-800">{{ $alert['stats']['count'] }} {{ __('admin.fields.images') }}</p>
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-500">—</p>
+                            @endforelse
                         </div>
                     </div>
-                </div>
-
-                @push('scripts')
-                    <!-- Chart.js -->
-                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                    <script>
-                        // Common chart options
-                        Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
-                        Chart.defaults.color = '#666';
-
-                        // Sales Chart
-                        const salesCtx = document.getElementById('salesChart').getContext('2d');
-                        new Chart(salesCtx, {
-                            type: 'line',
-                            data: {
-                                labels: {!! json_encode(array_column($salesChartData, 'date')) !!},
-                                datasets: [{
-                                    label: '{{ __('messages.Sales') }}',
-                                    data: {!! json_encode(array_column($salesChartData, 'sales')) !!},
-                                    borderColor: '#10B981',
-                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                    borderWidth: 2,
-                                    fill: true,
-                                    tension: 0.4
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        display: false
-                                    }
-                                },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        grid: {
-                                            color: 'rgba(0, 0, 0, 0.05)'
-                                        }
-                                    },
-                                    x: {
-                                        grid: {
-                                            display: false
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    </script>
-                @endpush
+                </x-ui.card>
             </div>
 
-            <!-- Shop Owners List -->
-            <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.Shop Owners Management') }}
-                        </h3>
-                        <a href="{{ route('admin.shop-owners.create') }}"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                            {{ __('messages.Add Shop Owner') }}
-                        </a>
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <x-ui.card :title="__('admin.dashboard.top_shops')" :subtitle="__('charts.this_month')">
+                    <div class="space-y-4">
+                        @php($topMax = max(1, (float) $topShops->max('sales')))
+                        @forelse ($topShops as $index => $row)
+                            <div>
+                                <div class="flex items-center justify-between gap-3 text-sm">
+                                    <a class="flex items-center gap-2 font-medium text-indigo-700" href="{{ route('admin.shop-owners.show', $row['shop']) }}">
+                                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{{ $index + 1 }}</span>
+                                        {{ $row['shop']->name }}
+                                    </a>
+                                    <span class="text-xs text-gray-500">{{ __('charts.admin.bills_count', ['count' => $row['bills']]) }}</span>
+                                </div>
+                                <div class="mt-1 h-2 overflow-hidden rounded-full bg-gray-100"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500" style="width: {{ round($row['sales'] / $topMax * 100) }}%"></div></div>
+                                <div class="mt-1 flex justify-between text-xs text-gray-600">
+                                    <span>{{ __('charts.sales') }}: <strong class="text-gray-900">{{ $money($row['sales']) }}</strong></span>
+                                    <span>{{ __('charts.gross_profit') }}: <strong class="text-emerald-700">{{ $money($row['profit']) }}</strong></span>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-500">{{ __('charts.no_data') }}</p>
+                        @endforelse
                     </div>
-                </div>
+                </x-ui.card>
 
-                @if (session('success'))
-                    <div class="mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                        {{ session('success') }}
+                <x-ui.card :title="__('admin.dashboard.recent_signups')">
+                    <div class="space-y-3">
+                        @foreach ($recentSignups as $shop)
+                            @php($status = $statusService->describe($shop))
+                            <div class="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                                <div>
+                                    <a class="font-medium text-indigo-700" href="{{ route('admin.shop-owners.show', $shop) }}">{{ $shop->name }}</a>
+                                    <p class="text-xs text-gray-500">{{ $shop->email }} · {{ $shop->created_at?->diffForHumans() }}</p>
+                                </div>
+                                <x-ui.badge :tone="$status['tone']">{{ $status['label'] }}</x-ui.badge>
+                            </div>
+                        @endforeach
                     </div>
-                @endif
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Shop Owner') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Employees') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Account Type') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Products') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Customers') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.today') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Profit Today') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Bills Today') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Sales This Month') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Profit This Month') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Bills This Month') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Last Activity') }}</th>
-                                <th
-                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.Actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($shopOwners as $shopOwner)
-                                <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div
-                                                class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                                                <span
-                                                    class="text-white font-bold text-sm">{{ strtoupper(substr($shopOwner->name, 0, 2)) }}</span>
-                                            </div>
-                                            <div class="ml-3">
-                                                <div class="text-sm font-medium text-gray-900">{{ $shopOwner->name }}
-                                                </div>
-                                                <div class="text-xs text-gray-500">{{ $shopOwner->email }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {{ $shopOwner->employees_count }} {{ __('messages.employees') }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        @php
-                                            $isExpired = $shopOwner->isTempExpired();
-                                        @endphp
-                                        @if ($shopOwner->account_type === 'temp')
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                {{ $isExpired ? 'bg-red-600 text-white' : 'bg-yellow-100 text-yellow-800' }}">
-                                                {{ $isExpired ? __('messages.Expired') : __('messages.Temporary') }}
-                                            </span>
-                                        @elseif($shopOwner->account_type === 'full')
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {{ __('messages.Full Account') }}
-                                            </span>
-                                        @else
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                -
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $shopOwner->products_count }}
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $shopOwner->customers_count }}
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            ${{ number_format($shopOwner->sales_today, 2) }}</div>
-                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_today }}
-                                            {{ __('messages.sold') }}</div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-emerald-600">
-                                            ${{ number_format($shopOwner->profit_today, 2) }}</div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $shopOwner->bills_count_today }}
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            ${{ number_format($shopOwner->sales_this_month, 2) }}</div>
-                                        <div class="text-xs text-gray-500">{{ $shopOwner->products_sold_this_month }}
-                                            {{ __('messages.sold') }}</div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-emerald-600">
-                                            ${{ number_format($shopOwner->profit_this_month, 2) }}</div>
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $shopOwner->bills_count_this_month }}
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        @if ($shopOwner->last_activity)
-                                            {{ $shopOwner->last_activity->diffForHumans() }}
-                                        @else
-                                            {{ __('messages.Never') }}
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex items-center space-x-2">
-                                            @if ($shopOwner->account_type === 'temp')
-                                                <form
-                                                    action="{{ route('admin.shop-owners.convert-to-full', $shopOwner->id) }}"
-                                                    method="POST" class="inline"
-                                                    onsubmit="return confirm('{{ __('messages.Convert to full account?') }}');">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="text-green-600 hover:text-green-900 transition-colors duration-200">
-                                                        {{ __('messages.Convert to Full') }}
-                                                    </button>
-                                                </form>
-                                            @endif
-                                            <a href="{{ route('admin.shop-owners.show', $shopOwner->id) }}"
-                                                class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200">
-                                                {{ __('messages.View Details') }}
-                                            </a>
-                                            <a href="{{ route('admin.shop-owners.edit', $shopOwner->id) }}"
-                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                {{ __('messages.Edit') }}
-                                            </a>
-                                            <form action="{{ route('admin.shop-owners.destroy', $shopOwner->id) }}"
-                                                method="POST" class="inline"
-                                                onsubmit="return confirm('{{ __('messages.Are you sure you want to delete this shop owner and all associated data?') }}');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    {{ __('messages.Delete') }}
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="12" class="px-6 py-12 text-center">
-                                        <div class="text-gray-500">
-                                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-                                                </path>
-                                            </svg>
-                                            <p class="text-lg font-medium">{{ __('messages.No shop owners found') }}
-                                            </p>
-                                            <p class="text-sm text-gray-400 mt-1">
-                                                {{ __('messages.Get started by creating your first shop owner') }}</p>
-                                            <a href="{{ route('admin.shop-owners.create') }}"
-                                                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                                {{ __('messages.Add Shop Owner') }}
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                </x-ui.card>
             </div>
+
+            <x-ui.card :title="__('admin.dashboard.system_health')">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div class="rounded-lg bg-gray-50 p-4 text-sm"><span class="font-semibold">{{ __('admin.dashboard.free_disk') }}:</span> {{ $systemHealth['free_disk'] }}</div>
+                    <div class="rounded-lg bg-gray-50 p-4 text-sm"><span class="font-semibold">{{ __('admin.dashboard.backup_age') }}:</span> {{ $systemHealth['backup_age'] }}</div>
+                    <div class="rounded-lg bg-gray-50 p-4 text-sm"><span class="font-semibold">{{ __('admin.dashboard.failed_jobs') }}:</span> {{ $systemHealth['failed_jobs'] }}</div>
+                </div>
+            </x-ui.card>
         </div>
     </div>
 
-    <script>
-        function startBackupDownload(link) {
-            const label = document.getElementById('downloadBackupLabel');
-            label.textContent = '{{ __('messages.Generating...') }}';
-            link.classList.add('opacity-60', 'pointer-events-none');
-
-            // Re-enable after 30 seconds in case the user wants to download again
-            setTimeout(function() {
-                label.textContent = '{{ __('messages.Download Backup') }}';
-                link.classList.remove('opacity-60', 'pointer-events-none');
-            }, 30000);
-        }
-    </script>
+    @push('scripts')
+        <script>
+            function adminShopPerformance() {
+                return {
+                    query: '',
+                    onlySelling: false,
+                    sortKey: 'profit_month',
+                    sortDir: 'desc',
+                    visible(row) {
+                        const q = this.query.trim().toLowerCase();
+                        if (q && !(row.dataset.name || '').includes(q)) return false;
+                        if (this.onlySelling && Number(row.dataset.bills_month || 0) <= 0) return false;
+                        return true;
+                    },
+                    sortBy(key) {
+                        this.sortDir = this.sortKey === key && this.sortDir === 'desc' ? 'asc' : 'desc';
+                        this.sortKey = key;
+                        const body = this.$refs.rows;
+                        const rows = Array.from(body.querySelectorAll('tr[data-name]'));
+                        const direction = this.sortDir === 'desc' ? -1 : 1;
+                        rows.sort((a, b) => (Number(a.dataset[key] || 0) - Number(b.dataset[key] || 0)) * direction);
+                        rows.forEach((row) => body.appendChild(row));
+                    },
+                };
+            }
+        </script>
+    @endpush
 </x-app-layout>

@@ -18,6 +18,7 @@ class Supplier extends Model
         'balance',
         'notes',
         'user_id',
+        'system_key',
     ];
 
     protected $casts = [

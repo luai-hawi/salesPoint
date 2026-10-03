@@ -134,6 +134,137 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-3">
+            <div class="xl:col-span-2">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-8">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ __('receivables.payment_panel') }}</h3>
+                            <p class="text-sm text-gray-500">{{ __('receivables.statement_subtitle') }}</p>
+                        </div>
+                        @php
+                            $statusTone = match ($summary['status']) {
+                                'paid' => 'green',
+                                'partial' => 'amber',
+                                'unpaid' => 'red',
+                                default => 'blue',
+                            };
+                            $statusLabel = match ($summary['status']) {
+                                'paid' => __('receivables.paid'),
+                                'partial' => __('receivables.partial'),
+                                'unpaid' => __('receivables.unpaid'),
+                                default => __('receivables.cash_sale'),
+                            };
+                        @endphp
+                        <x-ui.badge :tone="$statusTone">{{ $statusLabel }}</x-ui.badge>
+                    </div>
+
+                    <div class="mt-6 grid gap-4 md:grid-cols-4">
+                        <x-ui.stat :label="__('bills.Customer')" :value="$bill->customer->name ?? __('bills.Walk-in Customer')" />
+                        <x-ui.stat :label="__('receivables.bill_total')" :value="'₪' . number_format($summary['total'], 2)" />
+                        <x-ui.stat :label="__('receivables.paid')" :value="'₪' . number_format($summary['paid'], 2)" />
+                        <x-ui.stat :label="__('receivables.remaining')" :value="'₪' . number_format($summary['due'], 2)" />
+                    </div>
+
+                    @if ($bill->customer && $canManageBillPayments)
+                        <form action="{{ route('bills.payments.store', $bill) }}" method="POST" class="mt-6 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-5">
+                            @csrf
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">{{ __('messages.Amount') }}</label>
+                                <input type="number" name="amount" min="0.01" max="{{ $summary['due'] }}" step="0.01"
+                                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    @disabled($summary['due'] <= 0) required>
+                            </div>
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">{{ __('receivables.payment_method') }}</label>
+                                <select name="type"
+                                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="cash">{{ __('messages.Cash') }}</option>
+                                    <option value="card">{{ __('messages.Card') }}</option>
+                                    <option value="transfer">{{ __('messages.Transfer') }}</option>
+                                    <option value="check">{{ __('messages.Check') }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">{{ __('messages.Date') }}</label>
+                                <input type="date" name="payment_date" value="{{ now()->toDateString() }}"
+                                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="mb-2 block text-sm font-medium text-gray-700">{{ __('receivables.note') }}</label>
+                                <div class="flex gap-3">
+                                    <input type="text" name="note"
+                                        class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <button type="submit"
+                                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                                        @disabled($summary['due'] <= 0)>
+                                        {{ __('receivables.receive_payment') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    @endif
+
+                    <div class="mt-6 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-3 text-start">{{ __('receivables.date') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('receivables.type') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('receivables.payment_method') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('messages.Amount') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('receivables.note') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('receivables.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                @forelse ($ledgerRows as $row)
+                                    @php
+                                        $kind = \App\Services\CustomerLedger::kindForRow($row);
+                                        $kindLabel = match ($kind) {
+                                            \App\Services\CustomerLedger::KIND_BILL_CHARGE => __('receivables.bill_charge'),
+                                            \App\Services\CustomerLedger::KIND_BILL_PAYMENT => __('receivables.bill_payment'),
+                                            \App\Services\CustomerLedger::KIND_OPENING => __('receivables.opening_balance'),
+                                            \App\Services\CustomerLedger::KIND_ADJUSTMENT => __('receivables.adjustment'),
+                                            default => __('receivables.general_payment'),
+                                        };
+                                    @endphp
+                                    <tr>
+                                        <td class="px-4 py-3 text-gray-600">{{ $row->created_at->format('Y-m-d H:i') }}</td>
+                                        <td class="px-4 py-3">{{ $kindLabel }}</td>
+                                        <td class="px-4 py-3 text-gray-600">{{ __('messages.' . ucfirst($row->type ?: 'cash')) }}</td>
+                                        <td class="px-4 py-3 font-semibold {{ $row->amount >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            ₪{{ number_format(abs($row->amount), 2) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-600">{{ $row->note ?: '—' }}</td>
+                                        <td class="px-4 py-3">
+                                            @if ($kind !== \App\Services\CustomerLedger::KIND_BILL_CHARGE && $canManageBillPayments)
+                                                <form action="{{ route('bills.payments.destroy', [$bill, $row]) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        data-confirm="{{ __('messages.Are you sure you want to delete this payment?') }}"
+                                                        class="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-200">
+                                                        {{ __('messages.Delete') }}
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">{{ __('receivables.no_open_bills') }}</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Edit Form -->
         <form id="form" action="{{ route('bills.update', $bill->id) }}" method="POST" class="space-y-8">
             @csrf
@@ -1707,7 +1838,13 @@
                     hour12: false
                 }),
                 currentDateTime: new Date('{{ $bill->created_at->format('Y-m-d H:i:s') }}').toLocaleString('en-GB'),
-                billId: {{ $bill->id }}
+                billId: {{ $bill->id }},
+                paymentSummary: {
+                    total: {{ (float) $summary['total'] }},
+                    paid: {{ (float) $summary['paid'] }},
+                    due: {{ (float) $summary['due'] }},
+                    status: @json($summary['status'])
+                }
             };
         }
 
@@ -2088,6 +2225,15 @@
                         <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('messages.Final Total') }}</td>
                         <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.total.toFixed(2)}₪</td>
                     </tr>
+                    ${data.paymentSummary && data.paymentSummary.status !== 'cash' ? `
+                    <tr class="bg-gray-50">
+                        <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('receivables.paid') }}</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.paymentSummary.paid.toFixed(2)}₪</td>
+                    </tr>
+                    <tr class="bg-gray-50">
+                        <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('receivables.remaining') }}</td>
+                        <td class="border-2 border-black px-2 py-2 text-center font-bold">${data.paymentSummary.due.toFixed(2)}₪</td>
+                    </tr>` : ''}
                 </tfoot>
             </table>
 
@@ -2347,6 +2493,15 @@
                         <div>{{ __('messages.Final Total') }}:</div>
                         <div>${data.total.toFixed(1)}</div>
                     </div>
+                    ${data.paymentSummary && data.paymentSummary.status !== 'cash' ? `
+                    <div class="totals-row">
+                        <div>{{ __('receivables.paid') }}:</div>
+                        <div>${data.paymentSummary.paid.toFixed(1)}</div>
+                    </div>
+                    <div class="totals-row">
+                        <div>{{ __('receivables.remaining') }}:</div>
+                        <div>${data.paymentSummary.due.toFixed(1)}</div>
+                    </div>` : ''}
                 </div>
 
                 <!-- Footer -->

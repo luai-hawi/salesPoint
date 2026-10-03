@@ -1,249 +1,162 @@
-@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
-
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('messages.Purchase Bills') }}
-            </h2>
+        <x-ui.page-header :title="__('payables.titles.purchase_bills')" :subtitle="__('payables.subtitles.purchase_bills')">
             <a href="{{ route('purchase-bills.create') }}"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                {{ __('messages.New Purchase Bill') }}
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                {{ __('payables.actions.create_bill') }}
             </a>
-        </div>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Filters -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
-                <div class="p-6">
-                    <form method="GET" action="{{ route('purchase-bills.index') }}"
-                        class="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
+
+            <x-ui.card :title="__('payables.actions.filters')">
+                <form method="GET" action="{{ route('purchase-bills.index') }}"
+                    class="grid grid-cols-1 gap-4 lg:grid-cols-5">
+                    <div class="lg:col-span-2">
+                        <label for="search" class="mb-1 block text-sm font-medium text-gray-700">
+                            {{ __('payables.fields.search') }}
+                        </label>
+                        <input id="search" name="search" type="text" value="{{ request('search') }}"
+                            placeholder="{{ __('payables.placeholders.search_bills') }}"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="supplier_id" class="mb-1 block text-sm font-medium text-gray-700">
+                            {{ __('payables.fields.supplier') }}
+                        </label>
+                        <select id="supplier_id" name="supplier_id"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">{{ __('payables.placeholders.all_suppliers') }}</option>
+                            @foreach ($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}" @selected((string) request('supplier_id') === (string) $supplier->id)>
+                                    {{ $supplier->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="payment_status" class="mb-1 block text-sm font-medium text-gray-700">
+                            {{ __('payables.fields.payment_status') }}
+                        </label>
+                        <select id="payment_status" name="payment_status"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">{{ __('payables.placeholders.all_statuses') }}</option>
+                            @foreach (['paid', 'partial', 'unpaid'] as $status)
+                                <option value="{{ $status }}" @selected(request('payment_status') === $status)>
+                                    {{ __('payables.statuses.' . $status) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Search') }}</label>
-                            <input type="text" name="search" value="{{ request('search') }}"
-                                placeholder="{{ __('messages.Reference, notes, supplier...') }}"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label for="date_from" class="mb-1 block text-sm font-medium text-gray-700">
+                                {{ __('payables.fields.date_from') }}
+                            </label>
+                            <input id="date_from" name="date_from" type="date" value="{{ request('date_from') }}"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Supplier') }}</label>
-                            <select name="supplier_id"
-                                class="w-full border border-gray-300 rounded-lg px-8 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">{{ __('messages.All Suppliers') }}</option>
-                                @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}"
-                                        {{ request('supplier_id') == $supplier->id ? 'selected' : '' }}>
-                                        {{ $supplier->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <label for="date_to" class="mb-1 block text-sm font-medium text-gray-700">
+                                {{ __('payables.fields.date_to') }}
+                            </label>
+                            <input id="date_to" name="date_to" type="date" value="{{ request('date_to') }}"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                         </div>
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.From Date') }}</label>
-                            <input type="date" name="date_from" value="{{ request('date_from') }}"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.To Date') }}</label>
-                            <input type="date" name="date_to" value="{{ request('date_to') }}"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div class="flex items-end space-x-2">
-                            <button type="submit"
-                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
-                                {{ __('messages.Filter') }}
-                            </button>
-                            <a href="{{ route('purchase-bills.index') }}"
-                                class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors">
-                                {{ __('messages.Clear') }}
-                            </a>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div class="flex items-end gap-2 lg:col-span-5">
+                        <button type="submit"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            {{ __('payables.actions.apply') }}
+                        </button>
+                        <a href="{{ route('purchase-bills.index') }}"
+                            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                            {{ __('payables.actions.clear') }}
+                        </a>
+                    </div>
+                </form>
+            </x-ui.card>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <x-ui.stat :label="__('payables.titles.purchase_bills')" :value="$bills->count()" :hint="$bills->total() . ' total'" />
+                <x-ui.stat :label="__('payables.fields.amount')" :value="'₪' . number_format($totalAmount, 2)" tone="blue" />
+                <x-ui.stat :label="__('payables.fields.remaining')" :value="'₪' . number_format($dueAmount, 2)" tone="red" />
             </div>
 
-            <!-- Summary Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        {{ __('messages.Total Bills') }}</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ $bills->total() }}</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        {{ __('messages.Total Amount') }}</dt>
-                                    <dd class="text-lg font-medium text-gray-900">₪{{ number_format($totalAmount, 2) }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        {{ __('messages.Average Bill') }}</dt>
-                                    <dd class="text-lg font-medium text-gray-900">
-                                        ₪{{ $bills->total() > 0 ? number_format($totalAmount / $bills->total(), 2) : '0.00' }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Purchase Bills List -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                <div class="p-6">
-                    @if ($bills->count() > 0)
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Bill #') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Supplier') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Date') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Reference') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Amount') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Created By') }}</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ __('messages.Actions') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($bills as $bill)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">#{{ $bill->id }}
+            <x-ui.card :title="__('payables.titles.purchase_bills')">
+                @if ($bills->count() === 0)
+                    <x-ui.empty :title="__('payables.messages.no_bills')" />
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.bill') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.supplier') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.purchase_date') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.amount') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.actions.record_payment') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.remaining') }}</th>
+                                    <th class="px-4 py-3 text-start">{{ __('payables.fields.status') }}</th>
+                                    <th class="px-4 py-3 text-end">{{ __('payables.actions.view') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @foreach ($bills as $bill)
+                                    @php
+                                        $summary = $bill->payables_summary;
+                                        $tone = $summary['status'] === 'paid' ? 'green' : ($summary['status'] === 'partial' ? 'amber' : 'red');
+                                    @endphp
+                                    <tr class="align-top">
+                                        <td class="px-4 py-3">
+                                            <div class="font-semibold text-gray-900">#{{ $bill->id }}</div>
+                                            @if ($bill->reference_number)
+                                                <div class="text-xs text-gray-500">{{ $bill->reference_number }}</div>
+                                            @endif
+                                            @if ($bill->source === 'stock_intake')
+                                                <div class="mt-1">
+                                                    <x-ui.badge tone="blue">{{ __('payables.statuses.from_stock_entry') }}</x-ui.badge>
                                                 </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $bill->supplier->name }}</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">
-                                                    {{ $bill->purchase_date->format('M d, Y') }}</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">
-                                                    {{ $bill->reference_number ?: '-' }}</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    ₪{{ number_format($bill->total_amount, 2) }}</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-500">{{ $bill->creator->name }}</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <a href="{{ route('purchase-bills.show', $bill) }}"
-                                                    class="text-indigo-600 hover:text-indigo-900">{{ __('messages.View') }}</a>
-                                                <a href="{{ route('purchase-bills.edit', $bill) }}"
-                                                    class="text-green-600 hover:text-green-900">{{ __('messages.Edit') }}</a>
-                                                <form method="POST"
-                                                    action="{{ route('purchase-bills.destroy', $bill) }}"
-                                                    class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900"
-                                                        onclick="return confirm('{{ __('messages.Are you sure? This will reverse all stock changes.') }}')">
-                                                        {{ __('messages.Delete') }}
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-medium text-gray-900">{{ $bill->supplier?->name }}</div>
+                                            @if ($bill->supplier?->system_key === \App\Services\SupplierLedger::WALK_IN_KEY)
+                                                <div class="mt-1 text-xs text-gray-500">{{ __('payables.statuses.system_supplier') }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-700">{{ optional($bill->purchase_date)->format('Y-m-d') }}</td>
+                                        <td class="px-4 py-3 font-semibold text-gray-900">₪{{ number_format((float) $bill->total_amount, 2) }}</td>
+                                        <td class="px-4 py-3 text-gray-900">₪{{ number_format($summary['paid'], 2) }}</td>
+                                        <td class="px-4 py-3 text-gray-900">
+                                            ₪{{ number_format($summary['due'], 2) }}
+                                            @if ($summary['overpaid'] > 0)
+                                                <div class="text-xs text-green-600">{{ __('payables.messages.overpaid_credit') }}: ₪{{ number_format($summary['overpaid'], 2) }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <x-ui.badge :tone="$tone">{{ __('payables.statuses.' . $summary['status']) }}</x-ui.badge>
+                                        </td>
+                                        <td class="px-4 py-3 text-end">
+                                            <a href="{{ route('purchase-bills.show', $bill) }}"
+                                                class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                                                {{ __('payables.actions.view') }}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
 
-                        <!-- Pagination -->
-                        <div class="mt-6">
-                            {{ $bills->appends(request()->query())->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-8">
-                            <div class="text-gray-500 text-lg">{{ __('messages.No purchase bills found') }}</div>
-                            <a href="{{ route('purchase-bills.create') }}"
-                                class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                                {{ __('messages.Create First Purchase Bill') }}
-                            </a>
-                        </div>
-                    @endif
-                </div>
-            </div>
+                    <div class="pt-4">
+                        {{ $bills->links() }}
+                    </div>
+                @endif
+            </x-ui.card>
         </div>
     </div>
 </x-app-layout>

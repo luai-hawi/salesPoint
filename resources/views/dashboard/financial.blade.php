@@ -1,1719 +1,245 @@
-﻿@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <h2 class="font-bold text-xl lg:text-2xl text-gray-800 leading-tight flex items-center">
-                <svg class="w-6 h-6 lg:w-8 lg:h-8 mr-2 lg:mr-3 text-blue-600" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z">
-                    </path>
-                </svg>
-                {{ __('messages.Financial Dashboard') }}
-            </h2>
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
-                    {{ __('messages.Period:') }} <span
-                        class="font-bold text-blue-600">{{ \Carbon\Carbon::parse($startDate)->format('M d, Y') }} -
-                        {{ \Carbon\Carbon::parse($endDate)->format('M d, Y') }}</span>
-                </div>
-                <div class="text-xs sm:text-sm text-gray-600 bg-blue-100 px-3 py-2 rounded-full">
-                    {{ __('messages.Net Income:') }} <span
-                        class="font-bold {{ $summaryData['netIncome'] >= 0 ? 'text-green-600' : 'text-red-600' }}">₪{{ number_format($summaryData['netIncome'], 0) }}</span>
-                </div>
-                <!-- Export Button -->
-                <a href="{{ route('dashboard.export-data') }}"
-                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-200">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                        </path>
-                    </svg>
-                    {{ __('messages.Export Data') }}
-                </a>
-
-                <!-- Print Report Button -->
-                <a href="{{ route('dashboard.financial.print-report', ['start_date' => $startDate, 'end_date' => $endDate, 'toDate' => $endDate]) }}"
-                    target="_blank"
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition duration-200">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
-                        </path>
-                    </svg>
-                    {{ __('messages.Print Report') }}
-                </a>
-            </div>
-        </div>
+        <x-ui.page-header :title="__('finance.dashboard.title')" :subtitle="__('finance.dashboard.subtitle')">
+            <a href="{{ route('dashboard.export-data', array_merge(request()->query(), ['start_date' => $startDate, 'end_date' => $endDate])) }}"
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                {{ __('finance.common.export') }}
+            </a>
+            <a href="{{ route('dashboard.financial.print-report', array_merge(request()->query(), ['start_date' => $startDate, 'end_date' => $endDate, 'popup' => 1])) }}"
+                target="_blank"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                {{ __('finance.common.print') }}
+            </a>
+        </x-ui.page-header>
     </x-slot>
 
-    <!-- Full Width Content Area -->
-    <div class="w-full min-h-screen bg-gray-50">
-        <div class="w-full px-3 sm:px-4 lg:px-6 py-4 lg:py-6">
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
-            <!-- Date Filter Widget - Responsive -->
-            <div class="bg-white p-4 shadow-md rounded-lg mb-4 lg:mb-6 border border-gray-200 w-full">
-                <form method="GET" action="{{ route('dashboard.financial') }}"
-                    class="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
-                    <div class="w-full sm:w-auto">
-                        <label class="block text-sm font-medium mb-1 text-gray-700">📅
-                            {{ __('messages.Start Date') }}</label>
-                        <input type="date" name="start_date" value="{{ $startDate }}"
-                            class="w-full sm:w-auto border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+            <x-ui.card>
+                <form method="GET" action="{{ route('dashboard.financial') }}" class="grid gap-4 lg:grid-cols-4">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.from') }}</label>
+                        <input type="date" name="start_date" value="{{ $startDate }}" class="w-full rounded-lg border-gray-300 text-sm">
                     </div>
-                    <div class="w-full sm:w-auto">
-                        <label class="block text-sm font-medium mb-1 text-gray-700">📅
-                            {{ __('messages.End Date') }}</label>
-                        <input type="date" name="end_date" value="{{ $endDate }}"
-                            class="w-full sm:w-auto border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.to') }}</label>
+                        <input type="date" name="end_date" value="{{ $endDate }}" class="w-full rounded-lg border-gray-300 text-sm">
                     </div>
-                    <button type="submit"
-                        class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 text-sm font-medium">
-                        📊 {{ __('messages.Apply Filter') }}
-                    </button>
-                </form>
-            </div>
-
-            <!-- NEW: Sales by User Section -->
-            @if (isset($salesByUserData) && count($salesByUserData['users']) > 0)
-                <div class="w-full mb-4 lg:mb-6">
-                    <div
-                        class="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 lg:p-6 rounded-lg shadow-lg text-white">
-                        <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-3">
-                            <h3 class="text-lg lg:text-xl font-bold flex items-center">
-                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                    </path>
-                                </svg>
-                                {{ __('messages.Sales by User - Today') }}
-                            </h3>
-                            <div class="text-sm bg-white/20 px-4 py-2 rounded-lg">
-                                <span class="font-bold">{{ __('messages.Total:') }}</span>
-                                ₪{{ number_format($salesByUserData['total'], 0) }}
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            @foreach ($salesByUserData['users'] as $user)
-                                <div
-                                    class="bg-white/10 backdrop-blur-sm rounded-lg p-3 hover:bg-white/20 transition duration-200">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            @if ($user['role'] === 'shop_owner')
-                                                <div
-                                                    class="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 font-bold text-sm mr-2">
-                                                    {{ strtoupper(substr($user['name'], 0, 1)) }}
-                                                </div>
-                                            @else
-                                                <div
-                                                    class="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
-                                                    {{ strtoupper(substr($user['name'], 0, 1)) }}
-                                                </div>
-                                            @endif
-                                            <div>
-                                                <p class="font-semibold text-sm">{{ $user['name'] }}</p>
-                                                <p class="text-xs text-white/70">
-                                                    @if ($user['role'] === 'shop_owner')
-                                                        {{ __('messages.Shop Owner') }}
-                                                    @else
-                                                        {{ __('messages.Employee') }}
-                                                    @endif
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-bold text-lg">₪{{ number_format($user['sales'], 0) }}</p>
-                                            <p class="text-xs text-white/70">{{ $user['bill_count'] }}
-                                                {{ __('messages.bills') }}</p>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.period') }}</label>
+                        <select name="cash_preset" class="w-full rounded-lg border-gray-300 text-sm">
+                            @foreach (['today', 'yesterday', 'this_week', 'this_month', 'custom'] as $preset)
+                                <option value="{{ $preset }}" @selected($cashPeriod['preset'] === $preset)>{{ __('finance.common.' . $preset) }}</option>
                             @endforeach
-                        </div>
+                        </select>
                     </div>
-                </div>
-            @endif
-
-            <!-- NEW: Daily Cash Flow Section -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 lg:p-6 rounded-lg shadow-lg text-white">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-3">
-                        <h3 class="text-lg lg:text-xl font-bold flex items-center">
-                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
-                            </svg>
-                            {{ __('messages.Daily Cash Flow') }}
-                        </h3>
-                        <form method="GET" action="{{ route('dashboard.financial') }}"
-                            class="flex items-center gap-2 flex-wrap">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <div>
-                                    <label
-                                        class="text-white text-xs opacity-80">{{ __('messages.Cash Flow Start Date') }}</label>
-                                    <input type="date" name="cash_flow_start_date" value="{{ $cashFlowStartDate }}"
-                                        class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-                                        placeholder="{{ __('messages.Cash Flow Start Date') }}">
-                                    <span class="text-white opacity-70">-</span>
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-white text-xs opacity-80">{{ __('messages.Cash Flow End Date') }}</label>
-                                    <input type="date" name="cash_flow_end_date" value="{{ $cashFlowEndDate }}"
-                                        class="bg-white bg-opacity-20 border border-white border-opacity-30 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-                                        placeholder="{{ __('messages.Cash Flow End Date') }}">
-                                </div>
-                            </div>
-                            <button type="submit"
-                                class="px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
-                                {{ __('messages.View') }}
-                            </button>
-                        </form>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.cash_drawer.drawer_mode') }}</label>
+                        <select name="cash_method" class="w-full rounded-lg border-gray-300 text-sm">
+                            <option value="cash">{{ __('finance.cash_drawer.drawer_only') }}</option>
+                            <option value="all" @selected(request('cash_method') === 'all')>{{ __('finance.cash_drawer.all_methods') }}</option>
+                            @foreach (['card', 'transfer', 'check'] as $method)
+                                <option value="{{ $method }}" @selected(request('cash_method') === $method)>{{ __('finance.methods.' . $method) }}</option>
+                            @endforeach
+                        </select>
                     </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Cash In Section -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                {{ __('messages.Cash In') }}
-                            </h4>
-                            <p class="text-2xl lg:text-3xl font-bold text-green-300 mb-2">
-                                ₪{{ number_format($dailyCashFlowData['cashIn']['total'], 0) }}</p>
-                            <div class="text-xs opacity-75 space-y-1">
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Sales') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['sales'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Customer Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['customerPayments'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Capital') }}</span><span>₪{{ number_format($dailyCashFlowData['cashIn']['capital'], 0) }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cash Out Section -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M20 12H4">
-                                    </path>
-                                </svg>
-                                {{ __('messages.Cash Out') }}
-                            </h4>
-                            <p class="text-2xl lg:text-3xl font-bold text-red-300 mb-2">
-                                ₪{{ number_format($dailyCashFlowData['cashOut']['total'], 0) }}</p>
-                            <div class="text-xs opacity-75 space-y-1">
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Supplier Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['supplierPayments'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Employee Payments') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['employeePayments'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Expenses') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['expenses'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{ __('messages.Customer Debt') }}</span><span>₪{{ number_format($dailyCashFlowData['cashOut']['minusPayments'], 0) }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Net Cash Flow -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                                {{ __('messages.Net Cash Flow') }}
-                            </h4>
-                            <p
-                                class="text-2xl lg:text-3xl font-bold {{ $dailyCashFlowData['netCashFlow'] >= 0 ? 'text-green-300' : 'text-red-300' }} mb-2">
-                                {{ $dailyCashFlowData['netCashFlow'] >= 0 ? '+' : '' }}₪{{ number_format($dailyCashFlowData['netCashFlow'], 0) }}
-                            </p>
-                            <p class="text-xs opacity-75">
-                                {{ $dailyCashFlowData['netCashFlow'] >= 0 ? __('messages.Positive cash flow') : __('messages.Negative cash flow') }}
-                            </p>
-                        </div>
-
-                        <!-- Cash Flow Summary -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <h4 class="text-sm font-semibold opacity-90 mb-3 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2h2a2 2 0 002-2z">
-                                    </path>
-                                </svg>
-                                {{ __('messages.Summary') }}
-                            </h4>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center"><span
-                                        class="text-xs opacity-75">{{ __('messages.Total In') }}</span><span
-                                        class="text-sm font-semibold text-green-300">₪{{ number_format($dailyCashFlowData['cashIn']['total'], 0) }}</span>
-                                </div>
-                                <div class="flex justify-between items-center"><span
-                                        class="text-xs opacity-75">{{ __('messages.Total Out') }}</span><span
-                                        class="text-sm font-semibold text-red-300">₪{{ number_format($dailyCashFlowData['cashOut']['total'], 0) }}</span>
-                                </div>
-                                <hr class="border-white border-opacity-20">
-                                <div class="flex justify-between items-center"><span
-                                        class="text-xs opacity-75">{{ __('messages.Balance') }}</span><span
-                                        class="text-sm font-bold {{ $dailyCashFlowData['netCashFlow'] >= 0 ? 'text-green-300' : 'text-red-300' }}">{{ $dailyCashFlowData['netCashFlow'] >= 0 ? '+' : '' }}₪{{ number_format($dailyCashFlowData['netCashFlow'], 0) }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Enhanced Summary Cards - Including Supplier Data -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3"
-                    style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));" x-data="{ screenSize: window.innerWidth }"
-                    @resize.window="screenSize = window.innerWidth"
-                    :style="screenSize >= 1280 ? 'grid-template-columns: repeat(7, minmax(0, 1fr))' :
-                        'grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))'">
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💰
-                                    {{ __('messages.Revenue') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">
-                                    ₪{{ number_format($summaryData['totalRevenue'], 0) }}</p>
-                            </div>
-                            <div class="text-2xl lg:text-3xl text-green-500">💰</div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition duration-300 group">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="flex items-center gap-1">
-                                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">📈
-                                        {{ __('messages.Profit') }}</p>
-                                    <svg class="w-4 h-4 text-gray-400 cursor-help" fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                        title="Includes returned bills losses. Damaged bills losses are shown separately.">
-                                        <path fill-rule="evenodd"
-                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">
-                                    ₪{{ number_format($summaryData['totalProfit'], 0) }}</p>
-                                <p class="text-xs text-gray-400 mt-2 leading-relaxed">
-                                    <span class="text-green-600 font-medium">✓</span>
-                                    {{ __('messages.Profit includes returned losses') }}<br>
-                                    <span class="text-red-600 font-medium">✗</span>
-                                    {{ __('messages.Damaged bills excluded from profit') }}
-                                </p>
-                            </div>
-                            <div class="text-2xl lg:text-3xl text-blue-500">📈</div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💸
-                                    {{ __('messages.Expenses and Salaries') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">
-                                    ₪{{ number_format($summaryData['totalExpenses'] + $summaryData['totalEmployeePayments'], 0) }}
-                                </p>
-                            </div>
-                            <div class="text-2xl lg:text-3xl text-red-500">💸</div>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Purchases Card -->
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-orange-500 hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">🛒
-                                    {{ __('messages.Purchases') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">
-                                    ₪{{ number_format($summaryData['totalPurchases'], 0) }}</p>
-                            </div>
-                            <div class="text-2xl lg:text-3xl text-orange-500">🛒</div>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Supplier Payments Card -->
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-indigo-500 hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">🏢
-                                    {{ __('messages.Supplier Payments') }}</p>
-                                <p class="text-xl lg:text-2xl font-bold text-gray-900">
-                                    ₪{{ number_format($summaryData['totalSupplierPayments'], 0) }}</p>
-                            </div>
-                            <div class="text-2xl lg:text-3xl text-indigo-500">🏢</div>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Damaged Bills Loss Card -->
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 {{ $summaryData['damagedBillsLoss'] > 0 ? 'border-red-500' : 'border-gray-300' }} hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">⚠️
-                                    {{ __('messages.Damaged Bills Loss') }}</p>
-                                <p
-                                    class="text-xl lg:text-2xl font-bold {{ $summaryData['damagedBillsLoss'] > 0 ? 'text-red-600' : 'text-gray-900' }}">
-                                    ₪{{ number_format($summaryData['damagedBillsLoss'], 0) }}
-                                </p>
-                            </div>
-                            <div
-                                class="text-2xl lg:text-3xl {{ $summaryData['damagedBillsLoss'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
-                                {{ $summaryData['damagedBillsLoss'] > 0 ? '❌' : '✓' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500 hover:shadow-lg transition duration-300">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">💎
-                                    {{ __('messages.Net Income') }}</p>
-                                <p
-                                    class="text-xl lg:text-2xl font-bold {{ $summaryData['netIncome'] < 0 ? 'text-red-600' : 'text-gray-900' }}">
-                                    ₪{{ number_format($summaryData['netIncome'], 0) }}
-                                </p>
-                            </div>
-                            <div
-                                class="text-2xl lg:text-3xl {{ $summaryData['netIncome'] >= 0 ? 'text-green-500' : 'text-red-500' }}">
-                                {{ $summaryData['netIncome'] >= 0 ? '✅' : '⚠️' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NEW: Store Value Section -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="bg-gradient-to-br from-blue-600 to-purple-700 p-4 lg:p-6 rounded-lg shadow-lg text-white">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                        <h3 class="text-lg lg:text-xl font-bold flex items-center mb-2 lg:mb-0">
-                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v16zM8 9h8M8 13h8">
-                                </path>
-                            </svg>
-                            {{ __('messages.Store Inventory Value') }}
-                        </h3>
-                        <div class="text-sm bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                            {{ __('messages.Current Stock Analysis') }}
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">💰 {{ __('messages.Cost Value') }}
-                                </h4>
-                                <span class="text-xl">📦</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                ₪{{ number_format($storeValueData['totalCostValue'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Total investment') }}</p>
-                        </div>
-
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">💎 {{ __('messages.Selling Value') }}
-                                </h4>
-                                <span class="text-xl">💰</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                ₪{{ number_format($storeValueData['totalSellingValue'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Potential revenue') }}</p>
-                        </div>
-
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">🎯 {{ __('messages.Potential Profit') }}
-                                </h4>
-                                <span class="text-xl">📈</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold text-yellow-200">
-                                ₪{{ number_format($storeValueData['potentialProfit'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.If all sold') }}</p>
-                        </div>
-
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">📊 {{ __('messages.Total Items') }}</h4>
-                                <span class="text-xl">🔢</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                {{ number_format($storeValueData['totalItems']) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Units in stock') }}</p>
-                        </div>
-
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">🛍️ {{ __('messages.Products') }}</h4>
-                                <span class="text-xl">📋</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                {{ number_format($storeValueData['totalProducts']) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Different products') }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Profit Margin Indicator -->
-                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div class="text-sm opacity-90">
-                            {{ __('messages.Profit Margin:') }}
-                            <span class="font-bold text-yellow-200">
-                                {{ $storeValueData['totalCostValue'] > 0 ? number_format(($storeValueData['potentialProfit'] / $storeValueData['totalCostValue']) * 100, 1) : 0 }}%
-                            </span>
-                        </div>
-                        <div class="text-xs opacity-75">
-                            {{ __('messages.Based on current inventory at cost vs selling prices') }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NEW: Capital Section -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 p-4 lg:p-6 rounded-lg shadow-lg text-white">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                        <h3 class="text-lg lg:text-xl font-bold flex items-center mb-2 lg:mb-0">
-                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
-                            </svg>
-                            {{ __('messages.Capital') }}
-                        </h3>
-                        <div class="text-sm bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                            {{ __('messages.Outside Investment') }}
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Total Capital -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">{{ __('messages.Total Capital') }}</h4>
-                                <span class="text-xl">🏦</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                ₪{{ number_format($capitalData['total'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.From outside sources') }}</p>
-                        </div>
-
-                        <!-- Products Cost Value -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">{{ __('messages.Products Cost') }}</h4>
-                                <span class="text-xl">🛍️</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold">
-                                ₪{{ number_format($storeValueData['totalCostValue'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Inventory value') }}</p>
-                        </div>
-
-                        <!-- Total Capital + Products -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold opacity-90">
-                                    {{ __('messages.Total Business Capital') }}</h4>
-                                <span class="text-xl">📊</span>
-                            </div>
-                            <p class="text-xl lg:text-2xl font-bold text-yellow-200">
-                                ₪{{ number_format($capitalData['total'] + $storeValueData['totalCostValue'], 0) }}</p>
-                            <p class="text-xs opacity-75 mt-1">{{ __('messages.Capital + Inventory') }}</p>
-                        </div>
-
-                        <!-- Add Capital Form -->
-                        <div class="bg-white bg-opacity-10 p-4 rounded-lg backdrop-blur-sm">
-                            <h4 class="text-sm font-semibold opacity-90 mb-3">{{ __('messages.Capital') }}</h4>
-                            <p class="text-xl lg:text-2xl font-bold text-white mb-2">
-                                ₪{{ number_format($capitalData['total'], 0) }}
-                            </p>
-                            <button onclick="openCapitalModal()"
-                                class="w-full px-3 py-2 bg-white text-emerald-700 font-semibold rounded text-sm hover:bg-opacity-90 transition duration-200">
-                                {{ __('messages.Manage Capital') }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Capital Entries Button -->
-                    <div class="mt-4">
-                        <button onclick="openCapitalModal()"
-                            class="text-sm font-semibold opacity-90 mb-3 flex items-center hover:underline">
-                            {{ __('messages.Recent Capital Entries') }}
-                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5l7 7-7 7"></path>
-                            </svg>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            {{ __('finance.common.filter') }}
                         </button>
                     </div>
+                    @foreach (['cash_from' => 'from', 'cash_to' => 'to'] as $field => $label)
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.dashboard.cash_flow') }} · {{ __('finance.common.' . $label) }}</label>
+                            <input type="date" name="{{ $field }}" value="{{ request($field, $cashPeriod[$label . '_date']) }}" class="w-full rounded-lg border-gray-300 text-sm">
+                        </div>
+                    @endforeach
+                </form>
+            </x-ui.card>
+
+            @php($fmt = fn ($value) => '₪' . number_format((float) $value, 2))
+            <div class="space-y-2">
+                <p class="text-xs text-gray-500">{{ __('charts.finance.compare_hint', ['period' => $charts['compare_period']]) }}</p>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                    <x-ui.kpi :label="__('finance.dashboard.revenue')" :value="$fmt($summary['revenue'])" icon="cash" tone="green"
+                        :delta="$charts['deltas']['revenue']" :hint="__('charts.admin.bills_count', ['count' => $profitLoss['bills_count']])" />
+                    <x-ui.kpi :label="__('finance.dashboard.profit')" :value="$fmt($summary['profit'])" icon="trend" tone="indigo"
+                        :delta="$charts['deltas']['profit']" :hint="__('charts.margin') . ': ' . $profitLoss['gross_margin'] . '%'" />
+                    <x-ui.kpi :label="__('finance.dashboard.net_income')" :value="$fmt($summary['net_income'])" icon="wallet" :tone="$summary['net_income'] < 0 ? 'red' : 'purple'"
+                        :delta="$charts['deltas']['net']" :hint="__('charts.finance.net_margin') . ': ' . $profitLoss['net_margin'] . '%'" />
+                    <x-ui.kpi :label="__('charts.avg_bill')" :value="$fmt($profitLoss['average_bill'])" icon="receipt" tone="blue"
+                        :delta="$charts['deltas']['average_bill']" />
+                    <x-ui.kpi :label="__('finance.restored.purchases')" :value="$fmt($details['purchases'])" icon="box" tone="gray"
+                        :delta="$charts['deltas']['purchases']" invert />
+                    <x-ui.kpi :label="__('finance.dashboard.expenses')" :value="$fmt($summary['expenses'])" icon="down" tone="amber"
+                        :delta="$charts['deltas']['expenses']" invert />
+                    <x-ui.kpi :label="__('finance.dashboard.staff_payments')" :value="$fmt($summary['staff_payments'])" icon="users" tone="amber"
+                        :delta="$charts['deltas']['staff']" invert />
+                    <x-ui.kpi :label="__('finance.day_close.discounts')" :value="$fmt($summary['discounts'])" icon="percent" tone="blue"
+                        :delta="$charts['deltas']['discounts']" invert />
+                    <x-ui.kpi :label="__('finance.day_close.returns')" :value="$fmt($profitLoss['returns'])" icon="return" tone="red"
+                        :delta="$charts['deltas']['returns']" invert :hint="$charts['return_rate'] === null ? null : __('charts.finance.return_rate') . ': ' . $charts['return_rate'] . '%'" />
+                    <x-ui.kpi :label="__('finance.dashboard.damaged_loss')" :value="$fmt($summary['damaged_loss'])" icon="box" tone="red"
+                        :delta="$charts['deltas']['damaged']" invert />
                 </div>
             </div>
 
-            <!-- Enhanced Growth Stats - Including Purchase Growth -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
-                    <!-- Revenue Chart - Full Width on Mobile -->
-                    <div class="xl:col-span-2 bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                            <h3 class="text-base lg:text-lg font-semibold text-gray-800">📈
-                                {{ __('messages.Daily Revenue Trend') }}</h3>
-                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                ₪{{ number_format($revenueData['total'], 0) }} {{ __('messages.Total') }}
-                            </span>
-                        </div>
-                        <div class="h-64 lg:h-80">
-                            <canvas id="revenueChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Enhanced Growth Stats - Responsive Stack -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 lg:gap-4">
-                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">💰
-                                    {{ __('messages.Revenue Growth') }}
-                                </h4>
-                                <span
-                                    class="text-lg">{{ $growthData['revenue']['growth'] >= 0 ? '📈' : '📉' }}</span>
-                            </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">
-                                ₪{{ number_format($growthData['revenue']['current'], 0) }}</p>
-                            <p
-                                class="text-sm {{ $growthData['revenue']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['revenue']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['revenue']['growth'], 1) }}%
-                                {{ __('messages.vs previous') }}
-                            </p>
-                        </div>
-
-                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">💎 {{ __('messages.Profit Growth') }}
-                                </h4>
-                                <span class="text-lg">{{ $growthData['profit']['growth'] >= 0 ? '💰' : '💸' }}</span>
-                            </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">
-                                ₪{{ number_format($growthData['profit']['current'], 0) }}</p>
-                            <p
-                                class="text-sm {{ $growthData['profit']['growth'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['profit']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['profit']['growth'], 1) }}%
-                                {{ __('messages.vs previous') }}
-                            </p>
-                        </div>
-
-                        <!-- NEW: Purchase Growth -->
-                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">🛒
-                                    {{ __('messages.Purchase Growth') }}</h4>
-                                <span
-                                    class="text-lg">{{ $growthData['purchases']['growth'] >= 0 ? '📈' : '📉' }}</span>
-                            </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">
-                                ₪{{ number_format($growthData['purchases']['current'], 0) }}</p>
-                            <p
-                                class="text-sm {{ $growthData['purchases']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['purchases']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['purchases']['growth'], 1) }}%
-                                {{ __('messages.vs previous') }}
-                            </p>
-                        </div>
-
-                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-800">🎯
-                                    {{ __('messages.Expense Control') }}</h4>
-                                <span
-                                    class="text-lg">{{ $growthData['expenses']['growth'] <= 0 ? '🏆' : '⚠️' }}</span>
-                            </div>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">
-                                ₪{{ number_format($growthData['expenses']['current'], 0) }}</p>
-                            <p
-                                class="text-sm {{ $growthData['expenses']['growth'] <= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $growthData['expenses']['growth'] >= 0 ? '+' : '' }}{{ number_format($growthData['expenses']['growth'], 1) }}%
-                                {{ __('messages.vs previous') }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <div class="grid gap-6 xl:grid-cols-3">
+                <x-ui.card :title="__('charts.finance.revenue_profit')" :subtitle="$charts['by_month'] ? __('charts.finance.by_month') : __('charts.finance.by_day')" class="xl:col-span-2">
+                    <x-ui.chart type="bar" :height="300" :label="__('charts.finance.revenue_profit')"
+                        :labels="$charts['trend']['labels']"
+                        :datasets="[
+                            ['label' => __('finance.dashboard.revenue'), 'data' => $charts['trend']['revenue'], 'color' => '#6366f1'],
+                            ['label' => __('finance.dashboard.profit'), 'type' => 'line', 'data' => $charts['trend']['profit'], 'color' => '#10b981', 'fill' => false],
+                            ['label' => __('finance.day_close.returns'), 'type' => 'line', 'data' => $charts['trend']['returns'], 'color' => '#f43f5e', 'fill' => false],
+                        ]" />
+                </x-ui.card>
+                <x-ui.card :title="__('charts.finance.where_money_went')" :subtitle="__('charts.finance.where_money_went_hint')">
+                    <x-ui.chart type="bar" :height="300" horizontal :legend="false" :label="__('charts.finance.where_money_went')"
+                        :labels="$charts['waterfall']['labels']"
+                        :datasets="[[
+                            'label' => __('finance.common.amount'),
+                            'data' => $charts['waterfall']['data'],
+                            'colors' => collect($charts['waterfall']['data'])->map(fn ($value, $i) => $i === 0 ? '#6366f1' : (in_array($i, [3, 7], true) ? ($value < 0 ? '#e11d48' : '#10b981') : '#f59e0b'))->all(),
+                        ]]" />
+                </x-ui.card>
             </div>
 
-            <!-- Enhanced Charts Row - Including Supplier Charts -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💎
-                                {{ __('messages.Daily Profit') }}</h3>
-                            <span class="text-sm text-gray-600">₪{{ number_format($profitData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="profitChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">💸
-                                {{ __('messages.Expenses') }}</h3>
-                            <span class="text-sm text-gray-600">₪{{ number_format($expenseData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="expenseChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Daily Purchases Chart -->
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🛒
-                                {{ __('messages.Daily Purchases') }}</h3>
-                            <span
-                                class="text-sm text-gray-600">₪{{ number_format($purchaseData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="purchaseChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- NEW: Supplier Payments Chart -->
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">🏢
-                                {{ __('messages.Supplier Payments') }}</h3>
-                            <span
-                                class="text-sm text-gray-600">₪{{ number_format($supplierPaymentData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="supplierPaymentChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+            <div class="grid gap-6 xl:grid-cols-3">
+                <x-ui.card :title="__('charts.finance.money_in_out')" :subtitle="__('charts.finance.money_in_out_hint')" class="xl:col-span-2">
+                    <x-ui.chart type="bar" :height="280" :label="__('charts.finance.money_in_out')"
+                        :labels="$charts['trend']['labels']"
+                        :datasets="[
+                            ['label' => __('finance.restored.money_in'), 'data' => $charts['trend']['money_in'], 'color' => '#10b981'],
+                            ['label' => __('finance.restored.money_out'), 'data' => $charts['trend']['money_out'], 'color' => '#f43f5e'],
+                            ['label' => __('finance.restored.purchases'), 'type' => 'line', 'data' => $charts['trend']['purchases'], 'color' => '#64748b', 'fill' => false],
+                        ]" />
+                </x-ui.card>
+                <x-ui.card :title="__('charts.finance.costs_breakdown')" :subtitle="__('charts.finance.costs_breakdown_hint')">
+                    <x-ui.chart type="doughnut" :height="280" :label="__('charts.finance.costs_breakdown')"
+                        :labels="$charts['costs']['labels']"
+                        :datasets="[['label' => __('finance.common.amount'), 'data' => $charts['costs']['data']]]" />
+                </x-ui.card>
             </div>
 
-            <!-- Customer and Employee Payment Charts -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥
-                                {{ __('messages.Customer Payments') }}</h3>
-                            <span
-                                class="text-sm text-gray-600">₪{{ number_format($customerPaymentData['total'], 0) }}</span>
+            <div class="grid gap-6 xl:grid-cols-3">
+                <x-ui.card :title="__('charts.finance.top_products')" :subtitle="__('charts.finance.top_products_hint')" class="xl:col-span-2">
+                    <x-ui.chart type="bar" :height="300" horizontal :label="__('charts.finance.top_products')"
+                        :labels="$charts['top_products']['labels']"
+                        :datasets="[
+                            ['label' => __('finance.dashboard.profit'), 'data' => $charts['top_products']['profit'], 'color' => '#10b981'],
+                            ['label' => __('finance.dashboard.revenue'), 'data' => $charts['top_products']['revenue'], 'color' => '#c7d2fe'],
+                        ]" />
+                    @if (Route::has('reports.index') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
+                        <div class="mt-3 text-end">
+                            <a href="{{ route('reports.index') }}#product-reports" class="text-sm font-semibold text-indigo-700 hover:underline">{{ __('charts.finance.all_product_reports') }} →</a>
                         </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="customerPaymentChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👷
-                                {{ __('messages.Employee Payments') }}</h3>
-                            <span
-                                class="text-sm text-gray-600">₪{{ number_format($employeePaymentData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="employeePaymentChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+                    @endif
+                </x-ui.card>
+                <x-ui.card :title="__('charts.finance.team_sales')" :subtitle="$startDate . ' → ' . $endDate">
+                    <x-ui.chart type="doughnut" :height="300" :label="__('charts.finance.team_sales')"
+                        :labels="$charts['team']['labels']"
+                        :datasets="[['label' => __('finance.dashboard.revenue'), 'data' => $charts['team']['data']]]" />
+                </x-ui.card>
             </div>
 
-            <!-- Damaged Products & Customer Balance Charts -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <!-- NEW: Damaged Products Chart -->
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">⚠️
-                                {{ __('messages.Damaged Products') }}</h3>
-                            <span class="text-sm text-gray-600">₪{{ number_format($damagedData['total'], 0) }}</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="damagedChart"></canvas>
-                        </div>
+            <div class="grid gap-6 xl:grid-cols-3">
+                <x-ui.card :title="__('finance.dashboard.data_health')" :subtitle="__('finance.common.period') . ': ' . $startDate . ' → ' . $endDate">
+                    <div class="space-y-3">
+                        @foreach ($summary['data_health'] as $key => $count)
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="text-sm text-gray-700">{{ __('finance.health.' . $key) }}</div>
+                                <x-ui.badge :tone="$count ? 'red' : 'green'">{{ $count }}</x-ui.badge>
+                            </div>
+                        @endforeach
                     </div>
+                </x-ui.card>
 
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">👥
-                                {{ __('messages.Customer Balance') }}</h3>
-                            <span
-                                class="text-sm {{ $customerBalanceData['totalOwing'] > $customerBalanceData['totalOwed'] ? 'text-red-600' : 'text-green-600' }}">
-                                {{ __('messages.Customers owe you:') }}
-                                ₪{{ number_format($customerBalanceData['totalOwing'], 0) }}
-                            </span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="customerBalanceChart"></canvas>
-                        </div>
+                <x-ui.card :title="__('finance.dashboard.cash_flow')">
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between"><span>{{ __('finance.dashboard.settlement_in') }}</span><strong>₪{{ number_format($summary['cash_flow']['settlement']['cash_in'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>{{ __('finance.dashboard.settlement_out') }}</span><strong>₪{{ number_format($summary['cash_flow']['settlement']['cash_out'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>{{ __('finance.dashboard.cash_drawer_balance') }}</span><strong>{{ $summary['cash_flow']['cash_drawer']['closing_balance'] === null ? '—' : '₪' . number_format($summary['cash_flow']['cash_drawer']['closing_balance'], 2) }}</strong></div>
                     </div>
-                </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <a href="{{ route('finance.cash-drawer.index') }}" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('finance.dashboard.cash_drawer') }}</a>
+                        <a href="{{ route('finance.day-close.index') }}" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('finance.day_close.title') }}</a>
+                    </div>
+                </x-ui.card>
+
+                <x-ui.card :title="__('finance.dashboard.balances_summary')">
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between"><span>{{ __('finance.reports.receivables_aging') }}</span><strong>₪{{ number_format($balances['receivables'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>{{ __('finance.reports.payables_aging') }}</span><strong>₪{{ number_format($balances['payables'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>{{ __('finance.reports.inventory_valuation') }}</span><strong>₪{{ number_format($balances['inventory_value'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>{{ __('finance.common.opening_balance') }}</span><strong>{{ $balances['cash_estimate'] === null ? '—' : '₪' . number_format($balances['cash_estimate'], 2) }}</strong></div>
+                    </div>
+                </x-ui.card>
             </div>
 
-            <!-- NEW: Returned Bills Metrics Section -->
-            @if (isset($returnedData) && $returnedData['count'] > 0)
-                <div class="w-full mb-4 lg:mb-6">
-                    <div
-                        class="bg-gradient-to-r from-purple-500 to-indigo-600 p-4 lg:p-6 rounded-lg shadow-lg text-white">
-                        <h3 class="text-lg lg:text-xl font-bold mb-4 flex items-center">
-                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            {{ __('messages.Returned Bills') }}
-                        </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
-                                <div class="text-sm opacity-90">{{ __('messages.Total Bill Value') }}</div>
-                                <div class="text-2xl font-bold">
-                                    ₪{{ number_format($returnedData['total_bill_value'], 0) }}</div>
-                            </div>
-                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
-                                <div class="text-sm opacity-90">{{ __('messages.Inventory Return Value') }}</div>
-                                <div class="text-2xl font-bold">
-                                    ₪{{ number_format($returnedData['inventory_return_value'], 0) }}</div>
-                            </div>
-                            <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
-                                <div class="text-sm opacity-90">{{ __('messages.Lost Profit') }}</div>
-                                <div class="text-2xl font-bold text-red-200">
-                                    ₪{{ number_format($returnedData['lost_profit'], 0) }}</div>
-                            </div>
+            <x-ui.card :title="__('finance.restored.team_today')">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    @foreach ($summary['team_today']['rows'] as $row)
+                        <div class="rounded-lg bg-gray-50 p-3"><p>{{ $row['user']->name }}</p><strong>{{ number_format($row['sales_total'], 2) }}</strong> · {{ $row['bills_count'] }} {{ __('finance.restored.count') }}</div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+
+            @include('dashboard.partials.financial-details')
+            @include('dashboard.partials.financial-cash-flow')
+
+            <div class="grid gap-6 xl:grid-cols-2">
+                <x-ui.card :title="__('finance.dashboard.profit_loss')">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <div class="text-sm text-gray-500">{{ __('finance.reports.profit_loss') }}</div>
+                            <div class="mt-1 text-xl font-semibold text-gray-900">₪{{ number_format($profitLoss['net_profit'], 2) }}</div>
+                        </div>
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <div class="text-sm text-gray-500">{{ __('finance.day_close.discounts') }}</div>
+                            <div class="mt-1 text-xl font-semibold text-gray-900">₪{{ number_format($profitLoss['discounts'], 2) }}</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Returned Products Chart -->
-                <div class="w-full mb-4 lg:mb-6">
-                    <div class="bg-white p-4 lg:p-5 rounded-lg shadow-md border border-gray-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm lg:text-md font-semibold text-gray-800">📦
-                                {{ __('messages.Returns & Reversals') }}</h3>
-                            <span class="text-sm text-gray-600">{{ $returnedData['count'] }} items</span>
-                        </div>
-                        <div class="h-48 lg:h-56">
-                            <canvas id="returnedProductsChart"></canvas>
-                        </div>
+                    <div class="mt-4">
+                        <a href="{{ route('reports.index') }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            {{ __('finance.reports.title') }}
+                        </a>
                     </div>
-                </div>
-            @endif
+                </x-ui.card>
 
-            <!-- Top Products Section -->
-            @if (isset($topProducts) && count($topProducts) > 0)
-                <div class="w-full mb-4 lg:mb-6">
-                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏆
-                            {{ __('messages.Top Products') }}
-                        </h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">#</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
-                                            {{ __('messages.Product') }}
-                                        </th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Quantity Sold') }}</th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Revenue') }}</th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Profit') }}</th>
+                <x-ui.card :title="__('finance.dashboard.recent_closings')">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-start">{{ __('finance.common.date') }}</th>
+                                    <th class="px-3 py-2 text-start">{{ __('finance.day_close.expected_cash') }}</th>
+                                    <th class="px-3 py-2 text-start">{{ __('finance.day_close.counted_cash') }}</th>
+                                    <th class="px-3 py-2 text-start">{{ __('finance.day_close.variance') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @forelse ($recentClosings as $closing)
+                                    <tr>
+                                        <td class="px-3 py-2">{{ $closing->closing_date?->format('Y-m-d') }}</td>
+                                        <td class="px-3 py-2">₪{{ number_format((float) $closing->expected_cash, 2) }}</td>
+                                        <td class="px-3 py-2">₪{{ number_format((float) $closing->counted_cash, 2) }}</td>
+                                        <td class="px-3 py-2">
+                                            <x-ui.badge :tone="$closing->variance == 0 ? 'green' : 'amber'">
+                                                ₪{{ number_format((float) $closing->variance, 2) }}
+                                            </x-ui.badge>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($topProducts as $index => $product)
-                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                            <td class="px-3 py-2 text-gray-600">{{ $index + 1 }}</td>
-                                            <td class="px-3 py-2 font-medium text-gray-800">{{ $product->name }}</td>
-                                            <td class="px-3 py-2 text-right text-gray-600">
-                                                {{ number_format($product->total_quantity) }}</td>
-                                            <td class="px-3 py-2 text-right font-medium text-green-600">
-                                                ₪{{ number_format($product->total_revenue, 0) }}</td>
-                                            <td class="px-3 py-2 text-right font-medium text-blue-600">
-                                                ₪{{ number_format($product->total_profit, 0) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                @empty
+                                    <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">{{ __('finance.common.no_data') }}</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            @endif
-
-            <!-- NEW: Top Suppliers Section -->
-            @if (isset($topSuppliers) && count($topSuppliers) > 0)
-                <div class="w-full mb-4 lg:mb-6">
-                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏢
-                            {{ __('messages.Top Suppliers') }}
-                        </h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">#</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
-                                            {{ __('messages.Supplier') }}</th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Bills Count') }}</th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Total Purchases') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($topSuppliers as $index => $supplier)
-                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                            <td class="px-3 py-2 text-gray-600">{{ $index + 1 }}</td>
-                                            <td class="px-3 py-2 font-medium text-gray-800">{{ $supplier->name }}
-                                            </td>
-                                            <td class="px-3 py-2 text-right text-gray-600">
-                                                {{ number_format($supplier->total_bills) }}</td>
-                                            <td class="px-3 py-2 text-right font-medium text-orange-600">
-                                                ₪{{ number_format($supplier->total_purchases, 0) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
-            <!-- Customer and Supplier Balance Sections -->
-            <div class="w-full mb-4 lg:mb-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <!-- NEW: Supplier Balance Section -->
-                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">🏢
-                            {{ __('messages.Supplier Balance') }}
-                        </h3>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="text-red-600 font-medium">{{ __('messages.We owe suppliers:') }}</span>
-                                <span
-                                    class="font-bold text-red-600">₪{{ number_format($supplierBalanceData['totalOwing'], 0) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span
-                                    class="text-green-600 font-medium">{{ __('messages.Suppliers owe us:') }}</span>
-                                <span
-                                    class="font-bold text-green-600">₪{{ number_format($supplierBalanceData['totalOwed'], 0) }}</span>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Top Suppliers Owed') }}</h4>
-                                <div class="h-40">
-                                    <canvas id="supplierOwedChart"></canvas>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Top Suppliers Owe Us') }}</h4>
-                                <div class="h-40">
-                                    <canvas id="supplierOweUsChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 lg:p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-800 mb-4">👥
-                            {{ __('messages.Customer Balance') }}
-                        </h3>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="text-red-600 font-medium">{{ __('messages.Customers owe us:') }}</span>
-                                <span
-                                    class="font-bold text-red-600">₪{{ number_format($customerBalanceData['totalOwing'], 0) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span
-                                    class="text-green-600 font-medium">{{ __('messages.We owe customers:') }}</span>
-                                <span
-                                    class="font-bold text-green-600">₪{{ number_format($customerBalanceData['totalOwed'], 0) }}</span>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Top Customers Owed') }}</h4>
-                                <div class="h-40">
-                                    <canvas id="customerOwedChart"></canvas>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-700 mb-2">
-                                    {{ __('messages.Top Customers Owe Us') }}</h4>
-                                <div class="h-40">
-                                    <canvas id="customerOweUsChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </x-ui.card>
             </div>
         </div>
     </div>
-
-    @push('scripts')
-        <!-- Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            // Common chart options
-            Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
-            Chart.defaults.color = '#666';
-
-            // Revenue Chart
-            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-            new Chart(revenueCtx, {
-                type: 'line',
-                data: {
-                    labels: {!! json_encode($revenueData['labels']) !!},
-                    datasets: [{
-                        label: 'Revenue',
-                        data: {!! json_encode($revenueData['data']) !!},
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Profit Chart
-            const profitCtx = document.getElementById('profitChart').getContext('2d');
-            new Chart(profitCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($profitData['labels']) !!},
-                    datasets: [{
-                        label: 'Profit',
-                        data: {!! json_encode($profitData['data']) !!},
-                        backgroundColor: '#3B82F6',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Expense Chart
-            const expenseCtx = document.getElementById('expenseChart').getContext('2d');
-            new Chart(expenseCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Expenses', 'Remaining'],
-                    datasets: [{
-                        data: [{{ $expenseData['total'] }}, 100],
-                        backgroundColor: ['#EF4444', '#E5E7EB'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-
-            // Purchase Chart
-            const purchaseCtx = document.getElementById('purchaseChart').getContext('2d');
-            new Chart(purchaseCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($purchaseData['labels']) !!},
-                    datasets: [{
-                        label: 'Purchases',
-                        data: {!! json_encode($purchaseData['data']) !!},
-                        backgroundColor: '#F97316',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Supplier Payment Chart
-            const supplierPaymentCtx = document.getElementById('supplierPaymentChart').getContext('2d');
-            new Chart(supplierPaymentCtx, {
-                type: 'line',
-                data: {
-                    labels: {!! json_encode($supplierPaymentData['labels']) !!},
-                    datasets: [{
-                        label: 'Supplier Payments',
-                        data: {!! json_encode($supplierPaymentData['data']) !!},
-                        borderColor: '#6366F1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Customer Payment Chart
-            const customerPaymentCtx = document.getElementById('customerPaymentChart').getContext('2d');
-            new Chart(customerPaymentCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($customerPaymentData['labels']) !!},
-                    datasets: [{
-                        label: 'Received',
-                        data: {!! json_encode($customerPaymentData['received']) !!},
-                        backgroundColor: '#10B981',
-                        borderRadius: 4
-                    }, {
-                        label: 'Paid',
-                        data: {!! json_encode($customerPaymentData['paid']) !!},
-                        backgroundColor: '#EF4444',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            stacked: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            stacked: true,
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Employee Payment Chart
-            const employeePaymentCtx = document.getElementById('employeePaymentChart').getContext('2d');
-            new Chart(employeePaymentCtx, {
-                type: 'line',
-                data: {
-                    labels: {!! json_encode($employeePaymentData['byEmployee']['labels']) !!},
-                    datasets: [{
-                        label: 'Employee Payments',
-                        data: {!! json_encode($employeePaymentData['byEmployee']['data']) !!},
-                        borderColor: '#EC4899',
-                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Damaged Chart
-            const damagedCtx = document.getElementById('damagedChart').getContext('2d');
-            new Chart(damagedCtx, {
-                type: 'pie',
-                data: {
-                    labels: ['Damaged', 'Good'],
-                    datasets: [{
-                        data: [{{ $damagedData['total'] }}, 100],
-                        backgroundColor: ['#EF4444', '#10B981'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-
-            // Customer Balance Chart
-            const customerBalanceCtx = document.getElementById('customerBalanceChart').getContext('2d');
-            new Chart(customerBalanceCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Owed to Us', 'We Owe'],
-                    datasets: [{
-                        label: 'Balance',
-                        data: [{{ $customerBalanceData['totalOwing'] }},
-                            {{ $customerBalanceData['totalOwed'] }}
-                        ],
-                        backgroundColor: ['#EF4444', '#10B981'],
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Returned Products Chart
-            @if (isset($returnedData) && $returnedData['count'] > 0)
-                const returnedProductsCtx = document.getElementById('returnedProductsChart').getContext('2d');
-                new Chart(returnedProductsCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: {!! json_encode($returnedData['products']['labels']) !!},
-                        datasets: [{
-                            label: '{{ __('messages.Returns & Reversals') }}',
-                            data: {!! json_encode($returnedData['products']['data']) !!},
-                            backgroundColor: [
-                                '#A78BFA',
-                                '#C4B5FD',
-                                '#DDD6FE',
-                                '#EDE9FE',
-                                '#F3E8FF',
-                                '#8B5CF6',
-                                '#7C3AED',
-                                '#6D28D9',
-                                '#5B21B6',
-                                '#4C1D95'
-                            ],
-                            borderWidth: 2,
-                            borderColor: '#fff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right'
-                            }
-                        }
-                    }
-                });
-            @endif
-
-            // Supplier Owed Chart
-            const supplierOwedCtx = document.getElementById('supplierOwedChart').getContext('2d');
-            new Chart(supplierOwedCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($supplierBalanceData['topOwing']['labels']) !!},
-                    datasets: [{
-                        label: 'Owed',
-                        data: {!! json_encode($supplierBalanceData['topOwing']['data']) !!},
-                        backgroundColor: '#EF4444',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Supplier Owe Us Chart
-            const supplierOweUsCtx = document.getElementById('supplierOweUsChart').getContext('2d');
-            new Chart(supplierOweUsCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($supplierBalanceData['topOwed']['labels']) !!},
-                    datasets: [{
-                        label: 'Owe Us',
-                        data: {!! json_encode($supplierBalanceData['topOwed']['data']) !!},
-                        backgroundColor: '#10B981',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Customer Owed Chart
-            const customerOwedCtx = document.getElementById('customerOwedChart').getContext('2d');
-            new Chart(customerOwedCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($customerBalanceData['topOwing']['labels']) !!},
-                    datasets: [{
-                        label: 'Owed',
-                        data: {!! json_encode($customerBalanceData['topOwing']['data']) !!},
-                        backgroundColor: '#EF4444',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Customer Owe Us Chart
-            const customerOweUsCtx = document.getElementById('customerOweUsChart').getContext('2d');
-            new Chart(customerOweUsCtx, {
-                type: 'bar',
-                data: {
-                    labels: {!! json_encode($customerBalanceData['topOwed']['labels']) !!},
-                    datasets: [{
-                        label: 'Owe Us',
-                        data: {!! json_encode($customerBalanceData['topOwed']['data']) !!},
-                        backgroundColor: '#10B981',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        </script>
-
-        <!-- Capital Entries Modal -->
-        <div id="capitalModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden"
-            onclick="closeCapitalModal(event)">
-            <div class="flex items-center justify-center min-h-screen p-4" onclick="event.stopPropagation()">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">{{ __('messages.Capital') }}</h3>
-                        <button onclick="closeCapitalModal()" class="text-gray-500 hover:text-gray-700">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Add Capital Form -->
-                    <div class="p-4 bg-gray-50 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">{{ __('messages.Add Capital') }}</h4>
-                        <form id="capitalForm" class="space-y-3">
-                            @csrf
-                            <div class="grid grid-cols-2 gap-3">
-                                <input type="number" name="amount" placeholder="{{ __('messages.Amount') }}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    required min="0.01" step="0.01">
-                                <input type="date" name="entry_date" value="{{ date('Y-m-d') }}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            </div>
-                            <input type="text" name="note" placeholder="{{ __('messages.Note') }}"
-                                class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            <button type="submit"
-                                class="w-full px-3 py-2 bg-emerald-600 text-white font-semibold rounded text-sm hover:bg-emerald-700 transition duration-200">
-                                {{ __('messages.Add') }}
-                            </button>
-                        </form>
-                        <div id="capitalMessage" class="mt-2 text-sm text-center hidden"></div>
-                    </div>
-
-                    <!-- Date Filter -->
-                    <div class="p-4 border-b flex items-center gap-2">
-                        <label class="text-sm font-medium text-gray-700">{{ __('messages.Date') }}:</label>
-                        <input type="date" id="capitalDateFilter"
-                            class="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            onchange="filterCapitalEntries()">
-                        <button onclick="clearCapitalFilter()"
-                            class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">
-                            {{ __('messages.Clear') }}
-                        </button>
-                    </div>
-
-                    <!-- Capital Entries List -->
-                    <div class="p-4 overflow-y-auto max-h-[50vh]">
-                        @if ($capitalData['entries']->count() > 0)
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
-                                            {{ __('messages.Date') }}</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
-                                            {{ __('messages.Amount') }}</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-700">
-                                            {{ __('messages.Note') }}</th>
-                                        <th class="px-3 py-2 text-right font-semibold text-gray-700">
-                                            {{ __('messages.Actions') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200" id="capitalEntriesBody">
-                                    @foreach ($capitalData['entries'] as $entry)
-                                        <tr class="hover:bg-gray-50 capital-entry" data-date="{{ $entry->entry_date }}">
-                                            <td class="px-3 py-2 whitespace-nowrap">
-                                                {{ \Carbon\Carbon::parse($entry->entry_date)->format('M d, Y') }}
-                                            </td>
-                                            <td class="px-3 py-2 font-semibold text-green-600">
-                                                ₪{{ number_format($entry->amount, 2) }}</td>
-                                            <td class="px-3 py-2 text-gray-600 truncate max-w-xs">
-                                                {{ $entry->note ?? '-' }}</td>
-                                            <td class="px-3 py-2 text-right">
-                                                <button onclick="deleteCapital({{ $entry->id }})"
-                                                    class="text-red-500 hover:text-red-700 text-xs">
-                                                    {{ __('messages.Delete') }}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @else
-                            <p class="text-center text-gray-500 py-8">{{ __('messages.No capital entries found') }}</p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            // Capital Modal Functions
-            function openCapitalModal() {
-                document.getElementById('capitalModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            }
-
-            function closeCapitalModal(event) {
-                if (!event || event.target === document.getElementById('capitalModal')) {
-                    document.getElementById('capitalModal').classList.add('hidden');
-                    document.body.style.overflow = '';
-                }
-            }
-
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeCapitalModal();
-                }
-            });
-
-            // Filter Capital Entries by Date
-            function filterCapitalEntries() {
-                const dateFilter = document.getElementById('capitalDateFilter').value;
-                const entries = document.querySelectorAll('.capital-entry');
-
-                entries.forEach(entry => {
-                    const entryDate = entry.getAttribute('data-date');
-                    if (!dateFilter || entryDate === dateFilter) {
-                        entry.style.display = '';
-                    } else {
-                        entry.style.display = 'none';
-                    }
-                });
-            }
-
-            // Clear Capital Filter
-            function clearCapitalFilter() {
-                document.getElementById('capitalDateFilter').value = '';
-                filterCapitalEntries();
-            }
-
-            // AJAX Capital Form Submission
-            document.getElementById('capitalForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                const form = this;
-                const submitBtn = form.querySelector('button[type="submit"]');
-                const messageDiv = document.getElementById('capitalMessage');
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = '{{ __('messages.Adding...') }}';
-                messageDiv.classList.add('hidden');
-
-                const formData = new FormData(form);
-
-                fetch('{{ route('capital.store') }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json'
-                        },
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            messageDiv.textContent = data.message;
-                            messageDiv.className = 'mt-2 text-sm text-center text-green-600';
-                            messageDiv.classList.remove('hidden');
-                            form.reset();
-                            form.querySelector('input[name="entry_date"]').value = '{{ date('Y-m-d') }}';
-                            setTimeout(() => {
-                                location.reload();
-                            }, 1000);
-                        } else {
-                            messageDiv.textContent = data.message || '{{ __('messages.Error adding capital') }}';
-                            messageDiv.className = 'mt-2 text-sm text-center text-red-600';
-                            messageDiv.classList.remove('hidden');
-                        }
-                    })
-                    .catch(error => {
-                        messageDiv.textContent = '{{ __('messages.An error occurred') }}';
-                        messageDiv.className = 'mt-2 text-sm text-center text-red-600';
-                        messageDiv.classList.remove('hidden');
-                    })
-                    .finally(() => {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = '{{ __('messages.Add') }}';
-                    });
-            });
-
-            // Delete Capital Entry via AJAX
-            function deleteCapital(id) {
-                if (confirm('{{ __('messages.Are you sure?') }}')) {
-                    fetch('/dashboard/capital/' + id, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Accept': 'application/json'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                location.reload();
-                            }
-                        });
-                }
-            }
-        </script>
-
-
-    @endpush
 </x-app-layout>

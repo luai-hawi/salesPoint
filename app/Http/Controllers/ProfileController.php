@@ -48,9 +48,15 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        if ($user->role !== 'employee') {
+            return Redirect::route('profile.edit')->with('error', __('profile.delete_restricted'));
+        }
+
+        // logout() re-saves the user to rotate the remember token, which would re-insert the deleted row.
+        $user->forceFill(['remember_token' => null]);
 
         $user->delete();
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

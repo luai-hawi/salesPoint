@@ -15,6 +15,7 @@ class InstallmentPlan extends Model
         'user_id',
         'customer_id',
         'bill_id',
+        'client_uuid',
         'customer_name_override',
         'total_amount',
         'initial_payment',

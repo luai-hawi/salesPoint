@@ -4,287 +4,296 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Product;
+use App\Models\User;
+use App\Services\StockIntake;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BatchController extends Controller
 {
-    /**
-     * Store a new batch for a product
-     */
     public function store(Request $request)
     {
-        try {
-            Log::info('BatchController store request:', $request->all());
+        $user = auth()->user();
+        if ($user->role === 'employee' && ! $user->hasPermission('edit_products')) {
+            return response()->json([
+                'success' => false,
+                'message' => __('products_ui.flash.unauthorized'),
+            ], 403);
+        }
 
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $ownerId = (int) $user->ownerId();
 
-            // Check permissions for employees
-            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized: You do not have permission to edit products'
-                ], 403);
-            }
+        $request->validate(array_merge([
+            'product_id' => 'required|integer',
+            'quantity' => 'required|numeric|min:0.01',
+            'cost_price' => 'required|numeric|min:0',
+            'intake_client_uuid' => 'nullable|string|max:64',
+        ], $this->fundingRules($ownerId)));
 
-            $data = $request->validate([
-                'product_id' => 'required|exists:products,id',
-                'quantity' => 'required|numeric|min:0.01',
-                'cost_price' => 'required|numeric|min:0',
-            ]);
+        $quantity = round((float) $request->input('quantity'), 2);
+        $costPrice = round((float) $request->input('cost_price'), 2);
+        $funding = $this->resolveFunding($request);
+        $clientUuid = $request->filled('intake_client_uuid') ? trim((string) $request->input('intake_client_uuid')) : null;
 
-            $data['user_id'] = $ownerId;
+        $batch = null;
 
-            // Ensure the product belongs to the logged-in user
-            $product = Product::where('id', $data['product_id'])
+        DB::transaction(function () use ($request, $ownerId, $quantity, $costPrice, $user, $funding, $clientUuid, &$batch) {
+            $product = Product::where('id', $request->integer('product_id'))
                 ->where('user_id', $ownerId)
+                ->lockForUpdate()
                 ->firstOrFail();
 
-            DB::beginTransaction();
+            $this->validateFundingAgainstLine($funding, $product, $quantity, $costPrice);
 
-            $oldQty = $product->quantity;
-            $oldAvg = $product->cost_price;
+            if ($clientUuid) {
+                $existingBatch = Batch::where('product_id', $product->id)
+                    ->where('user_id', $ownerId)
+                    ->where('intake_client_uuid', $clientUuid)
+                    ->lockForUpdate()
+                    ->first();
 
-            // Check if a batch with the same cost price exists for this product and user
-            $existingBatch = Batch::where('product_id', $data['product_id'])
-                ->whereHas('product', function ($q) use ($ownerId) {
-                    $q->where('user_id', $ownerId);
-                })
-                ->where('cost_price', $data['cost_price'])
-                ->orderBy('created_at', 'asc')
-                ->first();
+                if ($existingBatch) {
+                    $batch = $existingBatch;
 
-            if ($existingBatch) {
-                $existingBatch->quantity += $data['quantity'];
-                $existingBatch->save();
-                $batch = $existingBatch;
-                Log::info('Updated existing batch:', ['batch_id' => $batch->id, 'new_quantity' => $batch->quantity]);
-            } else {
-                $batch = Batch::create($data);
-                Log::info('Created new batch:', ['batch_id' => $batch->id]);
-            }
-
-            // Update product quantity and average cost
-            $product->quantity = $oldQty + $data['quantity'];
-
-            if ($oldQty <= 0) {
-                $product->cost_price = $data['cost_price'];
-            } else {
-                $product->cost_price = ($oldAvg * $oldQty + $data['cost_price'] * $data['quantity']) / ($oldQty + $data['quantity']);
-            }
-
-            $product->cost_price = round($product->cost_price, 2);
-            $product->save();
-
-            DB::commit();
-
-            Log::info('Batch created successfully:', [
-                'batch_id' => $batch->id,
-                'product_id' => $product->id,
-                'new_product_quantity' => $product->quantity,
-                'new_product_cost_price' => $product->cost_price
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'batch' => $batch,
-                'updated_quantity' => $product->quantity,
-                'message' => 'Batch added successfully'
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            Log::error('Validation error in batch store:', $e->errors());
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error creating batch:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create batch: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update an existing batch
-     */
-    public function update(Request $request, Batch $batch)
-    {
-        try {
-            Log::info('BatchController update request:', ['batch_id' => $batch->id, 'data' => $request->all()]);
-
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-            // Check permissions for employees
-            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized: You do not have permission to edit products'
-                ], 403);
-            }
-
-            // Ensure batch belongs to a product of the logged-in user
-            if ($batch->product->user_id !== $ownerId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], 403);
-            }
-
-            $data = $request->validate([
-                'quantity' => 'required|numeric|min:0',
-                'cost_price' => 'required|numeric|min:0',
-            ]);
-
-            DB::beginTransaction();
-
-            $product = $batch->product;
-            $oldQty = $batch->quantity;
-            $oldAvg = $batch->cost_price;
-            $oldProductQty = $product->quantity;
-            $oldProductAvg = $product->cost_price;
-
-            $batch->update($data);
-            $diff = $batch->quantity - $oldQty;
-
-            // Update product quantity
-            $product->quantity += $diff;
-
-            // Recalculate average cost price
-            if ($oldProductQty <= 0 && $diff > 0) {
-                $product->cost_price = $batch->cost_price;
-            } else if ($oldProductQty > 0 && $diff == 0) {
-                // Just price change, no quantity change
-                $product->cost_price = (($oldProductAvg * $oldProductQty - ($oldAvg * $batch->quantity)) + ($batch->cost_price * $batch->quantity)) / max(1, $oldProductQty);
-            } else {
-                // Quantity and/or price change
-                $product->cost_price = ($oldProductAvg * $oldProductQty + $batch->cost_price * $diff) / max(1, ($oldProductQty + $diff));
-            }
-
-            $product->cost_price = round($product->cost_price, 2);
-            $product->save();
-
-            DB::commit();
-
-            Log::info('Batch updated successfully:', [
-                'batch_id' => $batch->id,
-                'old_quantity' => $oldQty,
-                'new_quantity' => $batch->quantity,
-                'diff' => $diff,
-                'new_product_quantity' => $product->quantity,
-                'new_product_cost_price' => $product->cost_price
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Batch updated successfully'
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            Log::error('Validation error in batch update:', $e->errors());
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error updating batch:', [
-                'batch_id' => $batch->id,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update batch: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Delete a batch
-     */
-    public function destroy(Batch $batch)
-    {
-
-        try {
-            Log::info('BatchController destroy request:', ['batch_id' => $batch->id]);
-
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-            // Check permissions for employees
-            if ($user->role === 'employee' && !$user->hasPermission('edit_products')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized: You do not have permission to edit products'
-                ], 403);
-            }
-
-            if ($batch->product->user_id !== $ownerId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], 403);
-            }
-
-            DB::beginTransaction();
-            $product = $batch->product;
-            $oldProductQty = $product->quantity;
-            $oldProductAvg = $product->cost_price;
-
-            // Update product quantity
-            $product->quantity -= $batch->quantity;
-            // Recalculate average cost price
-            if ($oldProductQty > 0) {
-                $newQty = $oldProductQty - $batch->quantity;
-                if ($newQty > 0) {
-                    $product->cost_price = ($oldProductAvg * $oldProductQty - $batch->cost_price * $batch->quantity) / $newQty;
-                } else {
-                    $product->cost_price = 0; // No stock left
+                    return;
                 }
             }
 
+            $mergeableBatch = (($funding['mode'] ?? 'none') === 'none' && ! $clientUuid)
+                ? Batch::where('product_id', $product->id)
+                    ->where('cost_price', $costPrice)
+                    ->whereNull('purchase_bill_id')
+                    ->lockForUpdate()
+                    ->orderBy('created_at')
+                    ->first()
+                : null;
 
-            $product->cost_price = round($product->cost_price, 2);
-            $product->save();
+            if ($mergeableBatch) {
+                $batch = $mergeableBatch;
+                $batch->quantity = round((float) $batch->quantity + $quantity, 2);
+                $batch->save();
+            } else {
+                $batch = Batch::create([
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'cost_price' => $costPrice,
+                    'user_id' => $ownerId,
+                    'intake_client_uuid' => $clientUuid,
+                ]);
+            }
 
-            $batchId = $batch->id;
-            $batch->delete();
+            $this->applyStockIncrease($product, $quantity, $costPrice);
 
-            DB::commit();
+            $bill = app(StockIntake::class)->record($user, [[
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'unit_cost' => $costPrice,
+            ]], array_merge($funding, ['client_uuid' => $clientUuid]));
 
-            Log::info('Batch deleted successfully:', [
-                'batch_id' => $batchId,
-                'new_product_quantity' => $product->quantity,
-                'new_product_cost_price' => $product->cost_price
-            ]);
+            if ($bill) {
+                $batch->purchase_bill_id = $bill->id;
+                $batch->save();
+            }
+        });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Batch deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error deleting batch:', [
-                'batch_id' => $batch->id,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+        return response()->json([
+            'success' => true,
+            'batch' => $batch,
+            'updated_quantity' => $batch->product()->withoutGlobalScopes()->first()?->quantity,
+            'message' => __('products_ui.flash.batch_added'),
+        ]);
+    }
+
+    public function update(Request $request, Batch $batch)
+    {
+        $user = auth()->user();
+        $ownerId = (int) $user->ownerId();
+
+        if ($user->role === 'employee' && ! $user->hasPermission('edit_products')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete batch: ' . $e->getMessage()
-            ], 500);
+                'message' => __('products_ui.flash.unauthorized'),
+            ], 403);
         }
+
+        if ($batch->product->user_id !== $ownerId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('products_ui.flash.unauthorized'),
+            ], 403);
+        }
+
+        if ($batch->purchase_bill_id) {
+            throw ValidationException::withMessages([
+                'batch' => [__('products_ui.validation.funded_batch_locked')],
+            ]);
+        }
+
+        $data = $request->validate([
+            'quantity' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($batch, $data) {
+            $product = Product::whereKey($batch->product_id)->lockForUpdate()->firstOrFail();
+            $batch = Batch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $oldQty = (float) $batch->quantity;
+            $oldBatchCost = (float) $batch->cost_price;
+            $oldProductQty = (float) $product->quantity;
+            $oldProductAvg = (float) $product->cost_price;
+
+            $batch->update([
+                'quantity' => round((float) $data['quantity'], 2),
+                'cost_price' => round((float) $data['cost_price'], 2),
+            ]);
+
+            $newQty = (float) $batch->quantity;
+            $product->quantity = round($oldProductQty - $oldQty + $newQty, 2);
+
+            if ($product->quantity <= 0) {
+                $product->cost_price = 0;
+            } else {
+                $totalCost = ($oldProductAvg * $oldProductQty) - ($oldQty * $oldBatchCost) + ($newQty * (float) $batch->cost_price);
+                $product->cost_price = round($totalCost / $product->quantity, 2);
+            }
+
+            $product->save();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => __('products_ui.flash.batch_updated'),
+        ]);
+    }
+
+    public function destroy(Batch $batch)
+    {
+        $user = auth()->user();
+        $ownerId = (int) $user->ownerId();
+
+        if ($user->role === 'employee' && ! $user->hasPermission('edit_products')) {
+            return response()->json([
+                'success' => false,
+                'message' => __('products_ui.flash.unauthorized'),
+            ], 403);
+        }
+
+        if ($batch->product->user_id !== $ownerId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('products_ui.flash.unauthorized'),
+            ], 403);
+        }
+
+        if ($batch->purchase_bill_id) {
+            throw ValidationException::withMessages([
+                'batch' => [__('products_ui.validation.funded_batch_locked')],
+            ]);
+        }
+
+        DB::transaction(function () use ($batch) {
+            $product = Product::whereKey($batch->product_id)->lockForUpdate()->firstOrFail();
+            $batch = Batch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $remainingQty = round((float) $product->quantity - (float) $batch->quantity, 2);
+
+            if ($remainingQty > 0) {
+                $remainingCost = ((float) $product->cost_price * (float) $product->quantity) - ((float) $batch->cost_price * (float) $batch->quantity);
+                $product->cost_price = round($remainingCost / $remainingQty, 2);
+            } else {
+                $product->cost_price = 0;
+            }
+
+            $product->quantity = max(0, $remainingQty);
+            $product->save();
+
+            $batch->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => __('products_ui.flash.batch_deleted'),
+        ]);
+    }
+
+    private function fundingRules(int $ownerId): array
+    {
+        return [
+            'funding_mode' => ['nullable', Rule::in(StockIntake::MODES)],
+            'funding_supplier_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('suppliers', 'id')->where(fn ($query) => $query->where('user_id', $ownerId)),
+            ],
+            'funding_paid_amount' => 'nullable|numeric|min:0',
+            'funding_payment_method' => ['nullable', 'string', Rule::in(StockIntake::PAYMENT_METHODS)],
+            'funding_date' => 'nullable|date',
+            'funding_note' => 'nullable|string|max:1000',
+        ];
+    }
+
+    private function resolveFunding(Request $request): array
+    {
+        return [
+            'mode' => $request->input('funding_mode', 'none') ?: 'none',
+            'supplier_id' => $request->filled('funding_supplier_id') ? $request->integer('funding_supplier_id') : null,
+            'paid_amount' => $request->input('funding_paid_amount'),
+            'payment_method' => $request->input('funding_payment_method'),
+            'date' => $request->input('funding_date'),
+            'note' => $request->input('funding_note'),
+            'client_uuid' => $request->input('intake_client_uuid'),
+        ];
+    }
+
+    private function validateFundingAgainstLine(array $funding, Product $product, float $quantity, float $costPrice): void
+    {
+        $mode = $funding['mode'] ?? 'none';
+        if ($mode === 'none' || $quantity <= 0) {
+            return;
+        }
+
+        $total = round($quantity * $costPrice, 2);
+
+        if (in_array($mode, ['credit', 'partial'], true) && empty($funding['supplier_id'])) {
+            throw ValidationException::withMessages([
+                'funding_supplier_id' => [__('products_ui.validation.supplier_required')],
+            ]);
+        }
+
+        if (in_array($mode, ['paid', 'partial'], true) && empty($funding['payment_method'])) {
+            throw ValidationException::withMessages([
+                'funding_payment_method' => [__('products_ui.validation.payment_method_required')],
+            ]);
+        }
+
+        if ($mode === 'partial') {
+            $paidAmount = round((float) ($funding['paid_amount'] ?? 0), 2);
+
+            if ($paidAmount <= 0) {
+                throw ValidationException::withMessages([
+                    'funding_paid_amount' => [__('products_ui.validation.paid_amount_required')],
+                ]);
+            }
+
+            if ($paidAmount > $total) {
+                throw ValidationException::withMessages([
+                    'funding_paid_amount' => [__('products_ui.validation.partial_payment_too_large')],
+                ]);
+            }
+        }
+    }
+
+    private function applyStockIncrease(Product $product, float $quantity, float $costPrice): void
+    {
+        $oldQty = (float) $product->quantity;
+        $oldAvg = (float) $product->cost_price;
+
+        $product->quantity = round($oldQty + $quantity, 2);
+        $product->cost_price = $oldQty <= 0
+            ? $costPrice
+            : round((($oldAvg * $oldQty) + ($costPrice * $quantity)) / max(0.01, $oldQty + $quantity), 2);
+
+        $product->save();
     }
 }

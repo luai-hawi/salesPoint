@@ -7,16 +7,21 @@ use Illuminate\Http\Request;
 
 class TagsController extends Controller
 {
+    private function ownerId(): int
+    {
+        $user = auth()->user();
+
+        return $user->role === 'employee' ? (int) $user->shop_owner_id : (int) $user->id;
+    }
+
     public function index()
     {
         $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('view_tags')) {
-            abort(403, 'Unauthorized');
+        if ($user->role === 'employee' && ! $user->hasPermission('view_tags')) {
+            abort(403);
         }
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        $tags = Tag::where('user_id', $ownerId)->orderBy('name')->get();
+        $tags = Tag::where('user_id', $this->ownerId())->orderBy('name')->get();
 
         return view('tags.index', compact('tags'));
     }
@@ -24,11 +29,9 @@ class TagsController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('create_tags')) {
-            abort(403, 'Unauthorized');
+        if ($user->role === 'employee' && ! $user->hasPermission('create_tags')) {
+            abort(403);
         }
-
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -38,27 +41,25 @@ class TagsController extends Controller
         Tag::create([
             'name' => $request->name,
             'price' => $request->price,
-            'user_id' => $ownerId,
+            'user_id' => $this->ownerId(),
         ]);
 
-        return redirect()->route('tags.index')->with('success', 'Tag created successfully!');
+        return redirect()->route('tags.index')->with('success', __('ui.saved'));
     }
 
     public function destroy(Tag $tag)
     {
         $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('delete_tags')) {
-            abort(403, 'Unauthorized');
+        if ($user->role === 'employee' && ! $user->hasPermission('delete_tags')) {
+            abort(403);
         }
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        if ($tag->user_id !== $ownerId) {
-            abort(403, 'Unauthorized');
+        if ($tag->user_id !== $this->ownerId()) {
+            abort(404);
         }
 
         $tag->delete();
 
-        return redirect()->route('tags.index')->with('success', 'Tag deleted successfully!');
+        return redirect()->route('tags.index')->with('success', __('ui.saved'));
     }
 }

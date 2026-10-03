@@ -110,4 +110,11 @@ return [
     // Product Additional Barcodes
     'Additional Barcodes' => 'Additional Barcodes',
     'Enter additional barcodes (one per line)' => 'Enter additional barcodes (one per line)',
+
+    // Product picker of the bill editor
+    'All Products' => 'All Products',
+    'In Stock Only' => 'In Stock Only',
+    'Loading products...' => 'Loading products...',
+    'Out of Stock' => 'Out of Stock',
+    'Search products by name...' => 'Search products by name...',
 ];

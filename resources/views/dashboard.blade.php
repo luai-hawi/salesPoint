@@ -17,26 +17,28 @@
         (auth()->user()->role === 'employee' &&
             auth()->user()->shop_owner_id &&
             auth()->user()->shopOwner->role === 'restaurant');
-    $slimMode = !empty(auth()->user()->visibility_settings['pos_slim_mode']);
+    $posLayout = $posLayout ?? [];
+    $slimMode = ($posLayout['preset'] ?? null) === 'focus' || !empty(auth()->user()->visibility_settings['pos_slim_mode']);
+    $posLayoutLocked = $posLayoutLocked ?? false;
+    $posLayoutTeamDefault = $posLayoutTeamDefault ?? null;
+    $heldBillsCount = $heldBillsCount ?? 0;
 @endphp
 <x-app-layout>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h2 class="font-bold text-xl sm:text-2xl text-gray-800 leading-tight flex items-center">
-                <!-- Your existing header content -->
-            </h2>
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+        <x-ui.page-header :title="__('pos.title')" :subtitle="__('pos.subtitle')">
+            <div class="flex flex-wrap items-center gap-2">
                 <!-- Date Picker for Bill Date -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
                     <label for="bill_date" class="text-sm font-medium text-gray-700">{{ __('dashboard.Date') }}:</label>
                     <input type="date" id="bill_date" value="{{ date('Y-m-d') }}"
-                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                         onchange="document.getElementById('bill_date_hidden').value = this.value">
                 </div>
 
                 <!-- View Mode Toggle -->
-                <div class="hidden lg:flex items-center gap-2" dir="ltr">
+                @if (!($posLayoutLocked && auth()->user()->role === 'employee'))
+                    <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2" dir="ltr">
                     <span class="text-xs text-gray-500">{{ __('dashboard.Classic') }}</span>
                     <button id="pos-view-toggle" type="button" onclick="togglePosViewMode()"
                         class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none {{ $slimMode ? 'bg-blue-600' : 'bg-gray-300' }}">
@@ -44,7 +46,22 @@
                             class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{ $slimMode ? 'translate-x-6' : 'translate-x-1' }}"></span>
                     </button>
                     <span class="text-xs text-gray-500">{{ __('dashboard.Focus') }}</span>
-                </div>
+                    </div>
+                @endif
+
+                <button type="button" id="held-bills-button"
+                    class="relative rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                    {{ __('pos.held_bills') }}
+                    <span id="held-bills-badge"
+                        class="{{ $heldBillsCount > 0 ? '' : 'hidden ' }}ms-2 inline-flex min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-bold text-white">{{ $heldBillsCount }}</span>
+                </button>
+
+                @if (!($posLayoutLocked && auth()->user()->role === 'employee'))
+                    <button type="button" id="open-pos-layout-drawer"
+                        class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">
+                        {{ __('pos.customize') }}
+                    </button>
+                @endif
 
                 <!-- Add this cash drawer button -->
                 <button type="button" id="open-cash-drawer"
@@ -59,7 +76,7 @@
 
                 <!-- Today's Sales - Only show if user has view_bills permission and visibility enabled -->
                 @if (auth()->user()->getVisibilitySetting('show_dashboard_total_sales'))
-                    <div class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-full">
+                    <div class="rounded-full bg-gray-100 px-3 py-2 text-xs text-gray-600 sm:text-sm">
                         {{ __('dashboard.Today\'s Sales') }}: <span class="font-bold text-green-600">
                             @if (auth()->user()->hasPermission('view_bills'))
                                 ₪{{ number_format($totalToday ?? 0, 2) }}
@@ -81,12 +98,13 @@
                     {{ __('messages.Install App') }}
                 </button>
             </div>
-        </div>
+        </x-ui.page-header>
     </x-slot>
 
     <!-- Enhanced Layout with Full Screen Width -->
     <div class="py-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
         <div class="w-full px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
             <!-- Mobile Tab Navigation (hidden on lg+) -->
             <div class="lg:hidden mb-4 sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm -mx-4 px-4 pt-1">
@@ -121,12 +139,12 @@
             </div>
 
             <div id="pos-main-grid"
-                class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none{{ $slimMode ? ' pos-slim-mode' : '' }}">
+                class="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-none">
 
                 <!-- Left Panel - Product Search & Selection ONLY -->
                 <div id="mobile-panel-products" class="lg:col-span-4 space-y-4">
                     <!-- Product Search Controls - Shown for all users -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div id="products-controls-card" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center mb-4">
                             <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -189,7 +207,7 @@
                     </div>
 
                     <!-- Product Results - Shown for all users -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div id="products-results-card" class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-100">
                             <h4 class="font-medium text-gray-800 flex items-center">
                                 <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor"
@@ -200,6 +218,7 @@
                                 {{ __('dashboard.Available Products') }}
                             </h4>
                         </div>
+                        <div id="pos-category-bar" class="hidden border-b border-gray-100 px-4 py-3"></div>
                         <div id="product-cards-container" class="max-h-96 lg:max-h-96 overflow-y-auto"
                             style="max-height: clamp(320px, 60vh, 480px)">
                             <div id="product-results"
@@ -215,11 +234,17 @@
                     </div>
                 </div>
 
+                <div id="pos-grid-splitter" class="hidden lg:flex items-stretch justify-center">
+                    <button type="button" id="pos-grid-splitter-handle"
+                        class="h-full w-2 cursor-col-resize rounded-full bg-transparent transition hover:bg-indigo-100"
+                        aria-label="{{ __('pos.products_width') }}"></button>
+                </div>
+
                 <!-- Main Content - Bill Creation AND Quick Payments (for Restaurant) -->
                 <div id="mobile-panel-bill" class="lg:col-span-6 space-y-4 hidden lg:block">
 
                     <!-- Bill Form -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div id="bill-form-card" class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-6 border-b border-gray-100">
                             <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                                 <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor"
@@ -237,6 +262,11 @@
                             @csrf
                             <input type="hidden" id="bill_date_hidden" name="bill_date"
                                 value="{{ date('Y-m-d') }}">
+                            <input type="hidden" id="client_uuid" name="client_uuid" value="">
+
+                            <div class="mb-3 flex items-center justify-between">
+                                <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-500">{{ __('pos.customer_section') }}</h4>
+                            </div>
 
                             <!-- Customer, Note, and Damaged in one row -->
                             <div class="mb-6">
@@ -329,6 +359,10 @@
                                 </div>
                             </div>
 
+                            <div class="mb-3 flex items-center justify-between">
+                                <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-500">{{ __('pos.items_section') }}</h4>
+                            </div>
+
                             <!-- Products List -->
                             <div class="products-table-container mb-6 overflow-x-auto">
                                 <table class="products-table min-w-full">
@@ -347,6 +381,48 @@
                                 </table>
                             </div>
 
+                            <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                <div class="mb-3 flex items-center justify-between">
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-500">{{ __('pos.totals_payment_section') }}</h4>
+                                    <div class="text-sm font-semibold text-gray-700">
+                                        {{ __('dashboard.Total Amount:') }}
+                                        <span class="text-green-700">₪<span id="inline-total-display">0.00</span></span>
+                                    </div>
+                                </div>
+
+                                <div id="payment-details-section" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div id="paid-amount-field-wrapper">
+                                        <label for="paid_amount" class="mb-2 block text-sm font-medium text-gray-700">{{ __('pos.amount_paid_now') }}</label>
+                                        <div class="space-y-2">
+                                            <input type="number" id="paid_amount" name="paid_amount" min="0" step="0.01" value="0"
+                                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                            <div class="flex flex-wrap gap-2">
+                                                <button type="button" class="paid-shortcut rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" data-paid-mode="full">{{ __('pos.full') }}</button>
+                                                <button type="button" class="paid-shortcut rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" data-paid-mode="half">{{ __('pos.half') }}</button>
+                                                <button type="button" class="paid-shortcut rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" data-paid-mode="none">{{ __('pos.none') }}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="payment_method" class="mb-2 block text-sm font-medium text-gray-700">{{ __('pos.payment_method') }}</label>
+                                        <select id="payment_method" name="payment_method"
+                                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                            <option value="cash">{{ __('pos.cash') }}</option>
+                                            <option value="card">{{ __('pos.card') }}</option>
+                                            <option value="transfer">{{ __('pos.transfer') }}</option>
+                                            <option value="check">{{ __('pos.check') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="remaining-on-account-line" class="mt-3 hidden rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                                    {{ __('pos.remaining_on_account') }}: <span id="remaining-on-account-value">₪0.00</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3 flex items-center justify-between">
+                                <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-500">{{ __('pos.actions_section') }}</h4>
+                            </div>
+
                             <!-- Action Buttons -->
                             <div class="flex flex-wrap gap-2">
                                 <button type="submit"
@@ -358,6 +434,14 @@
                                     </svg>
                                     {{ __('dashboard.Create Bill (F2)') }}
                                 </button>
+                                <button type="button" id="hold-bill-button"
+                                    class="rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600">
+                                    {{ __('pos.hold') }}
+                                </button>
+                                @stack('pos-toolbar')
+                                @if ($isRestaurant)
+                                    @includeIf('pos.restaurant.toolbar')
+                                @endif
 
                                 <button type="button" id="clear-all"
                                     class="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-sm">
@@ -389,7 +473,7 @@
 
                     @if ($isRestaurant)
                         <!-- Restaurant Quick Customer Payments Panel - NOW UNDER BILL FORM -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div id="restaurant-payments-card" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <div class="flex items-center mb-4">
                                 <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -561,7 +645,7 @@
                 <div id="mobile-panel-summary" class="lg:col-span-2 space-y-4 hidden lg:block">
                     @if (!$isRestaurant)
                         <!-- Barcode Scanner -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                        <div id="barcode-scanner-card" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                             <div class="flex items-center mb-4">
                                 <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -598,7 +682,7 @@
                         </div>
                     @endif
                     <!-- Bill Summary -->
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm text-white p-4">
+                    <div id="summary-card" class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-sm text-white p-4">
                         <h3 class="text-lg font-semibold mb-4 flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -654,14 +738,6 @@
                         </h3>
 
                         <div class="space-y-3">
-                            @if (auth()->user()->getVisibilitySetting('show_dashboard_total_sales'))
-                                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                                    <span class="text-sm text-blue-700">{{ __('dashboard.Total Sales:') }}</span>
-                                    <span
-                                        class="font-bold text-blue-800">₪{{ auth()->user()->hasPermission('view_bills') ? number_format($totalToday ?? 0, 2) : '-' }}</span>
-                                </div>
-                            @endif
-
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="text-sm text-gray-700">{{ __('dashboard.Bills Created:') }}</span>
                                 <span class="font-bold text-gray-800" id="bills_count">{{ $billsCount }}</span>
@@ -745,6 +821,24 @@
             </svg>
             {{ __('dashboard.Create Bill') }}
         </button>
+    </div>
+
+    @include('pos.partials.hold-modal')
+    @include('pos.partials.held-drawer')
+    @include('pos.partials.layout-drawer')
+
+    <div id="pos-kiosk-toolbar" class="fixed bottom-4 end-4 z-40 items-center gap-2 rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-lg print:hidden">
+        <button type="button" id="pos-kiosk-fullscreen"
+            class="rounded-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+            data-label-enter="{{ __('pos.kiosk_fullscreen') }}" data-label-exit="{{ __('pos.kiosk_exit_fullscreen') }}">
+            {{ __('pos.kiosk_fullscreen') }}
+        </button>
+        @if (!($posLayoutLocked && auth()->user()->role === 'employee'))
+            <button type="button" id="pos-kiosk-exit"
+                class="rounded-full bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-700">
+                {{ __('pos.kiosk_exit') }}
+            </button>
+        @endif
     </div>
 
     <!-- Barcode Duplicate Selection Modal -->
@@ -1102,227 +1196,322 @@
             background-color: #dc2626;
         }
 
-        /* ================================================================
-           FOCUS / SLIM VIEW MODE  (desktop lg+)
-           RIGHT half (RTL) = products panel, full height
-           LEFT  half (RTL) = bill (upper) + dark summary strip (lower)
-           ================================================================ */
+        #pos-main-grid {
+            --pos-products-width: 33%;
+            --pos-bill-width: 45%;
+            --pos-summary-width: 22%;
+            --pos-font-scale: 1;
+        }
+
+        #pos-main-grid.pos-layout-ready {
+            font-size: calc(1rem * var(--pos-font-scale));
+            --pos-layout-template: minmax(min(15rem, 30%), 33%) minmax(10px, 12px) minmax(min(20rem, 42%), 50%) minmax(min(10.5rem, 17%), 17%);
+            --pos-grid-template: repeat(auto-fit, minmax(var(--pos-product-grid-min), 1fr));
+            --pos-product-grid-min: 10.5rem;
+            --pos-card-padding: 0.75rem;
+            --pos-card-gap: 0.75rem;
+            --pos-card-title-size: 0.9rem;
+            --pos-card-price-size: 0.8rem;
+            --pos-card-image-min-height: 8.75rem;
+        }
+
+        /* Kiosk hides only the app chrome (sidebar, mobile bar, billing banner), never the POS content. */
+        body.pos-kiosk-active #app-root > :not(.app-shell) {
+            display: none !important;
+        }
+
+        body.pos-kiosk-active .app-shell {
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding-top: 0 !important;
+        }
+
+        body.pos-kiosk-active .app-shell > header > div {
+            max-width: none;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        #pos-kiosk-toolbar {
+            display: none;
+        }
+
+        body.pos-kiosk-active #pos-kiosk-toolbar {
+            display: flex;
+        }
+
+        body.pos-kiosk-active #pos-main-grid .product-card,
+        body.pos-kiosk-active #pos-main-grid button,
+        body.pos-kiosk-active #pos-main-grid input,
+        body.pos-kiosk-active #pos-main-grid select,
+        body.pos-kiosk-active #pos-main-grid textarea {
+            font-size: 1.02em;
+        }
+
+        #pos-category-bar.is-visible {
+            display: flex !important;
+            gap: 0.5rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+
+        #product-results {
+            grid-template-columns: var(--pos-grid-template);
+            gap: var(--pos-card-gap) !important;
+        }
+
+        #pos-main-grid .product-card {
+            padding: var(--pos-card-padding);
+        }
+
+        #pos-main-grid .product-card .text-sm.font-medium.text-gray-900 {
+            font-size: var(--pos-card-title-size);
+            line-height: 1.35;
+        }
+
+        #pos-main-grid .product-price-badge {
+            font-size: var(--pos-card-price-size) !important;
+        }
+
+        #pos-main-grid .product-card-image {
+            min-height: var(--pos-card-image-min-height);
+        }
+
+        #pos-main-grid.layout-compact .products-table th,
+        #pos-main-grid.layout-compact .products-table td,
+        #pos-main-grid.layout-compact .product-card {
+            font-size: 0.78rem;
+        }
+
+        #pos-main-grid.layout-size-s {
+            --pos-card-padding: 0.55rem;
+            --pos-card-gap: 0.55rem;
+            --pos-card-title-size: 0.8rem;
+            --pos-card-price-size: 0.74rem;
+            --pos-card-image-min-height: 6.5rem;
+        }
+
+        #pos-main-grid.layout-size-l {
+            --pos-card-padding: 1rem;
+            --pos-card-gap: 0.9rem;
+            --pos-card-title-size: 0.98rem;
+            --pos-card-price-size: 0.86rem;
+            --pos-card-image-min-height: 10.25rem;
+        }
+
+        #pos-main-grid.layout-size-xl {
+            --pos-card-padding: 1.2rem;
+            --pos-card-gap: 1rem;
+            --pos-card-title-size: 1.05rem;
+            --pos-card-price-size: 0.92rem;
+            --pos-card-image-min-height: 12.5rem;
+        }
+
+        #pos-main-grid.hide-product-images .product-card-image,
+        #pos-main-grid.hide-stock .product-stock-badge,
+        #pos-main-grid.hide-category-badge .product-category-badge,
+        #pos-main-grid.hide-quick-actions #quick-actions-card {
+            display: none !important;
+        }
+
+        #pos-main-grid.aspect-square .product-card-image {
+            aspect-ratio: 1 / 1;
+        }
+
+        #pos-main-grid.aspect-4-3 .product-card-image {
+            aspect-ratio: 4 / 3;
+        }
+
+        #pos-main-grid.aspect-16-9 .product-card-image {
+            aspect-ratio: 16 / 9;
+        }
+
+        #pos-main-grid.aspect-cover .product-card-image {
+            aspect-ratio: 5 / 4;
+            object-fit: cover;
+        }
+
+        #pos-main-grid.price-badge-sm {
+            --pos-card-price-size: 0.72rem;
+        }
+
+        #pos-main-grid.price-badge-lg {
+            --pos-card-price-size: 0.96rem;
+        }
+
+        #pos-main-grid.layout-preset-visual {
+            --pos-card-image-min-height: 12rem;
+            --pos-card-title-size: 1rem;
+            --pos-card-price-size: 0.92rem;
+        }
+
+        #pos-main-grid.layout-preset-cashier {
+            --pos-card-padding: 0.55rem;
+            --pos-card-gap: 0.5rem;
+            --pos-card-image-min-height: 5.5rem;
+        }
+
+        #pos-main-grid.layout-preset-cashier #product-results {
+            grid-template-columns: 1fr !important;
+        }
+
+        #pos-main-grid.layout-preset-cashier .product-card {
+            border-radius: 0.85rem;
+        }
+
+        #pos-main-grid.layout-preset-visual #product-results {
+            align-items: start;
+        }
+
+        #pos-main-grid.products-tall #products-controls-card {
+            padding: 0.6rem 0.85rem !important;
+        }
+
+        #pos-main-grid.products-tall #products-controls-card>.flex.items-center.mb-4 {
+            margin-bottom: 0.6rem !important;
+        }
+
+        #pos-main-grid.products-tall #products-controls-card .relative.mb-4 {
+            margin-bottom: 0.45rem !important;
+        }
+
+        #pos-main-grid.products-tall #products-controls-card .flex.flex-wrap.gap-2.mb-4 {
+            margin-bottom: 0 !important;
+            gap: 0.35rem !important;
+        }
+
         @media (min-width: 1024px) {
-
-            /* ── Grid ───────────────────────────────────────────────────── */
-            #pos-main-grid.pos-slim-mode {
+            #pos-main-grid.pos-layout-ready {
                 display: grid !important;
-                grid-template-columns: repeat(12, 1fr) !important;
-                grid-template-rows: 1fr auto !important;
-                height: calc(100vh - 215px);
-                gap: 0.75rem !important;
+                grid-template-columns: var(--pos-layout-template);
+                grid-template-rows: minmax(0, auto);
+                align-items: start;
+                overflow-x: clip;
             }
 
-            /* ── Products panel — right in RTL, spans full height ───────── */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products {
-                grid-column: 1 / 7 !important;
-                grid-row: 1 / 3 !important;
+            #pos-main-grid.pos-layout-ready #mobile-panel-products {
+                grid-column: 1;
+                grid-row: 1;
+                min-width: 0;
+            }
+
+            #pos-main-grid.pos-layout-ready #pos-grid-splitter {
                 display: flex !important;
-                flex-direction: column !important;
-                overflow: hidden;
+                grid-column: 2;
+                grid-row: 1;
+                justify-content: center;
+                align-self: stretch;
             }
 
-            /* Remove space-y gap so the two cards merge visually */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>*+* {
-                margin-top: 0 !important;
+            #pos-main-grid.pos-layout-ready #mobile-panel-bill {
+                grid-column: 3;
+                grid-row: 1;
+                min-width: 0;
             }
 
-            /* Search controls card: compact, no bottom radius */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child {
-                flex-shrink: 0;
-                padding: 0.5rem 0.75rem !important;
-                border-bottom-left-radius: 0 !important;
-                border-bottom-right-radius: 0 !important;
-                border-bottom: 1px solid #e5e7eb !important;
-                box-shadow: none !important;
+            #pos-main-grid.pos-layout-ready #mobile-panel-summary {
+                grid-column: 4;
+                grid-row: 1;
+                min-width: 0;
             }
 
-            /* Hide "Product Search" heading */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child>.flex.items-center.mb-4 {
+            #pos-main-grid.pos-layout-ready.layout-bill-first #mobile-panel-bill {
+                grid-column: 1;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-bill-first #mobile-panel-products {
+                grid-column: 3;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-bill-first #mobile-panel-summary {
+                grid-column: 4;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under {
+                grid-template-rows: minmax(0, auto) minmax(0, auto);
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under #mobile-panel-products,
+            #pos-main-grid.pos-layout-ready.layout-summary-under #pos-grid-splitter {
+                grid-row: 1 / span 2;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under #mobile-panel-bill {
+                grid-row: 1;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under #mobile-panel-summary {
+                grid-column: 3;
+                grid-row: 2;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under.layout-bill-first #mobile-panel-bill {
+                grid-column: 1;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under.layout-bill-first #mobile-panel-products {
+                grid-column: 3;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-under.layout-bill-first #mobile-panel-summary {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            #pos-main-grid.pos-layout-ready.layout-summary-hidden #mobile-panel-summary {
                 display: none !important;
+                grid-column: auto;
+                grid-row: auto;
             }
 
-            /* Tighter search input margin */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child .relative.mb-4 {
-                margin-bottom: 0.35rem !important;
-            }
-
-            /* Compact filter pills */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:first-child .flex.flex-wrap.gap-2.mb-4 {
-                gap: 0.25rem !important;
-                margin-bottom: 0 !important;
-            }
-
-            #pos-main-grid.pos-slim-mode .filter-btn,
-            #pos-main-grid.pos-slim-mode #toggle-category-mode {
-                padding: 0.1rem 0.45rem !important;
-                font-size: 0.625rem !important;
-                line-height: 1.3 !important;
-            }
-
-            /* Results card: no top radius, fills remaining height */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:last-child {
-                flex: 1;
-                min-height: 0;
+            #pos-main-grid.pos-layout-ready.products-tall #mobile-panel-products {
+                position: sticky;
+                top: 1rem;
+                align-self: start;
+                max-height: calc(100vh - 7.5rem);
                 overflow: hidden;
-                display: flex;
+                display: flex !important;
                 flex-direction: column;
-                border-top-left-radius: 0 !important;
-                border-top-right-radius: 0 !important;
-                box-shadow: none !important;
             }
 
-            /* Hide "Available Products" header bar */
-            #pos-main-grid.pos-slim-mode #mobile-panel-products>div:last-child>.p-4.border-b {
-                display: none !important;
+            #pos-main-grid.pos-layout-ready.products-tall #products-results-card {
+                display: flex;
+                flex: 1 1 auto;
+                min-height: 0;
+                flex-direction: column;
             }
 
-            /* Cards scrollable container fills all remaining space */
-            #pos-main-grid.pos-slim-mode #product-cards-container {
-                flex: 1;
+            #pos-main-grid.pos-layout-ready.products-tall #product-cards-container {
+                flex: 1 1 auto;
                 min-height: 0;
                 max-height: none !important;
                 overflow-y: auto;
             }
 
-            /* Auto-fill columns — more products, same card size */
-            #pos-main-grid.pos-slim-mode #product-results {
-                grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important;
-                gap: 0.5rem !important;
-                padding: 0.5rem !important;
+            #pos-main-grid.pos-layout-ready.products-tall #mobile-panel-summary.layout-inline {
+                align-self: start;
             }
 
-            /* ── Bill panel — upper left in RTL, scrollable ─────────────── */
-            #pos-main-grid.pos-slim-mode #mobile-panel-bill {
-                grid-column: 7 / 13 !important;
-                grid-row: 1 !important;
-                overflow-y: auto;
-                min-width: 0;
+            #pos-main-grid.pos-layout-ready #pos-grid-splitter-handle {
+                display: block;
+                width: 12px;
+                height: 100%;
+                min-height: 100%;
+                border-radius: 999px;
+                background: transparent;
+                cursor: col-resize;
             }
 
-            #pos-main-grid.pos-slim-mode .products-table-container {
-                max-height: 30vh;
-                overflow-y: auto;
-            }
-
-            /* ── Summary strip — compact bar at bottom left ─────────── */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary {
-                grid-column: 7 / 13 !important;
-                grid-row: 2 !important;
-                flex-shrink: 0;
-                display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                gap: 0.75rem;
-                padding: 0.5rem 0.875rem !important;
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                border-radius: 0.75rem;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-            }
-
-            /* Strip card styling off all direct children */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary>div {
-                flex: 1;
-                min-width: 0;
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                border-radius: 0 !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            /* Barcode card: hide title */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary>.bg-white>.flex.items-center {
-                display: none !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #barcode_input {
-                border-radius: 0.5rem !important;
-                font-size: 0.8rem !important;
-                padding-top: 0.35rem !important;
-                padding-bottom: 0.35rem !important;
-            }
-
-            /* Bill summary card: strip gradient, lay out sections horizontally */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br {
-                background: transparent !important;
-                padding: 0 !important;
-                color: #374151 !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br>h3 {
-                display: none !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .space-y-3 {
-                display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                gap: 0.5rem;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .space-y-3>div {
-                flex: 1;
-                background: #f9fafb !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 0.5rem !important;
-                padding: 0.35rem 0.6rem !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #bill_discount_percent {
-                background: #ffffff !important;
-                border: 1px solid #d1d5db !important;
-                color: #111827 !important;
-                border-radius: 0.375rem !important;
-                font-size: 0.72rem !important;
-                padding: 0.15rem 0.4rem !important;
-                width: 100% !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .text-green-100 {
-                color: #6b7280 !important;
-                font-size: 0.65rem !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .bg-gradient-to-br .text-\[10px\] {
-                display: none !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #total_price_display {
-                font-size: 1.1rem !important;
-                color: #111827 !important;
-            }
-
-            /* Resize the ₪ prefix spans around total amounts */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .font-bold.text-2xl {
-                font-size: 1.1rem !important;
-                color: #111827 !important;
-            }
-
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary .font-bold.text-lg {
-                font-size: 0.85rem !important;
-                color: #111827 !important;
-            }
-
-            /* Remove space-y-4 margin when summary is a flex row */
-            #pos-main-grid.pos-slim-mode #mobile-panel-summary> :not([hidden])~ :not([hidden]) {
-                margin-top: 0 !important;
-            }
-
-            /* ── Hide clutter ────────────────────────────────────────────── */
-            #pos-main-grid.pos-slim-mode #todays-performance-card,
-            #pos-main-grid.pos-slim-mode #quick-actions-card {
-                display: none !important;
+            #pos-main-grid.pos-layout-ready #pos-grid-splitter-handle:hover,
+            #pos-main-grid.pos-layout-ready.layout-dragging #pos-grid-splitter-handle {
+                background: rgba(99, 102, 241, 0.18);
             }
         }
     </style>
+
+    <script src="{{ \App\Support\Assets::versioned('js/pos-layout.js') }}"></script>
+    <script src="{{ \App\Support\Assets::versioned('js/pos-cart.js') }}"></script>
 
     <!-- Clean JavaScript -->
     <script>
@@ -1331,7 +1520,7 @@
             const grid = document.getElementById('pos-main-grid');
             const btn = document.getElementById('pos-view-toggle');
             const thumb = btn ? btn.querySelector('span') : null;
-            const isSlim = grid.classList.toggle('pos-slim-mode');
+            const isSlim = (grid?.dataset.layoutPreset || 'classic') !== 'focus';
 
             if (btn) {
                 if (isSlim) {
@@ -1359,6 +1548,12 @@
                     slim_mode: isSlim
                 })
             }).catch(() => {});
+
+            document.dispatchEvent(new CustomEvent('pos:legacy-toggle-request', {
+                detail: {
+                    slim: isSlim
+                }
+            }));
         }
 
         // Mobile tab switching
@@ -1404,6 +1599,8 @@
         function updateMobileTotal(total) {
             const mobileTotal = document.getElementById('mobile-total-display');
             if (mobileTotal) mobileTotal.textContent = total;
+            const inlineTotal = document.getElementById('inline-total-display');
+            if (inlineTotal) inlineTotal.textContent = total;
         }
 
         // Update mobile bill item badge
@@ -1464,6 +1661,7 @@
             save_failed: '{{ __('offline.save_failed') }}',
             sync_now: '{{ __('offline.sync_now') }}',
             no_products: '{{ __('offline.no_products') }}',
+            held_saved_offline: '{{ __('pos.offline_held.saved') }}',
         };
 
         // ── Sales / Promotions engine ──────────────────────────────────────────────
@@ -1655,8 +1853,6 @@
                 const productId = parseInt(pidInput.value);
                 if (returnCostsMap.has(productId)) {
                     returnCostInputs[index].value = returnCostsMap.get(productId);
-                    console.log(
-                        `Set return cost for product ${productId}: ${returnCostInputs[index].value}`);
                 }
             });
 
@@ -1711,6 +1907,7 @@
             }
 
             try {
+                const snapshotBeforeSave = window.PosCart.snapshot();
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -1723,11 +1920,19 @@
 
                 if (response.ok) {
                     const result = await response.json();
+                    if (result.duplicate) {
+                        currentBillId = result.bill?.id || result.bill_id || currentBillId;
+                        window.currentBillId = currentBillId;
+                        showNotification(result.message || layoutConfig.messages.duplicateBill, 'info');
+                        return;
+                    }
+
                     showNotification('{{ __('messages.Bill created successfully!') }}', 'success');
 
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
                         window.currentBillId = currentBillId;
+                        dispatchBillSavedEvent(result.bill, snapshotBeforeSave);
 
                         // Update UI after successful bill creation
                         await updateUIAfterBillCreation(result.bill);
@@ -1735,6 +1940,10 @@
                         // Offline bill saved successfully - update UI and clear form
                         currentBillId = result.local_id;
                         window.currentBillId = currentBillId;
+                        dispatchBillSavedEvent({
+                            id: result.local_id,
+                            offline: true,
+                        }, snapshotBeforeSave);
                         await updateUIAfterOfflineBillCreation(form);
                         clearBillForm();
                     }
@@ -1762,7 +1971,12 @@
                 const isOffline = !navigator.onLine;
                 if ((isNetworkError || isOffline) && window.spSaveBillOffline) {
                     try {
+                        const snapshotBeforeSave = window.PosCart.snapshot();
                         await window.spSaveBillOffline(form);
+                        dispatchBillSavedEvent({
+                            id: snapshotBeforeSave.client_uuid || null,
+                            offline: true,
+                        }, snapshotBeforeSave);
                         clearBillForm();
                     } catch (saveError) {
                         showNotification('{{ __('messages.Failed to save bill offline') }}', 'error');
@@ -1777,6 +1991,15 @@
                 submitButton.innerHTML = originalButtonText;
             }
         };
+
+        function dispatchBillSavedEvent(bill, snapshot) {
+            document.dispatchEvent(new CustomEvent('pos:bill-saved', {
+                detail: {
+                    bill: bill,
+                    snapshot: snapshot,
+                }
+            }));
+        }
 
         // Function to update UI after offline bill creation
         async function updateUIAfterOfflineBillCreation(form) {
@@ -2691,8 +2914,8 @@
                 const div = document.createElement('div');
                 div.className = 'customer-suggestion-item';
                 div.innerHTML = `
-                    <div class="font-medium text-gray-900">${customer.name}</div>
-                    <div class="text-sm text-gray-500">${customer.phone || ''}</div>
+                    <div class="font-medium text-gray-900">${escapeHtml(customer.name)}</div>
+                    <div class="text-sm text-gray-500">${escapeHtml(customer.phone || '')}</div>
                 `;
                 div.addEventListener('click', () => selectCustomer(customer));
                 suggestionsDiv.appendChild(div);
@@ -2703,7 +2926,10 @@
 
         function selectCustomer(customer) {
             document.getElementById('customer_search').value = customer.name;
-            document.getElementById('customer_id_hidden').value = customer.id;
+            const hiddenCustomer = document.getElementById('customer_id_hidden');
+            hiddenCustomer.value = customer.id;
+            // Programmatic changes do not fire events: refresh the payment section (partial-payment field) now.
+            hiddenCustomer.dispatchEvent(new Event('change', { bubbles: true }));
             document.getElementById('customer_suggestions').classList.add('hidden');
             hideUnidentifiedCustomerNotification();
             // Only auto-focus barcode on wide screens (tablet/desktop), not on phones
@@ -3048,7 +3274,7 @@
                         </svg>
                         {{ __('messages.IMEI Codes') }}
                     </h3>
-                    <p class="text-xs text-gray-500 mb-3">${product.name} &nbsp;·&nbsp; {{ __('messages.Qty') }}: ${qty}</p>
+                    <p class="text-xs text-gray-500 mb-3">${escapeHtml(product.name)} &nbsp;·&nbsp; {{ __('messages.Qty') }}: ${qty}</p>
 
                     <div id="imei-dialog-list" class="space-y-1.5 max-h-48 overflow-y-auto mb-3"></div>
 
@@ -3202,8 +3428,8 @@
                 const isImeiMatch = !!product._pendingImei;
                 productDiv.innerHTML = `
                     <div class="flex-1">
-                        <div class="px-8 font-medium text-gray-900">${product.name}
-                            ${isImeiMatch ? `<span class="ml-2 text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-mono">IMEI: ${product._pendingImei}</span>` : ''}
+                        <div class="px-8 font-medium text-gray-900">${escapeHtml(product.name)}
+                            ${isImeiMatch ? `<span class="ml-2 text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-mono">IMEI: ${escapeHtml(product._pendingImei)}</span>` : ''}
                         </div>
                         <div class="px-8 text-sm text-gray-500">{{ __('messages.Price') }}: ${product.selling_price} | {{ __('messages.in stock') }}: ${product.quantity}</div>
                     </div>
@@ -3414,6 +3640,8 @@
         function createProductCard(product) {
             const card = document.createElement('div');
             const isOutOfStock = product.quantity === 0;
+            const safeProductName = escapeHtml(product.name);
+            const safeCategory = escapeHtml(product.category || '');
 
             card.className =
                 `product-card bg-white p-3 border rounded-lg shadow-sm cursor-pointer ${isOutOfStock && !isRestaurant ? 'out-of-stock' : ''}`;
@@ -3433,8 +3661,8 @@
             }
 
             const imageHtml = firstImage ?
-                `<img data-src="/storage/${firstImage}" class="lazy-image w-full h-20 object-cover rounded-lg bg-gray-100" alt="${product.name}">` :
-                `<div class="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                `<img data-src="/storage/${firstImage}" class="lazy-image product-card-image w-full object-cover rounded-lg bg-gray-100" alt="${safeProductName}">` :
+                `<div class="product-card-image w-full bg-gray-200 rounded-lg flex items-center justify-center">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
@@ -3442,8 +3670,8 @@
 
             const categoryBadge = product.category ?
                 `<div class="mb-1">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        ${product.category}
+                    <span class="product-category-badge inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ${safeCategory}
                     </span>
                  </div>` : '';
 
@@ -3454,10 +3682,10 @@
                     </div>
                     <div class="min-w-0">
                         ${categoryBadge}
-                        <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
-                        <div class="text-xs text-gray-500 font-semibold">${product.selling_price}</div>
+                        <div class="text-sm font-medium text-gray-900" title="${safeProductName}">${safeProductName}</div>
+                        <div class="product-price-badge text-xs text-gray-500 font-semibold">${product.selling_price}</div>
                         <div class="mt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                            <span class="product-stock-badge inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOutOfStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                                 ${isOutOfStock ? '{{ __('messages.Out of Stock') }}' : `${!isRestaurant ? `${product.quantity} {{ __('messages.in stock') }}` : ''}`}
                             </span>
                         </div>
@@ -3502,7 +3730,7 @@
                         <div class="flex items-center">
                             <div class="flex-grow border-t border-gray-300"></div>
                             <span class="flex-shrink mx-4 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                                ${category}
+                                ${escapeHtml(category)}
                             </span>
                             <div class="flex-grow border-t border-gray-300"></div>
                         </div>
@@ -3628,8 +3856,6 @@
         // Add product row
         // Show return cost dialog for returned bills
         function showReturnCostDialog(product) {
-            console.log('Opening return cost dialog for product:', product.id, product.name);
-
             const modal = document.createElement('div');
             modal.id = 'return-cost-modal';
             modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
@@ -3638,7 +3864,7 @@
                 <div class="relative z-50 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
                     <div class="px-6 py-5 border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900">
-                            {{ __('messages.Specify return cost for') }} ${product.name}
+                            {{ __('messages.Specify return cost for') }} ${escapeHtml(product.name)}
                         </h3>
                     </div>
 
@@ -3678,7 +3904,6 @@
             const input = document.getElementById('return-cost-input');
 
             const closeDialog = () => {
-                console.log('Closing return cost dialog');
                 document.body.removeChild(modal);
                 if (!isRestaurant) {
                     document.getElementById('barcode_input').focus();
@@ -3691,7 +3916,6 @@
                     showNotification('{{ __('messages.Return value must be positive') }}', 'error');
                     return;
                 }
-                console.log('Storing return cost:', product.id, returnCost);
                 // Store the return cost in the map by product ID
                 returnCostsMap.set(product.id, returnCost);
                 addProductRow(product);
@@ -3715,6 +3939,19 @@
 
         function addProductRow(product) {
             if (!product) return false;
+            const restoringSnapshot = !!product._restoringSnapshot;
+            const restoredTagsString = product._restoredTagsString || '';
+            const restoredQuantity = product._restoredQuantity || 1;
+            const restoredSellingPrice = product._restoredSellingPrice ?? product.selling_price;
+            const restoredCostPrice = product._restoredCostPrice ?? product.cost_price;
+            const restoredDiscount = product._restoredDiscount || 0;
+            const restoredDiscountType = product._restoredDiscountType || 'total';
+            const restoredImeis = Array.isArray(product._restoredImeis) ? product._restoredImeis : [];
+            const safeProductName = escapeHtml(product.name);
+            const safeTagsDisplay = restoredTagsString ? restoredTagsString.split('&').map(tag => {
+                const [name, price] = tag.split('@');
+                return `${escapeHtml(name)} (+${parseFloat(price).toFixed(2)})`;
+            }).join(', ') : '';
 
             // Check if this is a returned bill
             const isReturnedBill = document.getElementById('is_returned')?.checked || false;
@@ -3730,16 +3967,16 @@
                     'warning');
             }
 
-            if (product.has_tags && availableTags.length > 0) {
+            if (product.has_tags && availableTags.length > 0 && !restoringSnapshot) {
                 showTagsDialog(product);
                 return false; // Dialog will handle adding the product
             }
 
-            const existing = [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
+            const existing = !restoringSnapshot ? [...document.querySelectorAll('input[name="product_ids[]"]')].find(input => {
                 const row = input.closest('.product-row');
                 const tagsInput = row.querySelector('input[name="product_tags[]"]');
                 return input.value == product.id && (!tagsInput || !tagsInput.value);
-            });
+            }) : null;
 
             if (existing) {
                 const row = existing.closest('.product-row');
@@ -3763,26 +4000,27 @@
 
             const id = product.id;
             const returnCost = returnCostsMap.get(id);
-            const cost = returnCost || product.cost_price;
-            const price = product.selling_price;
+            const cost = returnCost || restoredCostPrice;
+            const price = restoredSellingPrice;
             const maxStock = product.quantity;
 
             row.innerHTML = `
                 <input type="hidden" name="product_ids[]" value="${id}">
                 <input type="hidden" name="cost_prices[]" value="${cost}">
-                <input type="hidden" name="return_costs[]" value="${returnCost || ''}">
-                <input type="hidden" name="product_tags[]" value="">
-                <input type="hidden" name="discounts[]" class="discount" value="0">
-                <input type="hidden" name="discount_types[]" class="discount-type" value="total">
+                <input type="hidden" name="return_costs[]" value="${returnCost || product._restoredReturnCost || ''}">
+                <input type="hidden" name="product_tags[]" value="${escapeHtml(restoredTagsString)}">
+                <input type="hidden" name="discounts[]" class="discount" value="${restoredDiscount}">
+                <input type="hidden" name="discount_types[]" class="discount-type" value="${restoredDiscountType}">
                 ${product.has_imeis ? `<div class="imei-hidden-inputs"></div>` : ''}
 
                 <td class="product-name-cell">
-                    <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
+                    <div class="text-sm font-medium text-gray-900" title="${safeProductName}">${safeProductName}</div>
                     <div class="text-xs text-gray-500">${maxStock} {{ __('messages.in stock') }}</div>
+                    ${safeTagsDisplay ? `<div class="text-xs text-blue-600 mt-1">${safeTagsDisplay}</div>` : ''}
                     ${product.has_imeis ? `<div class="text-xs text-indigo-600 imei-count-label">0 IMEIs</div>` : ''}
                 </td>
                 <td>
-                    <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="1" required>
+                    <input type="number" name="quantities[]" class="quantity" min="0.01" step="0.01" value="${restoredQuantity}" required>
                 </td>
                 <td>
                     <input type="number" name="selling_prices[]" class="selling-price" min="0" step="0.01" value="${price}" required>
@@ -3791,7 +4029,7 @@
                 <td>
                     <div class="flex gap-1">
                         ${product.has_imeis ? `
-                                            <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${id}" data-product-name="${product.name}">
+                                            <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${id}" data-product-name="${safeProductName}">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             </button>` : ''}
                         <button type="button" class="open-discount-dialog text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded p-1" title="{{ __('messages.Set Discount') }}">
@@ -3807,14 +4045,31 @@
             `;
 
             productsList.prepend(row);
+            if (restoredDiscount > 0) {
+                row.dataset.userDiscount = '1';
+            }
             applySaleToRow(row);
+            if (product.has_imeis && restoredImeis.length) {
+                const imeiContainer = row.querySelector('.imei-hidden-inputs');
+                const imeiCountLabel = row.querySelector('.imei-count-label');
+                restoredImeis.forEach(code => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `imeis_product_${id}[]`;
+                    input.value = code;
+                    imeiContainer.appendChild(input);
+                });
+                if (imeiCountLabel) {
+                    imeiCountLabel.textContent = `${restoredImeis.length} IMEI${restoredImeis.length !== 1 ? 's' : ''}`;
+                }
+            }
             calculateTotal();
             if (product.return_cost) {
                 delete product.return_cost;
             }
 
             // If product has IMEIs, show IMEI dialog immediately
-            if (product.has_imeis) {
+            if (product.has_imeis && !restoringSnapshot && !restoredImeis.length) {
                 showImeiDialog(row, product);
             }
 
@@ -3840,7 +4095,7 @@
                                 </div>
                                 <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                     <h3 class="text-lg leading-6 font-medium text-gray-900">
-                                        {{ __('messages.Select Tags for') }} ${product.name}
+                                        {{ __('messages.Select Tags for') }} ${escapeHtml(product.name)}
                                     </h3>
                                     <div class="mt-4">
                                         <div id="tags-list" class="space-y-2 max-h-60 overflow-y-auto">
@@ -3928,7 +4183,7 @@
 
             const tagsDisplay = tagsString ? tagsString.split('&').map(tag => {
                 const [name, price] = tag.split('@');
-                return `${name} (+${parseFloat(price).toFixed(2)})`;
+                return `${escapeHtml(name)} (+${parseFloat(price).toFixed(2)})`;
             }).join(', ') : '';
 
             row.innerHTML = `
@@ -3940,7 +4195,7 @@
                 ${product.has_imeis ? `<div class="imei-hidden-inputs"></div>` : ''}
 
                 <td class="product-name-cell">
-                    <div class="text-sm font-medium text-gray-900" title="${product.name}">${product.name}</div>
+                    <div class="text-sm font-medium text-gray-900" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</div>
                     <div class="text-xs text-gray-500">${product.quantity} {{ __('messages.in stock') }}</div>
                     ${tagsString ? `<div class="text-xs text-blue-600 mt-1">Tags: ${tagsDisplay}</div>` : ''}
                     ${product.has_imeis ? `<div class="text-xs text-indigo-600 imei-count-label">0 IMEIs</div>` : ''}
@@ -3955,7 +4210,7 @@
                 <td>
                     <div class="flex gap-1">
                         ${product.has_imeis ? `
-                                            <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${product.id}" data-product-name="${product.name}">
+                                            <button type="button" class="open-imei-dialog text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1" title="{{ __('messages.Manage IMEIs') }}" data-product-id="${product.id}" data-product-name="${escapeHtml(product.name)}">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             </button>` : ''}
                         <button type="button" class="open-discount-dialog text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded p-1" title="{{ __('messages.Set Discount') }}">
@@ -4155,8 +4410,6 @@
                 };
 
                 const isReturnedBill = document.getElementById('is_returned')?.checked || false;
-                console.log('Product clicked:', product.id, product.name, 'Returned bill:', isReturnedBill);
-
                 // Check if this will show the return dialog
                 const willShowDialog = isReturnedBill && !returnCostsMap.has(product.id);
 
@@ -4173,7 +4426,6 @@
                     // On mobile, briefly flash the bill badge to show product was added
                     updateMobileBillBadge();
                 } else if (willShowDialog) {
-                    console.log('Dialog will appear for return cost');
                 }
             }
         });
@@ -4227,8 +4479,6 @@
 
         // Save bill immediately when print is clicked
         async function saveBillBeforePrint() {
-            console.log('=== SAVING BILL BEFORE PRINT ===');
-
             const form = document.getElementById('create-bill');
             if (!form) {
                 console.error('Form not found');
@@ -4245,7 +4495,7 @@
             }
 
             try {
-                console.log('Sending save request...');
+                const snapshotBeforeSave = window.PosCart.snapshot();
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -4258,8 +4508,12 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('Bill saved successfully:', result);
-
+                    if (result.duplicate) {
+                        currentBillId = result.bill?.id || result.bill_id || currentBillId;
+                        window.currentBillId = currentBillId;
+                        showNotification(result.message || layoutConfig.messages.duplicateBill, 'info');
+                        return true;
+                    }
                     // Store bill data in sessionStorage as backup
                     const billData = {
                         id: result.bill?.id,
@@ -4272,6 +4526,14 @@
                     if (result.bill && result.bill.id) {
                         currentBillId = result.bill.id;
                         window.currentBillId = currentBillId;
+                        dispatchBillSavedEvent(result.bill, snapshotBeforeSave);
+                    } else if (result.offline) {
+                        currentBillId = result.local_id;
+                        window.currentBillId = currentBillId;
+                        dispatchBillSavedEvent({
+                            id: result.local_id,
+                            offline: true,
+                        }, snapshotBeforeSave);
                     }
 
                     showNotification('{{ __('messages.Bill saved successfully!') }}', 'success');
@@ -4591,7 +4853,6 @@
                 // Listen for messages from parent
                 window.addEventListener('message', (event) => {
                     if (event.data.action === 'billSaved') {
-                        console.log('Bill saved confirmation received');
                     }
                 });
 
@@ -4706,7 +4967,6 @@
                 // Listen for messages from parent
                 window.addEventListener('message', (event) => {
                     if (event.data.action === 'billSaved') {
-                        console.log('Bill saved confirmation received');
                     }
                 });
 
@@ -5214,11 +5474,9 @@
                 // Reset totals
                 calculateTotal();
 
-                console.log('Cleared products to require return cost assignment');
             } else if (!isReturnedBill && productRows.length > 0) {
                 // When deactivating Return Bill, also clear the return costs map
                 returnCostsMap.clear();
-                console.log('Deactivated Return Bill mode, cleared return costs map');
             }
         });
 
@@ -5488,7 +5746,6 @@
                             };
                         }
                     } catch (error) {
-                        console.log(`Failed to connect to ${endpoint}:`, error.message);
                     }
                 }
 
@@ -5544,7 +5801,6 @@
                                 }, 100);
                             }
                         } catch (error) {
-                            console.log('Print attempt failed:', error);
                             window.postMessage('drawer-attempted', '*');
                         }
                     };
@@ -6306,6 +6562,1121 @@
 
             })();
         </script>
+    @endif
+
+    <script>
+        window.escapeHtml = window.PosCartHelpers ? window.PosCartHelpers.escapeHtml : function(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        (function() {
+            const layoutConfig = {
+                settings: @json($posLayout),
+                locked: @json($posLayoutLocked),
+                teamDefault: @json($posLayoutTeamDefault),
+                teamLock: @json($posLayoutTeamLock ?? false),
+                heldRecoverySnapshot: @json($heldRecoverySnapshot ?? null),
+                heldRecoveryHeldBillId: @json($heldRecoveryHeldBillId ?? null),
+                canApplyTeam: @json(auth()->user()->isOwnerAccount()),
+                documentDir: '{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}',
+                routes: {
+                    save: '{{ route('pos.layout.save') }}',
+                    reset: '{{ route('pos.layout.reset') }}',
+                    applyTeam: '{{ route('pos.layout.apply-team') }}',
+                    heldIndex: '{{ route('pos.held.index') }}',
+                    heldStore: '{{ route('pos.held.store') }}',
+                    heldResumeTemplate: '{{ url('/pos/held/__ID__/resume') }}',
+                    heldAcknowledgeTemplate: '{{ url('/pos/held/__ID__/acknowledge') }}',
+                    heldUpdateTemplate: '{{ url('/pos/held/__ID__') }}',
+                    heldDeleteTemplate: '{{ url('/pos/held/__ID__') }}',
+                },
+                messages: {
+                    layoutSaved: @json(__('pos.layout_saved')),
+                    layoutReset: @json(__('pos.layout_reset')),
+                    layoutAppliedTeam: @json(__('pos.layout_applied_team')),
+                    heldSaved: @json(__('pos.held_saved')),
+                    heldResumed: @json(__('pos.held_resumed')),
+                    heldDeleted: @json(__('pos.held_deleted')),
+                    heldRenamed: @json(__('pos.held_renamed')),
+                    heldEmpty: @json(__('pos.held_empty')),
+                    heldSyncFailed: @json(__('pos.held_sync_failed')),
+                    heldLocalBadge: @json(__('pos.held_local_badge')),
+                    heldAgeWarning: @json(__('pos.held_age_warning')),
+                    resumeMissingProducts: @json(__('pos.resume_missing_products')),
+                    validationPaid: @json(__('pos.validation_paid_amount')),
+                    holdCurrent: @json(__('pos.hold_current')),
+                    discardCurrent: @json(__('pos.discard_current')),
+                    cancel: @json(__('pos.cancel')),
+                    deleteConfirm: @json(__('pos.delete_confirm')),
+                    renamePrompt: @json(__('pos.rename_prompt')),
+                    recoveryReady: @json(__('pos.resume_recovery_ready')),
+                    restoreFailed: @json(__('pos.restore_failed')),
+                    lockedForTeam: @json(__('pos.locked_for_team')),
+                    duplicateBill: @json(__('pos.duplicate_bill_detected')),
+                    recoveryFound: @json(__('pos.recovery_found')),
+                }
+            };
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const posGrid = document.getElementById('pos-main-grid');
+            const billForm = document.getElementById('create-bill');
+            const paidAmountInput = document.getElementById('paid_amount');
+            const paymentMethodSelect = document.getElementById('payment_method');
+            const remainingLine = document.getElementById('remaining-on-account-line');
+            const remainingValue = document.getElementById('remaining-on-account-value');
+            const paymentDetailsSection = document.getElementById('payment-details-section');
+            const paidFieldWrapper = document.getElementById('paid-amount-field-wrapper');
+            const inlineTotalDisplay = document.getElementById('inline-total-display');
+            const clientUuidInput = document.getElementById('client_uuid');
+            const heldRecoveryStorageKey = 'pos-held-recovery';
+            const heldRecoveryIdStorageKey = 'pos-held-recovery-id';
+            let suppressRecoveryCleanup = false;
+            let teamLockState = !!layoutConfig.teamLock;
+
+            function showToast(message, type) {
+                if (window.SP && typeof window.SP.toast === 'function') {
+                    window.SP.toast(message, type || 'info');
+                    return;
+                }
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(message, type || 'info');
+                    return;
+                }
+            }
+
+            function fetchJson(url, options) {
+                if (window.SP && typeof window.SP.fetchJson === 'function') {
+                    return window.SP.fetchJson(url, options || {});
+                }
+
+                const init = Object.assign({
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                }, options || {});
+
+                return fetch(url, init).then(response => response.json());
+            }
+
+            function ensureClientUuid(force) {
+                if (!clientUuidInput) return '';
+                if (force || !clientUuidInput.value) {
+                    clientUuidInput.value = window.PosCartHelpers ? window.PosCartHelpers.createUuid() : String(Date.now());
+                }
+
+                return clientUuidInput.value;
+            }
+
+            function getActiveCustomerId() {
+                if (isRestaurant) {
+                    return document.getElementById('customer_id')?.value || '';
+                }
+
+                return document.getElementById('customer_id_hidden')?.value || '';
+            }
+
+            function getActiveCustomerName() {
+                if (isRestaurant) {
+                    const select = document.getElementById('customer_id');
+                    const option = select?.selectedOptions?.[0];
+                    return option ? option.getAttribute('data-name') || option.textContent || '' : '';
+                }
+
+                return document.getElementById('customer_search')?.value || '';
+            }
+
+            function currentCartTotal() {
+                return parseFloat(document.getElementById('total_price')?.value || 0) || 0;
+            }
+
+            function updatePaymentUi() {
+                if (!paymentMethodSelect) {
+                    return;
+                }
+
+                const total = currentCartTotal();
+                const hasCustomer = !!getActiveCustomerId();
+                const suppressPartial = !!document.getElementById('is_damaged')?.checked || !!document.getElementById('is_returned')?.checked;
+                const clamped = window.PosCartHelpers
+                    ? window.PosCartHelpers.clampPaidAmount(paidAmountInput?.value, total, hasCustomer, suppressPartial)
+                    : Math.min(Math.max(parseFloat(paidAmountInput?.value || 0) || 0, 0), total);
+
+                if (paidAmountInput && String(clamped) !== String(parseFloat(paidAmountInput.value || 0) || 0)) {
+                    paidAmountInput.value = clamped ? clamped.toFixed(2).replace(/\.00$/, '') : '0';
+                }
+
+                if (paymentDetailsSection) {
+                    paymentDetailsSection.classList.toggle('md:grid-cols-2', true);
+                }
+
+                if (paidFieldWrapper) {
+                    paidFieldWrapper.classList.toggle('hidden', !hasCustomer || suppressPartial);
+                }
+
+                if (remainingLine) {
+                    const remaining = Math.max(0, total - clamped);
+                    remainingValue.textContent = `₪${remaining.toFixed(2)}`;
+                    remainingLine.classList.toggle('hidden', !hasCustomer || suppressPartial);
+                }
+
+                if (!hasCustomer && paidAmountInput) {
+                    paidAmountInput.value = '0';
+                }
+
+                if (inlineTotalDisplay) {
+                    inlineTotalDisplay.textContent = total.toFixed(2);
+                }
+            }
+
+            function dispatchCartChanged() {
+                document.dispatchEvent(new CustomEvent('pos:cart-changed'));
+            }
+
+            function attachUiWatchers() {
+                ['customer_id', 'customer_id_hidden', 'customer_search', 'note', 'bill_discount_percent', 'is_damaged', 'is_returned', 'bill_date', 'paid_amount', 'payment_method'].forEach(function(id) {
+                    const element = document.getElementById(id);
+                    if (!element) return;
+                    element.addEventListener('change', function() {
+                        updatePaymentUi();
+                        dispatchCartChanged();
+                    });
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.addEventListener('input', function() {
+                            updatePaymentUi();
+                            dispatchCartChanged();
+                        });
+                    }
+                });
+
+                document.querySelectorAll('.paid-shortcut').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        if (!paidAmountInput) return;
+                        const total = currentCartTotal();
+                        const mode = button.getAttribute('data-paid-mode');
+                        if (mode === 'full') {
+                            paidAmountInput.value = total.toFixed(2);
+                        } else if (mode === 'half') {
+                            paidAmountInput.value = (total / 2).toFixed(2);
+                        } else {
+                            paidAmountInput.value = '0';
+                        }
+                        updatePaymentUi();
+                        dispatchCartChanged();
+                    });
+                });
+            }
+
+            const originalCalculateTotal = typeof calculateTotal === 'function' ? calculateTotal : null;
+            if (originalCalculateTotal) {
+                calculateTotal = function() {
+                    originalCalculateTotal();
+                    updatePaymentUi();
+                    dispatchCartChanged();
+                };
+            }
+
+            const originalClearBillForm = typeof clearBillForm === 'function' ? clearBillForm : null;
+            if (originalClearBillForm) {
+                clearBillForm = function() {
+                    originalClearBillForm();
+                    if (paidAmountInput) paidAmountInput.value = '0';
+                    if (paymentMethodSelect) paymentMethodSelect.value = 'cash';
+                    if (!suppressRecoveryCleanup) {
+                        sessionStorage.removeItem(heldRecoveryStorageKey);
+                        sessionStorage.removeItem(heldRecoveryIdStorageKey);
+                    }
+                    dispatchRestaurantSnapshot(null, 'clear');
+                    ensureClientUuid(true);
+                    updatePaymentUi();
+                    dispatchCartChanged();
+                };
+                window.clearBillForm = clearBillForm;
+            }
+
+            function validatePaidAmount() {
+                if (!paidAmountInput) {
+                    return true;
+                }
+
+                const total = currentCartTotal();
+                const paid = parseFloat(paidAmountInput.value || 0) || 0;
+                const hasCustomer = !!getActiveCustomerId();
+                const suppressPartial = !!document.getElementById('is_damaged')?.checked || !!document.getElementById('is_returned')?.checked;
+
+                if (suppressPartial && paid > 0) {
+                    paidAmountInput.value = '0';
+                    return true;
+                }
+
+                if (hasCustomer && (paid < 0 || paid > total)) {
+                    showToast(layoutConfig.messages.validationPaid, 'error');
+                    return false;
+                }
+
+                return true;
+            }
+
+            const originalSubmitBillForm = typeof window.submitBillForm === 'function' ? window.submitBillForm : null;
+            if (originalSubmitBillForm) {
+                window.submitBillForm = async function() {
+                    ensureClientUuid();
+                    if (!validatePaidAmount()) {
+                        return;
+                    }
+
+                    const snapshotBeforeSave = window.PosCart.snapshot();
+                    const result = await originalSubmitBillForm.apply(this, arguments);
+                    return result;
+                };
+            }
+
+            const originalSaveBillBeforePrint = typeof window.saveBillBeforePrint === 'function' ? window.saveBillBeforePrint : null;
+            if (originalSaveBillBeforePrint) {
+                window.saveBillBeforePrint = async function() {
+                    ensureClientUuid();
+                    if (!validatePaidAmount()) {
+                        return false;
+                    }
+
+                    return originalSaveBillBeforePrint.apply(this, arguments);
+                };
+            }
+
+            document.addEventListener('pos:legacy-toggle-request', function(event) {
+                const nextPreset = event.detail?.slim ? 'focus' : 'classic';
+                layoutState = window.PosLayoutTools
+                    ? window.PosLayoutTools.normalize({ preset: nextPreset }, nextPreset)
+                    : layoutState;
+                applyLayoutState();
+                syncLayoutInputs();
+            });
+
+            const originalCollectPrintData = typeof collectPrintData === 'function' ? collectPrintData : null;
+            if (originalCollectPrintData) {
+                collectPrintData = function() {
+                    const data = originalCollectPrintData();
+                    const paidAmount = parseFloat(paidAmountInput?.value || 0) || 0;
+                    data.paidAmount = paidAmount;
+                    data.paymentMethod = paymentMethodSelect?.value || 'cash';
+                    data.remainingAmount = Math.max(0, (data.total || 0) - paidAmount);
+                    data.clientUuid = clientUuidInput?.value || '';
+                    return data;
+                };
+            }
+
+            const originalStandardPrint = typeof generateStandardPrintHtml === 'function' ? generateStandardPrintHtml : null;
+            if (originalStandardPrint) {
+                generateStandardPrintHtml = function(data) {
+                    let html = originalStandardPrint(data);
+                    if (data.customerName) {
+                        const extraRows = `
+                            <tr class="bg-gray-50">
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('pos.payment_method') }}</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${escapeHtml(data.paymentMethod || '')}</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('pos.amount_paid_now') }}</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${(data.paidAmount || 0).toFixed(2)}₪</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td colspan="4" class="border-2 border-black px-2 py-2 text-right font-bold">{{ __('pos.remaining_on_account') }}</td>
+                                <td class="border-2 border-black px-2 py-2 text-center font-bold">${(data.remainingAmount || 0).toFixed(2)}₪</td>
+                            </tr>`;
+                        html = html.replace('</tfoot>', extraRows + '</tfoot>');
+                    }
+                    return html;
+                };
+            }
+
+            const originalReceiptPrint = typeof generateReceiptPrintHtml === 'function' ? generateReceiptPrintHtml : null;
+            if (originalReceiptPrint) {
+                generateReceiptPrintHtml = function(data) {
+                    let html = originalReceiptPrint(data);
+                    if (data.customerName) {
+                        const extra = `
+                            <div style="margin-top:3mm;font-size:13px;">
+                                <div>{{ __('pos.payment_method') }}: ${escapeHtml(data.paymentMethod || '')}</div>
+                                <div>{{ __('pos.amount_paid_now') }}: ${(data.paidAmount || 0).toFixed(2)}₪</div>
+                                <div>{{ __('pos.remaining_on_account') }}: ${(data.remainingAmount || 0).toFixed(2)}₪</div>
+                            </div>`;
+                        html = html.replace('</body>', extra + '</body>');
+                    }
+                    return html;
+                };
+            }
+
+            function captureRestaurantSnapshot() {
+                // Contract for the restaurant module:
+                // snapshot.restaurant = { orderId, tableId, orderType, guests, delivery: {...}, notes }
+                if (typeof window.captureRestaurantPosState === 'function') {
+                    return window.captureRestaurantPosState();
+                }
+
+                if (typeof window.getRestaurantPosSnapshot === 'function') {
+                    return window.getRestaurantPosSnapshot();
+                }
+
+                if (typeof window.snapshotRestaurantPosState === 'function') {
+                    return window.snapshotRestaurantPosState();
+                }
+
+                return null;
+            }
+
+            function dispatchRestaurantSnapshot(snapshot, mode) {
+                document.dispatchEvent(new CustomEvent('pos:restaurant-sync', {
+                    detail: {
+                        mode: mode,
+                        snapshot: snapshot,
+                    }
+                }));
+            }
+
+            async function acknowledgeHeldRecovery(heldBillId) {
+                if (!heldBillId) {
+                    return true;
+                }
+
+                try {
+                    await fetchJson(layoutConfig.routes.heldAcknowledgeTemplate.replace('__ID__', heldBillId), {
+                        method: 'POST',
+                    });
+
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function snapshotCart() {
+                const rows = Array.from(document.querySelectorAll('.product-row')).map(function(row) {
+                    const productId = parseInt(row.querySelector('input[name="product_ids[]"]')?.value || '0', 10);
+                    const name = row.querySelector('.product-name-cell .font-medium')?.textContent?.trim() || '';
+                    const tagsValue = row.querySelector('input[name="product_tags[]"]')?.value || '';
+                    const returnCostValue = row.querySelector('input[name="return_costs[]"]')?.value || '';
+                    const imeis = Array.from(row.querySelectorAll('.imei-hidden-inputs input[type="hidden"]')).map(function(input) {
+                        return input.value;
+                    });
+
+                    return {
+                        product_id: productId,
+                        name: name,
+                        quantity: parseFloat(row.querySelector('.quantity')?.value || 0) || 0,
+                        selling_price: parseFloat(row.querySelector('.selling-price')?.value || 0) || 0,
+                        cost_price: parseFloat(row.querySelector('input[name="cost_prices[]"]')?.value || 0) || 0,
+                        discount: parseFloat(row.querySelector('.discount')?.value || 0) || 0,
+                        discount_type: row.querySelector('.discount-type')?.value || 'total',
+                        return_cost: returnCostValue === '' ? null : (parseFloat(returnCostValue) || 0),
+                        tags: (window.PosCartHelpers ? window.PosCartHelpers.parseTags(tagsValue) : []),
+                        imeis: imeis,
+                    };
+                });
+
+                return {
+                    rows: rows,
+                    customer: getActiveCustomerId() ? {
+                        id: parseInt(getActiveCustomerId(), 10),
+                        name: getActiveCustomerName(),
+                    } : null,
+                    note: document.getElementById('note')?.value || '',
+                    bill_discount_percent: parseFloat(document.getElementById('bill_discount_percent')?.value || 0) || 0,
+                    is_damaged: !!document.getElementById('is_damaged')?.checked,
+                    is_returned: !!document.getElementById('is_returned')?.checked,
+                    bill_date: document.getElementById('bill_date_hidden')?.value || '',
+                    paid_amount: parseFloat(paidAmountInput?.value || 0) || 0,
+                    payment_method: paymentMethodSelect?.value || 'cash',
+                    client_uuid: ensureClientUuid(),
+                    restaurant: captureRestaurantSnapshot(),
+                };
+            }
+
+            async function restoreCart(snapshot) {
+                if (!snapshot || !Array.isArray(snapshot.rows)) {
+                    showToast(layoutConfig.messages.restoreFailed, 'error');
+                    return false;
+                }
+
+                const missingProducts = [];
+                suppressRecoveryCleanup = true;
+                clearBillForm();
+                suppressRecoveryCleanup = false;
+                ensureClientUuid(true);
+                if (snapshot.client_uuid && clientUuidInput) {
+                    clientUuidInput.value = snapshot.client_uuid;
+                }
+                if (snapshot.bill_date) {
+                    document.getElementById('bill_date_hidden').value = snapshot.bill_date;
+                }
+                document.getElementById('is_damaged').checked = !!snapshot.is_damaged;
+                document.getElementById('is_returned').checked = !!snapshot.is_returned;
+
+                snapshot.rows.forEach(function(line) {
+                    const productCatalog = allProducts.length ? allProducts : products;
+                    const product = productCatalog.find(function(entry) {
+                        return parseInt(entry.id, 10) === parseInt(line.product_id, 10);
+                    });
+
+                    if (!product || product.is_active === false) {
+                        missingProducts.push(line.name || line.product_id);
+                        return;
+                    }
+
+                    if (line.return_cost !== null && line.return_cost !== undefined && line.return_cost !== '') {
+                        returnCostsMap.set(product.id, parseFloat(line.return_cost));
+                    }
+
+                    addProductRow(Object.assign({}, product, {
+                        _restoringSnapshot: true,
+                        _restoredTagsString: window.PosCartHelpers ? window.PosCartHelpers.serializeTags(line.tags || []) : '',
+                        _restoredQuantity: line.quantity,
+                        _restoredSellingPrice: line.selling_price,
+                        _restoredCostPrice: line.cost_price,
+                        _restoredDiscount: line.discount,
+                        _restoredDiscountType: line.discount_type,
+                        _restoredReturnCost: line.return_cost,
+                        _restoredImeis: line.imeis || [],
+                    }));
+                });
+
+                if (isRestaurant) {
+                    const customerSelect = document.getElementById('customer_id');
+                    if (customerSelect) {
+                        customerSelect.value = snapshot.customer?.id || '';
+                    }
+                } else {
+                    const customerHidden = document.getElementById('customer_id_hidden');
+                    const customerSearch = document.getElementById('customer_search');
+                    if (customerHidden) customerHidden.value = snapshot.customer?.id || '';
+                    if (customerSearch) customerSearch.value = snapshot.customer?.name || '';
+                }
+
+                document.getElementById('note').value = snapshot.note || '';
+                document.getElementById('bill_discount_percent').value = snapshot.bill_discount_percent || '';
+                const billDateInput = document.getElementById('bill_date');
+                if (billDateInput) {
+                    billDateInput.value = snapshot.bill_date || billDateInput.value;
+                }
+                if (paidAmountInput) {
+                    paidAmountInput.value = snapshot.paid_amount || 0;
+                }
+                if (paymentMethodSelect) {
+                    paymentMethodSelect.value = snapshot.payment_method || 'cash';
+                }
+                dispatchRestaurantSnapshot(snapshot.restaurant || null, 'restore');
+
+                calculateTotal();
+
+                if (missingProducts.length) {
+                    showToast(layoutConfig.messages.resumeMissingProducts, 'warning');
+                }
+
+                return true;
+            }
+
+            window.PosCart = {
+                snapshot: snapshotCart,
+                restore: restoreCart,
+                clear: function() {
+                    clearBillForm();
+                },
+                isEmpty: function() {
+                    return document.querySelectorAll('.product-row').length === 0;
+                },
+                total: function() {
+                    return currentCartTotal();
+                }
+            };
+
+            function renderHeldBillCard(item) {
+                const wrapper = document.createElement('div');
+                wrapper.className = `rounded-xl border p-4 shadow-sm ${item.is_stale ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`;
+                wrapper.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="truncate text-sm font-semibold text-gray-900">${escapeHtml(item.label || '{{ __('pos.held_bill') }}')}</div>
+                            <div class="mt-1 text-xs text-gray-500">${escapeHtml(item.customer_name || '{{ __('pos.unknown_customer') }}')}</div>
+                            <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                                <span>${item.items_count || 0} {{ __('pos.listing.items') }}</span>
+                                <span>₪${Number(item.total || 0).toFixed(2)}</span>
+                                <span>${escapeHtml(item.created_at_human || '')}</span>
+                                ${item.local_only ? `<span class="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-700">${layoutConfig.messages.heldLocalBadge}</span>` : ''}
+                                ${item.is_stale ? `<span class="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">${layoutConfig.messages.heldAgeWarning}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <button type="button" class="held-resume rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">{{ __('pos.resume') }}</button>
+                        <button type="button" class="held-rename rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">{{ __('pos.rename') }}</button>
+                        <button type="button" class="held-delete rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700">{{ __('pos.delete') }}</button>
+                    </div>
+                `;
+
+                wrapper.querySelector('.held-resume').addEventListener('click', function() {
+                    resumeHeldBill(item);
+                });
+                wrapper.querySelector('.held-rename').addEventListener('click', function() {
+                    renameHeldBill(item);
+                });
+                wrapper.querySelector('.held-delete').addEventListener('click', function() {
+                    deleteHeldBill(item);
+                });
+
+                return wrapper;
+            }
+
+            async function listHeldBills() {
+                const localItems = window.spListLocalHeldBills ? await window.spListLocalHeldBills() : [];
+                let serverItems = [];
+
+                try {
+                    const response = await fetch(layoutConfig.routes.heldIndex, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        serverItems = data.data || [];
+                    }
+                } catch (error) {
+                    if (!localItems.length) {
+                        showToast(layoutConfig.messages.heldSyncFailed, 'warning');
+                    }
+                }
+
+                return localItems.concat(serverItems);
+            }
+
+            async function refreshHeldBillsDrawer() {
+                const list = document.getElementById('held-bills-list');
+                const emptyState = document.getElementById('held-bills-empty');
+                const badge = document.getElementById('held-bills-badge');
+                const items = await listHeldBills();
+                list.innerHTML = '';
+                emptyState.classList.toggle('hidden', items.length > 0);
+                badge.textContent = items.length;
+                badge.classList.toggle('hidden', items.length === 0);
+                items.forEach(function(item) {
+                    list.appendChild(renderHeldBillCard(item));
+                });
+            }
+
+            function toggleDrawer(id, open) {
+                const drawer = document.getElementById(id);
+                if (!drawer) return;
+                const panel = id === 'hold-bill-modal'
+                    ? drawer.querySelector('.relative.flex.min-h-full > div')
+                    : drawer.querySelector('.relative.ms-auto');
+                const backdrop = id === 'hold-bill-modal'
+                    ? drawer.querySelector('.absolute.inset-0')
+                    : drawer.querySelector('.absolute.inset-0');
+                drawer.classList.toggle('hidden', !open);
+                drawer.classList.toggle('pointer-events-none', !open);
+                if (panel) {
+                    if (id !== 'hold-bill-modal') {
+                        panel.classList.toggle('translate-x-full', !open);
+                        panel.classList.toggle('translate-x-0', open);
+                    }
+                }
+                if (backdrop) {
+                    backdrop.classList.toggle('opacity-0', !open);
+                    backdrop.classList.toggle('opacity-100', open);
+                }
+            }
+
+            async function saveHeldBillOnline(snapshot, label, localOnly) {
+                const payload = {
+                    label: label || '',
+                    customer_id: snapshot.customer?.id || null,
+                    customer_name: snapshot.customer?.name || '',
+                    payload: snapshot,
+                    client_uuid: snapshot.client_uuid || ensureClientUuid(),
+                };
+
+                if (localOnly || !navigator.onLine) {
+                    if (window.spSaveLocalHeldBill) {
+                        await window.spSaveLocalHeldBill(payload);
+                    }
+                    showToast(layoutConfig.messages.heldSaved, 'success');
+                    return;
+                }
+
+                await fetchJson(layoutConfig.routes.heldStore, {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                });
+                showToast(layoutConfig.messages.heldSaved, 'success');
+            }
+
+            async function promptResumeChoice() {
+                if (window.PosCart.isEmpty()) {
+                    return 'resume';
+                }
+
+                if (window.SP && typeof window.SP.confirm === 'function') {
+                    const holdCurrent = await window.SP.confirm({
+                        title: '{{ __('pos.resume_confirm_title') }}',
+                        message: '{{ __('pos.resume_confirm_message') }}',
+                        confirmText: layoutConfig.messages.holdCurrent,
+                    });
+                    if (holdCurrent) {
+                        return 'hold';
+                    }
+                    const discard = await window.SP.confirm({
+                        title: '{{ __('pos.resume_confirm_title') }}',
+                        message: '{{ __('pos.resume_confirm_message') }}',
+                        confirmText: layoutConfig.messages.discardCurrent,
+                    });
+                    return discard ? 'discard' : 'cancel';
+                }
+
+                return window.confirm('{{ __('pos.resume_confirm_message') }}') ? 'hold' : 'discard';
+            }
+
+            async function resumeHeldBill(item) {
+                const action = await promptResumeChoice();
+                if (action === 'cancel') {
+                    return;
+                }
+
+                if (action === 'hold') {
+                    await holdCurrentBill();
+                } else if (action === 'discard') {
+                    clearBillForm();
+                }
+
+                let snapshot = null;
+
+                if (item.local_only && window.spTakeLocalHeldBill) {
+                    snapshot = await window.spTakeLocalHeldBill(item.client_uuid || item.local_id);
+                } else {
+                    const url = layoutConfig.routes.heldResumeTemplate.replace('__ID__', item.id);
+                    const data = await fetchJson(url, {
+                        method: 'POST',
+                    });
+                    snapshot = data.snapshot;
+                }
+
+                if (!snapshot) {
+                    showToast(layoutConfig.messages.restoreFailed, 'error');
+                    return;
+                }
+
+                sessionStorage.setItem(heldRecoveryStorageKey, JSON.stringify(snapshot));
+                if (item.id) {
+                    sessionStorage.setItem(heldRecoveryIdStorageKey, String(item.id));
+                }
+                showToast(layoutConfig.messages.recoveryReady, 'info');
+                const restored = await restoreCart(snapshot);
+                if (!restored) {
+                    showToast(layoutConfig.messages.restoreFailed, 'error');
+                    return;
+                }
+
+                toggleDrawer('held-bills-drawer', false);
+
+                if (await acknowledgeHeldRecovery(item.id || sessionStorage.getItem(heldRecoveryIdStorageKey))) {
+                    sessionStorage.removeItem(heldRecoveryIdStorageKey);
+                    showToast(layoutConfig.messages.heldResumed, 'success');
+                }
+                refreshHeldBillsDrawer();
+            }
+
+            async function renameHeldBill(item) {
+                const nextLabel = window.prompt(layoutConfig.messages.renamePrompt, item.label || '');
+                if (nextLabel === null) {
+                    return;
+                }
+
+                if (item.local_only && window.spRenameLocalHeldBill) {
+                    await window.spRenameLocalHeldBill(item.client_uuid || item.local_id, nextLabel);
+                } else {
+                    await fetchJson(layoutConfig.routes.heldUpdateTemplate.replace('__ID__', item.id), {
+                        method: 'PUT',
+                        body: JSON.stringify({ label: nextLabel }),
+                    });
+                }
+
+                showToast(layoutConfig.messages.heldRenamed, 'success');
+                refreshHeldBillsDrawer();
+            }
+
+            async function deleteHeldBill(item) {
+                const confirmed = window.SP && typeof window.SP.confirm === 'function'
+                    ? await window.SP.confirm({
+                        title: '{{ __('pos.held_bills') }}',
+                        message: layoutConfig.messages.deleteConfirm,
+                        confirmText: '{{ __('pos.delete') }}',
+                        danger: true,
+                    })
+                    : window.confirm(layoutConfig.messages.deleteConfirm);
+
+                if (!confirmed) {
+                    return;
+                }
+
+                if (item.local_only && window.spDeleteLocalHeldBill) {
+                    await window.spDeleteLocalHeldBill(item.client_uuid || item.local_id);
+                } else {
+                    await fetchJson(layoutConfig.routes.heldDeleteTemplate.replace('__ID__', item.id), {
+                        method: 'DELETE',
+                    });
+                }
+
+                showToast(layoutConfig.messages.heldDeleted, 'success');
+                refreshHeldBillsDrawer();
+            }
+
+            async function holdCurrentBill() {
+                if (window.PosCart.isEmpty()) {
+                    return false;
+                }
+
+                const label = document.getElementById('hold-bill-label')?.value || '';
+                const snapshot = window.PosCart.snapshot();
+                await saveHeldBillOnline(snapshot, label);
+                clearBillForm();
+                document.getElementById('hold-bill-label').value = '';
+                toggleDrawer('hold-bill-modal', false);
+                refreshHeldBillsDrawer();
+                return true;
+            }
+
+            function bindHeldBillUi() {
+                document.getElementById('hold-bill-button')?.addEventListener('click', function() {
+                    if (window.PosCart.isEmpty()) {
+                        return;
+                    }
+                    toggleDrawer('hold-bill-modal', true);
+                });
+
+                document.getElementById('held-bills-button')?.addEventListener('click', async function() {
+                    await refreshHeldBillsDrawer();
+                    toggleDrawer('held-bills-drawer', true);
+                });
+
+                document.getElementById('confirm-hold-bill')?.addEventListener('click', holdCurrentBill);
+                document.querySelectorAll('[data-close-hold-modal]').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        toggleDrawer('hold-bill-modal', false);
+                    });
+                });
+                document.getElementById('close-held-bills-drawer')?.addEventListener('click', function() {
+                    toggleDrawer('held-bills-drawer', false);
+                });
+                document.getElementById('held-bills-backdrop')?.addEventListener('click', function() {
+                    toggleDrawer('held-bills-drawer', false);
+                });
+
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'F9') {
+                        event.preventDefault();
+                        if (!window.PosCart.isEmpty()) {
+                            toggleDrawer('hold-bill-modal', true);
+                        }
+                    }
+                });
+            }
+
+            let layoutState = window.PosLayoutTools
+                ? window.PosLayoutTools.normalize(layoutConfig.settings, layoutConfig.settings?.preset || 'classic')
+                : layoutConfig.settings;
+
+            function applyLayoutState() {
+                const cssState = window.PosLayoutTools
+                    ? window.PosLayoutTools.toCssState(layoutState)
+                    : { state: layoutState, vars: {}, classes: {} };
+
+                posGrid.classList.add('pos-layout-ready');
+                Object.entries(cssState.vars || {}).forEach(function(entry) {
+                    posGrid.style.setProperty(entry[0], entry[1]);
+                });
+                posGrid.dataset.layoutPreset = cssState.state.preset;
+                posGrid.classList.toggle('layout-bill-first', !!cssState.classes.billFirst);
+                posGrid.classList.toggle('layout-summary-under', cssState.classes.summaryPosition === 'under');
+                posGrid.classList.toggle('layout-summary-hidden', cssState.classes.summaryPosition === 'hidden');
+                posGrid.classList.toggle('layout-compact', cssState.classes.density === 'compact');
+                posGrid.classList.toggle('layout-size-s', cssState.classes.cardSize === 's');
+                posGrid.classList.toggle('layout-size-l', cssState.classes.cardSize === 'l');
+                posGrid.classList.toggle('layout-size-xl', cssState.classes.cardSize === 'xl');
+                posGrid.classList.toggle('products-tall', !!cssState.classes.productsTall);
+                posGrid.classList.toggle('hide-product-images', !cssState.classes.showImages);
+                posGrid.classList.toggle('hide-stock', !cssState.classes.showStock);
+                posGrid.classList.toggle('hide-category-badge', !cssState.classes.showCategoryBadge);
+                posGrid.classList.toggle('hide-quick-actions', !cssState.classes.quickActions);
+                ['classic', 'focus', 'visual', 'cashier', 'custom'].forEach(function(name) {
+                    posGrid.classList.toggle('layout-preset-' + name, cssState.classes.preset === name);
+                });
+                posGrid.classList.remove('aspect-square', 'aspect-4-3', 'aspect-16-9', 'aspect-cover');
+                posGrid.classList.add('aspect-' + cssState.classes.imageAspect);
+                posGrid.classList.remove('price-badge-sm', 'price-badge-md', 'price-badge-lg');
+                posGrid.classList.add('price-badge-' + cssState.state.price_badge_size);
+                document.body.classList.toggle('pos-kiosk-active', !!cssState.classes.kioskMode);
+                document.getElementById('pos-category-bar')?.classList.toggle('is-visible', !!cssState.classes.categoryBar);
+                const toggleButton = document.getElementById('pos-view-toggle');
+                const toggleThumb = toggleButton ? toggleButton.querySelector('span') : null;
+                const isFocus = cssState.state.preset === 'focus';
+                if (toggleButton) {
+                    toggleButton.classList.toggle('bg-blue-600', isFocus);
+                    toggleButton.classList.toggle('bg-gray-300', !isFocus);
+                }
+                if (toggleThumb) {
+                    toggleThumb.classList.toggle('translate-x-6', isFocus);
+                    toggleThumb.classList.toggle('translate-x-1', !isFocus);
+                }
+                buildCategoryBar();
+            }
+
+            function syncLayoutInputs() {
+                document.querySelectorAll('[data-layout-input]').forEach(function(input) {
+                    const key = input.getAttribute('data-layout-input');
+                    if (input.type === 'checkbox') {
+                        input.checked = !!layoutState[key];
+                    } else {
+                        input.value = layoutState[key];
+                    }
+                });
+                const lock = document.getElementById('layout-lock-team');
+                if (lock) {
+                    lock.checked = !!teamLockState;
+                }
+            }
+
+            async function saveLayoutState() {
+                if (layoutConfig.locked && {{ auth()->user()->role === 'employee' ? 'true' : 'false' }}) {
+                    showToast(layoutConfig.messages.lockedForTeam, 'warning');
+                    return;
+                }
+
+                const response = await fetchJson(layoutConfig.routes.save, {
+                    method: 'POST',
+                    body: JSON.stringify({ settings: layoutState }),
+                });
+                layoutState = response.settings || layoutState;
+                applyLayoutState();
+                syncLayoutInputs();
+                showToast(layoutConfig.messages.layoutSaved, 'success');
+            }
+
+            async function resetLayoutState() {
+                const response = await fetchJson(layoutConfig.routes.reset, {
+                    method: 'DELETE',
+                });
+                layoutState = response.settings || layoutState;
+                applyLayoutState();
+                syncLayoutInputs();
+                showToast(layoutConfig.messages.layoutReset, 'success');
+            }
+
+            async function applyTeamLayoutState() {
+                const lock = document.getElementById('layout-lock-team');
+                await fetchJson(layoutConfig.routes.applyTeam, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        settings: layoutState,
+                        lock: !!lock?.checked,
+                    }),
+                });
+                teamLockState = !!lock?.checked;
+                showToast(layoutConfig.messages.layoutAppliedTeam, 'success');
+            }
+
+            function bindLayoutUi() {
+                document.getElementById('open-pos-layout-drawer')?.addEventListener('click', function() {
+                    if (layoutConfig.locked && {{ auth()->user()->role === 'employee' ? 'true' : 'false' }}) {
+                        showToast(layoutConfig.messages.lockedForTeam, 'warning');
+                        return;
+                    }
+                    syncLayoutInputs();
+                    toggleDrawer('pos-layout-drawer', true);
+                });
+
+                document.getElementById('close-pos-layout-drawer')?.addEventListener('click', function() {
+                    toggleDrawer('pos-layout-drawer', false);
+                });
+                document.getElementById('pos-layout-backdrop')?.addEventListener('click', function() {
+                    toggleDrawer('pos-layout-drawer', false);
+                });
+                const fullscreenButton = document.getElementById('pos-kiosk-fullscreen');
+                const refreshFullscreenLabel = function() {
+                    if (!fullscreenButton) return;
+                    fullscreenButton.textContent = document.fullscreenElement
+                        ? fullscreenButton.dataset.labelExit
+                        : fullscreenButton.dataset.labelEnter;
+                };
+                if (fullscreenButton && !document.documentElement.requestFullscreen) {
+                    fullscreenButton.remove();
+                }
+                fullscreenButton?.addEventListener('click', function() {
+                    const request = document.fullscreenElement
+                        ? document.exitFullscreen()
+                        : document.documentElement.requestFullscreen();
+                    Promise.resolve(request).catch(function() {});
+                });
+                document.addEventListener('fullscreenchange', refreshFullscreenLabel);
+
+                document.getElementById('pos-kiosk-exit')?.addEventListener('click', function() {
+                    layoutState = Object.assign({}, layoutState, { kiosk_mode: false });
+                    if (document.fullscreenElement) {
+                        Promise.resolve(document.exitFullscreen()).catch(function() {});
+                    }
+                    applyLayoutState();
+                    syncLayoutInputs();
+                    saveLayoutState().catch(function() {});
+                });
+
+                document.getElementById('pos-layout-save')?.addEventListener('click', saveLayoutState);
+                document.getElementById('pos-layout-reset')?.addEventListener('click', resetLayoutState);
+                document.getElementById('pos-layout-apply-team')?.addEventListener('click', applyTeamLayoutState);
+
+                document.querySelectorAll('.pos-preset').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        layoutState = window.PosLayoutTools
+                            ? window.PosLayoutTools.normalize({ preset: button.dataset.preset }, button.dataset.preset)
+                            : layoutState;
+                        syncLayoutInputs();
+                        applyLayoutState();
+                    });
+                });
+
+                document.querySelectorAll('[data-layout-input]').forEach(function(input) {
+                    const eventName = input.type === 'checkbox' ? 'change' : 'input';
+                    input.addEventListener(eventName, function() {
+                        const key = input.getAttribute('data-layout-input');
+                        layoutState[key] = input.type === 'checkbox' ? input.checked : input.value;
+                        layoutState.preset = 'custom';
+                        layoutState = window.PosLayoutTools
+                            ? window.PosLayoutTools.normalize(layoutState, 'custom')
+                            : layoutState;
+                        applyLayoutState();
+                    });
+                });
+
+                const splitter = document.getElementById('pos-grid-splitter-handle');
+                if (splitter) {
+                    let dragging = false;
+                    splitter.addEventListener('mousedown', function(event) {
+                        event.preventDefault();
+                        dragging = true;
+                        posGrid.classList.add('layout-dragging');
+                    });
+                    document.addEventListener('mouseup', function() {
+                        dragging = false;
+                        posGrid.classList.remove('layout-dragging');
+                    });
+                    document.addEventListener('mousemove', function(event) {
+                        if (!dragging || window.innerWidth < 1024) {
+                            return;
+                        }
+                        const rect = posGrid.getBoundingClientRect();
+                        const documentIsRtl = document.documentElement.getAttribute('dir') === 'rtl';
+                        const fromStart = documentIsRtl ? (rect.right - event.clientX) : (event.clientX - rect.left);
+                        const fromStartPercent = Math.round((fromStart / rect.width) * 100);
+                        const summaryWidth = layoutState.summary_position === 'side' ? 17 : 0;
+                        const nextValue = layoutState.bill_side === 'start'
+                            ? (100 - summaryWidth - fromStartPercent)
+                            : fromStartPercent;
+                        layoutState.products_width = Math.min(75, Math.max(25, nextValue));
+                        layoutState.splitter_position = layoutState.products_width;
+                        layoutState.preset = 'custom';
+                        layoutState = window.PosLayoutTools
+                            ? window.PosLayoutTools.normalize(layoutState, 'custom')
+                            : layoutState;
+                        syncLayoutInputs();
+                        applyLayoutState();
+                    });
+                }
+            }
+
+            function buildCategoryBar() {
+                const bar = document.getElementById('pos-category-bar');
+                if (!bar || !layoutState.category_bar) {
+                    if (bar) {
+                        bar.innerHTML = '';
+                    }
+                    return;
+                }
+
+                bar.innerHTML = '';
+                const items = [''].concat(categories || []);
+                items.forEach(function(category) {
+                    const button = document.createElement('button');
+                    const active = (currentCategory || '') === category;
+                    button.type = 'button';
+                    button.className = `whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold ${active ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`;
+                    button.textContent = category || '{{ __('dashboard.All Products') }}';
+                    button.addEventListener('click', function() {
+                        currentCategory = category || null;
+                        browseByCategory = false;
+                        renderFilteredProducts();
+                        buildCategoryBar();
+                    });
+                    bar.appendChild(button);
+                });
+            }
+
+            async function restoreHeldRecoveryFromStorage() {
+                const storedRecovery = sessionStorage.getItem(heldRecoveryStorageKey);
+                if (!storedRecovery && layoutConfig.heldRecoverySnapshot) {
+                    sessionStorage.setItem(heldRecoveryStorageKey, JSON.stringify(layoutConfig.heldRecoverySnapshot));
+                }
+                if (!sessionStorage.getItem(heldRecoveryIdStorageKey) && layoutConfig.heldRecoveryHeldBillId) {
+                    sessionStorage.setItem(heldRecoveryIdStorageKey, String(layoutConfig.heldRecoveryHeldBillId));
+                }
+
+                const recoveryJson = sessionStorage.getItem(heldRecoveryStorageKey);
+                if (!recoveryJson || !window.PosCart.isEmpty()) {
+                    return;
+                }
+
+                try {
+                    const snapshot = JSON.parse(recoveryJson);
+                    const restored = await restoreCart(snapshot);
+                    if (!restored) {
+                        return;
+                    }
+
+                    const recoveryId = sessionStorage.getItem(heldRecoveryIdStorageKey);
+                    if (await acknowledgeHeldRecovery(recoveryId)) {
+                        sessionStorage.removeItem(heldRecoveryIdStorageKey);
+                        showToast(layoutConfig.messages.recoveryFound, 'info');
+                    }
+                } catch (error) {
+                    showToast(layoutConfig.messages.restoreFailed, 'error');
+                }
+            }
+
+            ensureClientUuid(true);
+            attachUiWatchers();
+            bindHeldBillUi();
+            bindLayoutUi();
+            applyLayoutState();
+            updatePaymentUi();
+            refreshHeldBillsDrawer();
+            restoreHeldRecoveryFromStorage();
+            document.addEventListener('pos:cart-changed', function() {
+                const holdButton = document.getElementById('hold-bill-button');
+                if (holdButton) {
+                    holdButton.disabled = window.PosCart.isEmpty();
+                    holdButton.classList.toggle('opacity-50', holdButton.disabled);
+                }
+            });
+            dispatchCartChanged();
+        })();
+    </script>
+
+    @stack('pos-scripts')
+    @if ($isRestaurant)
+        @includeIf('pos.restaurant.scripts')
     @endif
 
 </x-app-layout>

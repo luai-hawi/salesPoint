@@ -2,91 +2,136 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PurchaseBill;
+use App\Models\Batch;
 use App\Models\Product;
 use App\Models\ProductBarcode;
 use App\Models\ProductImei;
+use App\Models\PurchaseBill;
 use App\Models\Supplier;
-use App\Models\Batch;
+use App\Models\SupplierPayment;
+use App\Services\SupplierLedger;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseBillController extends Controller
 {
     public function index(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('view_purchase_bills')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = $request->user();
+        $this->ensurePermission($user, 'view_purchase_bills');
+        $ownerId = $this->ownerId($user);
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $query = PurchaseBill::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->with(['supplier', 'creator', 'payments'])
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('id');
 
-        $query = PurchaseBill::where('user_id', $ownerId)
-            ->with(['supplier', 'creator', 'products']);
-
-        // Date filter
         if ($request->filled('date')) {
-            $query->whereDate('purchase_date', $request->date);
+            $query->whereDate('purchase_date', $request->string('date'));
         }
-
-        // Date range filter
         if ($request->filled('date_from')) {
-            $query->whereDate('purchase_date', '>=', $request->date_from);
+            $query->whereDate('purchase_date', '>=', $request->string('date_from'));
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('purchase_date', '<=', $request->date_to);
+            $query->whereDate('purchase_date', '<=', $request->string('date_to'));
         }
-
-        // Supplier filter
         if ($request->filled('supplier_id')) {
-            $query->where('supplier_id', $request->supplier_id);
+            $query->where('supplier_id', $request->integer('supplier_id'));
         }
-
-        // Search filter
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('reference_number', 'like', "%{$search}%")
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($inner) use ($search) {
+                $inner->where('reference_number', 'like', "%{$search}%")
                     ->orWhere('notes', 'like', "%{$search}%")
                     ->orWhere('id', 'like', "%{$search}%")
-                    ->orWhereHas('supplier', function ($sq) use ($search) {
-                        $sq->where('name', 'like', "%{$search}%");
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where('name', 'like', "%{$search}%");
                     });
             });
         }
 
-        $bills = $query->orderBy('purchase_date', 'desc')->paginate(20);
+        $paymentStatus = $request->string('payment_status')->toString();
+        if ($paymentStatus !== '') {
+            $matchingBills = (clone $query)
+                ->select(['purchase_bills.id', 'purchase_bills.user_id', 'purchase_bills.supplier_id', 'purchase_bills.total_amount', 'purchase_bills.purchase_date'])
+                ->get();
+            $summaries = SupplierLedger::summariesForBills($matchingBills);
+            $filteredBills = $matchingBills->filter(function (PurchaseBill $bill) use ($paymentStatus, $summaries) {
+                return ($summaries[$bill->id]['status'] ?? null) === $paymentStatus;
+            })->values();
 
-        // Get suppliers for filter dropdown
-        $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
+            $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+            $perPage = 25;
+            $pageIds = $filteredBills->slice(($currentPage - 1) * $perPage, $perPage)->pluck('id')->all();
+            $pageItems = PurchaseBill::withoutGlobalScopes()
+                ->where('user_id', $ownerId)
+                ->with(['supplier', 'creator', 'payments'])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(fn (PurchaseBill $bill) => array_search($bill->id, $pageIds, true))
+                ->values();
 
-        // Calculate totals for current page results
-        $totalAmount = $bills->sum('total_amount');
+            $bills = new \Illuminate\Pagination\LengthAwarePaginator(
+                $pageItems,
+                $filteredBills->count(),
+                $perPage,
+                $currentPage,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
 
-        return view('purchase-bills.index', compact('bills', 'suppliers', 'totalAmount'));
+            $bills->getCollection()->transform(function (PurchaseBill $bill) use ($summaries) {
+                $bill->setAttribute('payables_summary', $summaries[$bill->id] ?? $this->summarizeBill($bill));
+
+                return $bill;
+            });
+        } else {
+            $bills = $query->paginate(25)->withQueryString();
+
+            $pageSummaries = SupplierLedger::summariesForBills($bills->getCollection());
+            $bills->getCollection()->transform(function (PurchaseBill $bill) use ($pageSummaries) {
+                $bill->setAttribute('payables_summary', $pageSummaries[$bill->id] ?? $this->summarizeBill($bill));
+
+                return $bill;
+            });
+        }
+
+        $suppliers = Supplier::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->orderBy('name')
+            ->get();
+
+        $totalAmount = $bills->getCollection()->sum(fn (PurchaseBill $bill) => (float) $bill->total_amount);
+        $dueAmount = $bills->getCollection()->sum(fn (PurchaseBill $bill) => (float) ($bill->payables_summary['due'] ?? 0));
+
+        return view('purchase-bills.index', compact('bills', 'suppliers', 'totalAmount', 'dueAmount'));
     }
 
     public function create(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('create_purchase_bills')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = $request->user();
+        $this->ensurePermission($user, 'create_purchase_bills');
+        $ownerId = $this->ownerId($user);
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $suppliers = Supplier::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where(function ($query) {
+                $query->whereNull('system_key')
+                    ->orWhere('system_key', '!=', SupplierLedger::WALK_IN_KEY);
+            })
+            ->orderBy('name')
+            ->get();
 
-        $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
-        $products = Product::where('user_id', $ownerId)->orderBy('name')->get();
+        $products = Product::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get();
 
-        // Handle duplication
         $duplicatedBill = null;
         if ($request->filled('duplicate')) {
-            $duplicatedBill = PurchaseBill::where('id', $request->duplicate)
+            $duplicatedBill = PurchaseBill::withoutGlobalScopes()
                 ->where('user_id', $ownerId)
                 ->with(['supplier', 'products'])
-                ->first();
+                ->find($request->integer('duplicate'));
         }
 
         return view('purchase-bills.create', compact('suppliers', 'products', 'duplicatedBill'));
@@ -94,264 +139,388 @@ class PurchaseBillController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        $this->ensurePermission($user, 'create_purchase_bills');
+        $ownerId = $this->ownerId($user);
+
+        $validated = $this->validateBillRequest($request, $ownerId);
+
         try {
-            Log::info('PurchaseBillController store request:', $request->all());
-
-            $user = auth()->user();
-            if ($user->role === 'employee' && !$user->hasPermission('create_purchase_bills')) {
-                abort(403, 'Unauthorized');
-            }
-
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-            $request->validate([
-                'supplier_id' => 'required|exists:suppliers,id,user_id,' . $ownerId,
-                'purchase_date' => 'required|date',
-                'reference_number' => 'nullable|string|max:255',
-                'notes' => 'nullable|string',
-                'product_ids' => 'required|array|min:1',
-                'product_ids.*' => 'required|exists:products,id,user_id,' . $ownerId,
-                'quantities' => 'required|array',
-                'quantities.*' => 'required|numeric|min:0.01',
-                'unit_costs' => 'required|array',
-                'unit_costs.*' => 'required|numeric|min:0',
-                'barcodes' => 'nullable|array',
-                'barcodes.*' => 'nullable|string',
-            ]);
-
-            DB::beginTransaction();
-
-            $purchaseBill = PurchaseBill::create([
-                'supplier_id' => $request->supplier_id,
-                'user_id' => $ownerId,
-                'purchase_date' => $request->purchase_date,
-                'reference_number' => $request->reference_number,
-                'notes' => $request->notes,
-                'total_amount' => 0, // Will be calculated
-                'created_by' => $user->id,
-            ]);
-
-            $totalAmount = 0;
-
-            foreach ($request->product_ids as $index => $productId) {
-                $quantity = (float) $request->quantities[$index];
-                $unitCost = (float) $request->unit_costs[$index];
-                $barcodes = $request->input("barcodes_{$productId}", []);
-                $totalCost = $quantity * $unitCost;
-
-                $totalAmount += $totalCost;
-
-                // Attach product to purchase bill with barcodes
-                $purchaseBill->products()->attach($productId, [
-                    'quantity' => $quantity,
-                    'unit_cost' => $unitCost,
-                    'total_cost' => $totalCost,
-                    'barcodes' => json_encode($barcodes),
-                ]);
-
-                // Add barcodes to product's barcode collection
-                if (!empty($barcodes)) {
-                    foreach ($barcodes as $barcode) {
-                        if (!empty(trim($barcode))) {
-                            $exists = ProductBarcode::where('product_id', $productId)
-                                ->where('barcode', trim($barcode))
-                                ->exists();
-
-                            if (!$exists) {
-                                ProductBarcode::create([
-                                    'product_id' => $productId,
-                                    'barcode' => trim($barcode),
-                                ]);
-                            }
-                        }
-                    }
-                }
-
-                // Handle IMEI codes for products that have has_imeis enabled
-                $imeiCodes = $request->input("imeis_{$productId}", []);
-                if (!empty($imeiCodes)) {
-                    foreach ($imeiCodes as $imeiCode) {
-                        $imeiCode = trim($imeiCode);
-                        if (empty($imeiCode)) continue;
-
-                        // Check for existing IMEI (skip duplicates silently in bulk purchase)
-                        $existingImei = ProductImei::where('user_id', $ownerId)
-                            ->where('imei', $imeiCode)
-                            ->first();
-
-                        if (!$existingImei) {
-                            ProductImei::create([
-                                'user_id' => $ownerId,
-                                'product_id' => $productId,
-                                'imei' => $imeiCode,
-                                'supplier_id' => $request->supplier_id,
-                                'purchase_bill_id' => $purchaseBill->id,
-                                'unit_cost' => $unitCost,
-                                'purchased_at' => $request->purchase_date,
-                            ]);
-                        }
-                    }
-                }
-
-                // Update product stock and average cost
-                $product = Product::where('id', $productId)
+            $purchaseBill = DB::transaction(function () use ($validated, $request, $user, $ownerId) {
+                $supplier = Supplier::withoutGlobalScopes()
                     ->where('user_id', $ownerId)
-                    ->firstOrFail();
+                    ->findOrFail((int) $validated['supplier_id']);
 
-                $this->addToStorage($product, $quantity, $unitCost, $ownerId);
-
-                Log::info('Added product to purchase bill:', [
-                    'product_id' => $productId,
-                    'added_quantity' => $quantity,
-                    'added_cost' => $unitCost,
-                    'new_quantity' => $product->fresh()->quantity,
-                    'new_avg_cost' => $product->fresh()->cost_price
+                $purchaseBill = PurchaseBill::create([
+                    'supplier_id' => $supplier->id,
+                    'user_id' => $ownerId,
+                    'purchase_date' => $validated['purchase_date'],
+                    'reference_number' => $validated['reference_number'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                    'total_amount' => 0,
+                    'created_by' => $user->id,
                 ]);
-            }
 
-            // Update total amount
-            $purchaseBill->total_amount = $totalAmount;
-            $purchaseBill->save();
+                $totalAmount = $this->syncBillProducts($purchaseBill, $request, $ownerId, false);
+                $purchaseBill->update(['total_amount' => $totalAmount]);
 
-            // Update supplier balance
-            $supplier = $purchaseBill->supplier;
-            $supplier->balance += $totalAmount;
-            $supplier->save();
+                SupplierLedger::charge($supplier, $totalAmount);
 
-            DB::commit();
+                $this->recordInitialPayment($purchaseBill, $supplier, $validated, $totalAmount);
 
-            Log::info('Purchase bill created successfully:', [
-                'bill_id' => $purchaseBill->id,
-                'total_amount' => $totalAmount
-            ]);
-
-            return redirect()->route('purchase-bills.index')
-                ->with('success', 'Purchase bill created successfully!');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            Log::error('Validation error in purchase bill creation:', $e->errors());
-            return redirect()->back()
-                ->withErrors($e->errors())
-                ->withInput();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error creating purchase bill:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to create purchase bill: ' . $e->getMessage()])
+                return $purchaseBill;
+            });
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()
+                ->withErrors(['error' => __('payables.flash.purchase_bill_create_failed')])
                 ->withInput();
         }
+
+        return redirect()
+            ->route('purchase-bills.show', $purchaseBill)
+            ->with('success', __('payables.flash.purchase_bill_created'));
     }
 
     public function show(PurchaseBill $purchaseBill)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('view_purchase_bills')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = request()->user();
+        $this->ensurePermission($user, 'view_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
 
-        $this->authorizePurchaseBill($purchaseBill);
+        $purchaseBill->load(['supplier', 'products', 'creator', 'payments']);
+        $summary = $this->summarizeBill($purchaseBill);
 
-        $purchaseBill->load(['supplier', 'products', 'creator']);
-
-        return view('purchase-bills.show', compact('purchaseBill'));
+        return view('purchase-bills.show', [
+            'purchaseBill' => $purchaseBill,
+            'summary' => $summary,
+            'printMode' => false,
+        ]);
     }
 
     public function edit(PurchaseBill $purchaseBill)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('edit_purchase_bills')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = request()->user();
+        $this->ensurePermission($user, 'edit_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+        $ownerId = $this->ownerId($user);
 
-        $this->authorizePurchaseBill($purchaseBill);
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $suppliers = Supplier::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where(function ($query) use ($purchaseBill) {
+                $query->whereNull('system_key')
+                    ->orWhere('system_key', '!=', SupplierLedger::WALK_IN_KEY)
+                    ->orWhere('id', $purchaseBill->supplier_id);
+            })
+            ->orderBy('name')
+            ->get();
 
-        $suppliers = Supplier::where('user_id', $ownerId)->orderBy('name')->get();
-        $products = Product::where('user_id', $ownerId)->orderBy('name')->get();
+        $products = Product::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get();
 
-        $purchaseBill->load(['supplier', 'products']);
+        $purchaseBill->load(['supplier', 'products', 'payments']);
+        $summary = $this->summarizeBill($purchaseBill);
 
-        return view('purchase-bills.edit', compact('purchaseBill', 'suppliers', 'products'));
+        return view('purchase-bills.edit', compact('purchaseBill', 'suppliers', 'products', 'summary'));
     }
 
     public function update(Request $request, PurchaseBill $purchaseBill)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('edit_purchase_bills')) {
-            abort(403, 'Unauthorized');
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+        $ownerId = $this->ownerId($user);
+
+        $validated = $this->validateBillRequest($request, $ownerId);
+        $purchaseBill->load(['products', 'payments', 'supplier']);
+
+        if ($purchaseBill->payments->isNotEmpty() && (int) $validated['supplier_id'] !== (int) $purchaseBill->supplier_id) {
+            throw ValidationException::withMessages([
+                'supplier_id' => __('payables.validation.cannot_change_bill_supplier_with_payments'),
+            ]);
         }
 
-        $this->authorizePurchaseBill($purchaseBill);
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $oldTotalAmount = round((float) $purchaseBill->total_amount, 2);
+        $newSupplierId = (int) $validated['supplier_id'];
 
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id,user_id,' . $ownerId,
+        try {
+            DB::transaction(function () use ($purchaseBill, $request, $validated, $ownerId, $oldTotalAmount, $newSupplierId) {
+                foreach ($purchaseBill->products as $product) {
+                    $this->removeFromStorage(
+                        $product,
+                        (float) $product->pivot->quantity,
+                        (float) $product->pivot->unit_cost,
+                        $ownerId
+                    );
+                }
+
+                $oldSupplier = Supplier::withoutGlobalScopes()
+                    ->where('user_id', $ownerId)
+                    ->findOrFail($purchaseBill->supplier_id);
+                SupplierLedger::adjustBalance($oldSupplier, -1 * $oldTotalAmount);
+
+                $purchaseBill->products()->detach();
+
+                $purchaseBill->fill([
+                    'supplier_id' => $newSupplierId,
+                    'purchase_date' => $validated['purchase_date'],
+                    'reference_number' => $validated['reference_number'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+                $purchaseBill->save();
+
+                $totalAmount = $this->syncBillProducts($purchaseBill, $request, $ownerId, true);
+                $purchaseBill->update(['total_amount' => $totalAmount]);
+
+                $newSupplier = Supplier::withoutGlobalScopes()
+                    ->where('user_id', $ownerId)
+                    ->findOrFail($newSupplierId);
+                SupplierLedger::charge($newSupplier, $totalAmount);
+            });
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()
+                ->withErrors(['error' => __('payables.flash.purchase_bill_update_failed')])
+                ->withInput();
+        }
+
+        $purchaseBill->refresh()->load('payments');
+        $summary = SupplierLedger::billSummary($purchaseBill);
+        $message = $summary['overpaid'] > 0
+            ? __('payables.flash.purchase_bill_updated_with_credit', ['amount' => number_format($summary['overpaid'], 2)])
+            : __('payables.flash.purchase_bill_updated');
+
+        return redirect()
+            ->route('purchase-bills.show', $purchaseBill)
+            ->with('success', $message);
+    }
+
+    public function destroy(PurchaseBill $purchaseBill)
+    {
+        $user = request()->user();
+        $this->ensurePermission($user, 'delete_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+        $ownerId = $this->ownerId($user);
+
+        if ($purchaseBill->payments()->exists()) {
+            return back()->with('error', __('payables.flash.purchase_bill_delete_blocked_with_payments'));
+        }
+
+        try {
+            DB::transaction(function () use ($purchaseBill, $ownerId) {
+                $purchaseBill->load('products');
+
+                foreach ($purchaseBill->products as $product) {
+                    $this->removeFromStorage(
+                        $product,
+                        (float) $product->pivot->quantity,
+                        (float) $product->pivot->unit_cost,
+                        $ownerId
+                    );
+                }
+
+                $supplier = Supplier::withoutGlobalScopes()
+                    ->where('user_id', $ownerId)
+                    ->findOrFail($purchaseBill->supplier_id);
+                SupplierLedger::adjustBalance($supplier, -1 * round((float) $purchaseBill->total_amount, 2));
+
+                $purchaseBill->delete();
+            });
+        } catch (\Throwable $e) {
+            return back()->with('error', __('payables.flash.purchase_bill_delete_failed'));
+        }
+
+        return redirect()
+            ->route('purchase-bills.index')
+            ->with('success', __('payables.flash.purchase_bill_deleted'));
+    }
+
+    public function print(PurchaseBill $purchaseBill)
+    {
+        $user = request()->user();
+        $this->ensurePermission($user, 'view_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+
+        $purchaseBill->load(['supplier', 'products', 'creator', 'payments']);
+        $summary = $this->summarizeBill($purchaseBill);
+
+        return view('purchase-bills.print', compact('purchaseBill', 'summary'));
+    }
+
+    public function duplicate(PurchaseBill $purchaseBill)
+    {
+        $user = request()->user();
+        $this->ensurePermission($user, 'create_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+
+        return redirect()->route('purchase-bills.create', ['duplicate' => $purchaseBill->id]);
+    }
+
+    public function search(Request $request)
+    {
+        $user = $request->user();
+        $this->ensurePermission($user, 'view_purchase_bills');
+        $ownerId = $this->ownerId($user);
+        $search = trim((string) $request->query('search', ''));
+
+        $query = PurchaseBill::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->with('supplier')
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('id');
+
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('reference_number', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $bills = $query->limit(20)->get()->map(function (PurchaseBill $bill) {
+            return [
+                'id' => $bill->id,
+                'reference_number' => $bill->reference_number,
+                'purchase_date' => optional($bill->purchase_date)->format('Y-m-d'),
+                'total_amount' => (float) $bill->total_amount,
+                'supplier_name' => $bill->supplier?->name,
+                'label' => '#' . $bill->id . ' - ' . ($bill->supplier?->name ?? ''),
+            ];
+        });
+
+        return response()->json($bills);
+    }
+
+    public function storePayment(Request $request, PurchaseBill $purchaseBill)
+    {
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'type' => ['required', 'in:cash,card,transfer,check'],
+            'payment_date' => ['required', 'date'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $amount = round((float) $validated['amount'], 2);
+
+        DB::transaction(function () use ($purchaseBill, $validated, $amount, $user) {
+            $lockedBill = PurchaseBill::withoutGlobalScopes()
+                ->where('user_id', $this->ownerId($user))
+                ->whereKey($purchaseBill->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedSupplier = Supplier::withoutGlobalScopes()
+                ->where('user_id', $lockedBill->user_id)
+                ->whereKey($lockedBill->supplier_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $summary = SupplierLedger::billSummary($lockedBill);
+            if ($amount > $summary['due']) {
+                throw ValidationException::withMessages([
+                    'amount' => __('payables.validation.bill_payment_exceeds_remaining'),
+                ]);
+            }
+
+            SupplierLedger::pay(
+                $lockedSupplier,
+                $amount,
+                $validated['type'],
+                $validated['note'] ?? null,
+                Carbon::parse($validated['payment_date']),
+                $lockedBill,
+            );
+        });
+
+        return redirect()
+            ->route('purchase-bills.show', $purchaseBill)
+            ->with('success', __('payables.flash.bill_payment_recorded'));
+    }
+
+    public function destroyPayment(PurchaseBill $purchaseBill, SupplierPayment $supplierPayment)
+    {
+        $user = request()->user();
+        $this->ensurePermission($user, 'edit_purchase_bills');
+        $this->authorizePurchaseBill($purchaseBill, $user);
+
+        if ((int) $supplierPayment->purchase_bill_id !== (int) $purchaseBill->id || (int) $supplierPayment->user_id !== $this->ownerId($user)) {
+            abort(403);
+        }
+
+        SupplierLedger::deletePayment($supplierPayment);
+
+        return redirect()
+            ->route('purchase-bills.show', $purchaseBill)
+            ->with('success', __('payables.flash.bill_payment_deleted'));
+    }
+
+    private function validateBillRequest(Request $request, int $ownerId): array
+    {
+        return $request->validate([
+            'supplier_id' => 'required|integer|exists:suppliers,id,user_id,' . $ownerId,
             'purchase_date' => 'required|date',
             'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'product_ids' => 'required|array|min:1',
-            'product_ids.*' => 'required|exists:products,id,user_id,' . $ownerId,
+            'product_ids.*' => 'required|integer|exists:products,id,user_id,' . $ownerId,
             'quantities' => 'required|array',
             'quantities.*' => 'required|numeric|min:0.01',
             'unit_costs' => 'required|array',
             'unit_costs.*' => 'required|numeric|min:0',
-            'barcodes' => 'nullable|array',
-            'barcodes.*' => 'nullable|string',
+            'paid_now' => 'nullable|numeric|min:0',
+            'payment_method' => 'nullable|in:cash,card,transfer,check',
+            'payment_date' => 'nullable|date',
+            'payment_note' => 'nullable|string|max:500',
         ]);
+    }
 
-        DB::beginTransaction();
-
-        // Store old data for reversal
-        $oldTotalAmount = $purchaseBill->total_amount;
-        $oldSupplierId = $purchaseBill->supplier_id;
-        $oldProducts = $purchaseBill->products()->get();
-
-
-
-        // Step 1: Reverse all old stock changes (REMOVING FROM STORAGE - affects average cost)
-        foreach ($oldProducts as $product) {
-            $quantity = $product->pivot->quantity;
-            $unitCost = $product->pivot->unit_cost;
-
-            $this->removeFromStorage($product, $quantity, $unitCost, $ownerId);
+    private function recordInitialPayment(PurchaseBill $purchaseBill, Supplier $supplier, array $validated, float $totalAmount): void
+    {
+        $paidNow = round((float) ($validated['paid_now'] ?? 0), 2);
+        if ($paidNow <= 0) {
+            return;
         }
 
-        // Step 2: Update supplier balance from old bill
-        if ($oldSupplierId) {
-            $oldSupplier = Supplier::find($oldSupplierId);
-            if ($oldSupplier) {
-                $oldSupplier->balance -= $oldTotalAmount;
-                $oldSupplier->save();
-            }
+        if ($paidNow > $totalAmount) {
+            throw ValidationException::withMessages([
+                'paid_now' => __('payables.validation.initial_payment_exceeds_total'),
+            ]);
         }
 
-        // Step 3: Detach old products
-        $purchaseBill->products()->detach();
+        SupplierLedger::pay(
+            $supplier,
+            $paidNow,
+            $validated['payment_method'] ?? 'cash',
+            $validated['payment_note'] ?? null,
+            Carbon::parse($validated['payment_date'] ?? $validated['purchase_date']),
+            $purchaseBill,
+        );
+    }
 
-        // Step 4: Update purchase bill basic info
-        $purchaseBill->update([
-            'supplier_id' => $request->supplier_id,
-            'purchase_date' => $request->purchase_date,
-            'reference_number' => $request->reference_number,
-            'notes' => $request->notes,
-        ]);
+    private function summarizeBill(PurchaseBill $bill): array
+    {
+        return SupplierLedger::billSummary($bill);
+    }
 
-        $totalAmount = 0;
+    private function syncBillProducts(PurchaseBill $purchaseBill, Request $request, int $ownerId, bool $isUpdate): float
+    {
+        $totalAmount = 0.0;
 
-        // Step 5: Process new products (ADDING TO STORAGE - affects average cost)
-        foreach ($request->product_ids as $index => $productId) {
-            $quantity = (float) $request->quantities[$index];
-            $unitCost = (float) $request->unit_costs[$index];
-            $barcodes = $request->input("barcodes_{$productId}", []);
-            $totalCost = $quantity * $unitCost;
-
+        foreach ($request->input('product_ids', []) as $index => $productId) {
+            $quantity = round((float) $request->input("quantities.{$index}"), 2);
+            $unitCost = round((float) $request->input("unit_costs.{$index}"), 2);
+            $barcodes = array_values(array_filter($request->input("barcodes_{$productId}", []), fn ($value) => trim((string) $value) !== ''));
+            $totalCost = round($quantity * $unitCost, 2);
             $totalAmount += $totalCost;
-            // Attach product to purchase bill
+
             $purchaseBill->products()->attach($productId, [
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
@@ -359,131 +528,70 @@ class PurchaseBillController extends Controller
                 'barcodes' => json_encode($barcodes),
             ]);
 
+            foreach ($barcodes as $barcode) {
+                $barcode = trim((string) $barcode);
+                if ($barcode === '') {
+                    continue;
+                }
 
-            // Add new barcodes to product's barcode collection
-            if (!empty($barcodes)) {
-                foreach ($barcodes as $barcode) {
-                    if (!empty(trim($barcode))) {
-                        // Check if barcode already exists for this product
-                        $exists = ProductBarcode::where('product_id', $productId)
-                            ->where('barcode', trim($barcode))
-                            ->exists();
+                $exists = ProductBarcode::withoutGlobalScopes()
+                    ->where('product_id', $productId)
+                    ->where('barcode', $barcode)
+                    ->exists();
 
-                        if (!$exists) {
-                            ProductBarcode::create([
+                if (! $exists) {
+                    ProductBarcode::create([
+                        'product_id' => $productId,
+                        'barcode' => $barcode,
+                    ]);
+                }
+            }
+
+            if (! $isUpdate) {
+                $imeiCodes = $request->input("imeis_{$productId}", []);
+                if (is_array($imeiCodes)) {
+                    foreach ($imeiCodes as $imeiCode) {
+                        $imeiCode = trim((string) $imeiCode);
+                        if ($imeiCode === '') {
+                            continue;
+                        }
+
+                        $existingImei = ProductImei::withoutGlobalScopes()
+                            ->where('user_id', $ownerId)
+                            ->where('imei', $imeiCode)
+                            ->first();
+
+                        if (! $existingImei) {
+                            ProductImei::create([
+                                'user_id' => $ownerId,
                                 'product_id' => $productId,
-                                'barcode' => trim($barcode),
+                                'imei' => $imeiCode,
+                                'supplier_id' => $purchaseBill->supplier_id,
+                                'purchase_bill_id' => $purchaseBill->id,
+                                'unit_cost' => $unitCost,
+                                'purchased_at' => $purchaseBill->purchase_date,
                             ]);
                         }
                     }
                 }
             }
 
-
-            // Update product stock and average cost (ADDING TO STORAGE)
-            $product = Product::where('id', $productId)
+            $product = Product::withoutGlobalScopes()
                 ->where('user_id', $ownerId)
-                ->firstOrFail();
+                ->findOrFail($productId);
 
             $this->addToStorage($product, $quantity, $unitCost, $ownerId);
         }
 
-        // Step 6: Update total amount
-        $purchaseBill->total_amount = $totalAmount;
-        $purchaseBill->save();
-
-        // Step 7: Update new supplier balance
-        $newSupplier = Supplier::where('id', $request->supplier_id)
-            ->where('user_id', $ownerId)
-            ->firstOrFail();
-        $newSupplier->balance += $totalAmount;
-        $newSupplier->save();
-
-        DB::commit();
-
-        return redirect()->route('purchase-bills.show', $purchaseBill)
-            ->with('success', 'Purchase bill updated successfully!');
+        return round($totalAmount, 2);
     }
 
-    public function destroy(PurchaseBill $purchaseBill)
+    private function addToStorage($product, $quantity, $unitCost, $ownerId): void
     {
-        try {
-            Log::info('PurchaseBillController destroy request:', ['bill_id' => $purchaseBill->id]);
+        $oldQty = (float) $product->quantity;
+        $oldAvgCost = (float) $product->cost_price;
 
-            $user = auth()->user();
-            if ($user->role === 'employee' && !$user->hasPermission('delete_purchase_bills')) {
-                abort(403, 'Unauthorized');
-            }
-
-            $this->authorizePurchaseBill($purchaseBill);
-
-            $user = auth()->user();
-            $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-            DB::beginTransaction();
-
-            // Reverse stock changes (REMOVING FROM STORAGE - affects average cost)
-            foreach ($purchaseBill->products as $product) {
-                $quantity = $product->pivot->quantity;
-                $unitCost = $product->pivot->unit_cost;
-
-                $this->removeFromStorage($product, $quantity, $unitCost, $ownerId);
-
-                Log::info('Reversed product from deleted purchase bill:', [
-                    'product_id' => $product->id,
-                    'removed_quantity' => $quantity,
-                    'removed_cost' => $unitCost,
-                    'new_quantity' => $product->fresh()->quantity,
-                    'new_avg_cost' => $product->fresh()->cost_price
-                ]);
-            }
-
-            // Update supplier balance
-            $supplier = $purchaseBill->supplier;
-            $supplier->balance -= $purchaseBill->total_amount;
-            $supplier->save();
-
-            // Store bill ID for logging
-            $billId = $purchaseBill->id;
-            $totalAmount = $purchaseBill->total_amount;
-
-            // Delete the purchase bill (cascade will handle products)
-            $purchaseBill->delete();
-
-            DB::commit();
-
-            Log::info('Purchase bill deleted successfully:', [
-                'bill_id' => $billId,
-                'reversed_amount' => $totalAmount
-            ]);
-
-            return redirect()->route('purchase-bills.index')
-                ->with('success', 'Purchase bill deleted successfully! All stock changes have been reversed.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error deleting purchase bill:', [
-                'bill_id' => $purchaseBill->id,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()
-                ->with('error', 'Failed to delete purchase bill: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Helper method to add products to storage (affects average cost)
-     * Used when: creating purchase bill, updating purchase bill (adding products)
-     */
-    private function addToStorage($product, $quantity, $unitCost, $ownerId)
-    {
-        $oldQty = $product->quantity;
-        $oldAvgCost = $product->cost_price;
-
-        // Update product quantity
         $product->quantity += $quantity;
-
-        // Update average cost price using weighted average (PURCHASE LOGIC)
         if ($oldQty <= 0) {
             $product->cost_price = $unitCost;
         } else {
@@ -493,55 +601,45 @@ class PurchaseBillController extends Controller
         $product->cost_price = round($product->cost_price, 2);
         $product->save();
 
-        // Create or update batch
-        $existingBatch = Batch::where('product_id', $product->id)
+        $existingBatch = Batch::withoutGlobalScopes()
+            ->where('product_id', $product->id)
             ->where('cost_price', $unitCost)
             ->where('user_id', $ownerId)
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at')
             ->first();
 
         if ($existingBatch) {
             $existingBatch->quantity += $quantity;
             $existingBatch->save();
-        } else {
-            Batch::create([
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'cost_price' => $unitCost,
-                'user_id' => $ownerId,
-            ]);
+
+            return;
         }
+
+        Batch::create([
+            'product_id' => $product->id,
+            'quantity' => $quantity,
+            'cost_price' => $unitCost,
+            'user_id' => $ownerId,
+        ]);
     }
 
-    /**
-     * Helper method to remove products from storage (affects average cost)
-     * Used when: updating purchase bill (removing products), deleting purchase bill
-     */
-    private function removeFromStorage($product, $quantity, $unitCost, $ownerId)
+    private function removeFromStorage($product, $quantity, $unitCost, $ownerId): void
     {
-        $previousQuantity = $product->quantity;
-        $previousAvgCost = $product->cost_price;
+        $previousQuantity = (float) $product->quantity;
+        $previousAvgCost = (float) $product->cost_price;
 
-        // Update product quantity (removing from storage)
         $product->quantity -= $quantity;
 
-        // Recalculate average cost when removing from storage (PURCHASE LOGIC)
         if ($product->quantity <= 0) {
             $product->cost_price = 0;
         } else {
-            // Calculate what the total cost was before this removal
             $totalCostBefore = $previousAvgCost * $previousQuantity;
-
-            // Calculate the cost being removed
             $removedTotalCost = $unitCost * $quantity;
-
-            // Calculate remaining cost and new average
             $remainingTotalCost = $totalCostBefore - $removedTotalCost;
 
             if ($remainingTotalCost > 0) {
                 $product->cost_price = $remainingTotalCost / $product->quantity;
             } else {
-                // Fallback to batch-based calculation
                 $batches = $product->batches()->where('quantity', '>', 0)->get();
                 if ($batches->count() > 0) {
                     $totalCost = 0;
@@ -560,31 +658,41 @@ class PurchaseBillController extends Controller
         $product->cost_price = round($product->cost_price, 2);
         $product->save();
 
-        // Remove from batches
         $batch = $product->batches()
             ->where('cost_price', $unitCost)
             ->where('user_id', $ownerId)
             ->first();
 
-        if ($batch) {
-            if ($batch->quantity <= $quantity) {
-                $batch->delete();
-            } else {
-                $batch->quantity -= $quantity;
-                $batch->save();
-            }
+        if (! $batch) {
+            return;
+        }
+
+        if ($batch->quantity <= $quantity) {
+            $batch->delete();
+
+            return;
+        }
+
+        $batch->quantity -= $quantity;
+        $batch->save();
+    }
+
+    private function authorizePurchaseBill(PurchaseBill $purchaseBill, $user): void
+    {
+        if ((int) $purchaseBill->user_id !== $this->ownerId($user)) {
+            abort(403);
         }
     }
 
-    /**
-     * Helper to ensure purchase bill belongs to the current user
-     */
-    private function authorizePurchaseBill(PurchaseBill $purchaseBill)
+    private function ensurePermission($user, string $permission): void
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        if ($purchaseBill->user_id !== $ownerId) {
-            abort(403, 'Unauthorized access to purchase bill.');
+        if ($user->role === 'employee' && ! $user->hasPermission($permission)) {
+            abort(403);
         }
+    }
+
+    private function ownerId($user): int
+    {
+        return (int) ($user->role === 'employee' ? $user->shop_owner_id : $user->id);
     }
 }

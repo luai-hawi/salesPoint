@@ -16,20 +16,23 @@
     // ── Configuration ─────────────────────────────────────────────────────
     const CONFIG = {
         dbName: 'sp_offline',
-        dbVersion: 2,
+        dbVersion: 3,
         stores: {
             bills: 'pending_bills',
             payments: 'pending_payments',
             installments: 'pending_installments',
+            heldBills: 'pending_held_bills',
         },
         syncUrl: '/offline/sync',
+        heldSyncUrl: '/pos/held',
         syncTag: 'sp-sync-bills',
-        probePath: '/?_sp_probe=',
+        probePath: '/up?_sp_probe=',
         connectivityInterval: 5000,
         probeTimeout: 5000,
     };
 
     const STORE_NAMES = Object.values(CONFIG.stores);
+    const LOCAL_HELD_BILL_LIMIT = 50;
 
     // ── State ──────────────────────────────────────────────────────────────
     let db = null;
@@ -70,6 +73,13 @@
                     store.createIndex('byUser', 'userId', { unique: false });
                     store.createIndex('byStatus', 'status', { unique: false });
                 }
+
+                // Held bills store
+                if (oldVersion < 3 && !database.objectStoreNames.contains(CONFIG.stores.heldBills)) {
+                    const store = database.createObjectStore(CONFIG.stores.heldBills, { keyPath: 'localId' });
+                    store.createIndex('byUser', 'userId', { unique: false });
+                    store.createIndex('byStatus', 'status', { unique: false });
+                }
             };
 
             request.onsuccess = (event) => resolve(event.target.result);
@@ -104,8 +114,10 @@
                 ...data,
                 localId,
                 local_id: data.local_id || localId,
+                client_uuid: data.client_uuid || localId,
+                operation_key: data.operation_key || data.client_uuid || data.local_id || localId,
                 userId,
-                status: 'pending',
+                status: data.status || 'pending',
                 savedAt: new Date().toISOString(),
             });
 
@@ -114,10 +126,48 @@
         });
     }
 
+    async function deleteRecord(storeName, localId) {
+        const database = await getDatabase();
+
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            store.delete(localId);
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    async function clearUserRecords(targetUserId = userId) {
+        if (!targetUserId) return;
+
+        const database = await getDatabase();
+        await Promise.all(STORE_NAMES.map((storeName) => new Promise((resolve, reject) => {
+            const transaction = database.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const index = store.index('byUser');
+            const request = index.getAllKeys(IDBKeyRange.only(targetUserId));
+
+            request.onsuccess = (event) => {
+                const keys = event.target.result || [];
+                keys.forEach((key) => store.delete(key));
+            };
+            request.onerror = (event) => reject(event.target.error);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (event) => reject(event.target.error);
+        })));
+    }
+
     /**
      * Get all pending records for the current user from a store.
      */
     async function getPendingRecords(storeName) {
+        const records = await getUserRecords(storeName);
+        return records.filter((record) => record.status === 'pending');
+    }
+
+    async function getUserRecords(storeName) {
         const database = await getDatabase();
 
         return new Promise((resolve, reject) => {
@@ -128,7 +178,7 @@
 
             request.onsuccess = (event) => {
                 const results = event.target.result || [];
-                resolve(results.filter((record) => record.status === 'pending'));
+                resolve(results);
             };
             request.onerror = (event) => reject(event.target.error);
         });
@@ -162,13 +212,14 @@
      * Get total count of pending records across all stores.
      */
     async function getTotalPendingCount() {
-        const [bills, payments, installments] = await Promise.all([
+        const [bills, payments, installments, heldBills] = await Promise.all([
             getPendingRecords(CONFIG.stores.bills),
             getPendingRecords(CONFIG.stores.payments),
             getPendingRecords(CONFIG.stores.installments),
+            getPendingRecords(CONFIG.stores.heldBills),
         ]);
 
-        return bills.length + payments.length + installments.length;
+        return bills.length + payments.length + installments.length + heldBills.length;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -177,6 +228,43 @@
         const timestamp = Date.now();
         const random = Math.random().toString(36).slice(2, 9);
         return `rec_${timestamp}_${random}`;
+    }
+
+    function ensureClientUuid(localId, clientUuid) {
+        return clientUuid || localId || generateLocalId();
+    }
+
+    function ensureOperationKey(record, prefix = 'op') {
+        return record.operation_key || record.client_uuid || record.local_id || record.localId || `${prefix}_${generateLocalId()}`;
+    }
+
+    async function assignBatchKey(recordsByStore) {
+        const existing = [];
+        Object.values(recordsByStore).forEach((records) => {
+            (records || []).forEach((record) => {
+                if (record.sync_batch_key) {
+                    existing.push(record.sync_batch_key);
+                }
+            });
+        });
+
+        const batchKey = existing[0] || `batch_${generateLocalId()}`;
+
+        await Promise.all(Object.entries(recordsByStore).flatMap(([storeName, records]) => (records || [])
+            .filter((record) => !record.sync_batch_key)
+            .map((record) => saveRecord(storeName, { ...record, sync_batch_key: batchKey }))));
+
+        return batchKey;
+    }
+
+    async function enforceHeldBillLimit() {
+        const heldBills = await getPendingRecords(CONFIG.stores.heldBills);
+        if (heldBills.length >= LOCAL_HELD_BILL_LIMIT) {
+            notify(translate('held_limit_reached', { count: LOCAL_HELD_BILL_LIMIT }), 'warning');
+            return false;
+        }
+
+        return true;
     }
 
     function translate(key, replacements) {
@@ -263,7 +351,7 @@
 
     /**
      * Probe the network to detect connectivity changes.
-     * Uses a HEAD request to bypass HTTP cache and service worker cache.
+     * Uses the health endpoint to bypass app page rendering and HTTP cache.
      */
     async function probeConnectivity() {
         let offline = !navigator.onLine;
@@ -274,7 +362,7 @@
                 const timeoutId = setTimeout(() => controller.abort(), CONFIG.probeTimeout);
 
                 await fetch(`${CONFIG.probePath}${Date.now()}`, {
-                    method: 'HEAD',
+                    method: 'GET',
                     cache: 'no-store',
                     signal: controller.signal,
                 });
@@ -321,9 +409,10 @@
     function extractBillData(form) {
         populateReturnCosts(form);
         const formData = new FormData(form);
+        const localId = ensureClientUuid(formData.get('client_uuid') || generateLocalId(), formData.get('client_uuid'));
 
         return {
-            localId: generateLocalId(),
+            localId: localId,
             product_ids: formData.getAll('product_ids[]').filter(Boolean),
             quantities: formData.getAll('quantities[]'),
             discounts: formData.getAll('discounts[]'),
@@ -337,12 +426,17 @@
             bill_date: formData.get('bill_date') || new Date().toISOString().slice(0, 10),
             is_damaged: !!(form.querySelector('#is_damaged') || { checked: false }).checked,
             is_returned: !!(form.querySelector('#is_returned') || { checked: false }).checked,
+            paid_amount: formData.get('paid_amount') || '0',
+            payment_method: formData.get('payment_method') || 'cash',
+            client_uuid: localId,
+            operation_key: localId,
         };
     }
 
     function extractBillDataFromFormData(formData) {
+        const localId = ensureClientUuid(formData.get('client_uuid') || generateLocalId(), formData.get('client_uuid'));
         return {
-            localId: generateLocalId(),
+            localId: localId,
             product_ids: formData.getAll('product_ids[]').filter(Boolean),
             quantities: formData.getAll('quantities[]'),
             discounts: formData.getAll('discounts[]'),
@@ -356,6 +450,10 @@
             bill_date: formData.get('bill_date') || new Date().toISOString().slice(0, 10),
             is_damaged: formData.get('is_damaged') === 'on' || formData.get('is_damaged') === '1',
             is_returned: formData.get('is_returned') === 'on' || formData.get('is_returned') === '1',
+            paid_amount: formData.get('paid_amount') || '0',
+            payment_method: formData.get('payment_method') || 'cash',
+            client_uuid: localId,
+            operation_key: localId,
         };
     }
 
@@ -367,13 +465,14 @@
     async function syncAll() {
         if (isSyncing || !navigator.onLine || !userId) return;
 
-        const [bills, payments, installments] = await Promise.all([
+        const [bills, payments, installments, heldBills] = await Promise.all([
             getPendingRecords(CONFIG.stores.bills),
             getPendingRecords(CONFIG.stores.payments),
             getPendingRecords(CONFIG.stores.installments),
+            getPendingRecords(CONFIG.stores.heldBills),
         ]);
 
-        if (!bills.length && !payments.length && !installments.length) return;
+        if (!bills.length && !payments.length && !installments.length && !heldBills.length) return;
 
         isSyncing = true;
         setSyncButtonLoading(true);
@@ -382,6 +481,12 @@
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
         try {
+            const batchKey = await assignBatchKey({
+                [CONFIG.stores.bills]: bills,
+                [CONFIG.stores.payments]: payments,
+                [CONFIG.stores.installments]: installments,
+            });
+
             const response = await fetch(CONFIG.syncUrl, {
                 method: 'POST',
                 headers: {
@@ -389,6 +494,7 @@
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-Idempotency-Key': batchKey,
                 },
                 body: JSON.stringify({
                     bills: bills.map(normalizeRecord),
@@ -438,17 +544,59 @@
                 }
             }
 
+            for (const heldBill of heldBills) {
+                const synced = await syncHeldBillRecord(heldBill, csrfToken);
+                if (synced) {
+                    syncedCount++;
+                } else {
+                    failedCount++;
+                }
+            }
+
             await updateSyncButton();
 
             if (syncedCount) {
                 notify(translate('synced_success', { count: syncedCount }), 'success');
+            }
+
+            async function syncHeldBillRecord(record, csrfToken) {
+                try {
+                    const response = await fetch(CONFIG.heldSyncUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-Idempotency-Key': ensureOperationKey(record, 'held'),
+                        },
+                        body: JSON.stringify({
+                            label: record.label || '',
+                            customer_id: record.customer_id || null,
+                            customer_name: record.customer_name || '',
+                            payload: record.payload,
+                            client_uuid: ensureClientUuid(record.local_id || record.localId, record.client_uuid),
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 409 || response.status === 422) {
+                            notify(translate('held_limit_reached', { count: LOCAL_HELD_BILL_LIMIT }), 'warning');
+                        }
+                        return false;
+                    }
+
+                    await deleteRecord(CONFIG.stores.heldBills, record.localId || record.local_id);
+                    return true;
+                } catch {
+                    return false;
+                }
             }
             if (failedCount) {
                 notify(translate('sync_partial_fail', { count: failedCount }), 'warning');
             }
 
         } catch (error) {
-            console.error('[SP Offline] sync error:', error);
             notify(translate('sync_failed'), 'error');
         } finally {
             isSyncing = false;
@@ -487,7 +635,6 @@
                 await updateSyncButton();
                 notify(translate('bill_saved_offline'), 'success');
             } catch (error) {
-                console.error('[SP Offline] bill save error:', error);
                 notify(translate('save_failed'), 'error');
             }
         }, { capture: true });
@@ -502,6 +649,8 @@
         window.fetch = async function (input, init) {
             const url = typeof input === 'string' ? input : (input?.url ?? String(input));
             const method = ((init?.method) || (typeof input !== 'string' ? input?.method : null) || 'GET').toUpperCase();
+            const nextInit = { ...(init || {}) };
+            const headers = new Headers(nextInit.headers || (typeof input !== 'string' ? input?.headers : undefined) || {});
 
             // For non-POST requests, just pass through and check for auth errors
             if (method !== 'POST') {
@@ -533,9 +682,27 @@
                 }
             }
 
+            if (isBill && nextInit.body instanceof FormData) {
+                const localId = ensureClientUuid(nextInit.body.get('client_uuid') || generateLocalId(), nextInit.body.get('client_uuid'));
+                nextInit.body.set('client_uuid', localId);
+                headers.set('X-Idempotency-Key', headers.get('X-Idempotency-Key') || localId);
+            }
+
+            if (isPayment) {
+                const paymentKey = headers.get('X-Idempotency-Key') || `pay_${generateLocalId()}`;
+                headers.set('X-Idempotency-Key', paymentKey);
+            }
+
+            if (isInstallment) {
+                const installmentKey = headers.get('X-Idempotency-Key') || `inst_${generateLocalId()}`;
+                headers.set('X-Idempotency-Key', installmentKey);
+            }
+
+            nextInit.headers = headers;
+
             // Try the real request first
             try {
-                const response = await originalFetch.apply(this, arguments);
+                const response = await originalFetch.call(this, input, nextInit);
                 if (response.status === 401 || response.status === 403) {
                     handleUnauthorized();
                 }
@@ -545,16 +712,16 @@
                 setOfflineState();
 
                 if (isPayment) {
-                    return handlePaymentOffline(url, init);
+                    return handlePaymentOffline(url, nextInit);
                 }
                 if (isInstallment) {
-                    return handleInstallmentOffline(init);
+                    return handleInstallmentOffline(nextInit);
                 }
                 if (isBill) {
-                    return handleBillOffline(init);
+                    return handleBillOffline(nextInit);
                 }
 
-                return originalFetch.apply(this, arguments);
+                return originalFetch.call(this, input, nextInit);
             }
         };
     }
@@ -570,10 +737,15 @@
         }
 
         const localId = `pay_${Date.now()}_${generateRandomSuffix()}`;
+        const operationKey = init?.headers instanceof Headers
+            ? (init.headers.get('X-Idempotency-Key') || `pay_${localId}`)
+            : ((init?.headers && (init.headers['X-Idempotency-Key'] || init.headers['x-idempotency-key'])) || `pay_${localId}`);
 
         try {
             await saveRecord(CONFIG.stores.payments, {
                 localId,
+                client_uuid: localId,
+                operation_key: operationKey,
                 customer_id: customerId,
                 amount: paymentData.amount,
                 type: paymentData.type || 'cash',
@@ -597,9 +769,12 @@
         const rawBody = init?.body;
         const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : {};
         const localId = `inst_${Date.now()}_${generateRandomSuffix()}`;
+        const operationKey = init?.headers instanceof Headers
+            ? (init.headers.get('X-Idempotency-Key') || `inst_${localId}`)
+            : ((init?.headers && (init.headers['X-Idempotency-Key'] || init.headers['x-idempotency-key'])) || `inst_${localId}`);
 
         try {
-            await saveRecord(CONFIG.stores.installments, { ...body, localId });
+            await saveRecord(CONFIG.stores.installments, { ...body, localId, client_uuid: localId, operation_key: operationKey });
             await updateSyncButton();
             notify(translate('installment_saved_offline'), 'success');
 
@@ -614,6 +789,8 @@
 
     async function handleBillOffline(init) {
         const formData = init.body instanceof FormData ? init.body : new FormData();
+        const localId = ensureClientUuid(formData.get('client_uuid') || generateLocalId(), formData.get('client_uuid'));
+        formData.set('client_uuid', localId);
         const billData = extractBillDataFromFormData(formData);
 
         try {
@@ -685,6 +862,73 @@
         return data.localId;
     };
 
+    window.spSaveLocalHeldBill = async function (payload) {
+        if (!await enforceHeldBillLimit()) {
+            return null;
+        }
+
+        const localId = payload.client_uuid || payload.local_id || generateLocalId();
+        await saveRecord(CONFIG.stores.heldBills, {
+            ...payload,
+            localId,
+            client_uuid: payload.client_uuid || localId,
+            operation_key: payload.operation_key || payload.client_uuid || localId,
+            local_only: true,
+        });
+        await updateSyncButton();
+        return localId;
+    };
+
+    window.spListLocalHeldBills = async function () {
+        const records = await getPendingRecords(CONFIG.stores.heldBills);
+        return records.map((record) => ({
+            local_id: record.local_id || record.localId,
+            client_uuid: record.client_uuid || record.local_id || record.localId,
+            label: record.label || '',
+            customer_name: record.customer_name || record.payload?.customer?.name || '',
+            items_count: record.payload?.rows?.length || 0,
+            total: record.payload?.rows?.reduce((sum, row) => sum + ((parseFloat(row.selling_price || 0) * parseFloat(row.quantity || 0)) || 0), 0) || 0,
+            created_at_human: translate('held_saved_offline') || 'Offline',
+            is_stale: false,
+            local_only: true,
+        }));
+    };
+
+    window.spTakeLocalHeldBill = async function (localId) {
+        const records = await getUserRecords(CONFIG.stores.heldBills);
+        const record = records.find((entry) => (entry.localId || entry.local_id) === localId || entry.client_uuid === localId);
+        if (!record) return null;
+        await deleteRecord(CONFIG.stores.heldBills, record.localId || record.local_id);
+        await updateSyncButton();
+        return record.payload || null;
+    };
+
+    window.spRenameLocalHeldBill = async function (localId, label) {
+        const records = await getUserRecords(CONFIG.stores.heldBills);
+        const record = records.find((entry) => (entry.localId || entry.local_id) === localId || entry.client_uuid === localId);
+        if (!record) return;
+        record.label = label;
+        await saveRecord(CONFIG.stores.heldBills, record);
+        await updateSyncButton();
+    };
+
+    window.spDeleteLocalHeldBill = async function (localId) {
+        const records = await getUserRecords(CONFIG.stores.heldBills);
+        const record = records.find((entry) => (entry.localId || entry.local_id) === localId || entry.client_uuid === localId);
+        if (!record) return;
+        await deleteRecord(CONFIG.stores.heldBills, record.localId || record.local_id);
+        await updateSyncButton();
+    };
+
+    window.spClearOfflineData = async function (targetUserId) {
+        try {
+            await clearUserRecords(targetUserId);
+            await updateSyncButton();
+        } catch {
+            // Ignore cleanup failures during logout/user switching.
+        }
+    };
+
     // ── Initialization ─────────────────────────────────────────────────────
 
     async function initialize() {
@@ -694,7 +938,6 @@
         try {
             await getDatabase();
         } catch (error) {
-            console.warn('[SP Offline] IndexedDB unavailable:', error);
             return;
         }
 

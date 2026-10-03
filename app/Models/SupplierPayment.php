@@ -12,8 +12,10 @@ class SupplierPayment extends Model
 
     protected $fillable = [
         'supplier_id',
+        'purchase_bill_id',
         'amount',
         'type',
+        'kind',
         'note',
         'payment_date',
         'user_id',
@@ -27,6 +29,11 @@ class SupplierPayment extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function purchaseBill()
+    {
+        return $this->belongsTo(PurchaseBill::class);
     }
 
     public function user()

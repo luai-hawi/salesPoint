@@ -1,522 +1,439 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('messages.Edit Supplier: ') }} {{ $supplier->name }}
-            </h2>
-            <div class="flex space-x-3">
-                <button type="button" onclick="openPrintModal()"
-                    class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
-                        </path>
-                    </svg>
-                    {{ __('messages.Print Report') }}
-                </button>
-                <a href="{{ route('suppliers.index') }}"
-                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    {{ __('messages.Back to Suppliers') }}
-                </a>
-            </div>
-        </div>
+        <x-ui.page-header :title="__('payables.titles.edit_supplier')" :subtitle="$supplier->name">
+            <a href="{{ route('suppliers.index') }}"
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                {{ __('payables.actions.back_to_suppliers') }}
+            </a>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Supplier Information -->
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('messages.Supplier Information') }}
-                        </h3>
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
-                        <form method="POST" action="{{ route('suppliers.update', $supplier) }}">
+            @php
+                $balance = (float) $supplier->balance;
+                $balanceTone = $balance > 0 ? 'red' : ($balance < 0 ? 'green' : 'gray');
+                $balanceLabel = $balance > 0 ? __('payables.statuses.we_owe') : ($balance < 0 ? __('payables.statuses.supplier_owes') : __('payables.statuses.settled'));
+            @endphp
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <x-ui.stat :label="__('payables.fields.balance')" :value="'₪' . number_format(abs($balance), 2)" :hint="$balanceLabel" :tone="$balanceTone" />
+                <x-ui.stat :label="__('payables.sections.open_purchase_bills')" :value="$openBills->count()" />
+                <x-ui.stat :label="__('payables.sections.payments')" :value="$payments->total()" />
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <div class="space-y-6 xl:col-span-1">
+                    <x-ui.card :title="__('payables.sections.supplier_details')">
+                        <form method="POST" action="{{ route('suppliers.update', $supplier) }}" class="space-y-4">
                             @csrf
                             @method('PUT')
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="name"
-                                        class="block text-sm font-medium text-gray-700">{{ __('messages.Name') }}
-                                        *</label>
-                                    <input type="text" name="name" id="name" required
-                                        class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        value="{{ old('name', $supplier->name) }}">
-                                    @error('name')
-                                        <div class="mt-1 text-sm text-red-600">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="phone"
-                                            class="block text-sm font-medium text-gray-700">{{ __('messages.Phone') }}</label>
-                                        <input type="text" name="phone" id="phone"
-                                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            value="{{ old('phone', $supplier->phone) }}">
-                                    </div>
-
-                                    <div>
-                                        <label for="email"
-                                            class="block text-sm font-medium text-gray-700">{{ __('messages.Email') }}</label>
-                                        <input type="email" name="email" id="email"
-                                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            value="{{ old('email', $supplier->email) }}">
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label for="address"
-                                        class="block text-sm font-medium text-gray-700">{{ __('messages.Address') }}</label>
-                                    <textarea name="address" id="address" rows="3"
-                                        class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('address', $supplier->address) }}</textarea>
-                                </div>
-
-                                <div>
-                                    <label for="notes"
-                                        class="block text-sm font-medium text-gray-700">{{ __('messages.Notes') }}</label>
-                                    <textarea name="notes" id="notes" rows="3"
-                                        class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('notes', $supplier->notes) }}</textarea>
-                                </div>
+                            <div>
+                                <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.name') }}
+                                </label>
+                                <input id="name" name="name" type="text" required value="{{ old('name', $supplier->name) }}"
+                                    @disabled($supplier->system_key === \App\Services\SupplierLedger::WALK_IN_KEY)
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100">
                             </div>
 
-                            <div class="mt-6 flex justify-end space-x-3">
-                                <a href="{{ route('suppliers.index') }}"
-                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
-                                    {{ __('messages.Cancel') }}
-                                </a>
+                            <div>
+                                <label for="phone" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.phone') }}
+                                </label>
+                                <input id="phone" name="phone" type="text" value="{{ old('phone', $supplier->phone) }}"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            </div>
+
+                            <div>
+                                <label for="email" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.email') }}
+                                </label>
+                                <input id="email" name="email" type="email" value="{{ old('email', $supplier->email) }}"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            </div>
+
+                            <div>
+                                <label for="address" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.address') }}
+                                </label>
+                                <textarea id="address" name="address" rows="3"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">{{ old('address', $supplier->address) }}</textarea>
+                            </div>
+
+                            <div>
+                                <label for="notes" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.notes') }}
+                                </label>
+                                <textarea id="notes" name="notes" rows="4"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">{{ old('notes', $supplier->notes) }}</textarea>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                @if ($supplier->system_key === \App\Services\SupplierLedger::WALK_IN_KEY)
+                                    <x-ui.badge tone="blue">{{ __('payables.statuses.system_supplier') }}</x-ui.badge>
+                                @endif
                                 <button type="submit"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                                    {{ __('messages.Update Supplier') }}
+                                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                                    {{ __('payables.actions.save_supplier') }}
                                 </button>
                             </div>
                         </form>
+                    </x-ui.card>
 
-                        <!-- Balance Information -->
-                        <div class="mt-8 p-4 bg-gray-50 rounded-lg">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-medium text-gray-900">{{ __('messages.Current Balance') }}</h4>
-                                <span
-                                    class="px-3 py-1 text-sm font-semibold rounded-full
-                                    {{ $supplier->balance > 0
-                                        ? 'bg-red-100 text-red-800'
-                                        : ($supplier->balance < 0
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-gray-100 text-gray-800') }}">
-                                    ₪{{ number_format(abs($supplier->balance), 2) }}
-                                    {{ $supplier->balance > 0 ? '(' . __('messages.We Owe Them') . ')' : ($supplier->balance < 0 ? '(' . __('messages.They Owe Us') . ')' : '(' . __('messages.Even') . ')') }}
-                                </span>
+                    <x-ui.card :title="__('payables.sections.payment_block')">
+                        <form method="POST" action="{{ route('suppliers.payments.store', $supplier) }}" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label for="amount" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.amount') }}
+                                </label>
+                                <input id="amount" name="amount" type="number" step="0.01" required
+                                    value="{{ old('amount') }}"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                             </div>
-
-                            <!-- Quick Payment Form -->
-                            <form id="quick-payment-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                @csrf
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <input type="number" name="amount" step="0.01"
-                                        placeholder="{{ __('messages.Amount') }}"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <select name="type"
-                                        class="w-full border border-gray-300 rounded px-8 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="cash">{{ __('messages.Cash') }}</option>
-                                        <option value="card">{{ __('messages.Card') }}</option>
-                                        <option value="transfer">{{ __('messages.Transfer') }}</option>
-                                        <option value="check">{{ __('messages.Check') }}</option>
+                                    <label for="type" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.method') }}
+                                    </label>
+                                    <select id="type" name="type"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                        @foreach (['cash', 'card', 'transfer', 'check'] as $method)
+                                            <option value="{{ $method }}" @selected(old('type', 'cash') === $method)>
+                                                {{ __('payables.methods.' . $method) }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div>
-                                    <input type="date" name="payment_date" value="{{ date('Y-m-d') }}"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <label for="payment_date" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.payment_date') }}
+                                    </label>
+                                    <input id="payment_date" name="payment_date" type="date"
+                                        value="{{ old('payment_date', now()->toDateString()) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="purchase_bill_id" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.apply_to_bill') }}
+                                </label>
+                                <select id="purchase_bill_id" name="purchase_bill_id"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">{{ __('payables.placeholders.no_bill_link') }}</option>
+                                    @foreach ($openBills as $openBill)
+                                        <option value="{{ $openBill['bill']->id }}" @selected(old('purchase_bill_id') == $openBill['bill']->id)>
+                                            #{{ $openBill['bill']->id }} — ₪{{ number_format($openBill['due'], 2) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="note" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.payment_note') }}
+                                </label>
+                                <textarea id="note" name="note" rows="3"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">{{ old('note') }}</textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                                {{ __('payables.actions.record_payment') }}
+                            </button>
+                        </form>
+                    </x-ui.card>
+
+                    <x-ui.card :title="__('payables.sections.print_options')">
+                        <form method="GET" action="{{ route('suppliers.print-report', $supplier) }}" target="_blank"
+                            class="space-y-4">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="date_from" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.date_from') }}
+                                    </label>
+                                    <input id="date_from" name="date_from" type="date"
+                                        value="{{ request('date_from', now()->startOfMonth()->toDateString()) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <button type="submit"
-                                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded text-sm transition-colors">
-                                        {{ __('messages.Add Payment') }}
-                                    </button>
+                                    <label for="date_to" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.date_to') }}
+                                    </label>
+                                    <input id="date_to" name="date_to" type="date"
+                                        value="{{ request('date_to', now()->toDateString()) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                                 </div>
-                                <div class="md:col-span-4">
-                                    <input type="text" name="note"
-                                        placeholder="{{ __('messages.Payment note (optional)') }}"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                            </div>
+                            <div>
+                                <label for="report_type" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.report_type') }}
+                                </label>
+                                <select id="report_type" name="report_type"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                    @foreach (['both', 'bills', 'payments'] as $reportType)
+                                        <option value="{{ $reportType }}">
+                                            {{ __('payables.report_types.' . $reportType) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                {{ __('payables.actions.print_statement') }}
+                            </button>
+                        </form>
+                    </x-ui.card>
                 </div>
 
-                <!-- Recent Activity -->
-                <div class="space-y-6">
-                    <!-- Recent Purchase Bills -->
-                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-medium text-gray-900">{{ __('messages.Recent Purchase Bills') }}
-                            </h3>
-                        </div>
-                        <div class="p-6">
-                            @if ($recentBills->count() > 0)
-                                <div class="space-y-3">
-                                    @foreach ($recentBills as $bill)
-                                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div class="space-y-6 xl:col-span-2">
+                    <x-ui.card :title="__('payables.sections.open_purchase_bills')">
+                        @if ($openBills->isEmpty())
+                            <x-ui.empty :title="__('payables.messages.no_open_bills')" />
+                        @else
+                            <div class="space-y-3">
+                                @foreach ($openBills as $openBill)
+                                    <div class="rounded-xl border border-gray-200 p-4">
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                             <div>
-                                                <div class="font-medium text-gray-900">
-                                                    {{ __('messages.Bill #') }}{{ $bill->id }}</div>
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $bill->purchase_date->format('M d, Y') }}</div>
-                                                @if ($bill->reference_number)
-                                                    <div class="text-xs text-gray-400">{{ __('messages.Ref:') }}
-                                                        {{ $bill->reference_number }}</div>
-                                                @endif
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-medium text-gray-900">
-                                                    ₪{{ number_format($bill->total_amount, 2) }}</div>
-                                                <a href="{{ route('purchase-bills.show', $bill) }}"
-                                                    class="text-xs text-blue-600 hover:text-blue-800">{{ __('messages.View') }}</a>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                                <div class="mt-4">
-                                    <a href="{{ route('purchase-bills.index', ['supplier_id' => $supplier->id]) }}"
-                                        class="text-sm text-blue-600 hover:text-blue-800">
-                                        {{ __('messages.View all purchase bills →') }}
-                                    </a>
-                                </div>
-                            @else
-                                <div class="text-center text-gray-500">{{ __('messages.No purchase bills yet') }}
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Recent Payments -->
-                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-medium text-gray-900">{{ __('messages.Recent Payments') }}</h3>
-                        </div>
-                        <div class="p-6" id="recent-payments" style="max-height: 400px; overflow-y: auto;">
-                            @if ($recentPayments->count() > 0)
-                                <div class="space-y-3" id="payments-container">
-                                    @foreach ($recentPayments as $payment)
-                                        <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg"
-                                            data-payment-id="{{ $payment->id }}">
-                                            <div>
-                                                <div class="font-medium text-gray-900">
-                                                    ₪{{ number_format(abs($payment->amount), 2) }}</div>
-                                                <div class="text-sm text-gray-500 capitalize">{{ $payment->type }} •
-                                                    {{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <a href="{{ route('purchase-bills.show', $openBill['bill']) }}"
+                                                        class="font-semibold text-indigo-600 hover:text-indigo-800">
+                                                        #{{ $openBill['bill']->id }}
+                                                    </a>
+                                                    <x-ui.badge :tone="$openBill['status'] === 'paid' ? 'green' : ($openBill['status'] === 'partial' ? 'amber' : 'red')">
+                                                        {{ __('payables.statuses.' . $openBill['status']) }}
+                                                    </x-ui.badge>
+                                                    @if ($openBill['bill']->source === 'stock_intake')
+                                                        <x-ui.badge tone="blue">{{ __('payables.statuses.from_stock_entry') }}</x-ui.badge>
+                                                    @endif
                                                 </div>
-                                                @if ($payment->note)
-                                                    <div class="text-xs text-gray-400">{{ $payment->note }}</div>
-                                                @endif
+                                                <p class="mt-1 text-xs text-gray-500">
+                                                    {{ optional($openBill['bill']->purchase_date)->format('Y-m-d') }}
+                                                </p>
                                             </div>
-                                            <div class="text-right flex items-center gap-2">
-                                                <span
-                                                    class="px-2 py-1 text-xs font-semibold rounded-full {{ $payment->amount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                                                    {{ $payment->amount > 0 ? __('messages.We Paid') : __('messages.They Paid') }}
-                                                </span>
-                                                <button type="button"
-                                                    class="delete-payment-btn text-red-600 hover:text-red-800 p-1"
-                                                    data-payment-id="{{ $payment->id }}"
-                                                    title="{{ __('messages.Delete Payment') }}">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                                        </path>
-                                                    </svg>
-                                                </button>
+                                            <div class="grid grid-cols-3 gap-3 text-sm">
+                                                <div>
+                                                    <div class="text-xs text-gray-500">{{ __('payables.fields.amount') }}</div>
+                                                    <div class="font-semibold text-gray-900">₪{{ number_format($openBill['total'], 2) }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-500">{{ __('payables.actions.record_payment') }}</div>
+                                                    <div class="font-semibold text-gray-900">₪{{ number_format($openBill['paid'], 2) }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-500">{{ __('payables.fields.remaining') }}</div>
+                                                    <div class="font-semibold text-red-600">₪{{ number_format($openBill['due'], 2) }}</div>
+                                                </div>
                                             </div>
                                         </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </x-ui.card>
+
+                    <x-ui.card :title="__('payables.sections.recent_bills')">
+                        @if ($recentBills->isEmpty())
+                            <x-ui.empty :title="__('payables.messages.no_bills')" />
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.bill') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.purchase_date') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.amount') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.remaining') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.status') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach ($recentBills as $bill)
+                                            <tr>
+                                                <td class="px-4 py-3">
+                                                    <a href="{{ route('purchase-bills.show', $bill) }}"
+                                                        class="font-semibold text-indigo-600 hover:text-indigo-800">
+                                                        #{{ $bill->id }}
+                                                    </a>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-700">{{ optional($bill->purchase_date)->format('Y-m-d') }}</td>
+                                                <td class="px-4 py-3 text-gray-900">₪{{ number_format((float) $bill->total_amount, 2) }}</td>
+                                                <td class="px-4 py-3 text-gray-900">₪{{ number_format($bill->payables_summary['due'], 2) }}</td>
+                                                <td class="px-4 py-3">
+                                                    <x-ui.badge :tone="$bill->payables_summary['status'] === 'paid' ? 'green' : ($bill->payables_summary['status'] === 'partial' ? 'amber' : 'red')">
+                                                        {{ __('payables.statuses.' . $bill->payables_summary['status']) }}
+                                                    </x-ui.badge>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </x-ui.card>
+
+                    <x-ui.card :title="__('payables.sections.payment_history')">
+                        <form method="GET" action="{{ route('suppliers.edit', $supplier) }}"
+                            class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                            <div>
+                                <label for="payment_kind" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.type') }}
+                                </label>
+                                <select id="payment_kind" name="payment_kind"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">{{ __('payables.placeholders.all_payment_kinds') }}</option>
+                                    <option value="cash_movement" @selected(request('payment_kind') === 'cash_movement')>{{ __('payables.filters.cash_movement') }}</option>
+                                    @foreach (['payment', 'bill_payment', 'opening_balance', 'refund'] as $kind)
+                                        <option value="{{ $kind }}" @selected(request('payment_kind') === $kind)>
+                                            {{ __('payables.kinds.' . $kind) }}
+                                        </option>
                                     @endforeach
-                                </div>
-                                <div id="loading-more" class="hidden text-center py-4">
-                                    <svg class="w-6 h-6 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            @else
-                                <div class="text-center text-gray-500">{{ __('messages.No payments yet') }}</div>
-                            @endif
-                        </div>
-                    </div>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filter_date_from" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.date_from') }}
+                                </label>
+                                <input id="filter_date_from" name="date_from" type="date" value="{{ request('date_from') }}"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label for="filter_date_to" class="mb-1 block text-sm font-medium text-gray-700">
+                                    {{ __('payables.fields.date_to') }}
+                                </label>
+                                <input id="filter_date_to" name="date_to" type="date" value="{{ request('date_to') }}"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button type="submit"
+                                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                                    {{ __('payables.actions.apply') }}
+                                </button>
+                                <a href="{{ route('suppliers.edit', $supplier) }}"
+                                    class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                    {{ __('payables.actions.clear') }}
+                                </a>
+                            </div>
+                        </form>
+
+                        @if ($payments->count() === 0)
+                            <x-ui.empty :title="__('payables.messages.no_payments')" />
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.date') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.type') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.bill') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.amount') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.running_balance') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.notes') }}</th>
+                                            <th class="px-4 py-3 text-end">{{ __('payables.actions.delete') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach ($payments as $payment)
+                                            @php
+                                                $kindKey = match (\App\Services\SupplierLedger::kindForRow($payment)) {
+                                                    \App\Services\SupplierLedger::KIND_BILL_PAYMENT => 'bill_payment',
+                                                    \App\Services\SupplierLedger::KIND_OPENING => 'opening_balance',
+                                                    \App\Services\SupplierLedger::KIND_REFUND => 'refund',
+                                                    default => 'payment',
+                                                };
+                                                $amountTone = (float) $payment->amount >= 0 ? 'red' : 'green';
+                                            @endphp
+                                            <tr class="align-top">
+                                                <td class="px-4 py-3 text-gray-700">{{ optional($payment->payment_date)->format('Y-m-d') }}</td>
+                                                <td class="px-4 py-3">
+                                                    <x-ui.badge :tone="$kindKey === 'opening_balance' ? 'blue' : ($kindKey === 'refund' ? 'green' : 'indigo')">
+                                                        {{ __('payables.kinds.' . $kindKey) }}
+                                                    </x-ui.badge>
+                                                    <div class="mt-1 text-xs text-gray-500">{{ __('payables.methods.' . $payment->type) }}</div>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-700">
+                                                    @if ($payment->purchaseBill)
+                                                        <a href="{{ route('purchase-bills.show', $payment->purchaseBill) }}"
+                                                            class="font-semibold text-indigo-600 hover:text-indigo-800">
+                                                            #{{ $payment->purchaseBill->id }}
+                                                        </a>
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 font-semibold text-gray-900">
+                                                    <x-ui.badge :tone="$amountTone">₪{{ number_format(abs((float) $payment->amount), 2) }}</x-ui.badge>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-900">
+                                                    @if ($payment->running_balance !== null)
+                                                        ₪{{ number_format(abs((float) $payment->running_balance), 2) }}
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-600">{{ $payment->note ?: '—' }}</td>
+                                                <td class="px-4 py-3 text-end">
+                                                    <form method="POST" action="{{ route('supplier-payments.destroy', $payment) }}"
+                                                        onsubmit="return confirm('{{ __('payables.messages.confirm_delete_payment') }}')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                                                            {{ __('payables.actions.delete') }}
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="pt-4">
+                                {{ $payments->links() }}
+                            </div>
+                        @endif
+                    </x-ui.card>
+
+                    <x-ui.card :title="__('payables.sections.statement_preview')">
+                        @if ($statementPreview->isEmpty())
+                            <x-ui.empty :title="__('payables.messages.no_statement_rows')" />
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.date') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.description') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.reference') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.increase') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.statement.decrease') }}</th>
+                                            <th class="px-4 py-3 text-start">{{ __('payables.fields.running_balance') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach ($statementPreview as $row)
+                                            <tr>
+                                                <td class="px-4 py-3 text-gray-700">{{ $row['date']->format('Y-m-d') }}</td>
+                                                <td class="px-4 py-3 text-gray-900">{{ $row['description'] }}</td>
+                                                <td class="px-4 py-3 text-gray-700">{{ $row['reference'] ?: '—' }}</td>
+                                                <td class="px-4 py-3 text-green-700">
+                                                    {{ $row['increase'] > 0 ? '₪' . number_format($row['increase'], 2) : '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-red-700">
+                                                    {{ $row['decrease'] > 0 ? '₪' . number_format($row['decrease'], 2) : '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 font-semibold text-gray-900">₪{{ number_format(abs($row['running_balance']), 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </x-ui.card>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Handle quick payment form
-        document.getElementById('quick-payment-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalButtonContent = submitButton.innerHTML;
-
-            submitButton.disabled = true;
-            submitButton.innerHTML = '{{ __('messages.Processing...') }}';
-
-            try {
-                const response = await fetch(`/suppliers/{{ $supplier->id }}/payments`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content'),
-                        'Accept': 'application/json',
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-
-                    // Reset form
-                    this.reset();
-                    this.querySelector('input[name="payment_date"]').value = '{{ date('Y-m-d') }}';
-
-                    // Reload the page to show updated balance and payments
-                    window.location.reload();
-
-                } else {
-                    const errorData = await response.json();
-                    alert(errorData.message || '{{ __('messages.Failed to add payment') }}');
-                }
-            } catch (error) {
-                console.error('Payment error:', error);
-                alert('{{ __('messages.Failed to add payment') }}');
-            } finally {
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalButtonContent;
-            }
-        });
-
-        // Handle delete payment buttons
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.delete-payment-btn')) {
-                const button = e.target.closest('.delete-payment-btn');
-                const paymentId = button.dataset.paymentId;
-
-                if (confirm('{{ __('messages.Are you sure you want to delete this payment?') }}')) {
-                    deleteSupplierPayment(paymentId, button);
-                }
-            }
-        });
-
-        // Lazy loading for payments
-        let isLoadingMore = false;
-        let currentOffset = 10; // Start after the initial 10
-
-        const paymentsContainer = document.getElementById('recent-payments');
-        const paymentsList = document.getElementById('payments-container');
-        const loadingIndicator = document.getElementById('loading-more');
-
-        paymentsContainer.addEventListener('scroll', async function() {
-            if (isLoadingMore) return;
-
-            const scrollTop = paymentsContainer.scrollTop;
-            const scrollHeight = paymentsContainer.scrollHeight;
-            const clientHeight = paymentsContainer.clientHeight;
-
-            // Load more when scrolled to within 100px of bottom
-            if (scrollTop + clientHeight >= scrollHeight - 100) {
-                await loadMorePayments();
-            }
-        });
-
-        async function loadMorePayments() {
-            if (isLoadingMore) return;
-            isLoadingMore = true;
-
-            loadingIndicator.classList.remove('hidden');
-
-            try {
-                const response = await fetch(
-                    `/suppliers/{{ $supplier->id }}/more-payments?offset=${currentOffset}&limit=10`, {
-                        headers: {
-                            'Accept': 'application/json',
-                        }
-                    });
-
-                if (response.ok) {
-                    const data = await response.json();
-
-                    if (data.payments && data.payments.length > 0) {
-                        data.payments.forEach(payment => {
-                            const paymentHtml = `
-                                <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg" data-payment-id="${payment.id}">
-                                    <div>
-                                        <div class="font-medium text-gray-900">₪${Math.abs(payment.amount).toFixed(2)}</div>
-                                        <div class="text-sm text-gray-500 capitalize">${payment.type} • ${payment.payment_date}</div>
-                                        ${payment.note ? `<div class="text-xs text-gray-400">${payment.note}</div>` : ''}
-                                    </div>
-                                    <div class="text-right flex items-center gap-2">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${payment.amount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                            ${payment.amount > 0 ? '{{ __('messages.We Paid') }}' : '{{ __('messages.They Paid') }}'}
-                                        </span>
-                                        <button type="button" class="delete-payment-btn text-red-600 hover:text-red-800 p-1" data-payment-id="${payment.id}" title="{{ __('messages.Delete Payment') }}">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                            paymentsList.insertAdjacentHTML('beforeend', paymentHtml);
-                        });
-
-                        currentOffset += 10;
-
-                        if (!data.has_more) {
-                            // No more payments to load
-                            paymentsContainer.removeEventListener('scroll', loadMorePayments);
-                        }
-                    }
-                } else {
-                    console.error('Failed to load more payments');
-                }
-            } catch (error) {
-                console.error('Error loading more payments:', error);
-            } finally {
-                isLoadingMore = false;
-                loadingIndicator.classList.add('hidden');
-            }
-        }
-
-        async function deleteSupplierPayment(paymentId, button) {
-            const originalContent = button.innerHTML;
-            // Show loading state
-            button.disabled = true;
-            button.innerHTML =
-                '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-            try {
-                const response = await fetch(`/supplier-payments/${paymentId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content'),
-                        'Accept': 'application/json',
-                    }
-                });
-
-                if (response.ok) {
-                    // Remove the payment row with animation
-                    const paymentRow = button.closest('[data-payment-id]');
-                    paymentRow.style.transition = 'opacity 0.3s, transform 0.3s';
-                    paymentRow.style.opacity = '0';
-                    paymentRow.style.transform = 'translateX(-100%)';
-
-                    setTimeout(() => {
-                        paymentRow.remove();
-                        // Reload page to update balance
-                        window.location.reload();
-                    }, 300);
-
-                } else {
-                    const errorData = await response.json();
-                    alert(errorData.message || '{{ __('messages.Failed to delete payment') }}');
-                    button.disabled = false;
-                    button.innerHTML = originalContent;
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                alert('{{ __('messages.Failed to delete payment') }}');
-                button.disabled = false;
-                button.innerHTML = originalContent;
-            }
-        }
-
-        // Print modal functions
-        function openPrintModal() {
-            document.getElementById('print-modal').classList.remove('hidden');
-        }
-
-        function closePrintModal() {
-            document.getElementById('print-modal').classList.add('hidden');
-        }
-
-        function printReport() {
-            const form = document.getElementById('print-form');
-            const formData = new FormData(form);
-
-            const dateFrom = formData.get('date_from');
-            const dateTo = formData.get('date_to');
-            const reportType = formData.get('report_type');
-
-            if (!dateFrom || !dateTo) {
-                alert('{{ __('messages.Please select both dates') }}');
-                return;
-            }
-
-            // Open print window
-            const printUrl =
-                `/suppliers/{{ $supplier->id }}/print-report?date_from=${dateFrom}&date_to=${dateTo}&report_type=${reportType}`;
-            window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-            closePrintModal();
-        }
-    </script>
-
-    <!-- Print Report Modal -->
-    <div id="print-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">{{ __('messages.Print Supplier Report') }}</h3>
-                    <button onclick="closePrintModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <form id="print-form" onsubmit="event.preventDefault(); printReport();">
-                    <div class="space-y-4">
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.Report Type') }}</label>
-                            <select name="report_type"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="both">{{ __('messages.Purchase Bills & Payments') }}</option>
-                                <option value="bills">{{ __('messages.Purchase Bills Only') }}</option>
-                                <option value="payments">{{ __('messages.Payments Only') }}</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.From Date') }}</label>
-                            <input type="date" name="date_from" required
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.To Date') }}</label>
-                            <input type="date" name="date_to" required
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" onclick="closePrintModal()"
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
-                            {{ __('messages.Cancel') }}
-                        </button>
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                            {{ __('messages.Print') }}
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

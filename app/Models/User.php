@@ -3,10 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\PermissionCatalog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use App\Services\Admin\PlatformSettings;
 
 class User extends Authenticatable
 {
@@ -43,7 +46,98 @@ class User extends Authenticatable
         'last_payment_amount',
         'blocked_features',
         'entry_limit',
+        'entry_limit_mode',
+        'admin_notes',
+        'subscription_currency',
+        'disabled_from_role',
+        'disabled_at',
+        'disabled_reason',
+        'pos_settings',
+        'is_active',
+        'staff_portal_key',
+        'attendance_settings',
+        'timezone',
     ];
+
+    /**
+     * Roles that represent a business (tenant) owner account.
+     */
+    public const OWNER_ROLES = ['shop_owner', 'restaurant', 'merchant'];
+
+    /**
+     * The tenant (shop owner) id this user's data belongs to.
+     * Employees resolve to their owner, everyone else to themselves.
+     */
+    public function ownerId(): ?int
+    {
+        if ($this->role === 'employee') {
+            return $this->shop_owner_id ? (int) $this->shop_owner_id : null;
+        }
+
+        return $this->id ? (int) $this->id : null;
+    }
+
+    /**
+     * True for shop_owner / restaurant / merchant accounts (not employees, admins or disabled).
+     */
+    public function isOwnerAccount(): bool
+    {
+        return in_array($this->role, self::OWNER_ROLES, true);
+    }
+
+    public function isDisabledOwner(): bool
+    {
+        return $this->role === 'disabled';
+    }
+
+    /**
+     * True when this user (or the owner they work for) runs a restaurant account.
+     */
+    public function isRestaurantAccount(): bool
+    {
+        if ($this->role === 'restaurant') {
+            return true;
+        }
+
+        return $this->role === 'employee'
+            && $this->shop_owner_id
+            && optional($this->shopOwner)->role === 'restaurant';
+    }
+
+    /**
+     * Accept arrays for the JSON "permissions" column (legacy rows store a JSON string).
+     */
+    public function setPermissionsAttribute($value): void
+    {
+        if (is_array($value)) {
+            $value = json_encode(array_values(array_unique($value)));
+        }
+
+        $this->attributes['permissions'] = $value === [] ? null : $value;
+    }
+
+    /**
+     * Decode the POS layout preferences (null for accounts that never customised the POS).
+     */
+    public function getPosSettingsAttribute($value): ?array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    public function setPosSettingsAttribute($value): void
+    {
+        $this->attributes['pos_settings'] = is_array($value) ? json_encode($value) : $value;
+    }
 
 
     /**
@@ -100,6 +194,9 @@ class User extends Authenticatable
             'license_expires_at' => 'date',
             'visibility_settings' => 'array',
             'blocked_features' => 'array',
+            'disabled_at' => 'datetime',
+            'is_active' => 'boolean',
+            'attendance_settings' => 'array',
         ];
     }
 
@@ -128,7 +225,7 @@ class User extends Authenticatable
         if (!$this->isTempAccount() || !$this->temp_expires_at) {
             return false;
         }
-        return now()->greaterThan($this->temp_expires_at);
+        return now()->startOfDay()->gt($this->temp_expires_at->copy()->startOfDay());
     }
 
     /**
@@ -156,8 +253,8 @@ class User extends Authenticatable
         }
 
         if ($this->temp_expires_at) {
-            $daysLeft = now()->diffInDays($this->temp_expires_at, false);
-            if ($daysLeft <= 7 && $daysLeft > 0) {
+            $daysLeft = now()->startOfDay()->diffInDays($this->temp_expires_at->copy()->startOfDay(), false);
+            if ($daysLeft <= 7 && $daysLeft >= 0) {
                 return 'expiring_soon';
             }
             return 'active';
@@ -173,7 +270,7 @@ class User extends Authenticatable
     {
         return $query->where('account_type', 'temp')
             ->whereNotNull('temp_expires_at')
-            ->where('temp_expires_at', '<', now());
+            ->whereDate('temp_expires_at', '<', now()->toDateString());
     }
 
     /**
@@ -184,7 +281,7 @@ class User extends Authenticatable
         if ($this->account_type !== 'full' || !$this->license_expires_at) {
             return false;
         }
-        return now()->greaterThan($this->license_expires_at);
+        return now()->startOfDay()->gt($this->license_expires_at->copy()->startOfDay());
     }
 
     /**
@@ -195,7 +292,7 @@ class User extends Authenticatable
         if ($this->account_type !== 'full' || !$this->license_expires_at) {
             return false;
         }
-        $daysLeft = now()->diffInDays($this->license_expires_at, false);
+        $daysLeft = now()->startOfDay()->diffInDays($this->license_expires_at->copy()->startOfDay(), false);
         return $daysLeft >= 0 && $daysLeft <= 30;
     }
 
@@ -207,7 +304,7 @@ class User extends Authenticatable
         if ($this->account_type !== 'full' || !$this->license_expires_at) {
             return null;
         }
-        return (int) now()->diffInDays($this->license_expires_at, false);
+        return (int) now()->startOfDay()->diffInDays($this->license_expires_at->copy()->startOfDay(), false);
     }
 
     /**
@@ -217,7 +314,7 @@ class User extends Authenticatable
     {
         return $query->where('account_type', 'temp')
             ->whereNotNull('temp_expires_at')
-            ->where('temp_expires_at', '<')
+            ->whereDate('temp_expires_at', '<', now()->toDateString())
             ->where('role', 'disabled');
     }
 
@@ -278,6 +375,39 @@ class User extends Authenticatable
         return (int) min(100, round(($this->getEntryUsage() / $limit) * 100));
     }
 
+    public function getEntryRemaining(): ?int
+    {
+        $limit = $this->getEntryLimit();
+        if (! $limit) {
+            return null;
+        }
+
+        return max(0, $limit - $this->getEntryUsage());
+    }
+
+    public function subscriptionCurrency(): string
+    {
+        if ($this->subscription_currency) {
+            return $this->subscription_currency;
+        }
+
+        return app(PlatformSettings::class)->get('default_currency', 'ILS');
+    }
+
+    public function businessRole(): string
+    {
+        if ($this->role === 'disabled') {
+            return $this->disabled_from_role ?: 'shop_owner';
+        }
+
+        return $this->role;
+    }
+
+    public function isImpersonating(): bool
+    {
+        return session()->has('impersonator_id');
+    }
+
     // ── Relationships ─────────────────────────────────────────────────────
 
     public function employees()
@@ -288,6 +418,11 @@ class User extends Authenticatable
     public function shopOwner()
     {
         return $this->belongsTo(User::class, 'shop_owner_id');
+    }
+
+    public function subscriptionPayments()
+    {
+        return $this->hasMany(SubscriptionPayment::class, 'user_id');
     }
 
     /**
@@ -302,8 +437,7 @@ class User extends Authenticatable
 
         // For employees, check permissions array
         if ($this->role === 'employee' && $this->permissions) {
-            $permissions = json_decode($this->permissions, true);
-            return is_array($permissions) && in_array($permission, $permissions);
+            return in_array($permission, PermissionCatalog::normalize($this->getPermissions()), true);
         }
 
         return false;
@@ -327,5 +461,23 @@ class User extends Authenticatable
     {
         $this->permissions = json_encode(array_unique($permissions));
         $this->save();
+    }
+
+    public function revokeRememberedAccess(): void
+    {
+        DB::table('sessions')
+            ->where(function ($query) {
+                $query->where('user_id', $this->id);
+
+                if ($this->session_id) {
+                    $query->orWhere('id', $this->session_id);
+                }
+            })
+            ->delete();
+
+        $this->forceFill([
+            'session_id' => null,
+            'remember_token' => Str::random(60),
+        ])->save();
     }
 }

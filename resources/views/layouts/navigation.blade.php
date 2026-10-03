@@ -188,11 +188,7 @@
                 </div>
 
                 @php
-                    $expiredLicenseCount = \App\Models\User::where('account_type', 'full')
-                        ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
-                        ->whereNotNull('license_expires_at')
-                        ->where('license_expires_at', '<', now())
-                        ->count();
+                    $expiredLicenseCount = app(\App\Services\Admin\AccountStatus::class)->dueCount();
                     $ac = request()->routeIs('admin.shop-owners.expiring-licenses') ? $activeLink : $inactiveLink;
                 @endphp
                 <div @mouseenter="showTip($event, @js(__('navigation.License Monitor')))" @mouseleave="hideTip()"
@@ -223,6 +219,9 @@
                         </span>
                     </a>
                 </div>
+
+                {{-- Module entries (storage manager, audit log, platform settings, ...) --}}
+                @include('layouts.partials.nav-extra', ['section' => 'admin'])
             @else
                 {{-- ══ SHOP OWNER / EMPLOYEE ══════════════════════════════════════ --}}
 
@@ -549,7 +548,10 @@
                         Auth::user()->role === 'employee')
                     @if (auth()->user()->role !== 'employee' ||
                             auth()->user()->hasPermission('manage_employees') ||
-                            auth()->user()->hasPermission('manage_expenses') ||
+                            auth()->user()->hasPermission('view_expenses') ||
+                            auth()->user()->hasPermission('create_expenses') ||
+                            auth()->user()->hasPermission('edit_expenses') ||
+                            auth()->user()->hasPermission('delete_expenses') ||
                             auth()->user()->hasPermission('view_financial') ||
                             auth()->user()->hasPermission('manage_settings') ||
                             auth()->user()->hasPermission('view_expenses') ||
@@ -706,6 +708,11 @@
                         @endif
 
                     @endif
+                @endif
+
+                {{-- Module entries (kitchen, team, attendance, cash drawer, ...) --}}
+                @if (in_array(Auth::user()->role, ['shop_owner', 'restaurant', 'merchant', 'employee'], true))
+                    @include('layouts.partials.nav-extra', ['section' => 'shop'])
                 @endif
 
             @endif

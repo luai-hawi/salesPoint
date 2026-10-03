@@ -1,340 +1,163 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Compression & Cleanup</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px 0;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: #4CAF50;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        .button {
-            background-color: #007cba;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px 5px;
-            transition: background-color 0.3s;
-        }
-        .button:hover:not(:disabled) {
-            background-color: #005a87;
-        }
-        .button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .button.danger {
-            background-color: #dc3545;
-        }
-        .button.danger:hover:not(:disabled) {
-            background-color: #c82333;
-        }
-        .results {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            border-left: 4px solid #007cba;
-        }
-        .error {
-            color: #dc3545;
-            background-color: #f8d7da;
-            border-color: #dc3545;
-        }
-        .success {
-            color: #155724;
-            background-color: #d4edda;
-            border-color: #28a745;
-        }
-        .status {
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .log {
-            max-height: 300px;
-            overflow-y: auto;
-            background: #f1f1f1;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .stat-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-            border: 1px solid #dee2e6;
-        }
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #007cba;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🖼️ Image Compression & Cleanup Tool</h1>
-        <p>This tool will compress all product images and remove unused image files.</p>
-        
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number" id="compressed-count">0</div>
-                <div>Images Compressed</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="deleted-count">0</div>
-                <div>Files Deleted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="error-count">0</div>
-                <div>Errors</div>
-            </div>
-        </div>
+<x-app-layout>
+    <x-slot name="header">
+        <x-ui.page-header :title="__('admin_storage.legacy_page_title')" :subtitle="__('admin_storage.legacy_page_subtitle')" />
+    </x-slot>
 
-        <div class="progress-bar">
-            <div class="progress-fill" id="progress-fill"></div>
-        </div>
-        <div id="progress-text">Ready to start</div>
+    <div class="py-6" x-data="legacyCompression({
+        mutateUrl: @js($legacyCompressionUrl ?? url('/compress-and-cleanup-images')),
+        quickUrl: @js($legacyQuickUrl ?? url('/quick-compress-images')),
+        translations: @js([
+            'confirmCleanup' => __('admin_storage.cleanup.confirm_cleanup'),
+            'compressedFiles' => __('admin_storage.legacy.compressed_files', ['count' => '__COUNT__']),
+            'deletedFiles' => __('admin_storage.legacy.deleted_files', ['count' => '__COUNT__']),
+        ]),
+    })" x-init="reset()">
+        <div class="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
-        <div style="margin: 20px 0;">
-            <button class="button" id="start-compression" onclick="startCompression()">
-                🚀 Start Compression
-            </button>
-            <button class="button" id="quick-compress" onclick="quickCompress()">
-                ⚡ Quick Compress (5 products)
-            </button>
-            <button class="button danger" id="cleanup-only" onclick="cleanupOnly()">
-                🗑️ Cleanup Unused Files Only
-            </button>
-        </div>
+            <x-ui.card :title="__('admin_storage.legacy_page_title')">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('admin_storage.buttons.compress') }}</p>
+                        <p class="mt-2 text-2xl font-bold text-gray-900" x-text="compressed"></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('admin_storage.buttons.delete') }}</p>
+                        <p class="mt-2 text-2xl font-bold text-gray-900" x-text="deleted"></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('admin_storage.fields.errors') }}</p>
+                        <p class="mt-2 text-2xl font-bold text-red-600" x-text="errors.length"></p>
+                    </div>
+                </div>
 
-        <div id="results" class="results hidden">
-            <h3>Processing Log:</h3>
-            <div class="log" id="log"></div>
+                <div class="mt-6 h-3 overflow-hidden rounded-full bg-gray-200">
+                    <div class="h-3 rounded-full bg-indigo-600 transition-all" :style="`width: ${progress}%`"></div>
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-2">
+                    <button type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" @click="runFull()">
+                        {{ __('admin_storage.buttons.start_compression') }}
+                    </button>
+                    <button type="button" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50" @click="runQuick()">
+                        {{ __('admin_storage.buttons.quick_compress') }}
+                    </button>
+                    <button type="button" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" @click="cleanupOnly()">
+                        {{ __('admin_storage.buttons.cleanup_only') }}
+                    </button>
+                    <a href="{{ route('admin.storage.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                        {{ __('admin_storage.buttons.back_to_manager') }}
+                    </a>
+                </div>
+
+                <div class="mt-6 rounded-xl bg-gray-50 p-4">
+                    <ul class="max-h-72 space-y-2 overflow-y-auto text-sm text-gray-700">
+                        <template x-for="(line, index) in log" :key="index">
+                            <li x-text="line"></li>
+                        </template>
+                    </ul>
+                </div>
+            </x-ui.card>
         </div>
     </div>
 
-    <script>
-        let totalCompressed = 0;
-        let totalDeleted = 0;
-        let totalErrors = 0;
-        let isProcessing = false;
+    @push('scripts')
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('legacyCompression', (config) => ({
+                    compressed: 0,
+                    deleted: 0,
+                    errors: [],
+                    progress: 0,
+                    log: [],
+                    async ensureSp() {
+                        if (window.SP) {
+                            return window.SP;
+                        }
 
-        function updateStats() {
-            document.getElementById('compressed-count').textContent = totalCompressed;
-            document.getElementById('deleted-count').textContent = totalDeleted;
-            document.getElementById('error-count').textContent = totalErrors;
-        }
+                        await new Promise((resolve, reject) => {
+                            const startedAt = Date.now();
+                            const check = () => {
+                                if (window.SP) {
+                                    resolve(window.SP);
+                                    return;
+                                }
 
-        function log(message, type = 'info') {
-            const logDiv = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = `[${timestamp}] ${message}\n`;
-            logDiv.textContent += logEntry;
-            logDiv.scrollTop = logDiv.scrollHeight;
-            
-            document.getElementById('results').classList.remove('hidden');
-        }
+                                if (Date.now() - startedAt > 8000) {
+                                    reject(new Error('SP helpers failed to load.'));
+                                    return;
+                                }
 
-        function setProgress(percent, text) {
-            document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-text').textContent = text;
-        }
+                                window.setTimeout(check, 25);
+                            };
 
-        function setButtonsDisabled(disabled) {
-            document.getElementById('start-compression').disabled = disabled;
-            document.getElementById('quick-compress').disabled = disabled;
-            document.getElementById('cleanup-only').disabled = disabled;
-            isProcessing = disabled;
-        }
+                            check();
+                        });
 
-        async function startCompression() {
-            if (isProcessing) return;
-            
-            setButtonsDisabled(true);
-            log('🚀 Starting batch compression...', 'info');
-            setProgress(0, 'Initializing...');
-            
-            let offset = 0;
-            let hasMore = true;
-            
-            while (hasMore) {
-                try {
-                    const response = await fetch(`/compress-and-cleanup-images?step=compress&offset=${offset}&batch=10`);
-                    const data = await response.json();
-                    
-                    totalCompressed += data.compressed;
-                    totalErrors += data.errors.length;
-                    
-                    updateStats();
-                    
-                    if (data.progress) {
-                        setProgress(data.progress, `Processing images... ${data.progress}%`);
+                        return window.SP;
+                    },
+                    reset() {
+                        this.compressed = 0;
+                        this.deleted = 0;
+                        this.errors = [];
+                        this.progress = 0;
+                        this.log = [];
+                    },
+                    async runFull() {
+                        const sp = await this.ensureSp();
+                        const confirmed = await sp.confirm({
+                            title: @js(__('admin_storage.buttons.start_compression')),
+                            message: config.translations.confirmCleanup,
+                            confirmText: @js(__('admin_storage.buttons.start_compression')),
+                            danger: false,
+                        });
+                        if (!confirmed) return;
+                        this.reset();
+                        let offset = 0;
+                        while (true) {
+                            const data = await sp.fetchJson(config.mutateUrl, {
+                                method: 'POST',
+                                body: { step: 'compress', offset, batch: 10, confirm: true }
+                            });
+                            this.compressed += data.results.optimized;
+                            this.progress = data.progress;
+                            this.log.push(config.translations.compressedFiles.replace('__COUNT__', data.results.optimized));
+                            if (!data.hasMore) break;
+                            offset = data.nextOffset;
+                        }
+                        await this.cleanupOnly();
+                    },
+                    async runQuick() {
+                        const sp = await this.ensureSp();
+                        const confirmed = await sp.confirm({
+                            title: @js(__('admin_storage.buttons.quick_compress')),
+                            message: config.translations.confirmCleanup,
+                            confirmText: @js(__('admin_storage.buttons.quick_compress')),
+                            danger: false,
+                        });
+                        if (!confirmed) return;
+                        const data = await sp.fetchJson(config.quickUrl, { method: 'POST', body: {} });
+                        this.compressed += data.compressed;
+                        this.errors = this.errors.concat(data.errors || []);
+                    },
+                    async cleanupOnly() {
+                        const sp = await this.ensureSp();
+                        const confirmed = await sp.confirm({
+                            title: @js(__('admin_storage.buttons.cleanup_only')),
+                            message: config.translations.confirmCleanup,
+                            confirmText: @js(__('admin_storage.buttons.cleanup_only')),
+                            danger: true,
+                        });
+                        if (!confirmed) return;
+                        const data = await sp.fetchJson(config.mutateUrl, {
+                            method: 'POST',
+                            body: { step: 'cleanup', confirm: true }
+                        });
+                        this.deleted += data.deleted;
+                        this.log.push(config.translations.deletedFiles.replace('__COUNT__', data.deleted));
                     }
-                    
-                    if (data.compressed > 0) {
-                        log(`✅ Compressed ${data.compressed} images in this batch`);
-                    }
-                    
-                    if (data.errors.length > 0) {
-                        data.errors.forEach(error => log(`❌ ${error}`, 'error'));
-                    }
-                    
-                    hasMore = data.hasMore;
-                    offset = data.nextOffset;
-                    
-                    // Small delay to prevent overwhelming the server
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                } catch (error) {
-                    log(`❌ Network error: ${error.message}`, 'error');
-                    break;
-                }
-            }
-            
-            // Now cleanup unused files
-            log('🧹 Starting cleanup of unused files...');
-            setProgress(90, 'Cleaning up unused files...');
-            
-            try {
-                const response = await fetch('/compress-and-cleanup-images?step=cleanup');
-                const data = await response.json();
-                
-                totalDeleted += data.deleted;
-                totalErrors += data.errors.length;
-                
-                updateStats();
-                
-                if (data.deleted > 0) {
-                    log(`🗑️ Deleted ${data.deleted} unused files`);
-                    data.deleted_files.forEach(file => log(`   - ${file}`));
-                }
-                
-                if (data.errors.length > 0) {
-                    data.errors.forEach(error => log(`❌ ${error}`, 'error'));
-                }
-                
-            } catch (error) {
-                log(`❌ Cleanup error: ${error.message}`, 'error');
-            }
-            
-            setProgress(100, 'Complete!');
-            log('🎉 Process completed successfully!');
-            setButtonsDisabled(false);
-        }
-
-        async function quickCompress() {
-            if (isProcessing) return;
-            
-            setButtonsDisabled(true);
-            log('⚡ Starting quick compression (5 products)...', 'info');
-            setProgress(50, 'Quick compressing...');
-            
-            try {
-                const response = await fetch('/quick-compress-images');
-                const data = await response.json();
-                
-                totalCompressed += data.compressed;
-                totalErrors += data.errors.length;
-                
-                updateStats();
-                
-                log(`✅ Quick compressed ${data.compressed} images`);
-                
-                if (data.errors.length > 0) {
-                    data.errors.forEach(error => log(`❌ ${error}`, 'error'));
-                }
-                
-                setProgress(100, 'Quick compression complete!');
-                
-            } catch (error) {
-                log(`❌ Error: ${error.message}`, 'error');
-            }
-            
-            setButtonsDisabled(false);
-        }
-
-        async function cleanupOnly() {
-            if (isProcessing) return;
-            
-            if (!confirm('Are you sure you want to delete unused image files? This cannot be undone.')) {
-                return;
-            }
-            
-            setButtonsDisabled(true);
-            log('🗑️ Starting cleanup of unused files only...', 'info');
-            setProgress(50, 'Cleaning up...');
-            
-            try {
-                const response = await fetch('/compress-and-cleanup-images?step=cleanup');
-                const data = await response.json();
-                
-                totalDeleted += data.deleted;
-                totalErrors += data.errors.length;
-                
-                updateStats();
-                
-                if (data.deleted > 0) {
-                    log(`🗑️ Deleted ${data.deleted} unused files`);
-                    data.deleted_files.forEach(file => log(`   - ${file}`));
-                } else {
-                    log('ℹ️ No unused files found');
-                }
-                
-                if (data.errors.length > 0) {
-                    data.errors.forEach(error => log(`❌ ${error}`, 'error'));
-                }
-                
-                setProgress(100, 'Cleanup complete!');
-                
-            } catch (error) {
-                log(`❌ Error: ${error.message}`, 'error');
-            }
-            
-            setButtonsDisabled(false);
-        }
-
-        // Initialize
-        updateStats();
-    </script>
-</body>
-</html>
+                }));
+            });
+        </script>
+    @endpush
+</x-app-layout>

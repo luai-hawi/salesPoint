@@ -15,6 +15,8 @@ return [
     'pending_count'            => 'Pending: :count item(s) to sync',
     'payment_saved_offline'    => 'Payment saved offline. Will sync automatically when connected.',
     'installment_saved_offline' => 'Installment plan saved offline. Will sync when connected.',
+    'held_saved_offline'       => 'Saved offline',
+    'held_limit_reached'       => 'You can keep up to :count offline held bills on this device. Sync or remove one first.',
     'syncing'                  => 'Syncing pending items with server...',
     'synced_success'           => ':count item(s) synced successfully!',
     'sync_partial_fail'        => ':count item(s) could not be synced and need attention.',

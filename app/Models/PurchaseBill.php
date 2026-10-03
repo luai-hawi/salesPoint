@@ -18,6 +18,7 @@ class PurchaseBill extends Model
         'purchase_date',
         'user_id',
         'created_by',
+        'source',
     ];
 
     protected $casts = [
@@ -50,5 +51,13 @@ class PurchaseBill extends Model
         return $this->belongsToMany(Product::class, 'purchase_bill_product')
             ->withPivot('quantity', 'unit_cost', 'total_cost', 'barcodes')
             ->withTimestamps();
+    }
+
+    /**
+     * Supplier payments linked to this purchase bill.
+     */
+    public function payments()
+    {
+        return $this->hasMany(SupplierPayment::class, 'purchase_bill_id');
     }
 }

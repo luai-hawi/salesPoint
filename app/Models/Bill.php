@@ -18,6 +18,8 @@ class Bill extends Model
         'created_by', // New field to store the creator's ID
         'is_damaged',
         'is_returned',
+        'payment_method',
+        'client_uuid',
     ];
 
     public function products()
@@ -34,5 +36,13 @@ class Bill extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Ledger rows (charge + payments) belonging to this bill.
+     */
+    public function ledgerRows()
+    {
+        return $this->hasMany(CustomerPayment::class, 'bill_id');
     }
 }

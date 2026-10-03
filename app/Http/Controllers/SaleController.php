@@ -7,6 +7,7 @@ use App\Models\SaleRule;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -24,18 +25,39 @@ class SaleController extends Controller
         }
 
         $ownerId = $this->ownerId();
-
-        $sales = Sale::where('user_id', $ownerId)
+        $salesQuery = Sale::where('user_id', $ownerId);
+        $sales = (clone $salesQuery)
             ->with(['rules.product'])
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate(25)
+            ->withQueryString();
 
         $products = Product::where('user_id', $ownerId)
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'selling_price']);
 
-        return view('sales.index', compact('sales', 'products'));
+        $today = now()->toDateString();
+        $stats = [
+            'total' => (clone $salesQuery)->count(),
+            'active' => (clone $salesQuery)
+                ->where('is_active', true)
+                ->where(fn ($query) => $query->whereNull('start_date')->orWhere('start_date', '<=', $today))
+                ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                ->count(),
+            'expired' => (clone $salesQuery)
+                ->where('is_active', true)
+                ->whereNotNull('end_date')
+                ->where('end_date', '<', $today)
+                ->count(),
+            'scheduled' => (clone $salesQuery)
+                ->where('is_active', true)
+                ->whereNotNull('start_date')
+                ->where('start_date', '>', $today)
+                ->count(),
+        ];
+
+        return view('sales.index', compact('sales', 'products', 'stats'));
     }
 
     public function store(Request $request)
@@ -59,6 +81,7 @@ class SaleController extends Controller
         ]);
 
         $ownerId = $this->ownerId();
+        $this->ensureProductsBelongToOwner($data['rules'] ?? [], $ownerId);
 
         DB::transaction(function () use ($data, $ownerId, $request) {
             $sale = Sale::create([
@@ -115,6 +138,7 @@ class SaleController extends Controller
         ]);
 
         $ownerId = $this->ownerId();
+        $this->ensureProductsBelongToOwner($data['rules'] ?? [], $ownerId);
 
         DB::transaction(function () use ($sale, $data, $ownerId, $request) {
             $sale->update([
@@ -222,6 +246,36 @@ class SaleController extends Controller
     {
         if ($sale->user_id !== $this->ownerId()) {
             abort(403);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rules
+     */
+    private function ensureProductsBelongToOwner(array $rules, int $ownerId): void
+    {
+        $productIds = collect($rules)
+            ->pluck('product_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($productIds->isEmpty()) {
+            return;
+        }
+
+        $ownedProductIds = Product::query()
+            ->where('user_id', $ownerId)
+            ->whereIn('id', $productIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if (count($ownedProductIds) !== $productIds->count()) {
+            throw ValidationException::withMessages([
+                'rules' => __('sales.Invalid product selection'),
+            ]);
         }
     }
 }

@@ -69,4 +69,6 @@ return [
     'Sale updated successfully' => 'Sale updated successfully!',
     'Sale deleted successfully' => 'Sale deleted successfully!',
     'Confirm delete sale'       => 'Are you sure you want to delete this sale? This cannot be undone.',
+    'Invalid product selection' => 'One or more selected products do not belong to your shop.',
+    'No products found'         => 'No products found',
 ];

@@ -11,12 +11,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Register the language middleware to ensure proper localization
-        $middleware->append(\App\Http\Middleware\LanguageMiddleware::class);
+        $middleware->validateCsrfTokens(except: [
+            'staff/*/login',
+            'staff/*/logout',
+            'staff/*/punch',
+            'staff/*/webauthn/*',
+        ]);
 
-        // Apply session prevention globally to web routes
+        // Language + account checks run inside the web group (after the session is started),
+        // so controllers and flash messages already see the user's chosen locale.
         $middleware->web(append: [
+            \App\Http\Middleware\LanguageMiddleware::class,
             \App\Http\Middleware\PreventConcurrentSessions::class,
+            \App\Http\Middleware\EnsureAccountIsActive::class,
+            \App\Http\Middleware\IdempotentRequests::class,
         ]);
 
         // Named alias for the tier-feature gate middleware
@@ -27,5 +35,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             return redirect()->route('login')->withErrors(['session' => __('messages.page_expired')]);
+        });
+
+        $exceptions->render(function (\App\Exceptions\EntryLimitReached $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'resource' => $e->resourceKey,
+                    'limit' => $e->limit,
+                    'used' => $e->used,
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['entry_limit' => $e->getMessage()]);
         });
     })->create();

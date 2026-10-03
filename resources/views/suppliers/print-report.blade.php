@@ -1,335 +1,240 @@
 <!DOCTYPE html>
-<html lang="{{ app()->getLocale() }}">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('messages.Supplier Report') }} - {{ $supplier->name }}</title>
+    <title>{{ __('payables.titles.supplier_statement') }} - {{ $supplier->name }}</title>
     <style>
         body {
-            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
+            color: #1f2937;
             font-size: 12px;
-            line-height: 1.4;
-            color: #333;
-            margin: 0;
-            padding: 20px;
+            margin: 24px;
         }
 
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        .header,
+        .box {
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 8px;
         }
 
-        .header p {
-            margin: 5px 0;
-            font-size: 11px;
-        }
-
-        .supplier-info {
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-
-        .supplier-info h2 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #495057;
-        }
-
-        .info-grid {
+        .meta,
+        .summary {
             display: table;
             width: 100%;
         }
 
-        .info-row {
+        .meta-row,
+        .summary-row {
             display: table-row;
         }
 
-        .info-label {
+        .meta-label,
+        .summary-label,
+        .meta-value,
+        .summary-value {
             display: table-cell;
+            padding: 4px 0;
+        }
+
+        .meta-label,
+        .summary-label {
+            width: 160px;
             font-weight: bold;
-            padding: 3px 10px 3px 0;
-            width: 120px;
-        }
-
-        .info-value {
-            display: table-cell;
-            padding: 3px 0;
-        }
-
-        .section {
-            margin-bottom: 25px;
-        }
-
-        .section h3 {
-            font-size: 14px;
-            font-weight: bold;
-            color: #495057;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-top: 10px;
         }
 
         th,
         td {
-            border: 1px solid #dee2e6;
-            padding: 6px 8px;
-            text-align: left;
-            font-size: 11px;
+            border: 1px solid #d1d5db;
+            padding: 8px;
+            vertical-align: top;
         }
 
         th {
-            background-color: #f8f9fa;
-            font-weight: bold;
+            background: #f3f4f6;
             font-size: 11px;
+            text-transform: uppercase;
         }
 
-        .text-right {
-            text-align: right;
+        .text-end {
+            text-align: end;
         }
 
-        .text-center {
-            text-align: center;
-        }
-
-        .total-row {
-            background-color: #e9ecef;
-            font-weight: bold;
-        }
-
-        .summary {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-
-        .summary h4 {
-            margin: 0 0 10px 0;
-            font-size: 13px;
-            color: #495057;
-        }
-
-        .summary-grid {
-            display: table;
-            width: 100%;
-        }
-
-        .summary-row {
-            display: table-row;
-        }
-
-        .summary-label {
-            display: table-cell;
-            font-weight: bold;
-            padding: 3px 10px 3px 0;
-            width: 150px;
-        }
-
-        .summary-value {
-            display: table-cell;
-            padding: 3px 0;
-            font-weight: bold;
-        }
-
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 10px;
-            color: #6c757d;
-            border-top: 1px solid #dee2e6;
-            padding-top: 10px;
-        }
-
-        @media print {
-            body {
-                margin: 0;
-            }
-
-            .no-print {
-                display: none;
-            }
+        .muted {
+            color: #6b7280;
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>{{ __('messages.Supplier Report') }}</h1>
-        <p>{{ __('messages.Period') }}: {{ \Carbon\Carbon::parse($date_from)->format('M d, Y') }} -
-            {{ \Carbon\Carbon::parse($date_to)->format('M d, Y') }}</p>
-        <p>{{ __('messages.Generated on') }}: {{ $generated_at->format('M d, Y H:i') }} | {{ __('messages.By') }}:
-            {{ $generated_by }}</p>
+        <h1>{{ __('payables.statement.title') }}</h1>
+        <p class="muted">{{ $supplier->name }}</p>
     </div>
 
-    <div class="supplier-info">
-        <h2>{{ __('messages.Supplier Information') }}</h2>
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-label">{{ __('messages.Name') }}:</div>
-                <div class="info-value">{{ $supplier->name }}</div>
+    <div class="box">
+        <div class="meta">
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.date_from') }}</div>
+                <div class="meta-value">{{ \Carbon\Carbon::parse($date_from)->format('Y-m-d') }}</div>
             </div>
-            <div class="info-row">
-                <div class="info-label">{{ __('messages.Phone') }}:</div>
-                <div class="info-value">{{ $supplier->phone ?: '-' }}</div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.date_to') }}</div>
+                <div class="meta-value">{{ \Carbon\Carbon::parse($date_to)->format('Y-m-d') }}</div>
             </div>
-            <div class="info-row">
-                <div class="info-label">{{ __('messages.Email') }}:</div>
-                <div class="info-value">{{ $supplier->email ?: '-' }}</div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.phone') }}</div>
+                <div class="meta-value">{{ $supplier->phone ?: '—' }}</div>
             </div>
-            <div class="info-row">
-                <div class="info-label">{{ __('messages.Address') }}:</div>
-                <div class="info-value">{{ $supplier->address ?: '-' }}</div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.email') }}</div>
+                <div class="meta-value">{{ $supplier->email ?: '—' }}</div>
             </div>
-            <div class="info-row">
-                <div class="info-label">{{ __('messages.Current Balance') }}:</div>
-                <div class="info-value">₪{{ number_format(abs($supplier->balance), 2) }}
-                    <span
-                        style="font-size: 10px; color: {{ $supplier->balance > 0 ? '#dc3545' : ($supplier->balance < 0 ? '#28a745' : '#6c757d') }}">
-                        ({{ $supplier->balance > 0 ? __('messages.We Owe Them') : ($supplier->balance < 0 ? __('messages.They Owe Us') : __('messages.Even')) }})
-                    </span>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.balance') }}</div>
+                <div class="meta-value">₪{{ number_format(abs((float) $supplier->balance), 2) }}</div>
+            </div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.status') }}</div>
+                <div class="meta-value">
+                    {{ (float) $supplier->balance > 0 ? __('payables.statuses.we_owe') : ((float) $supplier->balance < 0 ? __('payables.statuses.supplier_owes') : __('payables.statuses.settled')) }}
                 </div>
+            </div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.report_type') }}</div>
+                <div class="meta-value">{{ __('payables.report_types.' . $report_type) }}</div>
+            </div>
+            <div class="meta-row">
+                <div class="meta-label">{{ __('payables.fields.created_by') }}</div>
+                <div class="meta-value">{{ $generated_by }}</div>
             </div>
         </div>
     </div>
 
-    @if (($report_type === 'both' || $report_type === 'bills') && isset($purchase_bills))
-        <div class="section">
-            <h3>{{ __('messages.Purchase Bills') }}</h3>
-            @if ($purchase_bills->count() > 0)
-                <table>
-                    <thead>
+    <div class="box">
+        <h2>{{ __('payables.statement.title') }}</h2>
+        @if ($statement_rows->isEmpty())
+            <p class="muted" style="margin-top: 8px;">{{ __('payables.messages.no_statement_rows') }}</p>
+        @else
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ __('payables.statement.date') }}</th>
+                        <th>{{ __('payables.statement.description') }}</th>
+                        <th>{{ __('payables.statement.reference') }}</th>
+                        <th>{{ __('payables.statement.increase') }}</th>
+                        <th>{{ __('payables.statement.decrease') }}</th>
+                        <th>{{ __('payables.fields.running_balance') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($statement_rows as $row)
                         <tr>
-                            <th>{{ __('messages.Bill #') }}</th>
-                            <th>{{ __('messages.Date') }}</th>
-                            <th>{{ __('messages.Reference') }}</th>
-                            <th class="text-right">{{ __('messages.Amount') }}</th>
-                            <th>{{ __('messages.Created By') }}</th>
+                            <td>{{ $row['date']->format('Y-m-d') }}</td>
+                            <td>{{ $row['description'] }}</td>
+                            <td>{{ $row['reference'] ?: '—' }}</td>
+                            <td class="text-end">{{ $row['increase'] > 0 ? '₪' . number_format($row['increase'], 2) : '—' }}</td>
+                            <td class="text-end">{{ $row['decrease'] > 0 ? '₪' . number_format($row['decrease'], 2) : '—' }}</td>
+                            <td class="text-end">₪{{ number_format(abs($row['running_balance']), 2) }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($purchase_bills as $bill)
-                            <tr>
-                                <td>#{{ $bill->id }}</td>
-                                <td>{{ $bill->purchase_date->format('M d, Y') }}</td>
-                                <td>{{ $bill->reference_number ?: '-' }}</td>
-                                <td class="text-right">₪{{ number_format($bill->total_amount, 2) }}</td>
-                                <td>{{ $bill->creator->name }}</td>
-                            </tr>
-                        @endforeach
-                        <tr class="total-row">
-                            <td colspan="3" class="text-right"><strong>{{ __('messages.Total') }}:</strong></td>
-                            <td class="text-right"><strong>₪{{ number_format($bills_total, 2) }}</strong></td>
-                            <td></td>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
+    @if (($report_type === 'both' || $report_type === 'bills') && isset($purchase_bills))
+        <div class="box">
+            <h2>{{ __('payables.titles.purchase_bills') }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ __('payables.fields.bill') }}</th>
+                        <th>{{ __('payables.fields.purchase_date') }}</th>
+                        <th>{{ __('payables.fields.reference_number') }}</th>
+                        <th>{{ __('payables.fields.created_by') }}</th>
+                        <th>{{ __('payables.fields.amount') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($purchase_bills as $bill)
+                        <tr>
+                            <td>#{{ $bill->id }}</td>
+                            <td>{{ optional($bill->purchase_date)->format('Y-m-d') }}</td>
+                            <td>{{ $bill->reference_number ?: '—' }}</td>
+                            <td>{{ $bill->creator?->name ?: '—' }}</td>
+                            <td class="text-end">₪{{ number_format((float) $bill->total_amount, 2) }}</td>
                         </tr>
-                    </tbody>
-                </table>
-            @else
-                <p>{{ __('messages.No purchase bills found for the selected period') }}</p>
-            @endif
+                    @empty
+                        <tr>
+                            <td colspan="5">{{ __('payables.messages.no_bills') }}</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     @endif
 
     @if (($report_type === 'both' || $report_type === 'payments') && isset($payments))
-        <div class="section">
-            <h3>{{ __('messages.Payments') }}</h3>
-            @if ($payments->count() > 0)
-                <table>
-                    <thead>
+        <div class="box">
+            <h2>{{ __('payables.sections.payments') }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ __('payables.fields.payment_date') }}</th>
+                        <th>{{ __('payables.fields.type') }}</th>
+                        <th>{{ __('payables.fields.bill') }}</th>
+                        <th>{{ __('payables.fields.amount') }}</th>
+                        <th>{{ __('payables.fields.notes') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($payments as $payment)
+                        @php
+                            $kindKey = match (\App\Services\SupplierLedger::kindForRow($payment)) {
+                                \App\Services\SupplierLedger::KIND_BILL_PAYMENT => 'bill_payment',
+                                \App\Services\SupplierLedger::KIND_OPENING => 'opening_balance',
+                                \App\Services\SupplierLedger::KIND_REFUND => 'refund',
+                                default => 'payment',
+                            };
+                        @endphp
                         <tr>
-                            <th>{{ __('messages.Date') }}</th>
-                            <th>{{ __('messages.Type') }}</th>
-                            <th>{{ __('messages.Amount') }}</th>
-                            <th>{{ __('messages.Note') }}</th>
+                            <td>{{ optional($payment->payment_date)->format('Y-m-d') }}</td>
+                            <td>{{ __('payables.kinds.' . $kindKey) }} — {{ __('payables.methods.' . $payment->type) }}</td>
+                            <td>{{ $payment->purchaseBill ? '#' . $payment->purchaseBill->id : '—' }}</td>
+                            <td class="text-end">₪{{ number_format(abs((float) $payment->amount), 2) }}</td>
+                            <td>{{ $payment->note ?: '—' }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($payments as $payment)
-                            <tr>
-                                <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</td>
-                                <td>{{ ucfirst($payment->type) }}</td>
-                                <td>
-                                    <span style="color: {{ $payment->amount > 0 ? '#dc3545' : '#28a745' }}">
-                                        {{ $payment->amount > 0 ? '-' : '+' }}₪{{ number_format(abs($payment->amount), 2) }}
-                                    </span>
-                                    <br><small style="color: #6c757d;">
-                                        {{ $payment->amount > 0 ? __('messages.We Paid') : __('messages.They Paid') }}
-                                    </small>
-                                </td>
-                                <td>{{ $payment->note ?: '-' }}</td>
-                            </tr>
-                        @endforeach
-                        <tr class="total-row">
-                            <td colspan="2" class="text-right"><strong>{{ __('messages.Net Payment') }}:</strong>
-                            </td>
-                            <td colspan="2">
-                                <strong style="color: {{ $payments_total > 0 ? '#dc3545' : '#28a745' }}">
-                                    {{ $payments_total > 0 ? '-' : '+' }}₪{{ number_format(abs($payments_total), 2) }}
-                                </strong>
-                            </td>
+                    @empty
+                        <tr>
+                            <td colspan="5">{{ __('payables.messages.no_payments') }}</td>
                         </tr>
-                    </tbody>
-                </table>
-            @else
-                <p>{{ __('messages.No payments found for the selected period') }}</p>
-            @endif
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     @endif
-
-    @if ($report_type === 'both')
-        <div class="summary">
-            <h4>{{ __('messages.Summary') }}</h4>
-            <div class="summary-grid">
-                <div class="summary-row">
-                    <div class="summary-label">{{ __('messages.Total Purchase Bills') }}:</div>
-                    <div class="summary-value">₪{{ isset($bills_total) ? number_format($bills_total, 2) : '0.00' }}
-                    </div>
-                </div>
-                <div class="summary-row">
-                    <div class="summary-label">{{ __('messages.Total Payments') }}:</div>
-                    <div class="summary-value"
-                        style="color: {{ isset($payments_total) && $payments_total > 0 ? '#dc3545' : '#28a745' }}">
-                        ₪{{ isset($payments_total) ? number_format(abs($payments_total), 2) : '0.00' }}
-                    </div>
-                </div>
-                <div class="summary-row">
-                    <div class="summary-label">{{ __('messages.Net Balance Change') }}:</div>
-                    <div class="summary-value"
-                        style="color: {{ (isset($bills_total) ? $bills_total : 0) - (isset($payments_total) ? $payments_total : 0) > 0 ? '#dc3545' : '#28a745' }}">
-                        ₪{{ number_format((isset($bills_total) ? $bills_total : 0) - (isset($payments_total) ? $payments_total : 0), 2) }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <div class="footer">
-        <p>{{ __('messages.Report generated by') }} {{ config('app.name') }} |
-            {{ $generated_at->format('M d, Y H:i:s') }}</p>
-    </div>
-
-    <script>
-        // Auto-print when page loads
-        window.onload = function() {
-            window.print();
-        }
-    </script>
 </body>
 
 </html>

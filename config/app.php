@@ -69,6 +69,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shop (business) Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Default local time zone of the shops, used for "today" boundaries, day
+    | closing and staff attendance. Stored timestamps stay in UTC; each shop
+    | can override this with users.timezone. See App\Support\ShopTime.
+    |
+    */
+
+    'shop_timezone' => env('SHOP_TIMEZONE', 'Asia/Jerusalem'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Destructive Database Commands
+    |--------------------------------------------------------------------------
+    |
+    | migrate:fresh / refresh / reset / rollback and db:wipe are blocked on
+    | real databases (see AppServiceProvider). Set ALLOW_DESTRUCTIVE_DB_COMMANDS=true
+    | in .env to allow them on purpose.
+    |
+    */
+
+    'allow_destructive_db_commands' => (bool) env('ALLOW_DESTRUCTIVE_DB_COMMANDS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

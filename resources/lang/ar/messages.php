@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 return [
     /*
@@ -854,6 +854,11 @@ return [
     'Expiry Date' => 'تاريخ الانتهاء',
     'Extra Text' => 'نص إضافي',
     'Label Size' => 'حجم الملصق',
+    'Custom size' => 'حجم مخصص…',
+    'Label width (mm)' => 'العرض (مم)',
+    'Label height (mm)' => 'الارتفاع (مم)',
+    'Custom label size hint' => 'قِس ملصقاً واحداً من البكرة وأدخل مقاسه بدقة. يتم حفظ المقاس على هذا الجهاز.',
+    'Custom label size invalid' => 'أدخل عرضاً بين :min_w و :max_w مم وارتفاعاً بين :min_h و :max_h مم.',
     'Copies' => 'عدد النسخ',
     'Prod.' => 'إنتاج',
     'Exp.' => 'انتهاء',
@@ -2635,4 +2640,24 @@ return [
     'View Reports'               => 'عرض التقارير',
     'Barcode scanner is unavailable offline' => 'ماسح الباركود غير متاح في وضع عدم الاتصال',
     'Error loading scanner'      => 'خطأ في تحميل الماسح',
+
+    // الملف الشخصي
+    'A new verification link has been sent to your email address.' => 'تم إرسال رابط تحقق جديد إلى بريدك الإلكتروني.',
+    'Are you sure you want to delete your account?' => 'هل أنت متأكد من رغبتك في حذف حسابك؟',
+    'Click here to re-send the verification email.' => 'اضغط هنا لإعادة إرسال رسالة التحقق.',
+    'Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.' => 'بعد حذف حسابك سيتم حذف جميع موارده وبياناته نهائياً. يرجى إدخال كلمة المرور لتأكيد رغبتك في حذف حسابك نهائياً.',
+    'Saved.' => 'تم الحفظ.',
+    'Your email address is unverified.' => 'لم يتم التحقق من عنوان بريدك الإلكتروني بعد.',
+
+    // إنشاء الفواتير والمرتجعات في نقطة البيع
+    'Clearing existing products to set return costs' => 'سيتم تفريغ الأصناف الحالية لتحديد تكلفة الإرجاع',
+    'Failed to create bill - server error' => 'فشل إنشاء الفاتورة - خطأ في الخادم',
+    'Failed to save bill offline' => 'فشل حفظ الفاتورة دون اتصال',
+    'Please specify return cost for all returned products' => 'يرجى تحديد تكلفة الإرجاع لجميع المنتجات المرتجعة',
+
+    // العملاء والأقساط والتقارير والبحث بالباركود
+    'Customer created successfully!' => 'تم إنشاء العميل بنجاح!',
+    'Customer updated successfully!' => 'تم تحديث بيانات العميل بنجاح!',
+    'Debtor Name is required' => 'اسم المدين مطلوب',
+    'Network error. Please try again.' => 'خطأ في الاتصال بالشبكة. يرجى المحاولة مرة أخرى.',
 ];

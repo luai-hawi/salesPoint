@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InstallmentPlan;
-use App\Models\InstallmentPayment;
-use App\Models\InstallmentDismissal;
-use App\Models\CustomerPayment;
 use App\Models\Customer;
+use App\Models\InstallmentDismissal;
+use App\Models\InstallmentPayment;
+use App\Models\InstallmentPlan;
+use App\Services\CustomerLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -158,6 +158,16 @@ class InstallmentController extends Controller
                     'note'                => $p['note'] ?? null,
                 ]);
             }
+
+            if (($data['customer_id'] ?? null) && (float) ($data['initial_payment'] ?? 0) > 0) {
+                $customer = Customer::withoutGlobalScopes()->where('user_id', $ownerId)->findOrFail($data['customer_id']);
+                CustomerLedger::receive(
+                    $customer,
+                    (float) $data['initial_payment'],
+                    'cash',
+                    __('receivables.installment_initial_payment_general_note'),
+                );
+            }
         });
 
         return redirect()->route('installments.index')
@@ -191,10 +201,17 @@ class InstallmentController extends Controller
         $initialPayment = (float) ($data['initial_payment'] ?? 0);
 
         DB::transaction(function () use ($data, $user, $ownerId, $initialPayment) {
+            $bill = \App\Models\Bill::withoutGlobalScopes()
+                ->where('user_id', $ownerId)
+                ->whereKey($data['bill_id'])
+                ->where('customer_id', $data['customer_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $plan = InstallmentPlan::create([
                 'user_id'         => $ownerId,
                 'customer_id'     => $data['customer_id'],
-                'bill_id'         => $data['bill_id'],
+                'bill_id'         => $bill->id,
                 'total_amount'    => $data['total_amount'],
                 'initial_payment' => $initialPayment,
                 'note'            => $data['note'] ?? null,
@@ -212,21 +229,13 @@ class InstallmentController extends Controller
                 ]);
             }
 
-            // Record the initial payment as a CustomerPayment and update customer balance
             if ($initialPayment > 0) {
-                CustomerPayment::create([
-                    'customer_id' => $data['customer_id'],
-                    'amount'      => $initialPayment,
-                    'type'        => 'cash',
-                    'note'        => __('messages.payment_for_bill_note', ['bill_id' => $data['bill_id']]),
-                    'user_id'     => $ownerId,
-                ]);
-
-                $customer = \App\Models\Customer::find($data['customer_id']);
-                if ($customer) {
-                    $customer->balance = ($customer->balance ?? 0) + $initialPayment;
-                    $customer->save();
-                }
+                CustomerLedger::receiveForBill(
+                    $bill,
+                    $initialPayment,
+                    'cash',
+                    __('receivables.installment_initial_payment_note', ['bill' => $bill->id]),
+                );
             }
         });
 
@@ -287,37 +296,40 @@ class InstallmentController extends Controller
      */
     public function markPaid(InstallmentPayment $payment)
     {
-        $this->authorizeOwnerPayment($payment);
-
-        if ($payment->is_paid) {
-            return response()->json(['error' => 'Already paid'], 422);
-        }
-
         $user    = auth()->user();
         $ownerId = $this->ownerId();
 
         DB::transaction(function () use ($payment, $user, $ownerId) {
-            $payment->update([
+            $lockedPayment = InstallmentPayment::withoutGlobalScopes()->whereKey($payment->id)->where('user_id', $ownerId)->lockForUpdate()->firstOrFail();
+
+            if ($lockedPayment->is_paid) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'payment' => 'Already paid',
+                ]);
+            }
+
+            $lockedPayment->update([
                 'is_paid' => true,
                 'paid_at' => now(),
                 'paid_by' => $user->id,
             ]);
 
-            // Record as CustomerPayment if linked to a customer and update balance
-            $plan = $payment->plan()->with('customer', 'bill')->first();
+            $plan = $lockedPayment->plan()->with('customer', 'bill')->lockForUpdate()->first();
             if ($plan && $plan->customer_id) {
-                $billRef = $plan->bill_id ? " (#" . $plan->bill_id . ")" : '';
-                CustomerPayment::create([
-                    'customer_id' => $plan->customer_id,
-                    'amount'      => $payment->amount,
-                    'type'        => 'cash',
-                    'note'        => __('messages.installment_payment_note', ['plan_id' => $plan->id]) . $billRef,
-                    'user_id'     => $ownerId,
-                ]);
-
-                if ($plan->customer) {
-                    $plan->customer->balance = ($plan->customer->balance ?? 0) + $payment->amount;
-                    $plan->customer->save();
+                if ($plan->bill && (int) $plan->bill->customer_id === (int) $plan->customer_id) {
+                    CustomerLedger::receiveForBill(
+                        $plan->bill,
+                        (float) $lockedPayment->amount,
+                        'cash',
+                        __('messages.installment_payment_note', ['plan_id' => $plan->id]),
+                    );
+                } elseif ($plan->customer) {
+                    CustomerLedger::receive(
+                        $plan->customer,
+                        (float) $lockedPayment->amount,
+                        'cash',
+                        __('messages.installment_payment_note', ['plan_id' => $plan->id]),
+                    );
                 }
             }
         });

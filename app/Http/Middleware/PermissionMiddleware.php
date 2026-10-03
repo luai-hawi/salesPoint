@@ -26,10 +26,18 @@ class PermissionMiddleware
             return $next($request);
         }
 
-        // For employees, check permissions
+        // For employees, check permissions. A parameter like "a|b" passes when the employee has any of them.
         if ($user->role === 'employee') {
             foreach ($permissions as $permission) {
-                if (!$user->hasPermission($permission)) {
+                $alternatives = array_filter(explode('|', $permission));
+                $granted = false;
+                foreach ($alternatives as $alternative) {
+                    if ($user->hasPermission($alternative)) {
+                        $granted = true;
+                        break;
+                    }
+                }
+                if (!$granted) {
                     abort(403, 'Unauthorized - Missing permission: ' . $permission);
                 }
             }

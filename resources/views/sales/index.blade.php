@@ -1,45 +1,33 @@
 <x-app-layout>
+    @php
+        $canCreateSales = auth()->user()->role !== 'employee' || auth()->user()->hasPermission('create_sales');
+        $canEditSales = auth()->user()->role !== 'employee' || auth()->user()->hasPermission('edit_sales');
+        $canDeleteSales = auth()->user()->role !== 'employee' || auth()->user()->hasPermission('delete_sales');
+    @endphp
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-bold text-xl text-gray-800 leading-tight flex items-center gap-2">
-                <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                {{ __('sales.Sales & Promotions') }}
-            </h2>
-            <button onclick="openCreateModal()"
-                class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                {{ __('sales.New Sale') }}
-            </button>
-        </div>
+        <x-ui.page-header :title="__('sales.Sales & Promotions')">
+            @if ($canCreateSales)
+                <button onclick="openCreateModal()"
+                    class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 shadow-sm">
+                    {{ __('sales.New Sale') }}
+                </button>
+            @endif
+        </x-ui.page-header>
     </x-slot>
 
     <div class="py-6 bg-gradient-to-br from-gray-50 to-orange-50 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-            @if (session('success'))
-                <div class="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                    <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span class="text-green-700 font-medium">{{ session('success') }}</span>
-                </div>
-            @endif
+            <x-ui.flash />
 
             {{-- Stats bar --}}
             @php
-                $activeSalesCount = $sales->filter(fn($s) => $s->isCurrentlyActive())->count();
-                $expiredCount = $sales->filter(fn($s) => $s->status === 'expired')->count();
-                $scheduledCount = $sales->filter(fn($s) => $s->status === 'scheduled')->count();
+                $activeSalesCount = $stats['active'] ?? 0;
+                $expiredCount = $stats['expired'] ?? 0;
+                $scheduledCount = $stats['scheduled'] ?? 0;
             @endphp
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
-                    <div class="text-2xl font-bold text-gray-800">{{ $sales->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-800">{{ $stats['total'] ?? $sales->total() }}</div>
                     <div class="text-xs text-gray-500 mt-1">{{ __('sales.Total Sales') }}</div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
@@ -66,10 +54,12 @@
                     </svg>
                     <p class="text-gray-500 text-lg font-medium">{{ __('sales.No sales yet') }}</p>
                     <p class="text-gray-400 text-sm mt-1">{{ __('sales.Create your first sale promotion') }}</p>
-                    <button onclick="openCreateModal()"
-                        class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-                        {{ __('sales.Create Sale') }}
-                    </button>
+                    @if ($canCreateSales)
+                        <button onclick="openCreateModal()"
+                            class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                            {{ __('sales.Create Sale') }}
+                        </button>
+                    @endif
                 </div>
             @else
                 <div class="space-y-4">
@@ -126,57 +116,59 @@
                                 </div>
 
                                 {{-- Actions --}}
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    {{-- Toggle active --}}
-                                    <button onclick="toggleSale({{ $sale->id }}, this)"
-                                        data-active="{{ $sale->is_active ? '1' : '0' }}"
-                                        title="{{ $sale->is_active ? __('sales.Disable') : __('sales.Enable') }}"
-                                        class="p-2 rounded-lg transition-colors {{ $sale->is_active ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }}">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="{{ $sale->is_active ? 'M5 13l4 4L19 7' : 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' }}" />
-                                        </svg>
-                                    </button>
+                                @if ($canEditSales || $canDeleteSales)
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        @if ($canEditSales)
+                                            <button onclick="toggleSale({{ $sale->id }}, this)"
+                                                data-active="{{ $sale->is_active ? '1' : '0' }}"
+                                                title="{{ $sale->is_active ? __('sales.Disable') : __('sales.Enable') }}"
+                                                class="p-2 rounded-lg transition-colors {{ $sale->is_active ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }}">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="{{ $sale->is_active ? 'M5 13l4 4L19 7' : 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' }}" />
+                                                </svg>
+                                            </button>
 
-                                    {{-- Extend date --}}
-                                    @if ($sale->end_date)
-                                        <button
-                                            onclick="openExtendModal({{ $sale->id }}, '{{ $sale->end_date->format('Y-m-d') }}')"
-                                            title="{{ __('sales.Extend End Date') }}"
-                                            class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                        </button>
-                                    @endif
+                                            @if ($sale->end_date)
+                                                <button
+                                                    onclick="openExtendModal({{ $sale->id }}, '{{ $sale->end_date->format('Y-m-d') }}')"
+                                                    title="{{ __('sales.Extend End Date') }}"
+                                                    class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                </button>
+                                            @endif
 
-                                    {{-- Edit --}}
-                                    <button onclick='openEditModal(@json($sale->load('rules.product')))'
-                                        title="{{ __('sales.Edit') }}"
-                                        class="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </button>
+                                            <button onclick='openEditModal(@json($sale))'
+                                                title="{{ __('sales.Edit') }}"
+                                                class="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                        @endif
 
-                                    {{-- Delete --}}
-                                    <form method="POST" action="{{ route('sales.destroy', $sale) }}"
-                                        onsubmit="return confirm('{{ __('sales.Confirm delete sale') }}')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" title="{{ __('sales.Delete') }}"
-                                            class="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </form>
-                                </div>
+                                        @if ($canDeleteSales)
+                                            <form method="POST" action="{{ route('sales.destroy', $sale) }}"
+                                                onsubmit="return confirm('{{ __('sales.Confirm delete sale') }}')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" title="{{ __('sales.Delete') }}"
+                                                    class="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Rules --}}
@@ -210,6 +202,10 @@
                             @endif
                         </div>
                     @endforeach
+                </div>
+
+                <div class="mt-6">
+                    {{ $sales->links() }}
                 </div>
             @endif
         </div>

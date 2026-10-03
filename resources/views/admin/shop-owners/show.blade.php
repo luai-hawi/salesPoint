@@ -1,404 +1,210 @@
-@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <a href="{{ route('admin.dashboard') }}"
-                    class="text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                    </svg>
-                </a>
-                <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                    {{ __('messages.shop_title', ['name' => $shopOwner->name]) }}
-                </h2>
-            </div>
-            <div class="flex items-center space-x-4">
-                <a href="{{ route('admin.shop-owners.edit', $shopOwner->id) }}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    {{ __('messages.edit_shop_owner') }}
-                </a>
-            </div>
-        </div>
+        <x-ui.page-header :title="$shopOwner->name" :subtitle="__('admin.titles.shop_details')">
+            <x-ui.badge :tone="$status['tone']">{{ $status['label'] }}</x-ui.badge>
+            <a href="{{ route('admin.shop-owners.edit', $shopOwner) }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.edit') }}</a>
+            <form method="POST" action="{{ route('admin.shop-owners.impersonate', $shopOwner) }}">@csrf<button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('admin.actions.login_as') }}</button></form>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
 
-            @if (session('success'))
-                <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if ($errors->any())
-                <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-                    <ul class="list-disc list-inside">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <x-ui.card :title="__('admin.fields.status')">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>{{ __('admin.fields.business_type') }}</span><span>{{ __('admin.types.' . $shopOwner->businessRole()) }}</span></div>
+                        <div class="flex justify-between"><span>{{ __('admin.fields.next_payment') }}</span><span>{{ $status['next_payment_date'] ?: '—' }}</span></div>
+                        <div class="flex justify-between"><span>{{ __('admin.fields.subscription_cost') }}</span><span>{{ $currencies->format($status['amount'], $status['currency']) }}</span></div>
+                    </div>
+                </x-ui.card>
+                <x-ui.card :title="__('admin.fields.usage')">
+                    <div class="space-y-2 text-sm">
+                        @foreach ($usage as $key => $count)
+                            <div class="flex justify-between"><span>{{ __('admin.entry_limit.resources.' . $key) }}</span><span>{{ $count }}</span></div>
                         @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <!-- Shop Owner Overview -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                <!-- Shop Owner Info -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.shop_owner_details') }}</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="flex items-center mb-6">
-                                <div
-                                    class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                                    <span
-                                        class="text-white font-bold text-xl">{{ strtoupper(substr($shopOwner->name, 0, 2)) }}</span>
-                                </div>
-                                <div class="ml-4">
-                                    <h4 class="text-xl font-bold text-gray-900">{{ $shopOwner->name }}</h4>
-                                    <p class="text-gray-600">{{ $shopOwner->email }}</p>
-                                    @if ($shopOwner->phone_number)
-                                        <p class="text-gray-600">{{ $shopOwner->phone_number }}</p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">{{ __('messages.status') }}</span>
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        {{ $shopOwner->role === 'shop_owner' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        {{ __('messages.role_' . $shopOwner->role) }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">{{ __('messages.member_since') }}</span>
-                                    <span class="text-gray-900">{{ $shopOwner->created_at->format('M j, Y') }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">{{ __('messages.total_employees') }}</span>
-                                    <span class="text-gray-900 font-semibold">{{ $shopOwner->employees_count }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">{{ __('messages.image_limit') }}</span>
-                                    <span
-                                        class="text-gray-900 font-semibold">{{ $shopOwner->image_limit ?? 1000 }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-600">{{ __('messages.current_images') }}</span>
-                                    <span class="text-gray-900 font-semibold">{{ $shopOwner->total_images }}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="flex justify-between font-semibold"><span>{{ __('admin.fields.entry_limit') }}</span><span>{{ $shopOwner->entry_limit ?: '∞' }}</span></div>
                     </div>
-                </div>
-
-                <!-- Performance Statistics -->
-                <div class="lg:col-span-2">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                            <div class="p-6">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                                </path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.total_sales') }}
-                                        </p>
-                                        <p class="text-2xl font-bold text-gray-900">
-                                            ${{ number_format($shopOwner->total_sales, 2) }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                            <div class="p-6">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.this_month') }}
-                                        </p>
-                                        <p class="text-2xl font-bold text-gray-900">
-                                            ${{ number_format($shopOwner->sales_this_month, 2) }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                            <div class="p-6">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4">
-                                                </path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.products') }}</p>
-                                        <p class="text-2xl font-bold text-gray-900">{{ $shopOwner->products_count }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                            <div class="p-6">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                                </path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-600">{{ __('messages.customers') }}
-                                        </p>
-                                        <p class="text-2xl font-bold text-gray-900">{{ $shopOwner->customers_count }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                </x-ui.card>
+                <x-ui.card :title="__('admin.fields.images')">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>{{ __('admin.fields.images') }}</span><span>{{ $imageStats['count'] }}</span></div>
+                        <div class="flex justify-between"><span>{{ __('admin.fields.size') }}</span><span>{{ \App\Services\Admin\ShopStorageService::humanBytes($imageStats['bytes']) }}</span></div>
+                        <div class="flex justify-between"><span>{{ __('admin.fields.image_limit') }}</span><span>{{ $shopOwner->image_limit ?: '—' }}</span></div>
                     </div>
-                </div>
+                </x-ui.card>
             </div>
 
-            <!-- Employees Section -->
-            <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900">{{ __('messages.employees_management') }}</h3>
-                        <button onclick="toggleAddEmployeeForm()"
-                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                            {{ __('messages.add_employee') }}
-                        </button>
+            @php($money = fn ($value) => number_format((float) $value, 2))
+            <section class="space-y-4" aria-labelledby="shop-performance-title">
+                <div class="flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <h3 id="shop-performance-title" class="text-lg font-semibold text-gray-900">{{ __('charts.admin.shop_profit_title') }}</h3>
+                        <p class="text-xs text-gray-500">{{ __('charts.admin.shop_profit_hint') }}</p>
                     </div>
+                    @if ($performance['lifetime']['last_bill_at'])
+                        <span class="text-xs text-gray-500">{{ __('charts.admin.last_sale') }}: {{ \Carbon\Carbon::parse($performance['lifetime']['last_bill_at'], 'UTC')->diffForHumans() }}</span>
+                    @endif
                 </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <x-ui.kpi :label="__('admin.dashboard.today_sales')" :value="$money($performance['today']['revenue'])" icon="cash" tone="green"
+                        :hint="__('charts.gross_profit') . ': ' . $money($performance['today']['gross_profit'])" />
+                    <x-ui.kpi :label="__('admin.dashboard.month_sales')" :value="$money($performance['month']['revenue'])" icon="receipt" tone="blue"
+                        :delta="$performance['month_growth']['revenue']" />
+                    <x-ui.kpi :label="__('admin.dashboard.month_profit')" :value="$money($performance['month']['gross_profit'])" icon="trend" tone="indigo"
+                        :delta="$performance['month_growth']['gross_profit']" :hint="__('charts.margin') . ': ' . $performance['month']['gross_margin'] . '%'" />
+                    <x-ui.kpi :label="__('charts.net_profit')" :value="$money($performance['month']['net_profit'])" icon="wallet" :tone="$performance['month']['net_profit'] < 0 ? 'red' : 'purple'"
+                        :delta="$performance['month_growth']['net_profit']" :hint="__('charts.this_month')" />
+                    <x-ui.kpi :label="__('charts.expenses')" :value="$money($performance['month']['expenses_total'] + $performance['month']['staff_payments'])" icon="down" tone="amber"
+                        :hint="__('charts.this_month')" />
+                    <x-ui.kpi :label="__('charts.avg_bill')" :value="$money($performance['month_avg_bill'])" icon="receipt" tone="gray"
+                        :hint="__('charts.admin.bills_count', ['count' => $performance['month_bills']])" />
+                    <x-ui.kpi :label="__('charts.admin.lifetime_sales')" :value="$money($performance['lifetime']['sales'])" icon="box" tone="blue"
+                        :hint="__('charts.admin.bills_count', ['count' => $performance['lifetime']['bills']])" />
+                    <x-ui.kpi :label="__('charts.admin.lifetime_profit')" :value="$money($performance['lifetime']['profit'])" icon="trend" tone="green"
+                        :hint="$performance['lifetime']['first_bill_at'] ? __('charts.admin.since', ['date' => \Carbon\Carbon::parse($performance['lifetime']['first_bill_at'])->toDateString()]) : null" />
+                </div>
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                    <x-ui.card :title="__('charts.admin.sales_profit_30')" class="xl:col-span-2">
+                        <x-ui.chart type="bar" :height="280" :label="__('charts.admin.sales_profit_30')"
+                            :labels="$performance['series']['labels']"
+                            :datasets="[
+                                ['label' => __('charts.sales'), 'data' => $performance['series']['sales'], 'color' => '#6366f1'],
+                                ['label' => __('charts.gross_profit'), 'type' => 'line', 'data' => $performance['series']['profit'], 'color' => '#10b981', 'fill' => false],
+                            ]" />
+                    </x-ui.card>
+                    <x-ui.card :title="__('charts.admin.top_products_month')" :padding="false">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-100 text-sm">
+                                <thead class="bg-gray-50 text-xs font-semibold text-gray-500">
+                                    <tr>
+                                        <th class="px-3 py-2 text-start">{{ __('charts.product') }}</th>
+                                        <th class="px-3 py-2 text-start">{{ __('charts.qty') }}</th>
+                                        <th class="px-3 py-2 text-start">{{ __('charts.gross_profit') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @forelse ($performance['top_products'] as $product)
+                                        <tr>
+                                            <td class="px-3 py-2">{{ $product->name }}</td>
+                                            <td class="px-3 py-2 tabular-nums">{{ rtrim(rtrim(number_format((float) $product->quantity, 2), '0'), '.') }}</td>
+                                            <td class="px-3 py-2 font-medium tabular-nums text-emerald-700">{{ $money($product->profit) }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="3" class="px-3 py-6 text-center text-gray-500">{{ __('charts.no_data') }}</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </x-ui.card>
+                </div>
+            </section>
 
-                <!-- Add Employee Form (Hidden by default) -->
-                <div id="addEmployeeForm" class="hidden border-b border-gray-200 bg-gray-50">
-                    <form action="{{ route('admin.employees.store') }}" method="POST" class="p-6">
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <x-ui.card :title="__('admin.actions.record_payment')">
+                    <form method="POST" action="{{ route('admin.shop-owners.mark-paid', $shopOwner) }}" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         @csrf
-                        <input type="hidden" name="shop_owner_id" value="{{ $shopOwner->id }}">
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="name"
-                                    class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.full_name') }}</label>
-                                <input type="text" name="name" id="name" required
-                                    class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="{{ __('messages.enter_employee_name') }}">
-                            </div>
-                            <div>
-                                <label for="email"
-                                    class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.email_address') }}</label>
-                                <input type="email" name="email" id="email" required
-                                    class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="{{ __('messages.enter_email_address') }}">
-                            </div>
-                            <div>
-                                <label for="password"
-                                    class="block text-sm font-medium text-gray-700 mb-1">{{ __('messages.password') }}</label>
-                                <input type="password" name="password" id="password" required
-                                    class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="{{ __('messages.enter_password') }}">
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-end space-x-3 mt-4">
-                            <button type="button" onclick="toggleAddEmployeeForm()"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                                {{ __('messages.cancel') }}
-                            </button>
-                            <button type="submit"
-                                class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
-                                {{ __('messages.add_employee') }}
-                            </button>
-                        </div>
+                        <input type="hidden" name="idempotency_key" value="{{ $paymentIdempotencyKey }}">
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.months') }}</label><input type="number" min="1" max="120" name="months" class="w-full rounded-lg border-gray-300" value="1"></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.subscription_cost') }}</label><input type="number" step="0.01" name="amount" class="w-full rounded-lg border-gray-300" value="{{ $shopOwner->subscription_cost }}"></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.currency') }}</label><select name="currency" class="w-full rounded-lg border-gray-300">@foreach ($currencyOptions as $currency)<option value="{{ $currency['code'] }}" @selected($shopOwner->subscriptionCurrency() === $currency['code'])>{{ $currency['code'] }}</option>@endforeach</select></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.method') }}</label><select name="method" class="w-full rounded-lg border-gray-300">@foreach (['cash', 'transfer', 'card', 'check', 'other'] as $method)<option value="{{ $method }}">{{ __('admin.types.' . $method) }}</option>@endforeach</select></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.paid_at') }}</label><input type="date" name="paid_at" class="w-full rounded-lg border-gray-300" value="{{ now()->toDateString() }}"></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.continue_mode') }}</label><select name="continue_mode" class="w-full rounded-lg border-gray-300">@foreach (['auto', 'current_expiry', 'today'] as $mode)<option value="{{ $mode }}">{{ __('admin.types.' . $mode) }}</option>@endforeach</select></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.reference') }}</label><input name="reference" class="w-full rounded-lg border-gray-300"></div>
+                        <div><label class="mb-1 block text-sm font-medium">{{ __('admin.fields.note') }}</label><input name="note" class="w-full rounded-lg border-gray-300"></div>
+                        <div class="md:col-span-2"><button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('admin.actions.record_payment') }}</button></div>
                     </form>
-                </div>
+                </x-ui.card>
 
-                <!-- Employees List -->
+                <x-ui.card :title="__('admin.fields.admin_notes')" :subtitle="__('admin.messages.shop_private_note_hint')">
+                    <form method="POST" action="{{ route('admin.shop-owners.note', $shopOwner) }}" class="space-y-3">
+                        @csrf
+                        @method('PUT')
+                        <textarea name="admin_notes" rows="7" class="w-full rounded-lg border-gray-300">{{ $shopOwner->admin_notes }}</textarea>
+                        <button class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('admin.actions.save_note') }}</button>
+                    </form>
+                </x-ui.card>
+            </div>
+
+            <x-ui.card :title="__('admin.fields.next_payment')" :subtitle="__('admin.meta.records_count', ['count' => $payments->count()])">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.employee') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.contact') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.joined') }}</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {{ __('messages.actions') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('admin.fields.paid_at') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('admin.fields.months') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('admin.fields.subscription_cost') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('admin.fields.method') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('admin.fields.reference') }}</th>
+                                <th class="px-3 py-2 text-start">—</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($shopOwner->employees as $employee)
-                                <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div
-                                                class="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center">
-                                                <span
-                                                    class="text-white font-bold text-sm">{{ strtoupper(substr($employee->name, 0, 2)) }}</span>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ $employee->name }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">{{ __('messages.employee_id') }}:
-                                                    #{{ $employee->id }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $employee->email }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $employee->created_at->format('M j, Y') }}
-                                        <div class="text-xs text-gray-400">
-                                            {{ $employee->created_at->diffForHumans() }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex items-center space-x-3">
-                                            <a href="{{ route('admin.employees.edit', $employee->id) }}"
-                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
-                                                {{ __('messages.edit') }}
-                                            </a>
-                                            <form action="{{ route('admin.employees.destroy', $employee->id) }}"
-                                                method="POST" class="inline"
-                                                onsubmit="return confirm('{{ __('messages.confirm_delete_employee') }}');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="text-red-600 hover:text-red-900 transition-colors duration-200">
-                                                    {{ __('messages.remove') }}
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            @foreach ($payments as $payment)
                                 <tr>
-                                    <td colspan="4" class="px-6 py-12 text-center">
-                                        <div class="text-gray-500">
-                                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                                </path>
-                                            </svg>
-                                            <p class="text-lg font-medium">{{ __('messages.no_employees_yet') }}</p>
-                                            <p class="text-sm text-gray-400 mt-1">
-                                                {{ __('messages.add_employees_help_text') }}</p>
-                                            <button onclick="toggleAddEmployeeForm()"
-                                                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                                {{ __('messages.add_first_employee') }}
-                                            </button>
-                                            </button>
-                                        </div>
+                                    <td class="px-3 py-2">{{ $payment->paid_at?->toDateString() }}</td>
+                                    <td class="px-3 py-2">{{ $payment->months }}</td>
+                                    <td class="px-3 py-2">{{ $currencies->format($payment->amount, $payment->currency) }}</td>
+                                    <td class="px-3 py-2">{{ __('admin.types.' . $payment->method) }}</td>
+                                    <td class="px-3 py-2">{{ $payment->reference ?: '—' }}</td>
+                                    <td class="px-3 py-2">
+                                        <form method="POST" action="{{ route('admin.shop-owners.payments.destroy', [$shopOwner, $payment]) }}">@csrf @method('DELETE')<button class="text-xs font-semibold text-red-700">{{ __('admin.actions.delete_payment') }}</button></form>
                                     </td>
                                 </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
+            </x-ui.card>
+
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <x-ui.card :title="__('admin.fields.employees')">
+                    <div class="space-y-3">
+                        @forelse ($employees as $employee)
+                            <div class="rounded-lg border border-gray-200 p-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="font-medium text-gray-900">{{ $employee->name }}</div>
+                                        <div class="text-xs text-gray-500">{{ $employee->email }}</div>
+                                    </div>
+                                    <a href="{{ route('admin.employees.edit', $employee) }}" class="text-sm font-semibold text-indigo-700">{{ __('admin.actions.edit') }}</a>
+                                </div>
+                            </div>
+                        @empty
+                            <x-ui.empty :title="__('admin.fields.employees')" />
+                        @endforelse
+                    </div>
+                </x-ui.card>
+
+                <x-ui.card :title="__('admin.titles.audit')">
+                    <div class="space-y-3">
+                        @forelse ($activity as $row)
+                            <div class="rounded-lg border border-gray-200 p-3 text-sm">
+                                <div class="font-medium text-gray-900">{{ $row->action }}</div>
+                                <div class="text-xs text-gray-500">{{ $row->created_at?->diffForHumans() }}</div>
+                            </div>
+                        @empty
+                            <x-ui.empty :title="__('admin.titles.audit')" />
+                        @endforelse
+                    </div>
+                </x-ui.card>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="mt-8 flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <form action="{{ route('admin.shop-owners.toggle-status', $shopOwner->id) }}" method="POST"
-                        class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                            onclick="return confirm('{{ __('messages.confirm_toggle_status', ['action' => $shopOwner->role === 'shop_owner' ? __('messages.disable') : __('messages.enable')]) }}')">
-                            {{ $shopOwner->role === 'shop_owner' ? __('messages.disable_shop') : __('messages.enable_shop') }}
-                        </button>
-                    </form>
-
-                    <a href="{{ route('admin.employees.index') }}"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                        {{ __('messages.view_all_employees') }}
-                    </a>
+            <x-ui.card :title="__('admin.actions.delete')" :subtitle="__('admin.meta.rows_count', ['count' => $preview['total']])">
+                <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-3">
+                    @foreach ($preview['tables'] as $table => $count)
+                        <div class="rounded-lg bg-gray-50 px-3 py-2 text-sm"><span class="font-medium">{{ $table }}</span>: {{ $count }}</div>
+                    @endforeach
                 </div>
-
-                <form action="{{ route('admin.shop-owners.destroy', $shopOwner->id) }}" method="POST"
-                    class="inline" onsubmit="return confirm('{{ __('messages.confirm_delete_shop_owner') }}');">
+                <form method="POST" action="{{ route('admin.shop-owners.destroy', $shopOwner) }}" class="space-y-3">
                     @csrf
                     @method('DELETE')
-                    <button type="submit"
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                        {{ __('messages.delete_shop_owner') }}
-                    </button>
+                    <input name="confirmation" class="w-full rounded-lg border-gray-300 md:w-96" placeholder="{{ $shopOwner->name }} / {{ $shopOwner->email }}">
+                    <button class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">{{ __('admin.actions.delete') }}</button>
                 </form>
-            </div>
+            </x-ui.card>
         </div>
     </div>
-
-    <!-- JavaScript for Toggle Form -->
-    <script>
-        function toggleAddEmployeeForm() {
-            const form = document.getElementById('addEmployeeForm');
-            form.classList.toggle('hidden');
-
-            // Focus on the first input when showing the form
-            if (!form.classList.contains('hidden')) {
-                setTimeout(() => {
-                    document.getElementById('name').focus();
-                }, 100);
-            }
-        }
-
-        // Hide form on ESC key press
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                const form = document.getElementById('addEmployeeForm');
-                if (!form.classList.contains('hidden')) {
-                    form.classList.add('hidden');
-                }
-            }
-        });
-    </script>
 </x-app-layout>

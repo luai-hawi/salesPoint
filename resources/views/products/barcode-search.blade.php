@@ -1,26 +1,16 @@
-@php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-@endphp
-
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('messages.Barcode Search') }}
-            </h2>
+        <x-ui.page-header :title="__('messages.Barcode Search')">
             <a href="{{ route('products.index') }}"
-                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                 {{ __('messages.Back to Products') }}
             </a>
-        </div>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6">
+        <div class="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
             <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6">
                     <div class="mb-6">
@@ -585,7 +575,7 @@
                                 </div>`}
 
                     ${isOutOfStock ? `<div class="absolute inset-0 bg-red-500 bg-opacity-80 flex items-center justify-center">
-                                <span class="text-white font-bold text-sm">OUT OF STOCK</span>
+                                <span class="text-white font-bold text-sm">{{ __('messages.Out of Stock') }}</span>
                             </div>` : ''}
 
                     <div class="absolute top-1 left-1">

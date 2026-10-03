@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BackupDatabase extends Command
@@ -14,274 +13,492 @@ class BackupDatabase extends Command
 
     public function handle(): int
     {
-        $keep     = (int) $this->option('keep');
-        $driver   = config('database.default');
-        $config   = config("database.connections.{$driver}");
+        $keep = (int) $this->option('keep');
+        $driver = config('database.default');
+        $config = config("database.connections.{$driver}");
         $backupDir = storage_path('app/backups');
 
-        // Ensure backup directory exists
-        if (!is_dir($backupDir)) {
+        if (! is_dir($backupDir)) {
             mkdir($backupDir, 0755, true);
         }
 
         $timestamp = now()->format('Y-m-d_H-i-s');
 
-        if ($driver === 'mysql' || $driver === 'mariadb') {
-            $result = $this->backupMysql($config, $backupDir, $timestamp);
-        } elseif ($driver === 'sqlite') {
-            $result = $this->backupSqlite($config, $backupDir, $timestamp);
-        } elseif ($driver === 'pgsql') {
-            $result = $this->backupPgsql($config, $backupDir, $timestamp);
-        } else {
+        $result = match ($driver) {
+            'mysql', 'mariadb' => $this->backupMysql($config, $backupDir, $timestamp),
+            'sqlite' => $this->backupSqlite($config, $backupDir, $timestamp),
+            'pgsql' => $this->backupPgsql($config, $backupDir, $timestamp),
+            default => null,
+        };
+
+        if ($result === null) {
             $this->error("Unsupported database driver: {$driver}");
             Log::error("BackupDatabase: Unsupported driver [{$driver}]");
+
             return self::FAILURE;
         }
 
-        if (!$result) {
+        if (! $result['ok']) {
             return self::FAILURE;
         }
 
-        // Rotate: keep only the $keep most recent backups
         $this->rotate($backupDir, $keep);
 
         return self::SUCCESS;
     }
 
-    // -------------------------------------------------------------------------
-    // Driver implementations
-    // -------------------------------------------------------------------------
-
-    private function backupMysql(array $config, string $dir, string $timestamp): bool
+    /**
+     * @return array{ok: bool, file: string|null}
+     */
+    private function backupMysql(array $config, string $dir, string $timestamp): array
     {
-        $file = "{$dir}/backup_{$timestamp}.sql.gz";
+        $finalFile = "{$dir}/backup_{$timestamp}.sql.gz";
 
         if ($this->isExecAvailable()) {
-            // Fast path: use mysqldump via shell
-            $host    = escapeshellarg($config['host'] ?? '127.0.0.1');
-            $port    = escapeshellarg($config['port'] ?? '3306');
-            $user    = escapeshellarg($config['username'] ?? 'root');
-            $pass    = $config['password'] ?? '';
-            $db      = escapeshellarg($config['database']);
-            $fileArg = escapeshellarg($file);
+            $sqlTemp = $this->tempPath($dir, 'mysql', 'sql');
+            $gzipTemp = $this->tempPath($dir, 'mysql', 'sql.gz');
 
-            // Pass password via env variable to avoid it appearing in process list
-            $env     = !empty($pass) ? "MYSQL_PWD=" . escapeshellarg($pass) . " " : '';
-            $command = "{$env}mysqldump --host={$host} --port={$port} --user={$user} --single-transaction --quick --lock-tables=false {$db} | gzip > {$fileArg} 2>&1";
+            try {
+                $command = [
+                    'mysqldump',
+                    '--host=' . ($config['host'] ?? '127.0.0.1'),
+                    '--port=' . ($config['port'] ?? '3306'),
+                    '--user=' . ($config['username'] ?? 'root'),
+                    '--single-transaction',
+                    '--quick',
+                    '--lock-tables=false',
+                    '--skip-comments',
+                    '--result-file=' . $sqlTemp,
+                    (string) ($config['database'] ?? ''),
+                ];
 
-            \exec($command, $output, $exitCode);
+                $process = $this->runProcess($command, [
+                    'MYSQL_PWD' => (string) ($config['password'] ?? ''),
+                ]);
 
-            if ($exitCode !== 0 || !file_exists($file) || filesize($file) === 0) {
-                $message = implode("\n", $output);
-                $this->error("MySQL backup failed. Exit code: {$exitCode}. Output: {$message}");
-                Log::error("BackupDatabase MySQL failed", ['exit_code' => $exitCode, 'output' => $output]);
-                return false;
+                if ($process['exit_code'] !== 0 || ! $this->isValidSqlDump($sqlTemp)) {
+                    $this->error("MySQL backup failed. Exit code: {$process['exit_code']}. Output: {$process['stderr']}");
+                    Log::error('BackupDatabase MySQL failed', $process);
+                    $this->cleanupFiles([$sqlTemp, $gzipTemp]);
+
+                    return ['ok' => false, 'file' => null];
+                }
+
+                if (! $this->gzipFile($sqlTemp, $gzipTemp) || ! $this->isValidGzipDump($gzipTemp)) {
+                    $this->error('MySQL backup failed while compressing the dump.');
+                    Log::error('BackupDatabase MySQL compression failed', ['file' => $gzipTemp]);
+                    $this->cleanupFiles([$sqlTemp, $gzipTemp]);
+
+                    return ['ok' => false, 'file' => null];
+                }
+
+                $this->atomicRename($gzipTemp, $finalFile);
+                $this->cleanupFiles([$sqlTemp]);
+            } catch (\Throwable $e) {
+                $this->cleanupFiles([$sqlTemp ?? null, $gzipTemp ?? null]);
+                $this->error('MySQL backup failed: ' . $e->getMessage());
+                Log::error('BackupDatabase MySQL failed', ['error' => $e->getMessage()]);
+
+                return ['ok' => false, 'file' => null];
             }
         } else {
-            // Fallback: pure-PHP PDO dump (used when exec is disabled on the host)
-            $this->info("exec() is unavailable. Using PHP PDO dump fallback.");
-            Log::info("BackupDatabase: using PHP PDO fallback for MySQL backup");
+            $this->info('exec() is unavailable. Using PHP PDO dump fallback.');
+            Log::info('BackupDatabase: using PHP PDO fallback for MySQL backup');
 
-            if (!$this->dumpMysqlViaPdo($config, $file)) {
-                return false;
+            if (! $this->dumpMysqlViaPdo($config, $finalFile)) {
+                return ['ok' => false, 'file' => null];
             }
         }
 
-        $size = $this->humanSize(filesize($file));
-        $this->info("MySQL backup created: backup_{$timestamp}.sql.gz ({$size})");
-        Log::info("BackupDatabase: MySQL backup created [{$file}] ({$size})");
-        return true;
+        $size = $this->humanSize((int) filesize($finalFile));
+        $this->info("MySQL backup created: " . basename($finalFile) . " ({$size})");
+        Log::info("BackupDatabase: MySQL backup created [{$finalFile}] ({$size})");
+
+        return ['ok' => true, 'file' => $finalFile];
     }
 
-    /**
-     * Dump a MySQL/MariaDB database to a gzipped SQL file using PDO only.
-     * Used as a fallback when exec() is disabled on the host.
-     */
-    private function dumpMysqlViaPdo(array $config, string $file): bool
+    private function dumpMysqlViaPdo(array $config, string $finalFile): bool
     {
+        $sqlTemp = $this->tempPath(dirname($finalFile), 'mysql-fallback', 'sql');
+        $gzipTemp = $this->tempPath(dirname($finalFile), 'mysql-fallback', 'sql.gz');
+
         try {
-            $host    = $config['host'] ?? '127.0.0.1';
-            $port    = $config['port'] ?? '3306';
-            $dbName  = $config['database'];
+            $host = $config['host'] ?? '127.0.0.1';
+            $port = $config['port'] ?? '3306';
+            $dbName = $config['database'];
             $charset = $config['charset'] ?? 'utf8mb4';
 
             $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset={$charset}";
             $pdo = new \PDO($dsn, $config['username'] ?? 'root', $config['password'] ?? '', [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                \PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => false,
             ]);
 
-            $gz = \gzopen($file, 'wb9');
-            if ($gz === false) {
-                $this->error("MySQL backup failed: could not open gzip output file.");
-                Log::error("BackupDatabase: gzopen failed for [{$file}]");
-                return false;
+            $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+
+            $handle = fopen($sqlTemp, 'wb');
+            if ($handle === false) {
+                throw new \RuntimeException('Unable to open SQL temp file for writing.');
             }
 
-            \gzwrite($gz, "-- Database: {$dbName}\n");
-            \gzwrite($gz, "-- Generated: " . date('Y-m-d H:i:s') . " (PHP PDO dump)\n\n");
-            \gzwrite($gz, "SET FOREIGN_KEY_CHECKS=0;\n");
-            \gzwrite($gz, "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
+            fwrite($handle, "-- Database: {$dbName}\n");
+            fwrite($handle, "-- Generated: " . date('Y-m-d H:i:s') . " (PHP PDO dump)\n\n");
+            fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n");
+            fwrite($handle, "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
 
-            $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
+            $tables = $pdo->query('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"')->fetchAll(\PDO::FETCH_COLUMN, 0);
 
             foreach ($tables as $table) {
-                \gzwrite($gz, "-- Table: `{$table}`\n");
-                \gzwrite($gz, "DROP TABLE IF EXISTS `{$table}`;\n");
+                fwrite($handle, "-- Table: `{$table}`\n");
+                fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
 
                 $createRow = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
-                \gzwrite($gz, $createRow['Create Table'] . ";\n\n");
+                fwrite($handle, $createRow['Create Table'] . ";\n\n");
 
-                // Dump rows in chunks to avoid memory exhaustion on large tables
                 $rowStmt = $pdo->query("SELECT * FROM `{$table}`");
-                $chunk   = [];
+                $chunk = [];
                 $columns = null;
 
                 while ($row = $rowStmt->fetch(\PDO::FETCH_ASSOC)) {
                     if ($columns === null) {
                         $columns = '`' . implode('`, `', array_keys($row)) . '`';
                     }
+
                     $escaped = array_map(
-                        fn($v) => $v === null ? 'NULL' : $pdo->quote((string) $v),
+                        fn ($value) => $value === null ? 'NULL' : $pdo->quote((string) $value),
                         array_values($row)
                     );
                     $chunk[] = '(' . implode(', ', $escaped) . ')';
 
                     if (count($chunk) >= 200) {
-                        \gzwrite($gz, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+                        fwrite($handle, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
                         $chunk = [];
                     }
                 }
 
-                if (!empty($chunk) && $columns !== null) {
-                    \gzwrite($gz, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+                if ($chunk !== [] && $columns !== null) {
+                    fwrite($handle, "INSERT INTO `{$table}` ({$columns}) VALUES\n" . implode(",\n", $chunk) . ";\n");
                 }
 
-                \gzwrite($gz, "\n");
+                fwrite($handle, "\n");
             }
 
-            \gzwrite($gz, "SET FOREIGN_KEY_CHECKS=1;\n");
-            \gzclose($gz);
+            fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+            fclose($handle);
+            $pdo->exec('COMMIT');
+
+            if (! $this->isValidSqlDump($sqlTemp) || ! $this->gzipFile($sqlTemp, $gzipTemp) || ! $this->isValidGzipDump($gzipTemp)) {
+                throw new \RuntimeException('Generated fallback dump is invalid.');
+            }
+
+            $this->atomicRename($gzipTemp, $finalFile);
+            $this->cleanupFiles([$sqlTemp]);
 
             return true;
         } catch (\Throwable $e) {
-            $this->error("MySQL PDO backup failed: " . $e->getMessage());
-            Log::error("BackupDatabase: PDO dump failed", ['error' => $e->getMessage()]);
+            if (isset($pdo)) {
+                try {
+                    $pdo->exec('ROLLBACK');
+                } catch (\Throwable) {
+                }
+            }
+
+            $this->cleanupFiles([$sqlTemp ?? null, $gzipTemp ?? null]);
+            $this->error('MySQL PDO backup failed: ' . $e->getMessage());
+            Log::error('BackupDatabase: PDO dump failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
 
-    private function backupSqlite(array $config, string $dir, string $timestamp): bool
+    /**
+     * @return array{ok: bool, file: string|null}
+     */
+    private function backupSqlite(array $config, string $dir, string $timestamp): array
     {
-        $source = $config['database'];
+        $source = $config['database'] ?? null;
+        if (! $source || $source === ':memory:') {
+            $this->error('SQLite backup requires a file-based database.');
+            Log::error('BackupDatabase: SQLite backup unsupported for in-memory database');
 
-        if (!file_exists($source)) {
+            return ['ok' => false, 'file' => null];
+        }
+
+        if (! file_exists($source)) {
             $this->error("SQLite database file not found: {$source}");
             Log::error("BackupDatabase: SQLite file not found [{$source}]");
-            return false;
+
+            return ['ok' => false, 'file' => null];
         }
 
-        $file = "{$dir}/backup_{$timestamp}.sqlite";
+        $finalFile = "{$dir}/backup_{$timestamp}.sqlite";
+        $tempFile = $this->tempPath($dir, 'sqlite', 'sqlite');
 
-        // Use SQLite's online backup by simply copying the file
-        // (SQLite allows safe reads; for write-busy DBs this is fine for small DBs)
-        if (!copy($source, $file)) {
-            $this->error("SQLite backup failed: could not copy database file.");
-            Log::error("BackupDatabase: SQLite copy failed [{$source}] -> [{$file}]");
-            return false;
+        try {
+            $pdo = new \PDO('sqlite:' . $source, null, null, [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+            $quoted = str_replace("'", "''", $tempFile);
+            $pdo->exec("VACUUM INTO '{$quoted}'");
+
+            if (! $this->isValidSqliteBackup($tempFile)) {
+                throw new \RuntimeException('SQLite backup file is invalid.');
+            }
+
+            $this->atomicRename($tempFile, $finalFile);
+        } catch (\Throwable $e) {
+            $this->cleanupFiles([$tempFile ?? null]);
+            $this->error('SQLite backup failed: ' . $e->getMessage());
+            Log::error('BackupDatabase: SQLite backup failed', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'file' => null];
         }
 
-        $size = $this->humanSize(filesize($file));
-        $this->info("SQLite backup created: backup_{$timestamp}.sqlite ({$size})");
-        Log::info("BackupDatabase: SQLite backup created [{$file}] ({$size})");
-        return true;
+        $size = $this->humanSize((int) filesize($finalFile));
+        $this->info("SQLite backup created: " . basename($finalFile) . " ({$size})");
+        Log::info("BackupDatabase: SQLite backup created [{$finalFile}] ({$size})");
+
+        return ['ok' => true, 'file' => $finalFile];
     }
 
-    private function backupPgsql(array $config, string $dir, string $timestamp): bool
+    /**
+     * @return array{ok: bool, file: string|null}
+     */
+    private function backupPgsql(array $config, string $dir, string $timestamp): array
     {
-        $database = $config['database'];
-        $file     = "{$dir}/backup_{$timestamp}.sql.gz";
+        if (! $this->isExecAvailable()) {
+            $this->error('PostgreSQL backup requires exec(), which is disabled on this host.');
+            Log::error('BackupDatabase: exec() unavailable, cannot run pg_dump');
 
-        $host    = escapeshellarg($config['host'] ?? '127.0.0.1');
-        $port    = escapeshellarg($config['port'] ?? '5432');
-        $user    = escapeshellarg($config['username'] ?? 'postgres');
-        $pass    = $config['password'] ?? '';
-        $db      = escapeshellarg($database);
-        $fileArg = escapeshellarg($file);
-
-        if (!$this->isExecAvailable()) {
-            $this->error("PostgreSQL backup requires exec(), which is disabled on this host.");
-            Log::error("BackupDatabase: exec() unavailable, cannot run pg_dump");
-            return false;
+            return ['ok' => false, 'file' => null];
         }
 
-        $env     = !empty($pass) ? "PGPASSWORD=" . escapeshellarg($pass) . " " : '';
-        $command = "{$env}pg_dump --host={$host} --port={$port} --username={$user} {$db} | gzip > {$fileArg} 2>&1";
+        $finalFile = "{$dir}/backup_{$timestamp}.sql.gz";
+        $sqlTemp = $this->tempPath($dir, 'pgsql', 'sql');
+        $gzipTemp = $this->tempPath($dir, 'pgsql', 'sql.gz');
 
-        \exec($command, $output, $exitCode);
+        try {
+            $command = [
+                'pg_dump',
+                '--host=' . ($config['host'] ?? '127.0.0.1'),
+                '--port=' . ($config['port'] ?? '5432'),
+                '--username=' . ($config['username'] ?? 'postgres'),
+                '--file=' . $sqlTemp,
+                (string) ($config['database'] ?? ''),
+            ];
 
-        if ($exitCode !== 0 || !file_exists($file) || filesize($file) === 0) {
-            $message = implode("\n", $output);
-            $this->error("PostgreSQL backup failed. Exit code: {$exitCode}. Output: {$message}");
-            Log::error("BackupDatabase PgSQL failed", ['exit_code' => $exitCode, 'output' => $output]);
-            return false;
+            $process = $this->runProcess($command, [
+                'PGPASSWORD' => (string) ($config['password'] ?? ''),
+            ]);
+
+            if ($process['exit_code'] !== 0 || ! $this->isValidSqlDump($sqlTemp)) {
+                $this->error("PostgreSQL backup failed. Exit code: {$process['exit_code']}. Output: {$process['stderr']}");
+                Log::error('BackupDatabase PgSQL failed', $process);
+                $this->cleanupFiles([$sqlTemp, $gzipTemp]);
+
+                return ['ok' => false, 'file' => null];
+            }
+
+            if (! $this->gzipFile($sqlTemp, $gzipTemp) || ! $this->isValidGzipDump($gzipTemp)) {
+                throw new \RuntimeException('Compressed PostgreSQL dump is invalid.');
+            }
+
+            $this->atomicRename($gzipTemp, $finalFile);
+            $this->cleanupFiles([$sqlTemp]);
+        } catch (\Throwable $e) {
+            $this->cleanupFiles([$sqlTemp ?? null, $gzipTemp ?? null]);
+            $this->error('PostgreSQL backup failed: ' . $e->getMessage());
+            Log::error('BackupDatabase PgSQL failed', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'file' => null];
         }
 
-        $size = $this->humanSize(filesize($file));
-        $this->info("PostgreSQL backup created: backup_{$timestamp}.sql.gz ({$size})");
-        Log::info("BackupDatabase: PostgreSQL backup created [{$file}] ({$size})");
-        return true;
+        $size = $this->humanSize((int) filesize($finalFile));
+        $this->info("PostgreSQL backup created: " . basename($finalFile) . " ({$size})");
+        Log::info("BackupDatabase: PostgreSQL backup created [{$finalFile}] ({$size})");
+
+        return ['ok' => true, 'file' => $finalFile];
     }
-
-    // -------------------------------------------------------------------------
-    // Rotation
-    // -------------------------------------------------------------------------
 
     private function rotate(string $dir, int $keep): void
     {
-        $pattern = $dir . '/backup_*';
-        $files   = glob($pattern);
+        $files = glob($dir . '/backup_*');
 
         if ($files === false || count($files) <= $keep) {
             return;
         }
 
-        // Sort ascending by filename (timestamps sort naturally)
         sort($files);
-
-        $toDelete = array_slice($files, 0, count($files) - $keep);
-
-        foreach ($toDelete as $old) {
-            if (unlink($old)) {
-                $this->line("Deleted old backup: " . basename($old));
+        foreach (array_slice($files, 0, count($files) - $keep) as $old) {
+            if (@unlink($old)) {
+                $this->line('Deleted old backup: ' . basename($old));
                 Log::info("BackupDatabase: Deleted old backup [{$old}]");
             } else {
-                $this->warn("Could not delete: " . basename($old));
+                $this->warn('Could not delete: ' . basename($old));
                 Log::warning("BackupDatabase: Could not delete [{$old}]");
             }
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Check whether PHP's exec() function is available on this host.
-     * Many shared hosts disable it via the disable_functions php.ini directive.
-     */
     private function isExecAvailable(): bool
     {
-        if (!function_exists('exec')) {
+        if (! function_exists('proc_open')) {
             return false;
         }
+
         $disabled = ini_get('disable_functions');
         if ($disabled) {
             $disabledList = array_map('trim', explode(',', $disabled));
-            if (in_array('exec', $disabledList, true)) {
+            if (in_array('proc_open', $disabledList, true)) {
                 return false;
             }
         }
+
         return true;
+    }
+
+    /**
+     * @param  list<string>  $command
+     * @return array{exit_code: int, stdout: string, stderr: string}
+     */
+    private function runProcess(array $command, array $env = []): array
+    {
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = proc_open($command, $descriptors, $pipes, null, array_merge($_ENV, $_SERVER, $env), ['bypass_shell' => true]);
+        if (! is_resource($process)) {
+            throw new \RuntimeException('Unable to start backup process.');
+        }
+
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]) ?: '';
+        fclose($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]) ?: '';
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        return [
+            'exit_code' => (int) $exitCode,
+            'stdout' => trim($stdout),
+            'stderr' => trim($stderr),
+        ];
+    }
+
+    private function gzipFile(string $source, string $destination): bool
+    {
+        $in = fopen($source, 'rb');
+        $out = gzopen($destination, 'wb9');
+
+        if ($in === false || $out === false) {
+            if (is_resource($in)) {
+                fclose($in);
+            }
+            if (is_resource($out)) {
+                gzclose($out);
+            }
+
+            return false;
+        }
+
+        while (! feof($in)) {
+            $chunk = fread($in, 8192);
+            if ($chunk === false) {
+                fclose($in);
+                gzclose($out);
+
+                return false;
+            }
+
+            gzwrite($out, $chunk);
+        }
+
+        fclose($in);
+        gzclose($out);
+
+        return true;
+    }
+
+    private function isValidSqlDump(string $file): bool
+    {
+        if (! is_file($file) || filesize($file) < 64) {
+            return false;
+        }
+
+        $sample = file_get_contents($file, false, null, 0, 4096);
+        if (! is_string($sample) || $sample === '') {
+            return false;
+        }
+
+        return str_contains($sample, 'CREATE TABLE')
+            || str_contains($sample, 'INSERT INTO')
+            || str_contains($sample, '-- Database:')
+            || str_contains($sample, 'PostgreSQL database dump');
+    }
+
+    private function isValidGzipDump(string $file): bool
+    {
+        if (! is_file($file) || filesize($file) < 64) {
+            return false;
+        }
+
+        $handle = gzopen($file, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $sample = gzread($handle, 4096);
+        gzclose($handle);
+
+        return is_string($sample) && $sample !== '' && (
+            str_contains($sample, 'CREATE TABLE')
+            || str_contains($sample, 'INSERT INTO')
+            || str_contains($sample, '-- Database:')
+            || str_contains($sample, 'PostgreSQL database dump')
+        );
+    }
+
+    private function isValidSqliteBackup(string $file): bool
+    {
+        if (! is_file($file) || filesize($file) < 512) {
+            return false;
+        }
+
+        $header = file_get_contents($file, false, null, 0, 16);
+
+        return $header === "SQLite format 3\0";
+    }
+
+    private function atomicRename(string $source, string $destination): void
+    {
+        if (file_exists($destination)) {
+            @unlink($destination);
+        }
+
+        if (! @rename($source, $destination)) {
+            throw new \RuntimeException('Unable to finalize backup file.');
+        }
+    }
+
+    /**
+     * @param  array<int, string|null>  $files
+     */
+    private function cleanupFiles(array $files): void
+    {
+        foreach ($files as $file) {
+            if ($file && is_file($file)) {
+                @unlink($file);
+            }
+        }
+    }
+
+    private function tempPath(string $dir, string $prefix, string $extension): string
+    {
+        return $dir . DIRECTORY_SEPARATOR . $prefix . '_' . uniqid('', true) . '.' . $extension;
     }
 
     private function humanSize(int $bytes): string
@@ -295,6 +512,7 @@ class BackupDatabase extends Command
         if ($bytes >= 1024) {
             return round($bytes / 1024, 2) . ' KB';
         }
+
         return $bytes . ' B';
     }
 }

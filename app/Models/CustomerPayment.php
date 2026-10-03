@@ -12,8 +12,11 @@ class CustomerPayment extends Model
 
     protected $fillable = [
         'customer_id',
+        'bill_id',
+        'client_uuid',
         'amount',
         'type',
+        'kind',
         'note',
         'user_id', // the user who owns this payment
     ];
@@ -21,5 +24,10 @@ class CustomerPayment extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function bill()
+    {
+        return $this->belongsTo(Bill::class);
     }
 }

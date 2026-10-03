@@ -37,11 +37,8 @@ return new class extends Migration
     {
         foreach ($this->indexes as $table => $columns) {
             $indexName = $table . '_' . implode('_', $columns) . '_index';
-            $existing  = collect(\DB::select("SHOW INDEX FROM `{$table}`"))
-                ->pluck('Key_name')
-                ->contains($indexName);
 
-            if ($existing) {
+            if (Schema::hasIndex($table, $indexName)) {
                 continue;
             }
 
@@ -55,11 +52,8 @@ return new class extends Migration
     {
         foreach ($this->indexes as $table => $columns) {
             $indexName = $table . '_' . implode('_', $columns) . '_index';
-            $existing  = collect(\DB::select("SHOW INDEX FROM `{$table}`"))
-                ->pluck('Key_name')
-                ->contains($indexName);
 
-            if (! $existing) {
+            if (! Schema::hasIndex($table, $indexName)) {
                 continue;
             }
 

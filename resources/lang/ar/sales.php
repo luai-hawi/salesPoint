@@ -69,4 +69,6 @@ return [
     'Sale updated successfully' => 'تم تحديث العرض بنجاح!',
     'Sale deleted successfully' => 'تم حذف العرض بنجاح!',
     'Confirm delete sale'       => 'هل أنت متأكد من حذف هذا العرض؟ لا يمكن التراجع عن هذه العملية.',
+    'Invalid product selection' => 'واحد أو أكثر من المنتجات المختارة لا ينتمي إلى متجرك.',
+    'No products found'         => 'لا توجد منتجات',
 ];

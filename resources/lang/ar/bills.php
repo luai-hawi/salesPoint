@@ -113,4 +113,11 @@ return [
     // Product Additional Barcodes
     'Additional Barcodes' => 'باركودات إضافية',
     'Enter additional barcodes (one per line)' => 'أدخل باركودات إضافية (واحد في كل سطر)',
+
+    // منتقي المنتجات في محرر الفاتورة
+    'All Products' => 'جميع المنتجات',
+    'In Stock Only' => 'المتوفر فقط',
+    'Loading products...' => 'جارٍ تحميل المنتجات...',
+    'Out of Stock' => 'غير متوفر',
+    'Search products by name...' => 'ابحث عن المنتجات بالاسم...',
 ];

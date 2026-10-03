@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bill;
-use App\Models\Product;
 use App\Models\Customer;
-use App\Models\Batch;
 use App\Models\CustomerPayment;
-use App\Models\ProductImei;
+use App\Models\Product;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\BillService;
+use App\Services\CustomerLedger;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BillsController extends Controller
 {
@@ -30,59 +33,86 @@ class BillsController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $date = $request->input('date');
+        $ownerId = $user->ownerId();
+        $paymentStatus = (string) $request->input('payment_status', '');
 
-        $baseQuery = Bill::where('user_id', $ownerId)
-            ->with('products', 'customer', 'creator')
-            ->orderBy('created_at', 'desc');
+        $perPage = 50;
+        $filteredPaid = 0.0;
+        $filteredDue = 0.0;
+        $totalSales = 0.0;
+        $totalProfit = 0.0;
 
-        if ($date) {
-            $baseQuery->whereDate('created_at', $date);
+        if ($paymentStatus === '') {
+            $bills = $this->buildBillIndexQuery($ownerId, $request)
+                ->with(['products', 'customer', 'creator'])
+                ->paginate($perPage)
+                ->withQueryString();
+
+            $summaries = $this->paymentSummariesForCollection($bills->getCollection(), $ownerId);
+            $bills->getCollection()->transform(function (Bill $bill) use ($summaries) {
+                $bill->payment_summary = $summaries[$bill->id] ?? CustomerLedger::billSummary($bill);
+
+                return $bill;
+            });
+
+            $pageIds = $bills->getCollection()->pluck('id')->all();
+            $totalSales = round((float) (($this->billTotalsBaseQuery($ownerId, $request)->sum('bills.total_price')) ?? 0), 2);
+            $totalProfit = $this->filteredProfit($ownerId, $request);
+            [$filteredPaid, $filteredDue] = $this->filteredLedgerTotals($ownerId, $request);
+        } else {
+            $baseQuery = $this->buildBillIndexQuery($ownerId, $request);
+            $matchingBills = (clone $baseQuery)
+                ->select(['bills.id', 'bills.user_id', 'bills.customer_id', 'bills.total_price', 'bills.created_at'])
+                ->get();
+            $summaries = $this->paymentSummariesForCollection($matchingBills, $ownerId);
+            $filteredBills = $matchingBills->filter(function (Bill $bill) use ($paymentStatus, $summaries) {
+                $summary = $summaries[$bill->id] ?? CustomerLedger::billSummary($bill);
+
+                return match ($paymentStatus) {
+                    'cash' => $summary['status'] === 'cash',
+                    'paid' => $summary['status'] === 'paid',
+                    'partial' => $summary['status'] === 'partial',
+                    'unpaid' => $summary['status'] === 'unpaid',
+                    default => true,
+                };
+            })->values();
+
+            $filteredIds = $filteredBills->pluck('id')->all();
+            $totalSales = round((float) $filteredBills->sum('total_price'), 2);
+            $totalProfit = empty($filteredIds)
+                ? 0.0
+                : round((float) (DB::table('bills')
+                    ->join('bill_product', 'bills.id', '=', 'bill_product.bill_id')
+                    ->whereIn('bills.id', $filteredIds)
+                    ->selectRaw('SUM((bill_product.selling_price - bill_product.cost_price) * bill_product.quantity - bill_product.discount) as profit')
+                    ->value('profit') ?? 0), 2);
+
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $pageIds = $filteredBills->slice(($currentPage - 1) * $perPage, $perPage)->pluck('id')->all();
+            $pageBills = Bill::withoutGlobalScopes()
+                ->with(['products', 'customer', 'creator'])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(fn (Bill $bill) => array_search($bill->id, $pageIds, true))
+                ->values();
+
+            $bills = new LengthAwarePaginator(
+                $pageBills,
+                $filteredBills->count(),
+                $perPage,
+                $currentPage,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+
+            $bills->getCollection()->transform(function (Bill $bill) use ($summaries) {
+                $bill->payment_summary = $summaries[$bill->id] ?? CustomerLedger::billSummary($bill);
+
+                return $bill;
+            });
+
+            $filteredPaid = round((float) $filteredBills->sum(fn (Bill $bill) => $summaries[$bill->id]['paid'] ?? 0), 2);
+            $filteredDue = round((float) $filteredBills->sum(fn (Bill $bill) => $summaries[$bill->id]['due'] ?? 0), 2);
         }
-
-        // Handle search - restored with product name/barcode search
-        $searchTerm = $request->query('search');
-        if ($searchTerm) {
-            $search = strtolower($searchTerm);
-            $searchTerms = explode(' ', $search);
-            foreach ($searchTerms as $term) {
-                $term = trim($term);
-                if ($term) {
-                    $baseQuery->where(function ($q) use ($term) {
-                        $q->where('id', 'like', "%{$term}%")
-                            ->orWhere('note', 'like', "%{$term}%")
-                            ->orWhere('total_price', 'like', "%{$term}%")
-                            ->orWhereHas('customer', function ($customerQuery) use ($term) {
-                                $customerQuery->where('name', 'like', "%{$term}%");
-                            })
-                            ->orWhereHas('creator', function ($creatorQuery) use ($term) {
-                                $creatorQuery->where('name', 'like', "%{$term}%");
-                            })
-                            ->orWhereHas('products', function ($productQuery) use ($term) {
-                                $productQuery->where('name', 'like', "%{$term}%")
-                                    ->orWhere('barcode', 'like', "%{$term}%");
-                            });
-                    });
-                }
-            }
-        }
-
-        // Use selected date or default to today for money calculations
-        $calculationDate = $date ? $date : today()->format('Y-m-d');
-
-        $totalSales = Bill::where('user_id', $ownerId)
-            ->whereDate('created_at', $calculationDate)
-            ->sum('total_price');
-
-        $totalProfit = DB::table('bills')
-            ->join('bill_product', 'bills.id', '=', 'bill_product.bill_id')
-            ->where('bills.user_id', $ownerId)
-            ->whereDate('bills.created_at', $calculationDate)
-            ->selectRaw('SUM((bill_product.selling_price - bill_product.cost_price) * bill_product.quantity - bill_product.discount) as profit')
-            ->value('profit') ?? 0;
-
-        $bills = $baseQuery->paginate(50);
 
         // Handle AJAX requests
         if ($request->ajax()) {
@@ -100,31 +130,17 @@ class BillsController extends Controller
             'bills' => $bills,
             'totalSales' => $totalSales,
             'totalProfit' => $totalProfit,
-            'selectedDate' => $date,
+            'selectedDate' => $request->input('date'),
+            'paymentStatus' => $paymentStatus,
+            'filteredPaid' => $filteredPaid,
+            'filteredDue' => $filteredDue,
         ]);
     }
-    // public function create()
-    // {
-    //     $user = auth()->user();
-    //     $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
-    //     $products = Product::where('user_id', $ownerId)->get();
-    //     $customers = Customer::where('user_id', $ownerId)->get();
-
-    //     // Prepare products data for JavaScript
-    //     $productsForJS = $products->map(function ($p) {
-    //         return [
-    //             'id' => $p->id,
-    //             'name' => $p->name,
-    //             'price' => $p->selling_price,
-    //             'cost_price' => $p->cost_price,
-    //             'barcode' => $p->barcode,
-    //             'quantity' => $p->quantity,
-    //         ];
-    //     })->toArray();
-
-    //     return view('bills.create', compact('productsForJS', 'products', 'customers'));
-    // }
+    public function create()
+    {
+        return redirect()->route('dashboard');
+    }
 
     public function store(Request $request)
     {
@@ -133,8 +149,6 @@ class BillsController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
         $request->validate([
             'product_ids' => 'required|array|min:1',
             'quantities' => 'required|array',
@@ -142,253 +156,32 @@ class BillsController extends Controller
             'cost_prices' => 'required|array',
             'selling_prices' => 'required|array',
             'note' => 'nullable|string|max:1000',
-            'customer_id' => 'nullable|exists:customers,id,user_id,' . $ownerId,
-            'selling_prices' => 'required|array',
+            'customer_id' => 'nullable|exists:customers,id,user_id,' . $user->ownerId(),
             'discount_types' => 'array',
             'bill_date' => 'nullable|date',
-            'return_costs' => 'nullable|array', // New: return costs
+            'return_costs' => 'nullable|array',
+            'paid_amount' => 'nullable|numeric|min:0',
+            'payment_method' => 'nullable|string|in:cash,card,transfer,check',
+            'client_uuid' => 'nullable|string|max:64',
         ]);
 
-        // Check if it's a damaged bill or returned bill
-        $isDamaged = $request->has('is_damaged');
-        $isReturned = $request->has('is_returned');
-        $noteText = $request->input('note', '');
+        $result = app(BillService::class)->create($user, $request->all());
+        $bill = $result['bill'];
+        $summary = CustomerLedger::billSummary($bill);
 
-        if ($isDamaged) {
-            $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
-        }
-
-        if ($isReturned) {
-            $noteText .= ($noteText ? ' - ' : '') . 'Returned Bill';
-        }
-
-        // Get the custom date or use now()
-        $billDateInput = $request->input('bill_date');
-        if ($billDateInput) {
-            // Parse the date and add current time
-            $billDate = \Carbon\Carbon::parse($billDateInput)->setTime(now()->hour, now()->minute, now()->second);
-        } else {
-            $billDate = now();
-        }
-
-        $bill = new Bill([
-            'note' => $noteText,
-            'total_price' => 0,
-            'customer_id' => $request->input('customer_id'),
-            'user_id' => $ownerId,
-            'created_by' => $user->id,
-            'is_damaged' => $isDamaged,
-            'is_returned' => $isReturned,
-        ]);
-
-        // Set timestamps manually
-        $bill->created_at = $billDate;
-        $bill->updated_at = $billDate;
-        $bill->save();
-
-        $total = 0;
-        $returnCosts = $request->input('return_costs', []);
-
-        foreach ($request->product_ids as $index => $productId) {
-            if (empty($productId)) continue;
-
-            $qty = (float) $request->quantities[$index];
-            $costPrice = (float) $request->cost_prices[$index];
-            $sellingPrice = (float) $request->selling_prices[$index];
-            $discountType = $request->discount_types[$index] ?? 'total';
-            $discount = $isDamaged ? ($qty * $sellingPrice) : (float) $request->discounts[$index];
-            $tags = $request->product_tags[$index] ?? null;
-
-            // Handle returned bills: negate quantities and discounts, use return cost
-            if ($isReturned) {
-                $qty = -1 * abs($qty);
-                $discount = -1 * abs($discount);
-                // Use specified return cost if provided, otherwise use existing cost_price
-                if (isset($returnCosts[$index]) && $returnCosts[$index] !== '') {
-                    $costPrice = (float) $returnCosts[$index];
-                }
-            }
-
-            if ($discountType === 'per-unit' && !$isDamaged) {
-                $discount = $discount * abs($qty);
-            }
-
-            $product = Product::where('id', $productId)
-                ->where('user_id', $ownerId)
-                ->firstOrFail();
-
-            // Update product quantity only if not restaurant role
-            $isRestaurantRole = $user->role === 'restaurant' ||
-                ($user->role === 'employee' && $user->shop_owner_id &&
-                    $user->shopOwner && $user->shopOwner->role === 'restaurant');
-
-            if (!$isRestaurantRole) {
-                // Update product quantity
-                $product->quantity -= $qty;
-                // Update last sale date when product is sold
-                $product->last_sale_date = now();
-                $product->save();
-
-                // Handle batch consumption (FIFO)
-                $remainingQty = $qty;
-                $batches = $product->batches()->where('quantity', '>', 0)->orderBy('created_at')->get();
-
-                foreach ($batches as $batch) {
-                    if ($remainingQty <= 0) break;
-
-                    $consume = min($batch->quantity, $remainingQty);
-                    $batch->quantity -= $consume;
-                    $batch->save();
-                    $remainingQty -= $consume;
-                }
-
-                // If still remaining quantity, create negative batch or handle returns
-                if ($remainingQty > 0) {
-                    $lastBatch = $product->batches()->latest()->first();
-                    if ($lastBatch) {
-                        $lastBatch->quantity -= $remainingQty;
-                        $lastBatch->save();
-                    } else {
-                        $product->batches()->create([
-                            'quantity' => -1 * $remainingQty,
-                            'cost_price' => $product->cost_price,
-                            'user_id' => $ownerId,
-                        ]);
-                    }
-                } elseif ($remainingQty < 0 && $isReturned) {
-                    // For returns with remaining negative quantity, recalculate average cost
-                    // Create batch for returned inventory at specified return cost
-                    $product->batches()->create([
-                        'quantity' => abs($remainingQty),
-                        'cost_price' => $costPrice,
-                        'user_id' => $ownerId,
-                    ]);
-                }
-            }
-
-            $tagsTotal = $this->calculateTagsTotal($tags);
-            $lineTotal = ($sellingPrice * $qty) - $discount + ($tagsTotal * $qty);
-
-            $bill->products()->attach($productId, [
-                'quantity' => $qty,
-                'discount' => $discount,
-                'cost_price' => $costPrice,
-                'selling_price' => $sellingPrice,
-                'tags' => $tags,
-                'imeis' => null, // Will be updated below
-            ]);
-
-            // Handle IMEI marking for sold products
-            $imeiCodes = $request->input("imeis_product_{$productId}", []);
-            if (!empty($imeiCodes) && !$isReturned) {
-                $savedImeis = [];
-                foreach ($imeiCodes as $imeiCode) {
-                    $imeiCode = trim($imeiCode);
-                    if (empty($imeiCode)) continue;
-
-                    // Try to find existing IMEI record
-                    $imeiRecord = ProductImei::where('user_id', $ownerId)
-                        ->where('product_id', $productId)
-                        ->where('imei', $imeiCode)
-                        ->whereNull('sale_bill_id')
-                        ->first();
-
-                    if ($imeiRecord) {
-                        $imeiRecord->update([
-                            'sale_bill_id' => $bill->id,
-                            'sold_at' => now(),
-                            'selling_price' => $sellingPrice,
-                        ]);
-                    } else {
-                        // Create new IMEI record if not found (could be manually entered during POS)
-                        $imeiRecord = ProductImei::create([
-                            'user_id' => $ownerId,
-                            'product_id' => $productId,
-                            'imei' => $imeiCode,
-                            'sale_bill_id' => $bill->id,
-                            'sold_at' => now(),
-                            'selling_price' => $sellingPrice,
-                            'purchased_at' => now()->toDateString(),
-                        ]);
-                    }
-                    $savedImeis[] = $imeiCode;
-                }
-
-                // Update pivot with IMEIs
-                if (!empty($savedImeis)) {
-                    $bill->products()->updateExistingPivot($productId, [
-                        'imeis' => json_encode($savedImeis),
-                    ]);
-                }
-            }
-
-            // For returned bills, allow negative totals. For normal bills, ensure non-negative.
-            if ($isReturned) {
-                $total += $lineTotal;
-            } else {
-                $total += max(0, $lineTotal);
-            }
-        }
-
-        $bill->update(['total_price' => $total]);
-
-        // For returned bills: recalculate product cost prices based on return quantities and costs
-        if ($isReturned) {
-            foreach ($request->product_ids as $index => $productId) {
-                if (empty($productId)) continue;
-
-                $product = Product::where('id', $productId)
-                    ->where('user_id', $ownerId)
-                    ->first();
-
-                if ($product) {
-                    $returnQty = (float) $request->quantities[$index];
-                    $returnCostPrice = isset($returnCosts[$index]) && $returnCosts[$index] !== ''
-                        ? (float) $returnCosts[$index]
-                        : (float) $request->cost_prices[$index];
-
-                    // Calculate weighted average cost price
-                    // Current inventory quantity (positive) + returned quantity (positive, we use abs)
-                    // NOTE: $product->quantity has already been updated in the first loop, so we subtract the return qty to get original qty
-                    $originalQty = $product->quantity - $returnQty;  // Get original qty before return
-                    $currentQty = max(0, $originalQty);  // Ensure non-negative
-                    $currentCostPrice = $product->cost_price;
-                    $returnAbsQty = abs($returnQty);
-
-                    // New average cost price = (current_qty * current_cost + return_qty * return_cost) / (current_qty + return_qty)
-                    if ($currentQty >= 0) {
-                        $newCostPrice = ($currentQty * $currentCostPrice + $returnAbsQty * $returnCostPrice) / ($currentQty + $returnAbsQty);
-                    } else {
-                        // If current qty is negative, just use return cost
-                        $newCostPrice = $returnCostPrice;
-                    }
-
-                    $product->cost_price = round($newCostPrice, 2);
-                    $product->save();
-                }
-            }
-        }
-
-        // Handle customer payment if customer is selected
-        if ($bill->customer_id && $total > 0) {
-            $bill->customer->payments()->create([
-                'amount' => -1 * $total,
-                'type' => 'cash',
-                'note' => "Bill #{$bill->id} created as debt",
-                'user_id' => $ownerId,
-            ]);
-            $bill->customer->update(['balance' => $bill->customer->balance - $total]);
-        }
-
-        if ($request->ajax()) {
+        if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Bill created successfully!',
-                'bill' => $bill
+                'message' => $result['duplicate'] ? __('receivables.messages.bill_duplicate') : __('messages.Bill created successfully!'),
+                'bill' => $bill,
+                'duplicate' => $result['duplicate'],
+                'paid' => $summary['paid'],
+                'due' => $summary['due'],
+                'customer_balance' => $bill->customer?->fresh()?->balance,
             ]);
-        } else {
-            return redirect()->route('dashboard')->with('success', 'Bill created successfully!');
         }
+
+        return redirect()->route('dashboard')->with('success', $result['duplicate'] ? __('receivables.messages.bill_duplicate') : __('messages.Bill created successfully!'));
     }
 
     public function show(Bill $bill)
@@ -405,9 +198,41 @@ class BillsController extends Controller
         }
 
         $bill->load(['products', 'customer', 'creator']);
+        $summary = CustomerLedger::billSummary($bill);
+        $ledgerRows = $this->billLedgerRows($bill, $ownerId);
 
         if (request()->expectsJson()) {
-            return response()->json(['bill' => $bill]);
+            return response()->json([
+                'bill' => $bill,
+                'items' => $bill->products->map(fn ($product) => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'barcode' => $product->barcode,
+                    'quantity' => (float) $product->pivot->quantity,
+                    'discount' => (float) $product->pivot->discount,
+                    'cost_price' => (float) $product->pivot->cost_price,
+                    'selling_price' => (float) $product->pivot->selling_price,
+                    'tags' => $product->pivot->tags,
+                    'imeis' => $product->pivot->imeis ? json_decode($product->pivot->imeis, true) : [],
+                ])->values(),
+                'ledger_summary' => $summary,
+                'ledger_rows' => $ledgerRows->map(fn (CustomerPayment $row) => [
+                    'id' => $row->id,
+                    'amount' => (float) $row->amount,
+                    'type' => $row->type,
+                    'note' => $row->note,
+                    'bill_id' => $row->bill_id,
+                    'kind' => CustomerLedger::kindForRow($row),
+                    'kind_label' => match (CustomerLedger::kindForRow($row)) {
+                        CustomerLedger::KIND_BILL_CHARGE => __('receivables.bill_charge'),
+                        CustomerLedger::KIND_BILL_PAYMENT => __('receivables.bill_payment'),
+                        CustomerLedger::KIND_OPENING => __('receivables.opening_balance'),
+                        CustomerLedger::KIND_ADJUSTMENT => __('receivables.adjustment'),
+                        default => __('receivables.general_payment'),
+                    },
+                    'created_at' => optional($row->created_at)->toDateTimeString(),
+                ])->values(),
+            ]);
         }
 
         $products = Product::where('user_id', $ownerId)
@@ -415,7 +240,11 @@ class BillsController extends Controller
             ->with('barcodes')
             ->get();
 
-        return view('bills.show', compact('bill', 'products'));
+        $canManageBillPayments = $user->role !== 'employee'
+            || $user->hasPermission('manage_payments_receipts')
+            || $user->hasPermission('edit_bills');
+
+        return view('bills.show', compact('bill', 'products', 'summary', 'ledgerRows', 'canManageBillPayments'));
     }
 
     public function edit(Bill $bill)
@@ -448,18 +277,16 @@ class BillsController extends Controller
 
     public function update(Request $request, Bill $bill)
     {
-        // Block editing of returned bills
         if ($bill->is_returned) {
             abort(403, __('messages.Returned bills cannot be edited. You can only view or delete them.'));
         }
 
         $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('edit_bills')) {
+        if ($user->role === 'employee' && ! $user->hasPermission('edit_bills')) {
             abort(403, 'Unauthorized');
         }
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
+        $ownerId = $user->ownerId();
         if ($bill->user_id !== $ownerId) {
             abort(403, 'Unauthorized');
         }
@@ -475,242 +302,175 @@ class BillsController extends Controller
             'dynamic_product_tags' => 'array',
         ]);
 
-        // Update note
-        $noteText = $request->input('note', '');
-        if ($bill->is_damaged && !str_contains($noteText, 'Damaged Bill')) {
-            $noteText .= ($noteText ? ' - ' : '') . 'Damaged Bill';
-        }
-        $bill->update(['note' => $noteText]);
+        $this->validateBillUpdateLines($request);
+        $isRestaurant = $user->isRestaurantAccount();
 
-        // Get products to remove
-        $toRemove = $request->input('remove_products', []);
+        $bill = DB::transaction(function () use ($request, $bill, $ownerId, $isRestaurant) {
+            $bill = Bill::withoutGlobalScopes()->whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            DB::table('bill_product')->where('bill_id', $bill->id)->orderBy('product_id')->lockForUpdate()->get();
 
-        // Handle deletions first
-        if (!empty($toRemove)) {
-            foreach ($toRemove as $uniqueKey) {
-                // Split the unique key
-                $keyParts = explode('_', $uniqueKey, 2);
-                $productId = $keyParts[0];
-                $tags = isset($keyParts[1]) ? $keyParts[1] : '';
+            $lockedProducts = $this->lockProductsByIds($ownerId, array_merge(
+                $bill->products()->pluck('products.id')->all(),
+                array_values(array_filter($request->input('dynamic_product_ids', []))),
+                array_values(array_filter([$request->input('new_product_id')]))
+            ));
 
-                // Find matching pivot record
-                $pivotQuery = \DB::table('bill_product')
-                    ->where('bill_id', $bill->id)
-                    ->where('product_id', $productId);
+            $bill->update([
+                'note' => app(BillService::class)->composeNote(
+                    $request->input('note'),
+                    (bool) $bill->is_damaged,
+                    (bool) $bill->is_returned,
+                ),
+            ]);
 
-                // Handle tags comparison
+            $toRemove = $request->input('remove_products', []);
+
+            $resolvePivot = function (string $uniqueKey) use ($bill) {
+                [$productId, $tags] = array_pad(explode('_', $uniqueKey, 2), 2, '');
+                $query = DB::table('bill_product')->where('bill_id', $bill->id)->where('product_id', $productId);
+
                 if ($tags === '') {
-                    $pivotQuery->where(function ($q) {
+                    $query->where(function ($q) {
                         $q->whereNull('tags')->orWhere('tags', '');
                     });
                 } else {
-                    $pivotQuery->where('tags', $tags);
+                    $query->where('tags', $tags);
                 }
 
-                $pivotRecord = $pivotQuery->first();
+                return [$query, $query->first(), (int) $productId];
+            };
 
-                if ($pivotRecord) {
-                    // Return stock only if not restaurant
-                    $isRestaurant = $user->role === 'restaurant' ||
-                        ($user->role === 'employee' && $user->shop_owner_id &&
-                            $user->shopOwner && $user->shopOwner->role === 'restaurant');
+            foreach ($toRemove as $uniqueKey) {
+                [$pivotQuery, $pivotRecord, $productId] = $resolvePivot($uniqueKey);
+                if (! $pivotRecord) {
+                    continue;
+                }
 
-                    if (!$isRestaurant) {
-                        $product = Product::find($productId);
-                        if ($product) {
-                            $product->quantity += $pivotRecord->quantity;
-                            $product->save();
-
-                            // Return to batch
-                            $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
-                        }
+                if (! $isRestaurant) {
+                    $product = $lockedProducts[$productId] ?? null;
+                    if ($product) {
+                        $product->quantity += $pivotRecord->quantity;
+                        $product->save();
+                        $this->returnToBatch($product, $pivotRecord->quantity, $pivotRecord->cost_price, $ownerId);
                     }
-
-                    // Delete the pivot record
-                    $pivotQuery->delete();
                 }
-            }
-        }
 
-        // Update existing products (quantities/discounts) - but skip removed ones
-        $quantities = $request->input('quantities', []);
-        $discounts = $request->input('discounts', []);
-
-        foreach ($quantities as $uniqueKey => $quantity) {
-            // Skip if this was marked for removal
-            if (in_array($uniqueKey, $toRemove)) {
-                continue;
+                $pivotQuery->delete();
             }
 
-            $keyParts = explode('_', $uniqueKey, 2);
-            $productId = $keyParts[0];
-            $tags = isset($keyParts[1]) ? $keyParts[1] : '';
+            foreach ($request->input('quantities', []) as $uniqueKey => $quantity) {
+                if (in_array($uniqueKey, $toRemove, true)) {
+                    continue;
+                }
 
-            // Find the pivot record
-            $pivotQuery = \DB::table('bill_product')
-                ->where('bill_id', $bill->id)
-                ->where('product_id', $productId);
+                [$pivotQuery, $pivotRecord, $productId] = $resolvePivot($uniqueKey);
+                if (! $pivotRecord) {
+                    continue;
+                }
 
-            if ($tags === '') {
-                $pivotQuery->where(function ($q) {
-                    $q->whereNull('tags')->orWhere('tags', '');
-                });
-            } else {
-                $pivotQuery->where('tags', $tags);
-            }
-
-            $pivotRecord = $pivotQuery->first();
-
-            if ($pivotRecord) {
-                $newQuantity = (float)$quantity;
-                $newDiscount = isset($discounts[$uniqueKey]) ? (float)$discounts[$uniqueKey] : $pivotRecord->discount;
+                $newQuantity = (float) $quantity;
+                $newDiscount = isset($request->input('discounts', [])[$uniqueKey]) ? (float) $request->input('discounts', [])[$uniqueKey] : (float) $pivotRecord->discount;
                 $quantityDiff = $newQuantity - $pivotRecord->quantity;
 
-                // Update stock if quantity changed (only for non-restaurants)
-                if ($quantityDiff != 0) {
-                    $isRestaurant = $user->role === 'restaurant' ||
-                        ($user->role === 'employee' && $user->shop_owner_id &&
-                            $user->shopOwner && $user->shopOwner->role === 'restaurant');
+                if ($quantityDiff != 0.0 && ! $isRestaurant) {
+                    $product = $lockedProducts[$productId] ?? null;
+                    if ($product) {
+                        $product->quantity -= $quantityDiff;
+                        $product->save();
 
-                    if (!$isRestaurant) {
-                        $product = Product::find($productId);
-                        if ($product) {
-                            $product->quantity -= $quantityDiff;
-                            $product->save();
-
-                            if ($quantityDiff > 0) {
-                                $this->consumeProductStockAllowNegative($product, $quantityDiff);
-                            } else {
-                                $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
-                            }
+                        if ($quantityDiff > 0) {
+                            $this->consumeProductStockAllowNegative($product, $quantityDiff);
+                        } else {
+                            $this->returnToBatch($product, abs($quantityDiff), $pivotRecord->cost_price, $ownerId);
                         }
                     }
                 }
 
-                // Update the pivot record
                 $pivotQuery->update([
                     'quantity' => $newQuantity,
                     'discount' => $newDiscount,
                     'updated_at' => now(),
                 ]);
             }
-        }
 
-        // Add new products from dynamic data - BUT EXCLUDE DELETED ONES
-        $dynamicProductIds = $request->input('dynamic_product_ids', []);
-        $dynamicQuantities = $request->input('dynamic_quantities', []);
-        $dynamicDiscounts = $request->input('dynamic_discounts', []);
-        $dynamicProductTags = $request->input('dynamic_product_tags', []);
+            foreach ($request->input('dynamic_product_ids', []) as $uniqueKey => $productId) {
+                if (in_array($uniqueKey, $toRemove, true)) {
+                    continue;
+                }
 
-        foreach ($dynamicProductIds as $uniqueKey => $productId) {
-            // CRITICAL: Skip if this product was marked for deletion
-            if (in_array($uniqueKey, $toRemove)) {
-                continue;
-            }
+                [$existsQuery] = $resolvePivot($uniqueKey);
+                if ($existsQuery->exists()) {
+                    continue;
+                }
 
-            // Check if this already exists in database
-            $keyParts = explode('_', $uniqueKey, 2);
-            $checkProductId = $keyParts[0];
-            $checkTags = isset($keyParts[1]) ? $keyParts[1] : '';
+                $quantity = (float) ($request->input('dynamic_quantities', [])[$uniqueKey] ?? 1);
+                $discount = (float) ($request->input('dynamic_discounts', [])[$uniqueKey] ?? 0);
+                $tags = ($request->input('dynamic_product_tags', [])[$uniqueKey] ?? '') ?: null;
+                $product = $lockedProducts[(int) $productId] ?? null;
 
-            $existsQuery = \DB::table('bill_product')
-                ->where('bill_id', $bill->id)
-                ->where('product_id', $checkProductId);
+                if (! $product) {
+                    continue;
+                }
 
-            if ($checkTags === '') {
-                $existsQuery->where(function ($q) {
-                    $q->whereNull('tags')->orWhere('tags', '');
-                });
-            } else {
-                $existsQuery->where('tags', $checkTags);
-            }
+                if (! $isRestaurant) {
+                    $product->quantity -= $quantity;
+                    $product->save();
+                    $this->consumeProductStockAllowNegative($product, $quantity);
+                }
 
-            // Skip if already exists
-            if ($existsQuery->exists()) {
-                continue;
-            }
-
-            $quantity = (float)($dynamicQuantities[$uniqueKey] ?? 1);
-            $discount = (float)($dynamicDiscounts[$uniqueKey] ?? 0);
-            $tags = $dynamicProductTags[$uniqueKey] ?? '';
-
-            $product = Product::find($productId);
-            if (!$product) continue;
-
-            // Update stock only for non-restaurants
-            $isRestaurant = $user->role === 'restaurant' ||
-                ($user->role === 'employee' && $user->shop_owner_id &&
-                    $user->shopOwner && $user->shopOwner->role === 'restaurant');
-
-            if (!$isRestaurant) {
-                // Update stock
-                $product->quantity -= $quantity;
-                $product->save();
-
-                // Handle batch consumption
-                $this->consumeProductStockAllowNegative($product, $quantity);
-            }
-
-            // Apply damage discount if needed
-            if ($bill->is_damaged) {
-                $discount = $quantity * $product->selling_price;
-            }
-
-            // Insert new record
-            \DB::table('bill_product')->insert([
-                'bill_id' => $bill->id,
-                'product_id' => $productId,
-                'quantity' => $quantity,
-                'discount' => $discount,
-                'cost_price' => $product->cost_price,
-                'selling_price' => $product->selling_price,
-                'tags' => $tags === '' ? null : $tags,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        // Handle dropdown product addition
-        $newProductId = $request->input('new_product_id');
-        $newQty = (float)$request->input('new_quantity');
-
-        if ($newProductId && $newQty > 0) {
-            $product = Product::find($newProductId);
-            if ($product) {
-                $product->quantity -= $newQty;
-                $product->save();
-
-                $this->consumeProductStockAllowNegative($product, $newQty);
-
-                $discount = $bill->is_damaged ? ($newQty * $product->selling_price) : 0;
-
-                \DB::table('bill_product')->insert([
+                DB::table('bill_product')->insert([
                     'bill_id' => $bill->id,
-                    'product_id' => $newProductId,
-                    'quantity' => $newQty,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
                     'discount' => $discount,
                     'cost_price' => $product->cost_price,
                     'selling_price' => $product->selling_price,
-                    'tags' => null,
+                    'tags' => $tags,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
-        }
 
-        // Recalculate totals
-        $this->recalculateBillTotal($bill);
-        $this->updateCustomerBalance($bill);
+            $newProductId = $request->input('new_product_id');
+            $newQty = (float) $request->input('new_quantity');
+            if ($newProductId && $newQty > 0) {
+                $product = $lockedProducts[(int) $newProductId] ?? null;
+                if ($product) {
+                    if (! $isRestaurant) {
+                        $product->quantity -= $newQty;
+                        $product->save();
+                        $this->consumeProductStockAllowNegative($product, $newQty);
+                    }
 
-        if ($request->ajax()) {
+                    DB::table('bill_product')->insert([
+                        'bill_id' => $bill->id,
+                        'product_id' => $newProductId,
+                        'quantity' => $newQty,
+                        'discount' => 0,
+                        'cost_price' => $product->cost_price,
+                        'selling_price' => $product->selling_price,
+                        'tags' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            $this->recalculateBillTotal($bill);
+            CustomerLedger::syncBillCharge($bill->fresh());
+
+            return $bill->fresh(['products', 'customer', 'creator']);
+        });
+
+        if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Bill updated successfully!',
-                'bill' => $bill
+                'bill' => $bill,
             ]);
-        } else {
-            return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
         }
+
+        return redirect()->route('bills.show', $bill->id)->with('success', 'Bill updated successfully!');
     }
     /**
      * Helper method to consume product stock using FIFO (ALLOWS NEGATIVE STOCK)
@@ -721,7 +481,7 @@ class BillsController extends Controller
         // Just handle batch consumption, allowing negative batches
 
         $remaining = $quantity;
-        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->get();
+        $batches = $product->batches()->where('quantity', '>', 0)->orderBy('id')->lockForUpdate()->get();
 
         foreach ($batches as $batch) {
             if ($remaining <= 0) break;
@@ -734,7 +494,7 @@ class BillsController extends Controller
 
         // If still remaining, consume from the latest batch (can go negative)
         if ($remaining > 0) {
-            $lastBatch = $product->batches()->orderByDesc('id')->first();
+            $lastBatch = $product->batches()->orderByDesc('id')->lockForUpdate()->first();
             if ($lastBatch) {
                 $lastBatch->quantity -= $remaining;
                 $lastBatch->save();
@@ -766,7 +526,7 @@ class BillsController extends Controller
         $product->save();
 
 
-        $batch = $product->batches()->where('cost_price', $costPrice)->first();
+        $batch = $product->batches()->where('cost_price', $costPrice)->lockForUpdate()->first();
 
         if ($batch) {
             $batch->quantity += $quantity;
@@ -799,8 +559,7 @@ class BillsController extends Controller
                 $tagsTotal = $this->calculateTagsTotal($product->pivot->tags);
             }
 
-            // Calculate subtotal: (unit_price + tags_per_unit) * quantity - discount
-            $subtotal = max(0, (($unitPrice + $tagsTotal) * $qty) - $discount);
+            $subtotal = $bill->is_damaged ? 0 : max(0, (($unitPrice + $tagsTotal) * $qty) - $discount);
             $total += $subtotal;
         }
 
@@ -813,22 +572,7 @@ class BillsController extends Controller
      */
     private function updateCustomerBalance($bill)
     {
-        if ($bill->customer_id) {
-            $customer = $bill->customer;
-
-            $existingPayment = $customer->payments()
-                ->where('note', "Bill #{$bill->id} created as debt")
-                ->first();
-
-            if ($existingPayment) {
-                $oldAmount = abs($existingPayment->amount);
-                $newAmount = $bill->total_price;
-                $difference = $newAmount - $oldAmount;
-
-                $existingPayment->update(['amount' => -1 * $newAmount]);
-                $customer->update(['balance' => $customer->balance - $difference]);
-            }
-        }
+        CustomerLedger::syncBillCharge($bill->fresh());
     }
 
     public function destroy(Bill $bill)
@@ -844,86 +588,322 @@ class BillsController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // 1. Restore product quantities and batches before deleting the bill
-        foreach ($bill->products as $product) {
-            $restoredQty = $product->pivot->quantity;
-            $costPrice = $product->pivot->cost_price;
+        $isRestaurant = $user->isRestaurantAccount();
 
-            // Store old quantity and average cost before update
-            $oldQty = $product->quantity;
-            $oldAvg = $product->cost_price;
+        DB::transaction(function () use ($bill, $ownerId, $isRestaurant) {
+            $bill = Bill::withoutGlobalScopes()->whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            DB::table('bill_product')->where('bill_id', $bill->id)->orderBy('product_id')->lockForUpdate()->get();
+            $lockedProducts = $this->lockProductsByIds($ownerId, $bill->products()->pluck('products.id')->all());
 
-            // Restore main product quantity
-            $product->quantity += $restoredQty;
-
-            // Update or create matching batch
-            $batch = $product->batches()->where('cost_price', $costPrice)->first();
-
-            if ($batch) {
-                // Batch with same cost price exists → increase its quantity
-                $batch->quantity += $restoredQty;
-                $batch->save();
-            } else {
-                // No matching batch → create new one
-                $product->batches()->create([
-                    'quantity' => $restoredQty,
-                    'cost_price' => $costPrice,
-                    'user_id' => $ownerId,
-                ]);
-            }
-
-            // Recalculate cost price based on bill type
-            if ($bill->is_returned) {
-                // For deleted returned bills: recalculate using formula
-                // newAvg = (current_qty × current_cost - returned_qty × returned_cost) / new_qty
-                $newQty = $product->quantity;
-                if ($newQty > 0) {
-                    $returnedAbsQty = abs($restoredQty);
-                    $newCostPrice = ($oldQty * $oldAvg - $returnedAbsQty * $costPrice) / $newQty;
-                    $product->cost_price = round($newCostPrice, 2);
-                } else {
-                    // If new quantity is 0 or negative, keep the old cost
-                    $product->cost_price = $oldAvg;
+            foreach ($bill->products as $product) {
+                if ($isRestaurant) {
+                    continue;
                 }
-            } elseif (!$bill->is_damaged) {
-                // Only recalculate cost price for normal bills (not for damaged bills)
-                if ($oldQty <= 0) {
-                    $product->cost_price = $costPrice;
+
+                $lockedProduct = $lockedProducts[$product->id] ?? $product;
+                $restoredQty = $product->pivot->quantity;
+                $costPrice = $product->pivot->cost_price;
+                $oldQty = $lockedProduct->quantity;
+                $oldAvg = $lockedProduct->cost_price;
+
+                $lockedProduct->quantity += $restoredQty;
+
+                $batch = $lockedProduct->batches()->where('cost_price', $costPrice)->lockForUpdate()->first();
+
+                if ($batch) {
+                    $batch->quantity += $restoredQty;
+                    $batch->save();
                 } else {
-                    // Recalculate average cost price using weighted average
-                    $product->cost_price =
-                        ($oldAvg * $oldQty + $costPrice * $restoredQty)
-                        / max(1, ($oldQty + $restoredQty));
+                    $lockedProduct->batches()->create([
+                        'quantity' => $restoredQty,
+                        'cost_price' => $costPrice,
+                        'user_id' => $ownerId,
+                    ]);
                 }
-                $product->cost_price = round($product->cost_price, 2);
+
+                if ($bill->is_returned) {
+                    $newQty = $lockedProduct->quantity;
+                    if ($newQty > 0) {
+                        $returnedAbsQty = abs($restoredQty);
+                        $newCostPrice = ($oldQty * $oldAvg - $returnedAbsQty * $costPrice) / $newQty;
+                        $lockedProduct->cost_price = round($newCostPrice, 2);
+                    } else {
+                        $lockedProduct->cost_price = $oldAvg;
+                    }
+                } elseif (!$bill->is_damaged) {
+                    if ($oldQty <= 0) {
+                        $lockedProduct->cost_price = $costPrice;
+                    } else {
+                        $lockedProduct->cost_price =
+                            ($oldAvg * $oldQty + $costPrice * $restoredQty)
+                            / max(1, ($oldQty + $restoredQty));
+                    }
+                    $lockedProduct->cost_price = round($lockedProduct->cost_price, 2);
+                }
+
+                $lockedProduct->save();
             }
-            // For damaged bills, just restore quantities without changing cost price
-            $product->save();
-        }
 
-        // 2. Detach all product relations
-        $bill->products()->detach();
-
-        // 3. If bill is linked to a customer, revert their balance
-        if ($bill->customer_id) {
-            $customer = $bill->customer;
-
-            // Delete associated negative payment
-            $deletedPayments = CustomerPayment::where('customer_id', $customer->id)
-                ->where('note', "Bill #{$bill->id} created as debt")
-                ->delete();
-
-            if ($deletedPayments > 0) {
-                // Increase customer balance (reduce debt)
-                $customer->balance += $bill->total_price;
-                $customer->save();
-            }
-        }
-
-        // 4. Delete the bill
-        $bill->delete();
+            $bill->products()->detach();
+            CustomerLedger::removeBillRows($bill);
+            $bill->delete();
+        });
 
         return redirect()->route('bills.index')->with('success', 'Bill deleted successfully! Product quantities and customer balance have been restored.');
+    }
+
+    public function storePayment(Request $request, Bill $bill)
+    {
+        $user = auth()->user();
+        $this->authorizeBillPayment($bill, $user);
+
+        if (! $bill->customer_id || (float) $bill->total_price <= 0) {
+            throw ValidationException::withMessages([
+                'bill' => __('receivables.validation.bill_payment_requires_customer'),
+            ]);
+        }
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'type' => 'required|string|in:cash,card,transfer,check',
+            'payment_date' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        $amount = round((float) $data['amount'], 2);
+        CustomerLedger::receiveForBill(
+                $bill,
+                $amount,
+                $data['type'],
+                $data['note'] ?? null,
+                ! empty($data['payment_date']) ? Carbon::parse($data['payment_date'])->setTime(now()->hour, now()->minute, now()->second) : null,
+            );
+
+        $bill = $bill->fresh(['customer', 'creator', 'products']);
+        $summary = CustomerLedger::billSummary($bill);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('receivables.messages.bill_payment_added'),
+                'summary' => $summary,
+                'customer_balance' => $bill->customer?->fresh()?->balance,
+            ]);
+        }
+
+        return redirect()->route('bills.show', $bill)->with('success', __('receivables.messages.bill_payment_added'));
+    }
+
+    public function destroyPayment(Bill $bill, CustomerPayment $payment)
+    {
+        $user = auth()->user();
+        $this->authorizeBillPayment($bill, $user);
+
+        if ($payment->user_id !== $bill->user_id || (int) $payment->bill_id !== (int) $bill->id) {
+            abort(404);
+        }
+
+        if (CustomerLedger::kindForRow($payment) === CustomerLedger::KIND_BILL_CHARGE) {
+            throw ValidationException::withMessages([
+                'payment' => __('receivables.validation.bill_charge_cannot_be_deleted'),
+            ]);
+        }
+
+        CustomerLedger::deleteRow($payment);
+        $summary = CustomerLedger::billSummary($bill->fresh());
+
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('receivables.messages.bill_payment_deleted'),
+                'summary' => $summary,
+                'customer_balance' => $bill->customer?->fresh()?->balance,
+            ]);
+        }
+
+        return redirect()->route('bills.show', $bill)->with('success', __('receivables.messages.bill_payment_deleted'));
+    }
+
+    private function authorizeBillPayment(Bill $bill, $user): void
+    {
+        $ownerId = $user->ownerId();
+        if ($bill->user_id !== $ownerId) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($user->role === 'employee' && ! ($user->hasPermission('manage_payments_receipts') || $user->hasPermission('edit_bills'))) {
+            abort(403, 'Unauthorized');
+        }
+    }
+
+    private function buildBillIndexQuery(int $ownerId, Request $request)
+    {
+        $query = Bill::withoutGlobalScopes()
+            ->where('bills.user_id', $ownerId)
+            ->orderByDesc('bills.created_at');
+
+        if ($request->filled('date')) {
+            $query->whereDate('bills.created_at', $request->input('date'));
+        }
+
+        $searchTerm = trim((string) $request->query('search', ''));
+        if ($searchTerm !== '') {
+            foreach (preg_split('/\s+/', mb_strtolower($searchTerm)) ?: [] as $term) {
+                $term = trim($term);
+                if ($term === '') {
+                    continue;
+                }
+
+                $query->where(function ($q) use ($term) {
+                    $q->where('bills.id', 'like', "%{$term}%")
+                        ->orWhere('bills.note', 'like', "%{$term}%")
+                        ->orWhere('bills.total_price', 'like', "%{$term}%")
+                        ->orWhereHas('customer', function ($customerQuery) use ($term) {
+                            $customerQuery->where('name', 'like', "%{$term}%");
+                        })
+                        ->orWhereHas('creator', function ($creatorQuery) use ($term) {
+                            $creatorQuery->where('name', 'like', "%{$term}%");
+                        })
+                        ->orWhereHas('products', function ($productQuery) use ($term) {
+                            $productQuery->where('name', 'like', "%{$term}%")
+                                ->orWhere('barcode', 'like', "%{$term}%");
+                        });
+                });
+            }
+        }
+
+        return $query;
+    }
+
+    private function billTotalsBaseQuery(int $ownerId, Request $request)
+    {
+        return $this->buildBillIndexQuery($ownerId, $request)
+            ->reorder()
+            ->select([
+                'bills.id',
+                'bills.total_price',
+                'bills.customer_id',
+                'bills.user_id',
+            ]);
+    }
+
+    /** Profit of every bill matching the current filters (not only the visible page). */
+    private function filteredProfit(int $ownerId, Request $request): float
+    {
+        $matchingIds = $this->billTotalsBaseQuery($ownerId, $request)->select('bills.id');
+
+        return round((float) (DB::table('bill_product')
+            ->whereIn('bill_product.bill_id', $matchingIds)
+            ->selectRaw('SUM((bill_product.selling_price - bill_product.cost_price) * bill_product.quantity - bill_product.discount) as profit')
+            ->value('profit') ?? 0), 2);
+    }
+
+    /**
+     * Paid and due amounts of every bill matching the current filters. Walk-in bills are fully paid by definition,
+     * so only bills of customers need their ledger read (in chunks, with bulk queries).
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function filteredLedgerTotals(int $ownerId, Request $request): array
+    {
+        $paid = (float) $this->billTotalsBaseQuery($ownerId, $request)
+            ->whereNull('bills.customer_id')
+            ->sum('bills.total_price');
+        $due = 0.0;
+
+        $this->billTotalsBaseQuery($ownerId, $request)
+            ->whereNotNull('bills.customer_id')
+            ->select(['bills.id', 'bills.user_id', 'bills.customer_id', 'bills.total_price', 'bills.created_at'])
+            ->chunkById(500, function ($chunk) use (&$paid, &$due, $ownerId) {
+                $summaries = $this->paymentSummariesForCollection($chunk, $ownerId);
+
+                foreach ($chunk as $bill) {
+                    $summary = $summaries[$bill->id] ?? CustomerLedger::billSummary($bill);
+                    $paid += (float) ($summary['paid'] ?? 0);
+                    $due += (float) ($summary['due'] ?? 0);
+                }
+            }, 'bills.id', 'id');
+
+        return [round($paid, 2), round($due, 2)];
+    }
+
+    private function paymentSummariesForCollection($bills, int $ownerId): array
+    {
+        $billCollection = collect($bills);
+        if ($billCollection->isEmpty()) {
+            return [];
+        }
+
+        return CustomerLedger::summariesForBills($billCollection);
+    }
+
+    private function billLedgerRows(Bill $bill, int $ownerId)
+    {
+        return CustomerPayment::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where(function ($query) use ($bill) {
+                $query->where('bill_id', $bill->id);
+
+                if ($bill->customer_id) {
+                    $query->orWhere(function ($legacy) use ($bill) {
+                        $legacy->whereNull('bill_id')
+                            ->where('customer_id', $bill->customer_id);
+                    });
+                }
+            })
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (CustomerPayment $row) => (int) $row->bill_id === (int) $bill->id
+                || CustomerLedger::legacyBillIdFromNote($row->note) === (int) $bill->id)
+            ->values();
+    }
+
+    private function validateBillUpdateLines(Request $request): void
+    {
+        foreach (($request->input('quantities', [])) as $quantity) {
+            if ((float) $quantity <= 0) {
+                throw ValidationException::withMessages(['quantities' => __('receivables.validation.bill_lines_invalid')]);
+            }
+        }
+
+        foreach (($request->input('discounts', [])) as $discount) {
+            if ((float) $discount < 0) {
+                throw ValidationException::withMessages(['discounts' => __('receivables.validation.bill_lines_invalid')]);
+            }
+        }
+
+        foreach (($request->input('dynamic_quantities', [])) as $quantity) {
+            if ((float) $quantity <= 0) {
+                throw ValidationException::withMessages(['dynamic_quantities' => __('receivables.validation.bill_lines_invalid')]);
+            }
+        }
+
+        foreach (($request->input('dynamic_discounts', [])) as $discount) {
+            if ((float) $discount < 0) {
+                throw ValidationException::withMessages(['dynamic_discounts' => __('receivables.validation.bill_lines_invalid')]);
+            }
+        }
+    }
+
+    /**
+     * @return array<int, Product>
+     */
+    private function lockProductsByIds(int $ownerId, array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($ids))));
+        if ($ids === []) {
+            return [];
+        }
+
+        return Product::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id')
+            ->all();
     }
 
     /**

@@ -50,8 +50,9 @@ test('email verification status is unchanged when the email address is unchanged
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
 
-test('user can delete their account', function () {
-    $user = User::factory()->create();
+test('an employee can delete their own account', function () {
+    $owner = User::factory()->create();
+    $user = User::factory()->create(['role' => 'employee', 'shop_owner_id' => $owner->id]);
 
     $response = $this
         ->actingAs($user)
@@ -67,8 +68,17 @@ test('user can delete their account', function () {
     $this->assertNull($user->fresh());
 });
 
-test('correct password must be provided to delete account', function () {
+test('shop owners cannot delete their own account from the profile page', function () {
     $user = User::factory()->create();
+
+    $this->actingAs($user)->delete('/profile', ['password' => 'password']);
+
+    $this->assertNotNull($user->fresh());
+});
+
+test('correct password must be provided to delete account', function () {
+    $owner = User::factory()->create();
+    $user = User::factory()->create(['role' => 'employee', 'shop_owner_id' => $owner->id]);
 
     $response = $this
         ->actingAs($user)

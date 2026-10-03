@@ -53,6 +53,7 @@
                         <option value="50x30" selected>50 × 30 mm</option>
                         <option value="58x40">58 × 40 mm</option>
                         <option value="70x30">70 × 30 mm</option>
+                        <option value="custom">{{ __('messages.Custom size') }}</option>
                     </select>
                 </div>
                 <div>
@@ -60,6 +61,22 @@
                     <input type="number" id="bl-copies" min="1" max="500" value="1"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
+            </div>
+
+            <div id="bl-custom-size" class="hidden rounded-lg border border-blue-100 bg-blue-50 p-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="bl-custom-width" class="block font-medium text-gray-700 mb-1">{{ __('messages.Label width (mm)') }}</label>
+                        <input type="number" id="bl-custom-width" min="15" max="200" step="1" value="50" inputmode="numeric"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="bl-custom-height" class="block font-medium text-gray-700 mb-1">{{ __('messages.Label height (mm)') }}</label>
+                        <input type="number" id="bl-custom-height" min="10" max="200" step="1" value="30" inputmode="numeric"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <p class="mt-2 text-xs text-gray-600">{{ __('messages.Custom label size hint') }}</p>
             </div>
         </div>
 
@@ -81,6 +98,27 @@
         const modal = document.getElementById('barcode-label-modal');
         const $ = (id) => document.getElementById(id);
         const SIZE_KEY = 'sp-barcode-label-size';
+        const CUSTOM_KEY = 'sp-barcode-label-custom';
+        const LIMITS = { minW: 15, maxW: 200, minH: 10, maxH: 200 };
+
+        function toggleCustomSize() {
+            $('bl-custom-size').classList.toggle('hidden', $('bl-size').value !== 'custom');
+        }
+
+        // Returns [width, height] in mm, or null when the custom values are invalid.
+        function selectedSize() {
+            if ($('bl-size').value !== 'custom') {
+                return $('bl-size').value.split('x').map(Number);
+            }
+            const w = Number($('bl-custom-width').value);
+            const h = Number($('bl-custom-height').value);
+            if (!Number.isFinite(w) || !Number.isFinite(h) || w < LIMITS.minW || w > LIMITS.maxW || h < LIMITS.minH || h > LIMITS.maxH) {
+                return null;
+            }
+            return [Math.round(w * 10) / 10, Math.round(h * 10) / 10];
+        }
+
+        $('bl-size').addEventListener('change', toggleCustomSize);
 
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
             '&': '&amp;',
@@ -116,6 +154,14 @@
             if (savedSize && $('bl-size').querySelector(`option[value="${savedSize}"]`)) {
                 $('bl-size').value = savedSize;
             }
+            try {
+                const custom = JSON.parse(localStorage.getItem(CUSTOM_KEY) || 'null');
+                if (custom && custom.w && custom.h) {
+                    $('bl-custom-width').value = custom.w;
+                    $('bl-custom-height').value = custom.h;
+                }
+            } catch (e) {}
+            toggleCustomSize();
             modal.classList.remove('hidden');
         };
 
@@ -128,8 +174,20 @@
             const exp = fmtDate($('bl-exp-date').value);
             const extra = $('bl-extra').value.trim();
             const copies = Math.min(500, Math.max(1, parseInt($('bl-copies').value) || 1));
-            const [w, h] = $('bl-size').value.split('x').map(Number);
+            const size = selectedSize();
+            if (!size) {
+                alert({{ \Illuminate\Support\Js::from(__('messages.Custom label size invalid', ['min_w' => 15, 'max_w' => 200, 'min_h' => 10, 'max_h' => 200])) }});
+                $('bl-custom-width').focus();
+                return;
+            }
+            const [w, h] = size;
             localStorage.setItem(SIZE_KEY, $('bl-size').value);
+            if ($('bl-size').value === 'custom') {
+                localStorage.setItem(CUSTOM_KEY, JSON.stringify({ w: w, h: h }));
+            }
+            // Text grows/shrinks with the label; 30 mm tall is the reference size.
+            const fontScale = Math.min(3, Math.max(0.75, Math.min(h / 30, w / 50)));
+            const pt = (base) => (base * fontScale).toFixed(2) + 'pt';
 
             const dates = [
                 prod ? `<span>{{ __('messages.Prod.') }} ${esc(prod)}</span>` : '',
@@ -169,12 +227,12 @@
         margin: 4mm auto; page-break-after: always; break-after: page;
     }
     .label:last-child { page-break-after: auto; break-after: auto; }
-    .name { font-size: 7pt; font-weight: bold; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .name { font-size: ${pt(7)}; font-weight: bold; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .bc { width: 100%; flex: 1 1 auto; min-height: 6mm; max-height: ${Math.round(h * 0.5)}mm; display: block; }
-    .code { font-size: 6pt; letter-spacing: 0.5px; }
-    .price { font-size: 8pt; font-weight: bold; }
-    .dates { font-size: 5.5pt; display: flex; gap: 2mm; justify-content: center; white-space: nowrap; }
-    .extra { font-size: 5.5pt; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .code { font-size: ${pt(6)}; letter-spacing: 0.5px; }
+    .price { font-size: ${pt(8)}; font-weight: bold; }
+    .dates { font-size: ${pt(5.5)}; display: flex; gap: 2mm; justify-content: center; white-space: nowrap; }
+    .extra { font-size: ${pt(5.5)}; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .toolbar { text-align: center; padding: 8px; }
     .toolbar button { padding: 6px 14px; background: #2563eb; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
     @media print {

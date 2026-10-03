@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 return [
     /*
@@ -1328,6 +1328,11 @@ return [
     'Expiry Date' => 'Expiry Date',
     'Extra Text' => 'Extra Text',
     'Label Size' => 'Label Size',
+    'Custom size' => 'Custom size…',
+    'Label width (mm)' => 'Width (mm)',
+    'Label height (mm)' => 'Height (mm)',
+    'Custom label size hint' => 'Measure one label on your roll and enter its exact size. The size is remembered on this device.',
+    'Custom label size invalid' => 'Enter a width between :min_w and :max_w mm and a height between :min_h and :max_h mm.',
     'Copies' => 'Copies',
     'Prod.' => 'PRD',
     'Exp.' => 'EXP',
@@ -2486,4 +2491,32 @@ return [
     'View Reports'               => 'View Reports',
     'Barcode scanner is unavailable offline' => 'Barcode scanner is unavailable offline',
     'Error loading scanner'      => 'Error loading scanner',
+
+    // Profile
+    'A new verification link has been sent to your email address.' => 'A new verification link has been sent to your email address.',
+    'Are you sure you want to delete your account?' => 'Are you sure you want to delete your account?',
+    'Click here to re-send the verification email.' => 'Click here to re-send the verification email.',
+    'Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.' => 'Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.',
+    'Saved.' => 'Saved.',
+    'Your email address is unverified.' => 'Your email address is unverified.',
+
+    // POS bill creation and returns
+    'Clearing existing products to set return costs' => 'Clearing the current items so return costs can be set',
+    'Confirm Return' => 'Confirm return',
+    'Current average cost' => 'Current average cost',
+    'Enter the value at which this product is being returned' => 'Enter the value at which this product is being returned',
+    'Failed to create bill' => 'Failed to create the bill',
+    'Failed to create bill - server error' => 'Failed to create the bill - server error',
+    'Failed to save bill offline' => 'Failed to save the bill offline',
+    'Please specify return cost for all returned products' => 'Please specify the return cost for all returned products',
+    'Return value' => 'Return value',
+    'Return value must be positive' => 'Return value must be positive',
+    'Specify return cost for' => 'Specify the return cost for',
+
+    // Customers, installments, reports, barcode search
+    'Customer created successfully!' => 'Customer created successfully!',
+    'Customer updated successfully!' => 'Customer updated successfully!',
+    'Debtor Name is required' => 'Debtor name is required',
+    'Network error. Please try again.' => 'Network error. Please try again.',
+    'No purchase bills found containing barcode: :barcode' => 'No purchase bills found containing barcode: :barcode',
 ];

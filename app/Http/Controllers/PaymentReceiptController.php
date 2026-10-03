@@ -4,201 +4,191 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Employee;
-use App\Models\Supplier;
-use App\Models\CustomerPayment;
 use App\Models\EmployeePayment;
+use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\CustomerLedger;
+use App\Services\SupplierLedger;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentReceiptController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizePaymentsReceipts();
 
-        // Get counts for autocomplete
-        $customers = Customer::where('user_id', $ownerId)->get();
-        $employees = Employee::where('shop_owner_id', $ownerId)->get();
-        $suppliers = Supplier::where('user_id', $ownerId)->get();
+        $user = Auth::user();
+        $ownerId = $user->ownerId();
+        if (! $ownerId) {
+            abort(403);
+        }
+
+        $customers = Customer::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get();
+        $customers->each(function (Customer $customer) {
+            $customer->open_bills = CustomerLedger::openBills($customer);
+        });
+
+        $employees = Employee::where('shop_owner_id', $ownerId)->orderBy('name')->get();
+        $suppliers = Supplier::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get();
 
         return view('payments_receipts', compact('customers', 'employees', 'suppliers'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->authorizePaymentsReceipts();
+
+        $data = $request->validate([
             'transaction_type' => 'required|in:payment,receipt',
             'entity_type' => 'required|in:customer,employee,supplier',
-            'entity_id' => 'required',
+            'entity_id' => 'required|integer|min:1',
             'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'type' => 'required|in:cash,card,transfer,check',
+            'note' => 'nullable|string|max:255',
+            'bill_id' => 'nullable|integer',
         ]);
 
         $user = Auth::user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        $transactionType = $request->transaction_type;
-        $entityType = $request->entity_type;
-        $entityId = $request->entity_id;
-        $amount = $request->amount;
-        $note = $request->note;
-
-        // Determine the sign of the amount based on transaction type and entity
-        // For Customers:
-        //   - Payment (customer pays us) = positive
-        //   - Receipt (we receive from customer) = negative (reduces their debt)
-        // For Employees:
-        //   - Payment (we pay employee) = positive
-        //   - Receipt (employee pays us) = negative
-        // For Suppliers:
-        //   - Payment (we pay supplier) = positive
-        //   - Receipt (supplier pays us) = negative
-
-        $signedAmount = $this->calculateSignedAmount($transactionType, $entityType, $amount);
-
-        switch ($entityType) {
-            case 'customer':
-                $customer = Customer::where('user_id', $ownerId)->findOrFail($entityId);
-
-                CustomerPayment::create([
-                    'customer_id' => $customer->id,
-                    'amount' => $signedAmount,
-                    'type' => $request->type,
-                    'note' => $note,
-                    'user_id' => $ownerId,
-                ]);
-
-                // Update customer balance
-                $customer->balance = ($customer->balance ?? 0) + $signedAmount;
-                $customer->save();
-
-                $message = $transactionType === 'payment'
-                    ? __('messages.payment_recorded_for_customer')
-                    : __('messages.receipt_recorded_for_customer');
-                break;
-
-            case 'employee':
-                $employee = Employee::where('shop_owner_id', $ownerId)->findOrFail($entityId);
-
-                EmployeePayment::create([
-                    'employee_id' => $employee->id,
-                    'amount' => $signedAmount, // Use signed amount - positive for payment, negative for receipt
-                    'payment_date' => $request->payment_date,
-                    'type' => $request->type,
-                    'note' => $note,
-                ]);
-
-                $message = $transactionType === 'payment'
-                    ? __('messages.payment_recorded_for_employee')
-                    : __('messages.receipt_recorded_for_employee');
-                break;
-
-            case 'supplier':
-                $supplier = Supplier::where('user_id', $ownerId)->findOrFail($entityId);
-
-                SupplierPayment::create([
-                    'supplier_id' => $supplier->id,
-                    'amount' => $signedAmount,
-                    'type' => $request->type,
-                    'note' => $note,
-                    'payment_date' => $request->payment_date,
-                    'user_id' => $ownerId,
-                ]);
-
-                // Update supplier balance: subtract because:
-                // - Payment (we pay supplier, positive amount): reduces what we owe = decrease balance
-                // - Receipt (supplier pays us, negative amount): increases what they owe us = increase balance
-                $supplier->balance = ($supplier->balance ?? 0) - $signedAmount;
-                $supplier->save();
-
-                $message = $transactionType === 'payment'
-                    ? __('messages.payment_recorded_for_supplier')
-                    : __('messages.receipt_recorded_for_supplier');
-                break;
+        $ownerId = $user->ownerId();
+        if (! $ownerId) {
+            abort(403);
         }
+        $signedAmount = $this->calculateSignedAmount($data['transaction_type'], $data['entity_type'], $data['amount']);
+        $at = Carbon::parse($data['payment_date'])->setTime(now()->hour, now()->minute, now()->second);
 
-        // Return JSON for AJAX requests
+        DB::transaction(function () use ($data, $ownerId, $signedAmount, $at) {
+            switch ($data['entity_type']) {
+                case 'customer':
+                    $customer = Customer::withoutGlobalScopes()->where('user_id', $ownerId)->findOrFail($data['entity_id']);
+                    $bill = null;
+                    if (! empty($data['bill_id'])) {
+                        $bill = $customer->bills()->withoutGlobalScopes()
+                            ->where('user_id', $ownerId)
+                            ->whereKey($data['bill_id'])
+                            ->firstOrFail();
+                    }
+
+                    if ($bill && $signedAmount <= 0) {
+                        throw ValidationException::withMessages([
+                            'amount' => __('receivables.validation.bill_link_positive_only'),
+                        ]);
+                    }
+
+                    if ($bill) {
+                        CustomerLedger::receiveForBill($bill, $signedAmount, $data['type'], $data['note'] ?? null, $at);
+
+                        break;
+                    }
+
+                    if ($signedAmount > 0) {
+                        CustomerLedger::receive($customer, $signedAmount, $data['type'], $data['note'] ?? null, $at);
+                    } else {
+                        CustomerLedger::adjust($customer, $signedAmount, $data['type'], $data['note'] ?? null, $at);
+                    }
+                    break;
+
+                case 'employee':
+                    $employee = Employee::where('shop_owner_id', $ownerId)->findOrFail($data['entity_id']);
+
+                    EmployeePayment::create([
+                        'employee_id' => $employee->id,
+                        'amount' => $signedAmount,
+                        'payment_date' => $data['payment_date'],
+                        'type' => $data['type'],
+                        'note' => $data['note'] ?? null,
+                    ]);
+                    break;
+
+                case 'supplier':
+                    $supplier = Supplier::withoutGlobalScopes()->where('user_id', $ownerId)->findOrFail($data['entity_id']);
+
+                    if ($signedAmount > 0) {
+                        SupplierLedger::pay($supplier, $signedAmount, $data['type'], $data['note'] ?? null, $at);
+                    } else {
+                        SupplierLedger::recordPayment($supplier, $signedAmount, $data['type'], $data['note'] ?? null, $at);
+                    }
+                    break;
+            }
+        });
+
+        $message = match ([$data['entity_type'], $data['transaction_type']]) {
+            ['customer', 'payment'] => __('messages.payment_recorded_for_customer'),
+            ['customer', 'receipt'] => __('messages.receipt_recorded_for_customer'),
+            ['employee', 'payment'] => __('messages.payment_recorded_for_employee'),
+            ['employee', 'receipt'] => __('messages.receipt_recorded_for_employee'),
+            ['supplier', 'payment'] => __('messages.payment_recorded_for_supplier'),
+            default => __('messages.receipt_recorded_for_supplier'),
+        };
+
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => $message
-            ]);
+            return response()->json(['success' => true, 'message' => $message]);
         }
 
         return redirect()->back()->with('success', $message);
     }
 
-    /**
-     * Calculate the signed amount based on transaction type and entity
-     */
     private function calculateSignedAmount($transactionType, $entityType, $amount)
     {
-        // Payment = WE pay them (money goes OUT)
-        // Receipt = THEY pay us (money comes IN)
-
-        // Customer: balance negative = they owe us, positive = we owe them
-        // - Payment (we pay them): negative in DB, balance decreases (they owe us less)
-        // - Receipt (they pay us): positive in DB, balance increases (they owe us more)
-
-        // Employee: no balance field
-        // - Payment (we pay them): positive in DB
-        // - Receipt (they pay us): negative in DB
-
-        // Supplier: balance positive = they owe us, negative = we owe them
-        // - Payment (we pay them): positive in DB, balance decreases (we owe them less)
-        // - Receipt (they pay us): negative in DB, balance increases (they owe us more)
-
         if ($transactionType === 'payment') {
-            // Payment: WE pay them (money going OUT)
             if ($entityType === 'customer') {
-                return -abs($amount); // Negative in DB, balance decreases
-            } elseif ($entityType === 'employee') {
-                return abs($amount); // Positive in DB
-            } else {
-                // Supplier
-                return abs($amount); // Positive in DB, balance decreases
+                return -abs($amount);
             }
-        } else {
-            // Receipt: THEY pay us (money coming IN)
-            if ($entityType === 'customer') {
-                return abs($amount); // Positive in DB, balance increases
-            } elseif ($entityType === 'employee') {
-                return -abs($amount); // Negative in DB
-            } else {
-                // Supplier
-                return -abs($amount); // Negative in DB, balance increases
+            if ($entityType === 'employee') {
+                return abs($amount);
             }
+
+            return abs($amount);
         }
+
+        if ($entityType === 'customer') {
+            return abs($amount);
+        }
+        if ($entityType === 'employee') {
+            return -abs($amount);
+        }
+
+        return -abs($amount);
     }
 
-    /**
-     * API endpoint to get customer data for autocomplete
-     */
     public function getCustomers(Request $request)
     {
-        $user = Auth::user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $search = $request->search;
+        $this->authorizePaymentsReceipts();
 
-        $customers = Customer::where('user_id', $ownerId)
+        $ownerId = Auth::user()->ownerId();
+        if (! $ownerId) {
+            return response()->json([]);
+        }
+        $search = trim((string) $request->search);
+
+        $customers = Customer::withoutGlobalScopes()->where('user_id', $ownerId)
             ->where('name', 'like', "%{$search}%")
             ->select('id', 'name', 'phone', 'balance')
             ->limit(10)
             ->get();
 
+        $customers->each(function (Customer $customer) {
+            $customer->open_bills = CustomerLedger::openBills($customer)->map(fn ($row) => [
+                'bill_id' => $row['bill']->id,
+                'due' => $row['due'],
+            ])->values();
+        });
+
         return response()->json($customers);
     }
 
-    /**
-     * API endpoint to get employees data for autocomplete
-     */
     public function getEmployees(Request $request)
     {
-        $user = Auth::user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizePaymentsReceipts();
+
+        $ownerId = Auth::user()->ownerId();
+        if (! $ownerId) {
+            return response()->json([]);
+        }
         $search = $request->search;
 
         $employees = Employee::where('shop_owner_id', $ownerId)
@@ -210,21 +200,30 @@ class PaymentReceiptController extends Controller
         return response()->json($employees);
     }
 
-    /**
-     * API endpoint to get suppliers data for autocomplete
-     */
     public function getSuppliers(Request $request)
     {
-        $user = Auth::user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $this->authorizePaymentsReceipts();
+
+        $ownerId = Auth::user()->ownerId();
+        if (! $ownerId) {
+            return response()->json([]);
+        }
         $search = $request->search;
 
-        $suppliers = Supplier::where('user_id', $ownerId)
+        $suppliers = Supplier::withoutGlobalScopes()->where('user_id', $ownerId)
             ->where('name', 'like', "%{$search}%")
             ->select('id', 'name', 'phone', 'balance')
             ->limit(10)
             ->get();
 
         return response()->json($suppliers);
+    }
+
+    private function authorizePaymentsReceipts(): void
+    {
+        $user = Auth::user();
+        if ($user->role === 'employee' && ! $user->hasPermission('manage_payments_receipts')) {
+            abort(403, 'Unauthorized');
+        }
     }
 }

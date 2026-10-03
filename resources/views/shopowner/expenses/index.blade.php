@@ -1,267 +1,240 @@
 @php
-    // FORCE locale setting - this is a temporary fix to test
-    $sessionLocale = session('locale', 'en');
-    if (in_array($sessionLocale, ['en', 'ar'])) {
-        app()->setLocale($sessionLocale);
-    }
-    @endphp
+    $supplierShortcut = Route::has('payments-receipts.index') ? route('payments-receipts.index') : (Route::has('suppliers.index') ? route('suppliers.index') : null);
+    $staffShortcut = Route::has('shopowner.employees.index') ? route('shopowner.employees.index') : null;
+    $categoryKeys = ['rent', 'utilities', 'transport', 'marketing', 'maintenance', 'supplies', 'taxes', 'other'];
+@endphp
 <x-app-layout>
-    
-<x-slot name="header">
-    <div class="flex items-center justify-between">
-        <h2 class="font-bold text-2xl text-gray-800 leading-tight flex items-center">
-            <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-            </svg>
-            {{ __('expenses.Expense Management') }}
-        </h2>
-        <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                {{ __('expenses.Total Expenses') }}: <span class="font-bold text-blue-600">{{ $expenses->total() }}</span>
-            </div>
-            @if(request('from') || request('to'))
-                <div class="text-sm text-gray-600 bg-blue-100 px-4 py-2 rounded-full">
-                    Filtered: <span class="font-bold text-blue-600">
-                        @if(request('from') && request('to'))
-                            {{ \Carbon\Carbon::parse(request('from'))->format('M d') }} - {{ \Carbon\Carbon::parse(request('to'))->format('M d, Y') }}
-                        @elseif(request('from'))
-                            From {{ \Carbon\Carbon::parse(request('from'))->format('M d, Y') }}
-                        @else
-                            Until {{ \Carbon\Carbon::parse(request('to'))->format('M d, Y') }}
-                        @endif
-                    </span>
-                </div>
-            @endif
-        </div>
-    </div>
-</x-slot>
+    <x-slot name="header">
+        <x-ui.page-header :title="__('finance.expenses.title')" :subtitle="__('finance.expenses.subtitle')">
+            <a href="{{ route('shopowner.expenses.export', request()->query()) }}"
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                {{ __('finance.common.export') }}
+            </a>
+        </x-ui.page-header>
+    </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {{-- Filter Section --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
-                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
-                        </svg>
-                        {{ __('expenses.Filter Expenses') }}
-                    </h3>
-                </div>
-                <form method="GET" action="{{ route('shopowner.expenses.index') }}" class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('expenses.From Date') }}</label>
-                            <input type="date" name="from" value="{{ request('from') }}"
-                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
-                                   placeholder="{{ __('expenses.From') }}">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('expenses.To Date') }}</label>
-                            <input type="date" name="to" value="{{ request('to') }}"
-                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
-                                   placeholder="{{ __('expenses.To') }}">
-                        </div>
-                        <div class="flex space-x-3">
-                            <button type="submit" 
-                                    class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-all duration-200 transform hover:scale-105">
-                                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
-                                </svg>
-                                {{ __('expenses.Filter') }}
-                            </button>
-                            <a href="{{ route('shopowner.expenses.index') }}" 
-                               class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
-                                {{ __('expenses.Clear') }}
+    <div class="py-6">
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <x-ui.flash />
+
+            <x-ui.card>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <div class="font-semibold">{{ __('finance.expenses.guardrail_title') }}</div>
+                    <p class="mt-1">{{ __('finance.expenses.guardrail_supplier') }}</p>
+                    <p class="mt-1">{{ __('finance.expenses.guardrail_salary') }}</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @if ($supplierShortcut)
+                            <a href="{{ $supplierShortcut }}" class="rounded-lg border border-amber-300 bg-white px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100">
+                                {{ __('finance.expenses.pay_supplier') }}
                             </a>
-                        </div>
+                        @endif
+                        @if ($staffShortcut)
+                            <a href="{{ $staffShortcut }}" class="rounded-lg border border-amber-300 bg-white px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100">
+                                {{ __('finance.expenses.staff_payments_shortcut') }}
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </x-ui.card>
+
+            <x-ui.card>
+                <form method="GET" action="{{ route('shopowner.expenses.index') }}" class="grid gap-4 lg:grid-cols-5">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.from') }}</label>
+                        <input type="date" name="from" value="{{ request('from') }}" class="w-full rounded-lg border-gray-300 text-sm">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.to') }}</label>
+                        <input type="date" name="to" value="{{ request('to') }}" class="w-full rounded-lg border-gray-300 text-sm">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.category') }}</label>
+                        <select name="category" class="w-full rounded-lg border-gray-300 text-sm">
+                            <option value="">{{ __('finance.common.all') }}</option>
+                            <option value="uncategorised" @selected(request('category') === 'uncategorised')>{{ __('finance.expenses.uncategorised') }}</option>
+                            @foreach ($categoryKeys as $key)
+                                <option value="{{ $key }}" @selected(request('category') === $key)>{{ __('finance.expenses.categories.' . $key) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.search') }}</label>
+                        <input type="text" name="search" value="{{ request('search') }}" class="w-full rounded-lg border-gray-300 text-sm">
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('finance.common.filter') }}</button>
+                        <a href="{{ route('shopowner.expenses.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('finance.common.all') }}</a>
                     </div>
                 </form>
-            </div>
+            </x-ui.card>
 
-            {{-- Add Expense Section --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
-                <div class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-white flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        {{ __('expenses.Add New Expense') }}
-                    </h3>
-                    <p class="text-green-100 text-sm mt-1">{{ __('expenses.Record a new business expense') }}</p>
-                </div>
-                <form method="POST" action="{{ route('shopowner.expenses.store') }}" class="p-6">
+            <x-ui.card :title="$editExpense ? __('finance.common.update') : __('finance.common.save')">
+                <form method="POST" action="{{ $editExpense ? route('shopowner.expenses.update', $editExpense) : route('shopowner.expenses.store') }}"
+                    x-data="expenseGuardrails(@js($supplierNames), @js($recentSupplierPaymentAmounts), @js($outstandingSupplierBalances), @js($supplierShortcut), @js($staffShortcut))"
+                    class="space-y-4">
                     @csrf
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    @if ($editExpense)
+                        @method('PUT')
+                    @endif
+                    <div class="grid gap-4 lg:grid-cols-2">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                                </svg>
-                                {{ __('expenses.Title') }}
-                            </label>
-                            <input type="text" name="title" required
-                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
-                                   placeholder="{{ __('expenses.e.g., Office supplies, Marketing campaign') }}">
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.title') }}</label>
+                            <input type="text" name="title" x-model="title" value="{{ old('title', $editExpense?->title) }}" required class="w-full rounded-lg border-gray-300 text-sm">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                                {{ __('expenses.Amount') }}
-                            </label>
-                            <div class="relative">
-                                <span class="absolute left-3 top-2.5 text-gray-500">₪</span>
-                                <input type="number" step="0.01" name="amount" required 
-                                       class="w-full pl-8 border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
-                                       placeholder="{{ __('messages.Enter amount') }}">
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.category') }}</label>
+                            <select name="category" class="w-full rounded-lg border-gray-300 text-sm">
+                                <option value="">{{ __('finance.expenses.uncategorised') }}</option>
+                                @foreach ($categoryKeys as $key)
+                                    <option value="{{ $key }}" @selected(old('category', $editExpense?->category) === $key)>{{ __('finance.expenses.categories.' . $key) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.amount') }}</label>
+                            <input type="number" step="0.01" min="0" name="amount" x-model="amount" value="{{ old('amount', $editExpense?->amount) }}" required class="w-full rounded-lg border-gray-300 text-sm">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.date') }}</label>
+                            <input type="date" name="expense_date" value="{{ old('expense_date', optional($editExpense?->expense_date)->format('Y-m-d') ?? now()->toDateString()) }}" required class="w-full rounded-lg border-gray-300 text-sm">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('finance.common.notes') }}</label>
+                            <textarea name="notes" rows="3" class="w-full rounded-lg border-gray-300 text-sm">{{ old('notes', $editExpense?->notes) }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2" data-warning-supplier="{{ __('finance.expenses.warning_supplier_match') }}" data-warning-amount="{{ __('finance.expenses.warning_amount_match') }}" data-warning-salary="{{ __('finance.expenses.warning_salary_match') }}">
+                        <template x-if="supplierWarning">
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                <span x-text="supplierWarning"></span>
+                                <template x-if="supplierShortcut"><a :href="supplierShortcut" class="ms-2 font-semibold underline">{{ __('finance.expenses.pay_supplier') }}</a></template>
+                            </div>
+                        </template>
+                        <template x-if="amountWarning">
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" x-text="amountWarning"></div>
+                        </template>
+                        <template x-if="salaryWarning">
+                            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                                <span x-text="salaryWarning"></span>
+                                <template x-if="staffShortcut"><a :href="staffShortcut" class="ms-2 font-semibold underline">{{ __('finance.expenses.staff_payments_shortcut') }}</a></template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ $editExpense ? __('finance.common.update') : __('finance.common.save') }}</button>
+                        @if ($editExpense)
+                            <a href="{{ route('shopowner.expenses.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">{{ __('finance.common.all') }}</a>
+                        @endif
+                    </div>
+                </form>
+            </x-ui.card>
+
+            <x-ui.card :title="__('finance.expenses.monthly_totals')">
+                <div class="space-y-3">
+                    @forelse ($monthlyTotals->groupBy('month_key')->take(6) as $monthKey => $rows)
+                        <div>
+                            <div class="mb-2 text-sm font-semibold text-gray-800">{{ $monthKey }}</div>
+                            <div class="space-y-2">
+                                @foreach ($rows as $row)
+                                    <div>
+                                        <div class="mb-1 flex justify-between text-sm">
+                                            <span>{{ $row->category ? __('finance.expenses.categories.' . $row->category) : __('finance.expenses.uncategorised') }}</span>
+                                            <strong>₪{{ number_format((float) $row->total, 2) }}</strong>
+                                        </div>
+                                        <div class="h-2 rounded-full bg-gray-100">
+                                            <div class="h-2 rounded-full bg-indigo-500" style="width: {{ max(6, min(100, $rows->sum('total') > 0 ? ((float) $row->total / (float) $rows->sum('total')) * 100 : 0)) }}%"></div>
+                                        </div>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0v8m0 0l3-3m-3 3l-3-3"></path>
-                                </svg>
-                                {{ __('expenses.Date') }}
-                            </label>
-                            <input type="date" name="expense_date" value="{{ date('Y-m-d') }}" required 
-                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                {{ __('expenses.Notes') }}
-                            </label>
-                            <textarea name="notes" rows="3" 
-                                      class="w-full border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
-                                      placeholder="{{ __('expenses.Additional details about this expense...') }}"></textarea>
-                        </div>
-                    </div>
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" 
-                                class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl">
-                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            {{ __('messages.Add Expense') }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            {{-- Expense List Section --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                        </svg>
-                        {{ __('expenses.Recent Expenses') }}
-                    </h3>
+                    @empty
+                        <x-ui.empty :title="__('finance.common.no_data')" />
+                    @endforelse
                 </div>
-                
+            </x-ui.card>
+
+            <x-ui.card :title="__('finance.expenses.title')">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    <div class="flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0v8m0 0l3-3m-3 3l-3-3"></path>
-                                        </svg>
-                                        {{ __('messages.Date') }}
-                                    </div>
-                                </th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('Title') }}</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    <div class="flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                        </svg>
-                                        {{ __('messages.Amount') }}
-                                    </div>
-                                </th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('messages.Notes') }}</th>
-                                <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('messages.Actions') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.date') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.title') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.category') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.amount') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.notes') }}</th>
+                                <th class="px-3 py-2 text-start">{{ __('finance.common.actions') }}</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($expenses as $expense)
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0v8m0 0l3-3m-3 3l-3-3"></path>
-                                                </svg>
-                                            </div>
-                                            <div class="ml-3">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ \Carbon\Carbon::parse($expense->expense_date)->format('M d, Y') }}
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    {{ \Carbon\Carbon::parse($expense->expense_date)->format('l') }}
-                                                </div>
-                                            </div>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            @forelse ($expenses as $expense)
+                                <tr>
+                                    <td class="px-3 py-2">{{ optional($expense->expense_date)->format('Y-m-d') }}</td>
+                                    <td class="px-3 py-2">{{ $expense->title }}</td>
+                                    <td class="px-3 py-2">{{ $expense->category ? __('finance.expenses.categories.' . $expense->category) : __('finance.expenses.uncategorised') }}</td>
+                                    <td class="px-3 py-2">₪{{ number_format((float) $expense->amount, 2) }}</td>
+                                    <td class="px-3 py-2 text-gray-600">{{ $expense->notes }}</td>
+                                    <td class="px-3 py-2">
+                                        <div class="flex flex-wrap gap-2">
+                                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('edit_expenses'))
+                                                <a href="{{ route('shopowner.expenses.index', array_merge(request()->query(), ['edit' => $expense->id])) }}" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">{{ __('finance.common.update') }}</a>
+                                            @endif
+                                            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('delete_expenses'))
+                                                <form method="POST" action="{{ route('shopowner.expenses.destroy', $expense) }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" data-confirm="{{ __('finance.common.delete') }}" class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">{{ __('finance.common.delete') }}</button>
+                                                </form>
+                                            @endif
                                         </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm font-semibold text-gray-900">{{ $expense->title }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                            </svg>
-                                            ₪{{ number_format($expense->amount, 2) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm text-gray-600 max-w-xs truncate">
-                                            {{ $expense->notes ?: __('expenses.No notes') }}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <form action="{{ route('shopowner.expenses.destroy', $expense) }}" method="POST" 
-                                              onsubmit="return confirm('{{ __('Are you sure you want to delete this expense?') }}')" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" 
-                                                    class="inline-flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors transform hover:scale-105">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                                {{ __('expenses.Delete') }}
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center">
-                                        <div class="flex flex-col items-center">
-                                            <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                            </svg>
-                                            <h3 class="text-lg font-medium text-gray-900 mb-2">{{ __('expenses.No expenses found') }}</h3>
-                                            <p class="text-gray-500">{{ __('expenses.Start by adding your first expense above.') }}</p>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('finance.common.no_data') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-
-                @if($expenses->hasPages())
-                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                        {{ $expenses->links() }}
-                    </div>
-                @endif
-            </div>
+                <div class="mt-4">{{ $expenses->links() }}</div>
+            </x-ui.card>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('expenseGuardrails', (supplierNames, recentSupplierPaymentAmounts, outstandingSupplierBalances, supplierShortcut, staffShortcut) => ({
+                    title: @js(old('title', $editExpense?->title)),
+                    amount: @js((string) old('amount', $editExpense?->amount)),
+                    supplierNames,
+                    recentSupplierPaymentAmounts,
+                    outstandingSupplierBalances,
+                    supplierShortcut,
+                    staffShortcut,
+                    get supplierWarning() {
+                        const value = (this.title || '').toLowerCase();
+                        const keywords = ['supplier', 'dealer', 'purchase', 'مورد', 'تاجر', 'بضاعة'];
+                        const match = keywords.some((word) => value.includes(word)) || this.supplierNames.some((name) => value.includes(String(name).toLowerCase()));
+                        return match ? @js(__('finance.expenses.warning_supplier_match')) : '';
+                    },
+                    get amountWarning() {
+                        const amount = Number(this.amount || 0).toFixed(2);
+                        if (!amount || amount === '0.00') return '';
+                        const matchRecent = this.recentSupplierPaymentAmounts.some((value) => Number(value).toFixed(2) === amount);
+                        const matchBalance = this.outstandingSupplierBalances.some((value) => Number(value).toFixed(2) === amount);
+                        return matchRecent || matchBalance ? @js(__('finance.expenses.warning_amount_match')) : '';
+                    },
+                    get salaryWarning() {
+                        const value = (this.title || '').toLowerCase();
+                        return value.includes('salary') || value.includes('payroll') || value.includes('راتب') || value.includes('أجر')
+                            ? @js(__('finance.expenses.warning_salary_match'))
+                            : '';
+                    },
+                }))
+            })
+        </script>
+    @endpush
 </x-app-layout>

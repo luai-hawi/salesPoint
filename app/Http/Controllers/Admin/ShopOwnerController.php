@@ -3,988 +3,606 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\SubscriptionPayment;
 use App\Models\User;
-use App\Models\Product;
-use App\Models\Bill;
-use App\Models\Customer;
-use App\Models\Employee;
-use App\Models\EmployeePayment;
-use App\Models\Expense;
-use App\Models\Supplier;
-use App\Models\SupplierPayment;
-use App\Models\PurchaseBill;
-use App\Models\CustomerPayment;
-use App\Models\Tag;
-use App\Models\Batch;
-use App\Models\ProductBarcode;
-use App\Models\ProductVariantGroup;
+use App\Services\ActivityLogger;
+use App\Services\Admin\AccountStatus;
+use App\Services\Admin\CurrencyFormatter;
+use App\Services\Admin\PlatformSettings;
+use App\Services\Admin\ShopPerformanceService;
+use App\Services\Admin\ShopPurger;
+use App\Services\Admin\ShopStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ShopOwnerController extends Controller
 {
-    /**
-     * Display a listing of all users (shop owners and admins).
-     */
-    public function index()
-    {
-        $users = User::whereIn('role', ['shop_owner', 'admin', 'disabled', 'restaurant', 'merchant'])
-            ->withCount('employees')
-            ->latest()
-            ->get();
-
-        return view('admin.shop-owners.index', compact('users'));
+    public function __construct(
+        private readonly AccountStatus $statusService,
+        private readonly CurrencyFormatter $currencies,
+        private readonly PlatformSettings $settings,
+        private readonly ShopStorageService $storage,
+        private readonly ShopPurger $purger,
+        private readonly ShopPerformanceService $performance,
+    ) {
     }
 
-    /**
-     * Show the form for creating a new user.
-     */
+    public function index(Request $request)
+    {
+        $perPage = max(10, min(100, (int) $request->input('per_page', 25)));
+        $query = User::query()
+            ->whereIn('role', array_merge(User::OWNER_ROLES, ['disabled']))
+            ->when($request->string('search')->value(), function ($users, $search) {
+                $users->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('owner_name', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%')
+                        ->orWhere('phone_number', 'like', '%' . $search . '%');
+                });
+            })
+            ->withCount('employees')
+            ->select('users.*')
+            ->selectSub(DB::table('products')->selectRaw('COUNT(*)')->whereColumn('user_id', 'users.id'), 'products_count')
+            ->selectSub(DB::table('customers')->selectRaw('COUNT(*)')->whereColumn('user_id', 'users.id'), 'customers_count')
+            ->selectSub(DB::table('bills')->selectRaw('COUNT(*)')->whereColumn('user_id', 'users.id'), 'bills_count')
+            ->selectSub(DB::table('purchase_bills')->selectRaw('COUNT(*)')->whereColumn('user_id', 'users.id'), 'purchase_bills_count')
+            ->selectSub(DB::table('activity_logs')->selectRaw('MAX(created_at)')->whereColumn('owner_id', 'users.id'), 'last_activity_at');
+
+        $this->statusService->applyFilter($query, $request->string('status')->value());
+
+        $sort = $request->string('sort')->value() ?: 'latest';
+        match ($sort) {
+            'name' => $query->orderBy('name'),
+            'next_payment' => $query->orderByRaw('COALESCE(license_expires_at, temp_expires_at) asc'),
+            'last_activity' => $query->orderByDesc('last_activity_at'),
+            'usage' => $query->orderByRaw('(COALESCE(products_count,0)+COALESCE(customers_count,0)+COALESCE(bills_count,0)+COALESCE(purchase_bills_count,0)) desc'),
+            default => $query->latest(),
+        };
+
+        $users = $query->paginate($perPage)->withQueryString();
+        $imageStats = $this->storage->imageStatsForShops($users->pluck('id')->map(fn ($id) => (int) $id)->all(), $request->boolean('refresh'));
+
+        $statusMap = [];
+        foreach ($users as $user) {
+            $statusMap[$user->id] = $this->statusService->describe($user);
+        }
+        $performance = $this->performance->monthSummaries(null, $users->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+        $counts = [
+            'all' => User::query()->whereIn('role', array_merge(User::OWNER_ROLES, ['disabled']))->count(),
+            'active' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'active')->count(),
+            'has_to_pay' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'has_to_pay')->count(),
+            'trial' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'trial')->count(),
+            'trial_ended' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'trial_ended')->count(),
+            'disabled' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'disabled')->count(),
+            'needs_attention' => $this->statusService->applyFilter($this->statusService->baseQuery(), 'needs_attention')->count(),
+        ];
+
+        return view('admin.shop-owners.index', [
+            'users' => $users,
+            'counts' => $counts,
+            'statusMap' => $statusMap,
+            'imageStats' => $imageStats,
+            'performance' => $performance,
+            'currencies' => $this->currencies,
+        ]);
+    }
+
     public function create()
     {
-        return view('admin.shop-owners.create');
+        return view('admin.shop-owners.create', [
+            'settings' => $this->settings->all(),
+            'currencyOptions' => $this->currencies->options(),
+        ]);
     }
 
-    /**
-     * Store a newly created user.
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'owner_name' => 'nullable|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'required|in:shop_owner,admin,restaurant,merchant',
-            'phone_number' => 'nullable|string|max:20',
-            'subscription_cost' => 'nullable|numeric|min:0',
-            'image_limit' => 'nullable|integer|min:0|max:10000',
-            'account_type' => 'nullable|in:full,temp',
-            'temp_period_days' => 'nullable|integer|min:1|max:365',
-        ]);
+        $validated = $this->validateShop($request);
 
-        try {
-            DB::beginTransaction();
+        $validated['password'] = Hash::make($validated['password']);
+        $validated['subscription_currency'] = $validated['subscription_currency'] ?: $this->settings->get('default_currency', 'ILS');
+        $validated['subscription_cost'] = $validated['subscription_cost'] ?? $this->settings->get('default_subscription_cost', 300);
+        $validated['entry_limit_mode'] = $validated['entry_limit_mode'] ?? 'off';
+        $validated['role'] = $validated['role'] === 'disabled' ? 'shop_owner' : $validated['role'];
 
-            $validated['password'] = Hash::make($validated['password']);
-
-            // Set default values
-            if (!isset($validated['account_type'])) {
-                $validated['account_type'] = 'temp';
-            }
-            if (!isset($validated['subscription_cost'])) {
-                $validated['subscription_cost'] = 300;
-            }
-            if (!isset($validated['image_limit'])) {
-                $validated['image_limit'] = 100;
-            }
-
-            // Calculate temp_expires_at if temp account and period is set
-            if ($validated['account_type'] === 'temp' && !empty($validated['temp_period_days'])) {
-                $validated['temp_expires_at'] = now()->addDays((int) $validated['temp_period_days']);
-            }
-
-            $user = User::create($validated);
-
-            DB::commit();
-
-            return redirect()->route('admin.shop-owners.index')
-                ->with('success', ucfirst(str_replace('_', ' ', $user->role)) . ' created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to create user. Please try again.']);
+        if (($validated['account_type'] ?? 'temp') === 'temp') {
+            $days = (int) ($validated['temp_period_days'] ?: $this->settings->get('default_trial_days', 14));
+            $validated['temp_period_days'] = $days;
+            $validated['temp_expires_at'] = now()->addDays($days)->toDateString();
+            $validated['license_expires_at'] = null;
         }
+
+        $shop = User::create($validated);
+        ActivityLogger::record('created', 'shop_account', $shop, ['role' => $shop->role], null, $shop->name, $shop->id);
+
+        return redirect()->route('admin.shop-owners.show', $shop)->with('success', __('admin.messages.shop_created'));
     }
 
-    /**
-     * Display the specified shop owner with detailed information.
-     */
     public function show(User $shopOwner)
     {
-        // Ensure we're only showing shop owners
-        if (!in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant'])) {
-            abort(404);
-        }
+        $this->ensureManageableShop($shopOwner);
 
-        // Load employees with pagination-like limit for performance
-        $shopOwner->load(['employees' => function ($query) {
-            $query->latest()->take(50); // Limit to prevent memory issues
-        }]);
+        $employees = User::query()->where('role', 'employee')->where('shop_owner_id', $shopOwner->id)->latest()->get();
+        $status = $this->statusService->describe($shopOwner);
+        $imageStats = $this->storage->imageStats($shopOwner->id, request()->boolean('refresh'));
+        $activity = ActivityLog::query()->where('owner_id', $shopOwner->id)->latest('created_at')->limit(15)->get();
+        $payments = $shopOwner->subscriptionPayments()->latest('paid_at')->latest('id')->get();
+        $usage = [
+            'bills' => (int) DB::table('bills')->where('user_id', $shopOwner->id)->count(),
+            'products' => (int) DB::table('products')->where('user_id', $shopOwner->id)->count(),
+            'customers' => (int) DB::table('customers')->where('user_id', $shopOwner->id)->count(),
+            'purchase_bills' => (int) DB::table('purchase_bills')->where('user_id', $shopOwner->id)->count(),
+        ];
+        $preview = $this->purger->preview($shopOwner);
+        $performance = $this->performance->forShop($shopOwner);
+        $salesStats = [
+            'today' => (float) $performance['today']['revenue'],
+            'month' => (float) $performance['month']['revenue'],
+        ];
 
-        // Get all user IDs for this shop (owner + employees)
-        $userIds = collect([$shopOwner->id])->merge($shopOwner->employees->pluck('id'))->filter();
-
-        // Calculate statistics with better error handling
-        try {
-            $shopOwner->total_sales = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)->sum('total_price') ?? 0;
-
-            $shopOwner->sales_this_month = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)
-                ->whereMonth('created_at', Carbon::now()->month)
-                ->whereYear('created_at', Carbon::now()->year)
-                ->sum('total_price') ?? 0;
-
-            $shopOwner->sales_today = Bill::withoutGlobalScopes()->whereIn('user_id', $userIds)
-                ->whereDate('created_at', Carbon::today())
-                ->sum('total_price') ?? 0;
-
-            $shopOwner->products_count = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count();
-            $shopOwner->customers_count = Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->count();
-            $shopOwner->employees_count = $shopOwner->employees->count();
-
-            // Count total images for this user
-            $shopOwner->total_images = 0;
-            $products = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->whereNotNull('pictures')->get();
-            foreach ($products as $product) {
-                $pictures = json_decode($product->pictures, true);
-                if (is_array($pictures)) {
-                    $shopOwner->total_images += count($pictures);
-                }
-            }
-        } catch (\Exception $e) {
-            // Set default values if queries fail
-            $shopOwner->total_sales = 0;
-            $shopOwner->sales_this_month = 0;
-            $shopOwner->sales_today = 0;
-            $shopOwner->products_count = 0;
-            $shopOwner->customers_count = 0;
-            $shopOwner->employees_count = 0;
-        }
-
-        return view('admin.shop-owners.show', compact('shopOwner'));
+        return view('admin.shop-owners.show', compact(
+            'shopOwner',
+            'employees',
+            'status',
+            'imageStats',
+            'activity',
+            'payments',
+            'usage',
+            'preview',
+            'salesStats',
+            'performance'
+        ) + [
+            'currencies' => $this->currencies,
+            'currencyOptions' => $this->currencies->options(),
+            'paymentIdempotencyKey' => $this->issuePaymentIdempotencyKey($shopOwner),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified user.
-     */
     public function edit(User $shopOwner)
     {
-        $shopOwner->loadCount('employees');
-        // Calculate the trial period based on created_at and temp_expires_at
-        $calculatedTrialPeriod = $shopOwner->getCalculatedTrialPeriod();
-        return view('admin.shop-owners.edit', compact('shopOwner', 'calculatedTrialPeriod'));
+        $this->ensureManageableShop($shopOwner);
+
+        return view('admin.shop-owners.edit', [
+            'shopOwner' => $shopOwner,
+            'settings' => $this->settings->all(),
+            'currencyOptions' => $this->currencies->options(),
+            'paymentHistory' => $shopOwner->subscriptionPayments()->latest('paid_at')->limit(5)->get(),
+        ]);
     }
 
-    /**
-     * Update the specified user.
-     */
     public function update(Request $request, User $shopOwner)
     {
+        $this->ensureManageableShop($shopOwner);
+        $validated = $this->validateShop($request, $shopOwner);
+
+        if (! empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        } else {
+            unset($validated['password']);
+        }
+
+        if (($validated['account_type'] ?? $shopOwner->account_type) === 'temp') {
+            $days = (int) ($validated['temp_period_days'] ?: $shopOwner->temp_period_days ?: $this->settings->get('default_trial_days', 14));
+            $validated['temp_period_days'] = $days;
+            if ($request->filled('extend_days')) {
+                $base = $shopOwner->temp_expires_at ? Carbon::parse($shopOwner->temp_expires_at) : now();
+                $validated['temp_expires_at'] = $base->addDays((int) $request->integer('extend_days'))->toDateString();
+            } elseif (! $shopOwner->temp_expires_at) {
+                $validated['temp_expires_at'] = now()->addDays($days)->toDateString();
+            }
+        } elseif (! empty($validated['license_expires_at'])) {
+            $validated['license_expires_at'] = Carbon::parse($validated['license_expires_at'])->toDateString();
+        }
+
+        if ($shopOwner->role === 'disabled') {
+            $validated['role'] = 'disabled';
+            $validated['disabled_from_role'] = $shopOwner->disabled_from_role ?: $shopOwner->businessRole();
+            $validated['disabled_at'] = $shopOwner->disabled_at ?: now();
+        }
+
+        $shopOwner->update($validated);
+        ActivityLogger::record('updated', 'shop_account', $shopOwner, ['role' => $shopOwner->role], null, $shopOwner->name, $shopOwner->id);
+
+        return redirect()->route('admin.shop-owners.show', $shopOwner)->with('success', __('admin.messages.shop_updated'));
+    }
+
+    public function destroy(Request $request, User $shopOwner)
+    {
+        $this->ensureManageableShop($shopOwner);
+        $request->validate([
+            'confirmation' => 'required|string',
+        ]);
+
+        $expected = [$shopOwner->name, $shopOwner->email];
+        if (! in_array($request->input('confirmation'), $expected, true)) {
+            return back()->withErrors(['confirmation' => __('admin.messages.delete_confirmation_mismatch')]);
+        }
+
+        $name = $shopOwner->name;
+        $ownerId = $shopOwner->id;
+        $this->purger->purge($shopOwner);
+        ActivityLogger::record('deleted', 'shop_account', null, ['name' => $name], null, $name, $ownerId);
+
+        return redirect()->route('admin.shop-owners.index')->with('success', __('admin.messages.shop_deleted'));
+    }
+
+    public function toggleStatus(Request $request, User $shopOwner)
+    {
+        $this->ensureManageableShop($shopOwner);
+        $request->validate([
+            'disabled_reason' => 'nullable|string|max:60',
+        ]);
+
+        if ($shopOwner->role === 'disabled') {
+            $restoredRole = $shopOwner->disabled_from_role ?: 'shop_owner';
+            $shopOwner->update([
+                'role' => $restoredRole,
+                'disabled_at' => null,
+                'disabled_reason' => null,
+            ]);
+            ActivityLogger::record('enabled', 'shop_account', $shopOwner, [], null, $shopOwner->name, $shopOwner->id);
+
+            return back()->with('success', __('admin.messages.shop_enabled'));
+        }
+
+        $shopOwner->update([
+            'disabled_from_role' => $shopOwner->role,
+            'disabled_at' => now(),
+            'disabled_reason' => $request->string('disabled_reason')->value() ?: null,
+            'role' => 'disabled',
+        ]);
+
+        ActivityLogger::record('disabled', 'shop_account', $shopOwner, ['reason' => $shopOwner->disabled_reason], null, $shopOwner->name, $shopOwner->id);
+
+        return back()->with('success', __('admin.messages.shop_disabled'));
+    }
+
+    public function markPaid(Request $request, User $shopOwner)
+    {
+        $this->ensureManageableShop($shopOwner);
         $validated = $request->validate([
+            'months' => 'required|integer|min:1|max:120',
+            'amount' => 'required|numeric|min:0',
+            'currency' => 'required|string|size:3',
+            'method' => 'required|string|in:cash,transfer,card,check,other',
+            'paid_at' => 'required|date',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:1000',
+            'continue_mode' => 'nullable|string|in:auto,current_expiry,today',
+            'idempotency_key' => 'required|string|max:100',
+        ]);
+
+        $this->consumePaymentIdempotencyKey($shopOwner, $validated['idempotency_key']);
+        $paidAt = Carbon::parse($validated['paid_at'])->startOfDay();
+        $today = now()->startOfDay();
+
+        DB::transaction(function () use ($shopOwner, $validated, $paidAt, $today) {
+            $lockedShop = User::query()->whereKey($shopOwner->id)->lockForUpdate()->firstOrFail();
+            $currentExpiry = $lockedShop->license_expires_at ? Carbon::parse($lockedShop->license_expires_at)->startOfDay() : null;
+            $continueMode = $validated['continue_mode'] ?? 'auto';
+            $start = match ($continueMode) {
+                'current_expiry' => $currentExpiry && $currentExpiry->gte($today) ? $currentExpiry : $today,
+                'today' => $today,
+                default => $currentExpiry && $currentExpiry->gte($today) ? $currentExpiry : $today,
+            };
+            $periodStart = $start->copy();
+            $periodEnd = $start->copy()->addMonthsNoOverflow((int) $validated['months']);
+
+            SubscriptionPayment::create([
+                'user_id' => $lockedShop->id,
+                'amount' => $validated['amount'],
+                'currency' => $validated['currency'],
+                'months' => $validated['months'],
+                'period_start' => $periodStart->toDateString(),
+                'period_end' => $periodEnd->toDateString(),
+                'paid_at' => $paidAt->toDateString(),
+                'method' => $validated['method'],
+                'reference' => $validated['reference'] ?? null,
+                'note' => $validated['note'] ?? null,
+                'recorded_by' => auth()->id(),
+            ]);
+
+            $lockedShop->update([
+                'subscription_paid' => true,
+                'account_type' => 'full',
+                'temp_expires_at' => null,
+                'temp_period_days' => null,
+                'license_expires_at' => $periodEnd->toDateString(),
+                'last_payment_months' => $validated['months'],
+                'last_payment_amount' => $validated['amount'],
+                'subscription_cost' => $validated['amount'],
+                'subscription_currency' => $validated['currency'],
+            ]);
+        });
+
+        $shopOwner->refresh();
+
+        ActivityLogger::record('payment_recorded', 'subscription', $shopOwner, [
+            'months' => $validated['months'],
+            'currency' => $validated['currency'],
+            'amount' => $validated['amount'],
+        ], (float) $validated['amount'], $shopOwner->name, $shopOwner->id);
+
+        return back()->with('success', __('admin.messages.payment_recorded'));
+    }
+
+    public function deletePayment(User $shopOwner, SubscriptionPayment $payment)
+    {
+        $this->ensureManageableShop($shopOwner);
+        abort_unless($payment->user_id === $shopOwner->id, 404);
+
+        $amount = (float) $payment->amount;
+        $payment->delete();
+
+        $lastPayment = $shopOwner->subscriptionPayments()->latest('period_end')->latest('id')->first();
+        $shopOwner->update([
+            'license_expires_at' => $lastPayment?->period_end,
+            'last_payment_months' => $lastPayment?->months,
+            'last_payment_amount' => $lastPayment?->amount,
+            'subscription_currency' => $lastPayment?->currency ?: $shopOwner->subscription_currency,
+        ]);
+
+        ActivityLogger::record('payment_deleted', 'subscription', $shopOwner, [], $amount, $shopOwner->name, $shopOwner->id);
+
+        return back()->with('success', __('admin.messages.payment_deleted'));
+    }
+
+    public function note(Request $request, User $shopOwner)
+    {
+        $this->ensureManageableShop($shopOwner);
+        $validated = $request->validate([
+            'admin_notes' => 'nullable|string|max:5000',
+        ]);
+
+        $shopOwner->update(['admin_notes' => $validated['admin_notes'] ?? null]);
+        ActivityLogger::record('note_changed', 'shop_account', $shopOwner, [], null, $shopOwner->name, $shopOwner->id);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => __('admin.messages.note_saved')]);
+        }
+
+        return back()->with('success', __('admin.messages.note_saved'));
+    }
+
+    public function expiringLicenses(Request $request)
+    {
+        $filter = $request->string('window')->value() ?: 'all';
+        $query = User::query()->whereIn('role', array_merge(User::OWNER_ROLES, ['disabled']));
+        $this->statusService->applyFilter($query, $filter);
+        $shops = $query->orderByRaw('COALESCE(license_expires_at, temp_expires_at) asc')->paginate(25)->withQueryString();
+
+        $statusMap = [];
+        $totals = [];
+        foreach ($shops as $shop) {
+            $statusMap[$shop->id] = $this->statusService->describe($shop);
+            $currency = $statusMap[$shop->id]['currency'];
+            $totals[$currency] ??= ['overdue' => 0, 'expected' => 0];
+            if ($statusMap[$shop->id]['key'] === 'payment_overdue') {
+                $totals[$currency]['overdue'] += (float) ($statusMap[$shop->id]['amount'] ?? 0);
+            } else {
+                $totals[$currency]['expected'] += (float) ($statusMap[$shop->id]['amount'] ?? 0);
+            }
+        }
+
+        $menuExpiredUsers = collect();
+        try {
+            $menuDbPath = env('MENU_DB_PATH') ?: public_path('menu/database/database.sqlite');
+            if (! file_exists($menuDbPath)) {
+                $menuDbPath = base_path('../Menu/database/database.sqlite');
+            }
+
+            if (file_exists($menuDbPath)) {
+                config(['database.connections.menu_sqlite' => [
+                    'driver' => 'sqlite',
+                    'database' => $menuDbPath,
+                    'prefix' => '',
+                ]]);
+
+                $menuExpiredUsers = collect(DB::connection('menu_sqlite')->select("
+                    SELECT u.id, u.name, u.email, u.phone, s.amount, s.paid_at, s.expires_at, r.name AS restaurant_name
+                    FROM subscriptions s
+                    INNER JOIN users u ON u.id = s.user_id
+                    LEFT JOIN restaurants r ON r.user_id = u.id
+                    WHERE u.role != 'admin'
+                      AND (s.paid_at IS NULL OR s.expires_at < datetime('now'))
+                    ORDER BY s.expires_at ASC
+                "));
+            }
+        } catch (\Throwable) {
+            $menuExpiredUsers = collect();
+        }
+
+        return view('admin.shop-owners.expiring-licenses', compact('shops', 'statusMap', 'totals', 'menuExpiredUsers'));
+    }
+
+    public function convertToFull(User $shopOwner)
+    {
+        $this->ensureManageableShop($shopOwner);
+        $shopOwner->update([
+            'account_type' => 'full',
+            'temp_expires_at' => null,
+            'temp_period_days' => null,
+            'license_expires_at' => $shopOwner->license_expires_at ?: now()->addMonths(1)->toDateString(),
+        ]);
+
+        ActivityLogger::record('converted', 'shop_account', $shopOwner, [], null, $shopOwner->name, $shopOwner->id);
+
+        return back()->with('success', __('admin.messages.converted_to_full'));
+    }
+
+    public function deleteExpiredTempAccounts(Request $request)
+    {
+        $request->validate([
+            'confirmation' => 'required|string',
+        ]);
+        if ($request->input('confirmation') !== __('admin.confirmations.bulk_delete_expired')) {
+            return back()->withErrors(['confirmation' => __('admin.messages.bulk_confirmation_mismatch')]);
+        }
+
+        $accounts = User::query()
+            ->whereIn('role', array_merge(User::OWNER_ROLES, ['disabled']))
+            ->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->whereDate('temp_expires_at', '<', today())
+            ->when($request->filled('user_ids'), fn ($query) => $query->whereIn('id', (array) $request->input('user_ids')))
+            ->get();
+
+        foreach ($accounts as $account) {
+            $this->purger->purge($account);
+        }
+
+        return back()->with('success', __('admin.messages.expired_deleted', ['count' => $accounts->count()]));
+    }
+
+    public function disableExpiredTempAccounts()
+    {
+        $accounts = User::query()
+            ->whereIn('role', User::OWNER_ROLES)
+            ->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->whereDate('temp_expires_at', '<', today())
+            ->get();
+
+        foreach ($accounts as $account) {
+            $account->update([
+                'disabled_from_role' => $account->role,
+                'disabled_at' => now(),
+                'disabled_reason' => __('admin.messages.auto_disabled_reason'),
+                'role' => 'disabled',
+            ]);
+        }
+
+        return back()->with('success', __('admin.messages.expired_disabled', ['count' => $accounts->count()]));
+    }
+
+    public function deleteDisabledExpiredAccounts(Request $request)
+    {
+        $request->validate([
+            'confirmation' => 'required|string',
+        ]);
+        if ($request->input('confirmation') !== __('admin.confirmations.bulk_delete_disabled_expired')) {
+            return back()->withErrors(['confirmation' => __('admin.messages.bulk_confirmation_mismatch')]);
+        }
+
+        $accounts = User::query()
+            ->where('role', 'disabled')
+            ->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->whereDate('temp_expires_at', '<', today())
+            ->when($request->filled('user_ids'), fn ($query) => $query->whereIn('id', (array) $request->input('user_ids')))
+            ->get();
+
+        foreach ($accounts as $account) {
+            $this->purger->purge($account);
+        }
+
+        return back()->with('success', __('admin.messages.disabled_expired_deleted', ['count' => $accounts->count()]));
+    }
+
+    public function impersonate(User $shopOwner)
+    {
+        if ($shopOwner->role === 'admin') {
+            return back()->withErrors(['error' => __('admin.messages.cannot_impersonate_admin')]);
+        }
+
+        $this->ensureManageableShop($shopOwner);
+
+        if (! $shopOwner->isOwnerAccount() || $shopOwner->is_active === false) {
+            return back()->withErrors(['error' => __('admin.messages.cannot_impersonate_inactive')]);
+        }
+
+        $adminId = auth()->id();
+        ActivityLogger::record('impersonation_started', 'shop_account', $shopOwner, [], null, $shopOwner->name, $shopOwner->id);
+
+        Auth::loginUsingId($shopOwner->id);
+        request()->session()->regenerate();
+        session([
+            'impersonator_id' => $adminId,
+            'impersonated_shop_name' => $shopOwner->name,
+        ]);
+
+        return redirect()->route('dashboard');
+    }
+
+    public function stopImpersonating()
+    {
+        $adminId = (int) session('impersonator_id');
+        if ($adminId <= 0) {
+            abort(403);
+        }
+
+        $shopName = session('impersonated_shop_name');
+        Auth::loginUsingId($adminId);
+        request()->session()->regenerate();
+        session()->forget(['impersonator_id', 'impersonated_shop_name']);
+
+        ActivityLogger::record('impersonation_stopped', 'shop_account', auth()->user(), ['shop' => $shopName], null, $shopName, $adminId);
+
+        return redirect()->route('admin.dashboard')->with('success', __('admin.messages.impersonation_stopped'));
+    }
+
+    private function validateShop(Request $request, ?User $shopOwner = null): array
+    {
+        $allowedRoles = $shopOwner && $shopOwner->role === 'disabled'
+            ? ['shop_owner', 'restaurant', 'merchant', 'disabled']
+            : ['shop_owner', 'restaurant', 'merchant'];
+
+        return $request->validate([
             'name' => 'required|string|max:255',
             'owner_name' => 'nullable|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($shopOwner->id)],
-            'password' => 'nullable|string|min:8',
-            'role' => 'required|in:shop_owner,admin,disabled,restaurant,merchant',
-            'phone_number' => 'nullable|string|max:20',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($shopOwner?->id)],
+            'password' => [$shopOwner ? 'nullable' : 'required', 'string', 'min:8'],
+            'role' => ['required', Rule::in($allowedRoles)],
+            'phone_number' => 'nullable|string|max:30',
             'subscription_cost' => 'nullable|numeric|min:0',
-            'image_limit' => 'nullable|integer|min:0|max:10000',
+            'subscription_currency' => 'nullable|string|size:3',
+            'image_limit' => 'nullable|integer|min:0|max:100000',
             'account_type' => 'nullable|in:full,temp',
-            'temp_period_days' => 'nullable|integer|min:0|max:365',
+            'temp_period_days' => 'nullable|integer|min:1|max:365',
             'extend_days' => 'nullable|integer|min:-365|max:365',
             'license_expires_at' => 'nullable|date',
             'blocked_features' => 'nullable|array',
             'blocked_features.*' => 'string|in:installments,sales_promotions,financial_dashboard',
             'entry_limit' => 'nullable|integer|min:0',
+            'entry_limit_mode' => 'nullable|in:off,warn,block',
+            'admin_notes' => 'nullable|string|max:5000',
+            'disabled_reason' => 'nullable|string|max:60',
         ]);
-
-        try {
-            DB::beginTransaction();
-
-            if ($request->filled('password')) {
-                $validated['password'] = Hash::make($validated['password']);
-            } else {
-                unset($validated['password']);
-            }
-
-            // Handle account type and temp period
-            if (isset($validated['account_type'])) {
-                if ($validated['account_type'] === 'temp') {
-                    // If temp_period_days is provided and > 0, recalculate expiration from creation date
-                    if (!empty($validated['temp_period_days']) && $validated['temp_period_days'] > 0) {
-                        $validated['temp_period_days'] = (int) $validated['temp_period_days'];
-                        $validated['temp_expires_at'] = $shopOwner->created_at->addDays($validated['temp_period_days']);
-                    }
-                    // If temp_period_days is 0 or empty, keep the current value (don't update temp_period_days or temp_expires_at)
-                    elseif (empty($validated['temp_period_days']) || $validated['temp_period_days'] == 0) {
-                        unset($validated['temp_period_days']);
-                        unset($validated['temp_expires_at']);
-                    }
-                } elseif ($validated['account_type'] === 'full') {
-                    $validated['temp_expires_at'] = null;
-                    $validated['temp_period_days'] = null;
-                }
-            }
-
-            // Handle extend expiry - adds to trial period and extends expiration
-            if ($request->filled('extend_days') && $shopOwner->account_type === 'temp') {
-                $extendDays = (int) $request->extend_days;
-                if ($extendDays != 0) {
-                    // Get current trial period or calculate from expiration
-                    $currentPeriod = $shopOwner->temp_period_days;
-                    if (!$currentPeriod && $shopOwner->temp_expires_at) {
-                        $currentPeriod = (int) $shopOwner->created_at->diffInDays($shopOwner->temp_expires_at);
-                    }
-                    if (!$currentPeriod) {
-                        $currentPeriod = 0;
-                    }
-
-                    // New total trial period (can be negative, but we cap at minimum 1)
-                    $newPeriod = $currentPeriod + $extendDays;
-                    if ($newPeriod < 1) {
-                        $newPeriod = 1;
-                    }
-                    $validated['temp_period_days'] = $newPeriod;
-
-                    // Extend/subtract expiration by extend_days from current expiration
-                    $currentExpiry = $shopOwner->temp_expires_at;
-                    if ($currentExpiry) {
-                        $validated['temp_expires_at'] = $currentExpiry->addDays($extendDays);
-                    } else {
-                        // If no valid expiry, set from now
-                        $validated['temp_expires_at'] = now()->addDays($extendDays);
-                    }
-                }
-            }
-
-            // Remove extend_days from validated data as it's not a column
-            unset($validated['extend_days']);
-
-            // Normalise blocked_features: when no checkboxes are ticked the key
-            // won't be present in $validated at all — treat that as "no blocks".
-            if (!array_key_exists('blocked_features', $validated)) {
-                $validated['blocked_features'] = [];
-            }
-
-            // Normalise entry_limit: empty string → null (unlimited)
-            if (array_key_exists('entry_limit', $validated) && $validated['entry_limit'] === '') {
-                $validated['entry_limit'] = null;
-            }
-
-            $shopOwner->update($validated);
-
-            DB::commit();
-
-            $redirectRoute = in_array($shopOwner->role, ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-                ? 'admin.shop-owners.show'
-                : 'admin.shop-owners.index';
-
-            return redirect()->route($redirectRoute, $shopOwner->id)
-                ->with('success', __('messages.User updated successfully.'));
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to update user. Please try again.']);
-        }
     }
 
-    /**
-     * Remove the specified user and all related data.
-     */
-    public function destroy(User $shopOwner)
+    private function ensureManageableShop(User $shopOwner): void
     {
-        try {
-            DB::beginTransaction();
-
-            // Delete all employees first
-            if ($shopOwner->role === 'shop_owner' || $shopOwner->role === 'restaurant' || $shopOwner->role === 'merchant' || $shopOwner->role === 'disabled') {
-                // Get all employee IDs for this shop owner
-                $employeeIds = Employee::where('shop_owner_id', $shopOwner->id)->pluck('id');
-
-                // Delete employee payments
-                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
-
-                // Delete employees
-                Employee::where('shop_owner_id', $shopOwner->id)->delete();
-
-                // Delete product-related data (before deleting products)
-                // Get all product IDs for this user
-                $productIds = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
-
-                // Delete product barcodes
-                ProductBarcode::whereIn('product_id', $productIds)->delete();
-
-                // Delete batches
-                Batch::whereIn('product_id', $productIds)->delete();
-
-                // Delete product variant groups
-                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete product images from storage
-                $products = Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->get();
-                foreach ($products as $product) {
-                    $pictures = json_decode($product->pictures, true);
-                    if (is_array($pictures)) {
-                        foreach ($pictures as $picture) {
-                            if ($picture && Storage::disk('public')->exists($picture)) {
-                                Storage::disk('public')->delete($picture);
-                            }
-                        }
-                    }
-                }
-
-                // Delete products
-                Product::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete customer-related data (before deleting customers)
-                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
-
-                // Delete customer payments
-                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
-
-                // Delete bills (cascade from customers - bill_product pivot will be deleted automatically)
-                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
-
-                // Delete bills directly associated with user
-                Bill::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete customers
-                Customer::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete supplier-related data (before deleting suppliers)
-                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $shopOwner->id)->pluck('id');
-
-                // Delete supplier payments
-                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
-
-                // Delete purchase bills
-                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
-
-                // Delete purchase bills directly associated with user
-                PurchaseBill::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete suppliers
-                Supplier::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-
-                // Delete other user-related data
-                Expense::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-                Tag::withoutGlobalScopes()->where('user_id', $shopOwner->id)->delete();
-            }
-
-            $shopOwner->delete();
-
-            DB::commit();
-
-            return redirect()->route('admin.shop-owners.index')
-                ->with('success', 'User and all related data deleted successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to delete user. Please try again.']);
-        }
+        abort_unless(in_array($shopOwner->role, array_merge(User::OWNER_ROLES, ['disabled']), true), 404);
     }
 
-    /**
-     * Toggle user status (active/disabled).
-     */
-    public function toggleStatus(User $shopOwner)
+    private function paymentTokenSessionKey(User $shopOwner): string
     {
-        try {
-            // Toggle between enabled roles and disabled
-            $currentRole = $shopOwner->role;
-
-            // Define enabled roles
-            $enabledRoles = ['shop_owner', 'restaurant', 'merchant'];
-
-            if (in_array($currentRole, $enabledRoles)) {
-                // Disable the shop
-                $newRole = 'disabled';
-                $status = 'disabled';
-            } else {
-                // Enable the shop (restore to shop_owner)
-                $newRole = 'shop_owner';
-                $status = 'activated';
-            }
-
-            $shopOwner->update(['role' => $newRole]);
-
-            return redirect()->back()
-                ->with('success', "Shop owner has been {$status} successfully.");
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to update status. Please try again.']);
-        }
+        return 'admin.payment_tokens.' . $shopOwner->id;
     }
 
-    /**
-     * Mark subscription as paid for a user, extend license by given months.
-     */
-    public function markPaid(Request $request, User $shopOwner)
+    private function issuePaymentIdempotencyKey(User $shopOwner): string
     {
-        $validated = $request->validate([
-            'months' => 'required|integer|min:1|max:120',
-            'amount' => 'nullable|numeric|min:0',
-        ]);
+        $token = (string) Str::uuid();
+        $tokens = session($this->paymentTokenSessionKey($shopOwner), []);
+        $tokens[$token] = true;
+        session([$this->paymentTokenSessionKey($shopOwner) => $tokens]);
 
-        try {
-            $months = (int) $validated['months'];
-            $amount = $validated['amount'] ?? $shopOwner->subscription_cost;
-
-            // License always extends from existing expiry date, or from today if no license set yet
-            $baseDate = $shopOwner->license_expires_at ?? now();
-
-            $newExpiry = $baseDate->copy()->addMonths($months);
-
-            $shopOwner->update([
-                'subscription_paid'    => true,
-                'account_type'         => 'full',
-                'temp_expires_at'      => null,
-                'temp_period_days'     => null,
-                'license_expires_at'   => $newExpiry,
-                'last_payment_months'  => $months,
-                'last_payment_amount'  => $amount,
-                'subscription_cost'    => $amount ?? $shopOwner->subscription_cost,
-            ]);
-
-            return redirect()->back()
-                ->with('success', "Subscription marked as paid. License extended by {$months} month(s) until {$newExpiry->format('M j, Y')}.");
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to mark subscription as paid. Please try again.']);
-        }
+        return $token;
     }
 
-    /**
-     * Show full accounts with expired or soon-to-expire licenses.
-     */
-    public function expiringLicenses()
+    private function consumePaymentIdempotencyKey(User $shopOwner, string $token): void
     {
-        $expiredLicenses = User::where('account_type', 'full')
-            ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
-            ->whereNotNull('license_expires_at')
-            ->where('license_expires_at', '<', now())
-            ->orderBy('license_expires_at')
-            ->get();
-
-        $expiringSoonLicenses = User::where('account_type', 'full')
-            ->whereIn('role', ['shop_owner', 'restaurant', 'merchant', 'disabled'])
-            ->whereNotNull('license_expires_at')
-            ->whereBetween('license_expires_at', [now(), now()->addDays(30)])
-            ->orderBy('license_expires_at')
-            ->get();
-
-        // Query the online menu SQLite for expired restaurant subscriptions
-        $menuExpiredUsers = collect();
-        try {
-            // Resolve the menu DB path: env override > server path > local dev path
-            $menuDbPath = env('MENU_DB_PATH')
-                ?? public_path('menu/database/database.sqlite')  // server: public/menu/...
-                ?? base_path('../Menu/database/database.sqlite'); // local fallback
-            // Try server path first, then local dev path
-            if (!file_exists($menuDbPath)) {
-                $menuDbPath = base_path('../Menu/database/database.sqlite');
-            }
-            if (file_exists($menuDbPath)) {
-                config(['database.connections.menu_sqlite' => [
-                    'driver'   => 'sqlite',
-                    'database' => $menuDbPath,
-                    'prefix'   => '',
-                    'foreign_key_constraints' => true,
-                ]]);
-
-                $rows = \Illuminate\Support\Facades\DB::connection('menu_sqlite')
-                    ->select("
-                        SELECT u.id, u.name, u.email, u.phone,
-                               s.amount, s.paid_at, s.expires_at,
-                               r.name AS restaurant_name
-                        FROM subscriptions s
-                        INNER JOIN users u ON u.id = s.user_id
-                        LEFT JOIN restaurants r ON r.user_id = u.id
-                        WHERE u.role != 'admin'
-                          AND (s.paid_at IS NULL OR s.expires_at < datetime('now'))
-                        ORDER BY s.expires_at ASC
-                    ");
-
-                $menuExpiredUsers = collect($rows);
-            }
-        } catch (\Exception $e) {
-            // Silently fail if menu DB is unavailable
-        }
-
-        return view('admin.shop-owners.expiring-licenses', compact(
-            'expiredLicenses',
-            'expiringSoonLicenses',
-            'menuExpiredUsers'
-        ));
-    }
-
-    /**
-     * Convert a temp account to full account.
-     */
-    public function convertToFull(User $shopOwner)
-    {
-        try {
-            $shopOwner->update([
-                'account_type' => 'full',
-                'temp_expires_at' => null,
-                'temp_period_days' => null
-            ]);
-
-            return redirect()->back()
-                ->with('success', __('messages.Account converted to full successfully.'));
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => __('messages.Failed to convert account.')]);
-        }
-    }
-
-    /**
-     * Delete all expired temporary accounts.
-     */
-    public function deleteExpiredTempAccounts(Request $request)
-    {
-        try {
-            // Build base query: expired temp accounts (only shop owners, not employees)
-            $query = User::expiredTempAccounts()
-                ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant']);
-
-            // If specific IDs were submitted, filter to only those
-            if ($request->filled('user_ids')) {
-                $selectedIds = array_map('intval', (array) $request->input('user_ids'));
-                $query->whereIn('id', $selectedIds);
-            }
-
-            $expiredAccounts = $query->get();
-
-            $count = $expiredAccounts->count();
-
-            if ($count === 0) {
-                return redirect()->back()
-                    ->with('info', __('messages.No expired temporary accounts found.'));
-            }
-
-            // Delete each expired account (this will handle all related data through the destroy method)
-            foreach ($expiredAccounts as $account) {
-                // Get all employee IDs for this shop owner
-                $employeeIds = Employee::where('shop_owner_id', $account->id)->pluck('id');
-
-                // Delete employee payments
-                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
-
-                // Delete employees
-                Employee::where('shop_owner_id', $account->id)->delete();
-
-                // Delete product-related data
-                $productIds = Product::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                ProductBarcode::whereIn('product_id', $productIds)->delete();
-                Batch::whereIn('product_id', $productIds)->delete();
-                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete product images from storage
-                $products = Product::withoutGlobalScopes()->where('user_id', $account->id)->get();
-                foreach ($products as $product) {
-                    $pictures = json_decode($product->pictures, true);
-                    if (is_array($pictures)) {
-                        foreach ($pictures as $picture) {
-                            if ($picture && Storage::disk('public')->exists($picture)) {
-                                Storage::disk('public')->delete($picture);
-                            }
-                        }
-                    }
-                }
-
-                // Delete products
-                Product::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete customer-related data
-                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
-                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
-                Bill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Customer::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete supplier-related data
-                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Supplier::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete other user-related data
-                Expense::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Tag::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete the account
-                $account->delete();
-            }
-
-            return redirect()->route('admin.shop-owners.index')
-                ->with('success', __('messages.Expired accounts deleted successfully.', ['count' => $count]));
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => __('messages.Failed to delete expired accounts.')]);
-        }
-    }
-
-    /**
-     * Disable all expired temporary accounts.
-     */
-    public function disableExpiredTempAccounts()
-    {
-        try {
-            // Get all expired temp accounts that are not already disabled (only shop owners, not employees)
-            $expiredAccounts = User::expiredTempAccounts()
-                ->whereIn('role', ['shop_owner', 'restaurant', 'merchant'])
-                ->get();
-
-            $count = $expiredAccounts->count();
-
-            if ($count === 0) {
-                return redirect()->back()
-                    ->with('info', __('messages.No expired temporary accounts found to disable.'));
-            }
-
-            // Disable each expired account by changing role to 'disabled'
-            foreach ($expiredAccounts as $account) {
-                $account->update(['role' => 'disabled']);
-            }
-
-            return redirect()->route('admin.dashboard')
-                ->with('success', __('messages.Expired accounts disabled successfully.', ['count' => $count]));
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => __('messages.Failed to disable expired accounts.')]);
-        }
-    }
-
-    /**
-     * Delete all disabled expired accounts.
-     */
-    public function deleteDisabledExpiredAccounts(Request $request)
-    {
-        try {
-            // Build base query: disabled expired temp accounts (only shop owners, not employees)
-            $query = User::where('account_type', 'temp')
-                ->whereNotNull('temp_expires_at')
-                ->where('temp_expires_at', '<', now())
-                ->where('role', 'disabled');
-
-            // If specific IDs were submitted, filter to only those
-            if ($request->filled('user_ids')) {
-                $selectedIds = array_map('intval', (array) $request->input('user_ids'));
-                $query->whereIn('id', $selectedIds);
-            }
-
-            $disabledAccounts = $query->get();
-
-            $count = $disabledAccounts->count();
-
-            if ($count === 0) {
-                return redirect()->back()
-                    ->with('info', __('messages.No disabled expired accounts found to delete.'));
-            }
-
-            // Delete each disabled account (this will handle all related data through the destroy method)
-            foreach ($disabledAccounts as $account) {
-                // Get all employee IDs for this shop owner
-                $employeeIds = Employee::where('shop_owner_id', $account->id)->pluck('id');
-
-                // Delete employee payments
-                EmployeePayment::whereIn('employee_id', $employeeIds)->delete();
-
-                // Delete employees
-                Employee::where('shop_owner_id', $account->id)->delete();
-
-                // Delete product-related data
-                $productIds = Product::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                ProductBarcode::whereIn('product_id', $productIds)->delete();
-                Batch::whereIn('product_id', $productIds)->delete();
-                ProductVariantGroup::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete product images from storage
-                $products = Product::withoutGlobalScopes()->where('user_id', $account->id)->get();
-                foreach ($products as $product) {
-                    $pictures = json_decode($product->pictures, true);
-                    if (is_array($pictures)) {
-                        foreach ($pictures as $picture) {
-                            if ($picture && Storage::disk('public')->exists($picture)) {
-                                Storage::disk('public')->delete($picture);
-                            }
-                        }
-                    }
-                }
-
-                // Delete products
-                Product::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete customer-related data
-                $customerIds = Customer::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                CustomerPayment::whereIn('customer_id', $customerIds)->delete();
-                Bill::withoutGlobalScopes()->whereIn('customer_id', $customerIds)->delete();
-                Bill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Customer::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete supplier-related data
-                $supplierIds = Supplier::withoutGlobalScopes()->where('user_id', $account->id)->pluck('id');
-                SupplierPayment::whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::withoutGlobalScopes()->whereIn('supplier_id', $supplierIds)->delete();
-                PurchaseBill::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Supplier::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete other user-related data
-                Expense::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-                Tag::withoutGlobalScopes()->where('user_id', $account->id)->delete();
-
-                // Delete the account
-                $account->delete();
-            }
-
-            return redirect()->route('admin.dashboard')
-                ->with('success', __('messages.Disabled expired accounts deleted successfully.', ['count' => $count]));
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => __('messages.Failed to delete disabled expired accounts.')]);
-        }
-    }
-
-    // Employee Management Methods
-
-    /**
-     * Display all employees across all shop owners.
-     */
-    public function allEmployees()
-    {
-        $user = auth()->user();
-        $query = User::where('role', 'employee')
-            ->with(['shopOwner' => function ($query) {
-                $query->select('id', 'name', 'email', 'role');
-            }]);
-
-        // If user is employee, only show employees of their shop owner
-        if ($user->role === 'employee') {
-            $query->where('shop_owner_id', $user->shop_owner_id);
-        }
-
-        $employees = $query->latest()->get();
-
-        return view('admin.employees.index', compact('employees'));
-    }
-
-    /**
-     * Show the form for creating a new employee.
-     */
-    public function createEmployee()
-    {
-        $user = auth()->user();
-        $query = User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-            ->select('id', 'name', 'email')
-            ->orderBy('name');
-
-        // If user is employee, only show their shop owner
-        if ($user->role === 'employee') {
-            $query->where('id', $user->shop_owner_id);
-        }
-
-        $shopOwners = $query->get();
-
-        return view('admin.employees.create', compact('shopOwners'));
-    }
-
-    /**
-     * Store a newly created employee.
-     */
-    public function storeEmployee(Request $request)
-    {
-        $user = auth()->user();
-
-        $validationRules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'phone_number' => 'nullable|string|max:20',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:view_products,create_products,edit_products,delete_products,view_bills,create_bills,edit_bills,delete_bills,view_customers,create_customers,edit_customers,delete_customers,view_suppliers,create_suppliers,edit_suppliers,delete_suppliers,view_purchase_bills,create_purchase_bills,edit_purchase_bills,delete_purchase_bills,view_tags,create_tags,edit_tags,delete_tags,view_expenses,create_expenses,edit_expenses,delete_expenses,manage_settings,view_financial,manage_employees,view_sales,create_sales,edit_sales,delete_sales,view_reports',
-        ];
-
-        // If user is employee, don't require shop_owner_id and force it to their owner
-        if ($user->role === 'employee') {
-            $validated = $request->validate($validationRules);
-            $validated['shop_owner_id'] = $user->shop_owner_id;
-        } else {
-            $validationRules['shop_owner_id'] = 'required|exists:users,id';
-            $validated = $request->validate($validationRules);
-        }
-
-        // Verify the shop_owner_id belongs to an actual shop owner
-        $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-            ->first();
-
-        if (!$shopOwner) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['shop_owner_id' => 'Invalid shop owner selected.']);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $validated['password'] = Hash::make($validated['password']);
-            $validated['role'] = 'employee';
-
-            $employee = User::create($validated);
-
-            // Set permissions if provided
-            if (isset($validated['permissions'])) {
-                $employee->setPermissions($validated['permissions']);
-            }
-
-            DB::commit();
-
-            // Redirect based on where we came from
-            if ($request->has('from_shop') && $request->from_shop) {
-                return redirect()->route('admin.shop-owners.show', $validated['shop_owner_id'])
-                    ->with('success', 'Employee created successfully.');
-            }
-
-            return redirect()->route('admin.employees.index')
-                ->with('success', 'Employee created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to create employee. Please try again.']);
-        }
-    }
-
-    /**
-     * Show the form for editing an employee.
-     */
-    public function editEmployee(User $employee)
-    {
-        // Ensure this is actually an employee
-        if ($employee->role !== 'employee') {
-            abort(404);
-        }
-
-        $user = auth()->user();
-        $query = User::whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-            ->select('id', 'name', 'email')
-            ->orderBy('name');
-
-        // If user is employee, only show their shop owner
-        if ($user->role === 'employee') {
-            $query->where('id', $user->shop_owner_id);
-        }
-
-        $shopOwners = $query->get();
-
-        return view('admin.employees.edit', compact('employee', 'shopOwners'));
-    }
-
-    /**
-     * Update the specified employee.
-     */
-    public function updateEmployee(Request $request, User $employee)
-    {
-        // Ensure this is actually an employee
-        if ($employee->role !== 'employee') {
-            abort(404);
-        }
-
-        $user = auth()->user();
-
-        $validationRules = [
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($employee->id)],
-            'password' => 'nullable|string|min:8',
-            'phone_number' => 'nullable|string|max:20',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:view_products,create_products,edit_products,delete_products,view_bills,create_bills,edit_bills,delete_bills,view_customers,create_customers,edit_customers,delete_customers,view_suppliers,create_suppliers,edit_suppliers,delete_suppliers,view_purchase_bills,create_purchase_bills,edit_purchase_bills,delete_purchase_bills,view_tags,create_tags,edit_tags,delete_tags,view_expenses,create_expenses,edit_expenses,delete_expenses,manage_settings,view_financial,manage_employees,manage_payments_receipts,view_installments,create_installments,dismiss_installment_notifications,delete_installments,view_sales,create_sales,edit_sales,delete_sales,view_reports',
-        ];
-
-        // If user is employee, don't require shop_owner_id and force it to their owner
-        if ($user->role === 'employee') {
-
-            $validated = $request->validate($validationRules);
-            $validated['shop_owner_id'] = $user->shop_owner_id;
-        } else {
-
-            $validationRules['shop_owner_id'] = 'required|exists:users,id';
-
-            $validated = $request->validate($validationRules);
-        }
-
-        // Verify the shop_owner_id belongs to an actual shop owner
-        $shopOwner = User::where('id', $validated['shop_owner_id'])
-            ->whereIn('role', ['shop_owner', 'disabled', 'restaurant', 'merchant'])
-            ->first();
-
-        if (!$shopOwner) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['shop_owner_id' => 'Invalid shop owner selected.']);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            if ($request->filled('password')) {
-                $validated['password'] = Hash::make($validated['password']);
-            } else {
-                unset($validated['password']);
-            }
-
-            $employee->update($validated);
-
-            // Update permissions
-            if (isset($validated['permissions'])) {
-                $employee->setPermissions($validated['permissions']);
-            } else {
-                // If no permissions sent, clear them
-                $employee->permissions = null;
-                $employee->save();
-            }
-
-            DB::commit();
-
-            return redirect()->route('admin.employees.index')
-                ->with('success', 'Employee updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to update employee. Please try again.']);
-        }
-    }
-
-    /**
-     * Remove the specified employee.
-     */
-    public function destroyEmployee(User $employee)
-    {
-        // Ensure this is actually an employee
-        if ($employee->role !== 'employee') {
-            abort(404);
-        }
-
-        $user = auth()->user();
-
-        // If user is employee, ensure they can only delete employees of their shop owner
-        if ($user->role === 'employee' && $employee->shop_owner_id !== $user->shop_owner_id) {
-            abort(403, 'Unauthorized');
-        }
-
-        try {
-            $shopOwnerId = $employee->shop_owner_id;
-            $employee->delete();
-
-            // Redirect based on context
-            if ($shopOwnerId && request()->has('from_shop')) {
-                return redirect()->route('admin.shop-owners.show', $shopOwnerId)
-                    ->with('success', 'Employee removed successfully.');
-            }
-
-            return redirect()->route('admin.employees.index')
-                ->with('success', 'Employee deleted successfully.');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to delete employee. Please try again.']);
-        }
+        $tokens = session($this->paymentTokenSessionKey($shopOwner), []);
+        abort_unless(isset($tokens[$token]), 422, __('admin.messages.payment_already_processed'));
+
+        unset($tokens[$token]);
+        session([$this->paymentTokenSessionKey($shopOwner) => $tokens]);
     }
 }

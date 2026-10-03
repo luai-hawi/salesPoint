@@ -103,4 +103,11 @@ return [
     'Create Bill' => 'إنشاء فاتورة',
     'Classic' => 'كلاسيك',
     'Focus' => 'تركيز',
+
+    // تلميحات الدفع في نقطة البيع ودرج النقد
+    'Cash drawer opened successfully' => 'تم فتح درج النقد بنجاح',
+    'Exact payment for bill' => 'دفعة مطابقة لقيمة الفاتورة',
+    'Opening...' => 'جارٍ الفتح...',
+    'Payment without recent bill' => 'دفعة دون فاتورة حديثة',
+    'Still owes for this bill' => 'ما زال مدينًا بجزء من هذه الفاتورة',
 ];

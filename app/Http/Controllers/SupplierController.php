@@ -2,58 +2,63 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PurchaseBill;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\SupplierLedger;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('view_suppliers')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = $request->user();
+        $this->ensurePermission($user, 'view_suppliers');
+        $ownerId = $this->ownerId($user);
 
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $query = Supplier::where('user_id', $ownerId);
+        $query = Supplier::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->withCount(['purchaseBills', 'payments']);
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        $suppliers = $query->orderBy('name')->paginate(20);
-
-        if ($request->ajax()) {
-            return view('suppliers.index', compact('suppliers'))->render();
+        if ($request->filled('balance')) {
+            match ($request->string('balance')->toString()) {
+                'owed' => $query->where('balance', '>', 0),
+                'credit' => $query->where('balance', '<', 0),
+                'settled' => $query->where('balance', 0),
+                default => null,
+            };
         }
+
+        $suppliers = $query->orderBy('name')->paginate(25)->withQueryString();
 
         return view('suppliers.index', compact('suppliers'));
     }
 
     public function create()
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('create_suppliers')) {
-            abort(403, 'Unauthorized');
-        }
+        $this->ensurePermission(request()->user(), 'create_suppliers');
 
         return view('suppliers.create');
     }
 
     public function store(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('create_suppliers')) {
-            abort(403, 'Unauthorized');
-        }
-
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $user = $request->user();
+        $this->ensurePermission($user, 'create_suppliers');
+        $ownerId = $this->ownerId($user);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -64,72 +69,150 @@ class SupplierController extends Controller
             'initial_balance' => 'nullable|numeric|min:-999999|max:999999',
         ]);
 
-        $supplier = Supplier::create([
-            'name' => $validated['name'],
-            'phone' => $validated['phone'],
-            'email' => $validated['email'],
-            'address' => $validated['address'],
-            'notes' => $validated['notes'],
-            'balance' => $validated['initial_balance'] ?? 0,
-            'user_id' => $ownerId,
-        ]);
-
-        // If there's an initial balance, create a payment record
-        if (!empty($validated['initial_balance']) && $validated['initial_balance'] != 0) {
-            $supplier->payments()->create([
-                'amount' => $validated['initial_balance'],
-                'type' => 'cash',
-                'note' => 'Initial balance',
-                'payment_date' => now(),
+        DB::transaction(function () use ($validated, $ownerId) {
+            $supplier = Supplier::create([
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'balance' => 0,
                 'user_id' => $ownerId,
             ]);
-        }
 
-        return redirect()->route('suppliers.index')->with('success', __('messages.Supplier created successfully!'));
+            $opening = round((float) ($validated['initial_balance'] ?? 0), 2);
+            if ($opening != 0.0) {
+                SupplierLedger::recordOpeningBalance($supplier, $opening);
+            }
+        });
+
+        return redirect()->route('suppliers.index')->with('success', __('payables.flash.supplier_created'));
     }
 
     public function show(Supplier $supplier)
     {
-        $this->authorizeSupplier($supplier);
+        $this->ensurePermission(request()->user(), 'view_suppliers');
+        $this->authorizeSupplier($supplier, request()->user());
+
         return redirect()->route('suppliers.edit', $supplier);
     }
 
-    public function edit(Supplier $supplier)
+    public function edit(Request $request, Supplier $supplier)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('edit_suppliers')) {
-            abort(403, 'Unauthorized');
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_suppliers');
+        $this->authorizeSupplier($supplier, $user);
+        $ownerId = $this->ownerId($user);
+
+        $paymentQuery = SupplierPayment::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where('supplier_id', $supplier->id)
+            ->with('purchaseBill')
+            ->orderByDesc('payment_date')
+            ->orderByDesc('id');
+
+        if ($request->filled('payment_kind')) {
+            $kind = $request->string('payment_kind')->toString();
+            if ($kind === 'cash_movement') {
+                $paymentQuery->where(function ($query) {
+                    $query->where(function ($inner) {
+                        $inner->whereNull('kind')
+                            ->where(function ($legacy) {
+                                $legacy->whereNull('note')
+                                    ->orWhere('note', '!=', SupplierLedger::LEGACY_OPENING_NOTE);
+                            });
+                    })->orWhere('kind', '!=', SupplierLedger::KIND_OPENING);
+                });
+            } elseif ($kind === SupplierLedger::KIND_OPENING) {
+                $paymentQuery->where(function ($query) {
+                    $query->where('kind', SupplierLedger::KIND_OPENING)
+                        ->orWhere(function ($legacy) {
+                            $legacy->whereNull('kind')
+                                ->where('note', SupplierLedger::LEGACY_OPENING_NOTE);
+                        });
+                });
+            } elseif ($kind === SupplierLedger::KIND_REFUND) {
+                $paymentQuery->where(function ($query) {
+                    $query->where('kind', SupplierLedger::KIND_REFUND)
+                        ->orWhere(function ($legacy) {
+                            $legacy->whereNull('kind')
+                                ->where('amount', '<', 0)
+                                ->where(function ($note) {
+                                    $note->whereNull('note')
+                                        ->orWhere('note', '!=', SupplierLedger::LEGACY_OPENING_NOTE);
+                                });
+                        });
+                });
+            } else {
+                $paymentQuery->where(function ($query) use ($kind) {
+                    $query->where('kind', $kind)
+                        ->orWhere(function ($legacy) use ($kind) {
+                            $legacy->whereNull('kind')
+                                ->where('amount', '>', 0)
+                                ->whereNull('purchase_bill_id')
+                                ->where(function ($note) {
+                                    $note->whereNull('note')
+                                        ->orWhere('note', '!=', SupplierLedger::LEGACY_OPENING_NOTE);
+                                });
+                        });
+                });
+            }
+        }
+        if ($request->filled('date_from')) {
+            $paymentQuery->whereDate('payment_date', '>=', $request->string('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $paymentQuery->whereDate('payment_date', '<=', $request->string('date_to'));
         }
 
-        $this->authorizeSupplier($supplier);
+        $payments = $paymentQuery->paginate(25)->withQueryString();
 
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
+        $runningBalanceMap = $this->runningBalanceMap($supplier);
+        $payments->getCollection()->transform(function (SupplierPayment $payment) use ($runningBalanceMap) {
+            $payment->setAttribute('running_balance', $runningBalanceMap[$payment->id] ?? null);
 
-        // Get recent purchase bills and payments
-        $recentBills = $supplier->purchaseBills()
+            return $payment;
+        });
+
+        $openBills = SupplierLedger::openBills($supplier);
+        if ($request->filled('bill_status')) {
+            $wanted = $request->string('bill_status')->toString();
+            $openBills = $openBills->filter(fn ($row) => $row['status'] === $wanted)->values();
+        }
+
+        $recentBills = PurchaseBill::withoutGlobalScopes()
             ->where('user_id', $ownerId)
-            ->latest('purchase_date')
-            ->take(10)
-            ->get();
+            ->where('supplier_id', $supplier->id)
+            ->with('payments')
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get()
+            ->map(function (PurchaseBill $bill) {
+                $bill->setAttribute('payables_summary', SupplierLedger::billSummary($bill));
 
-        $recentPayments = $supplier->payments()
-            ->where('user_id', $ownerId)
-            ->latest('payment_date')
-            ->take(10)
-            ->get();
+                return $bill;
+            });
 
-        return view('suppliers.edit', compact('supplier', 'recentBills', 'recentPayments'));
+        $statementPreview = $this->buildStatementRows($supplier)
+            ->sortByDesc(fn (array $row) => $row['sort'])
+            ->values()
+            ->take(30);
+
+        return view('suppliers.edit', compact('supplier', 'payments', 'openBills', 'recentBills', 'statementPreview'));
     }
 
     public function update(Request $request, Supplier $supplier)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('edit_suppliers')) {
-            abort(403, 'Unauthorized');
-        }
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_suppliers');
+        $this->authorizeSupplier($supplier, $user);
 
-        $this->authorizeSupplier($supplier);
+        if ($supplier->system_key === SupplierLedger::WALK_IN_KEY && $request->filled('name') && $request->string('name')->toString() !== $supplier->name) {
+            throw ValidationException::withMessages([
+                'name' => __('payables.validation.walk_in_rename_forbidden'),
+            ]);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -141,409 +224,419 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
-        return redirect()->route('suppliers.index')->with('success', __('messages.Supplier updated successfully!'));
+        return redirect()->route('suppliers.edit', $supplier)->with('success', __('payables.flash.supplier_updated'));
     }
 
     public function destroy(Supplier $supplier)
     {
-        $user = auth()->user();
-        if ($user->role === 'employee' && !$user->hasPermission('delete_suppliers')) {
-            abort(403, 'Unauthorized');
+        $user = request()->user();
+        $this->ensurePermission($user, 'delete_suppliers');
+        $this->authorizeSupplier($supplier, $user);
+
+        if ($supplier->system_key === SupplierLedger::WALK_IN_KEY) {
+            return redirect()->route('suppliers.index')->with('error', __('payables.flash.walk_in_delete_blocked'));
+        }
+        if ($supplier->purchaseBills()->exists()) {
+            return redirect()->route('suppliers.index')->with('error', __('payables.flash.delete_supplier_with_bills_blocked'));
+        }
+        if ($supplier->payments()->exists()) {
+            return redirect()->route('suppliers.index')->with('error', __('payables.flash.delete_supplier_with_payments_blocked'));
+        }
+        if ((float) $supplier->balance !== 0.0) {
+            return redirect()->route('suppliers.index')->with('error', __('payables.flash.delete_supplier_with_balance_blocked'));
         }
 
-        $this->authorizeSupplier($supplier);
-
-        // Check if supplier has purchase bills
-        if ($supplier->purchaseBills()->count() > 0) {
-            return redirect()->route('suppliers.index')
-                ->with('error', __('messages.Cannot delete supplier with existing purchase bills. Please delete all purchase bills first.'));
-        }
-
-        // Check if supplier has payments
-        if ($supplier->payments()->count() > 0) {
-            return redirect()->route('suppliers.index')
-                ->with('error', __('messages.Cannot delete supplier with payment history. Please clear all payments first.'));
-        }
-
-        // Check if supplier has outstanding balance
-        if ($supplier->balance != 0) {
-            return redirect()->route('suppliers.index')
-                ->with('error', __('messages.Cannot delete supplier with outstanding balance. Please settle the account first.'));
-        }
-
-        $supplierName = $supplier->name;
         $supplier->delete();
 
-        return redirect()->route('suppliers.index')
-            ->with('success', __('messages.Supplier deleted successfully!'));
+        return redirect()->route('suppliers.index')->with('success', __('payables.flash.supplier_deleted'));
     }
 
     public function storePayment(Request $request, Supplier $supplier)
     {
-        $this->authorizeSupplier($supplier);
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_suppliers');
+        $this->authorizeSupplier($supplier, $user);
+        $ownerId = $this->ownerId($user);
 
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        $request->validate([
+        $validated = $request->validate([
             'amount' => 'required|numeric|not_in:0',
             'type' => 'required|string|in:cash,card,transfer,check',
-            'note' => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:500',
             'payment_date' => 'required|date',
+            'purchase_bill_id' => 'nullable|integer',
         ]);
 
-        // Create payment record
-        $payment = $supplier->payments()->create([
-            'amount' => $request->amount,
-            'type' => $request->type,
-            'note' => $request->note,
-            'payment_date' => $request->payment_date,
-            'user_id' => $ownerId
-        ]);
+        $amount = round((float) $validated['amount'], 2);
+        $payment = DB::transaction(function () use ($validated, $supplier, $ownerId, $amount) {
+            $lockedSupplier = Supplier::withoutGlobalScopes()
+                ->where('user_id', $ownerId)
+                ->whereKey($supplier->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        // Update supplier balance - FIXED: subtract when we pay them
-        $supplier->balance -= $request->amount; // Changed from += to -=
-        $supplier->save();
+            $bill = null;
+            if (! empty($validated['purchase_bill_id'])) {
+                $bill = PurchaseBill::withoutGlobalScopes()
+                    ->where('user_id', $ownerId)
+                    ->where('supplier_id', $lockedSupplier->id)
+                    ->whereKey((int) $validated['purchase_bill_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($amount <= 0) {
+                    throw ValidationException::withMessages([
+                        'amount' => __('payables.validation.bill_link_requires_positive_payment'),
+                    ]);
+                }
+
+                $summary = SupplierLedger::billSummary($bill);
+                if ($amount > $summary['due']) {
+                    throw ValidationException::withMessages([
+                        'amount' => __('payables.validation.bill_payment_exceeds_remaining'),
+                    ]);
+                }
+            }
+
+            return $amount > 0
+                ? SupplierLedger::pay(
+                    $lockedSupplier,
+                    $amount,
+                    $validated['type'],
+                    $validated['note'] ?? null,
+                    Carbon::parse($validated['payment_date']),
+                    $bill,
+                )
+                : SupplierLedger::recordPayment(
+                    $lockedSupplier,
+                    $amount,
+                    $validated['type'],
+                    $validated['note'] ?? null,
+                    Carbon::parse($validated['payment_date']),
+                    null,
+                    SupplierLedger::KIND_REFUND,
+                );
+        });
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => __('messages.Payment added successfully'),
-                'payment' => $payment,
-                'new_balance' => $supplier->balance,
+                'message' => __('payables.flash.payment_recorded'),
+                'payment' => $payment->fresh('purchaseBill'),
+                'new_balance' => (float) $supplier->fresh()->balance,
             ]);
         }
 
-        return redirect()->back()->with('success', __('messages.Payment added successfully'));
+        return redirect()->route('suppliers.edit', $supplier)->with('success', __('payables.flash.payment_recorded'));
     }
+
     public function getRecentPayments(Supplier $supplier)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeSupplier($supplier);
+        $user = request()->user();
+        $this->ensurePermission($user, 'view_suppliers');
+        $ownerId = $this->ownerId($user);
+        $this->authorizeSupplier($supplier, $user);
 
-        // Get the last purchase bill data using our model method
         $lastBillData = $supplier->getLastPurchaseBillData($ownerId);
 
-        // Get the last 10 payments for this supplier
-        $payments = $supplier->payments()
+        $payments = SupplierPayment::withoutGlobalScopes()
             ->where('user_id', $ownerId)
-            ->latest()
-            ->take(10)
+            ->where('supplier_id', $supplier->id)
+            ->with('purchaseBill')
+            ->orderByDesc('payment_date')
+            ->orderByDesc('id')
+            ->limit(10)
             ->get()
-            ->map(function ($payment) {
-                return [
-                    'id' => $payment->id,
-                    'amount' => $payment->amount,
-                    'type' => $payment->type,
-                    'note' => $payment->note,
-                    'payment_date' => $payment->payment_date->format('M d, Y'),
-                    'created_at_human' => $payment->created_at->diffForHumans(),
-                ];
-            });
+            ->map(fn (SupplierPayment $payment) => $this->paymentJsonRow($payment));
 
         return response()->json([
             'payments' => $payments,
             'last_bill_amount' => $lastBillData['amount'],
             'last_bill_id' => $lastBillData['bill_id'],
-            'last_bill_date' => $lastBillData['date']
+            'last_bill_date' => $lastBillData['date'],
         ]);
     }
 
     public function getMorePayments(Supplier $supplier, Request $request)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeSupplier($supplier);
+        $user = $request->user();
+        $this->ensurePermission($user, 'view_suppliers');
+        $ownerId = $this->ownerId($user);
+        $this->authorizeSupplier($supplier, $user);
 
-        $offset = $request->get('offset', 10);
-        $limit = $request->get('limit', 10);
+        $offset = max(0, (int) $request->get('offset', 10));
+        $limit = max(1, min(25, (int) $request->get('limit', 10)));
 
-        $payments = $supplier->payments()
+        $payments = SupplierPayment::withoutGlobalScopes()
             ->where('user_id', $ownerId)
-            ->latest()
+            ->where('supplier_id', $supplier->id)
+            ->with('purchaseBill')
+            ->orderByDesc('payment_date')
+            ->orderByDesc('id')
             ->skip($offset)
             ->take($limit)
             ->get()
-            ->map(function ($payment) {
-                return [
-                    'id' => $payment->id,
-                    'amount' => $payment->amount,
-                    'type' => $payment->type,
-                    'note' => $payment->note,
-                    'payment_date' => $payment->payment_date->format('M d, Y'),
-                    'created_at_human' => $payment->created_at->diffForHumans(),
-                ];
-            });
+            ->map(fn (SupplierPayment $payment) => $this->paymentJsonRow($payment));
 
         return response()->json([
             'payments' => $payments,
-            'has_more' => $payments->count() === $limit
+            'has_more' => $payments->count() === $limit,
         ]);
     }
 
     public function search(Request $request)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $search = $request->query('search', '');
+        $this->ensurePermission($request->user(), 'view_suppliers');
+        $ownerId = $this->ownerId($request->user());
+        $search = trim((string) $request->query('search', ''));
+        $includeSystem = $request->boolean('include_system');
 
-        $query = Supplier::where('user_id', $ownerId);
+        $query = Supplier::withoutGlobalScopes()
+            ->where('user_id', $ownerId);
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+        if (! $includeSystem) {
+            $query->where(function ($inner) {
+                $inner->whereNull('system_key')
+                    ->orWhere('system_key', '!=', SupplierLedger::WALK_IN_KEY);
+            });
+        }
+
+        if ($search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        $suppliers = $query->orderBy('name')->take(20)->get();
+        $suppliers = $query->orderBy('name')->limit(20)->get();
 
         return response()->json($suppliers);
     }
 
-    /**
-     * Helper to ensure supplier belongs to the current user
-     */
-    private function authorizeSupplier(Supplier $supplier)
+    public function updatePayment(Request $request, SupplierPayment $supplierPayment)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        if ($supplier->user_id !== $ownerId) {
-            abort(403, 'Unauthorized access to supplier.');
-        }
-    }
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_suppliers');
+        $ownerId = $this->ownerId($user);
 
-    /**
-     * Update a supplier payment
-     */
-    public function updatePayment(Request $request, SupplierPayment $supplier_payment)
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        if ($supplier_payment->user_id !== $ownerId) {
-            abort(403, 'Unauthorized');
+        if ((int) $supplierPayment->user_id !== $ownerId) {
+            abort(403);
         }
 
         $validated = $request->validate([
             'amount' => 'required|numeric|not_in:0',
             'type' => 'required|string|in:cash,card,transfer,check',
-            'note' => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:500',
             'payment_date' => 'required|date',
         ]);
 
-        $previousAmount = $supplier_payment->amount;
-
-        $supplier_payment->update($validated);
-
-        $difference = $validated['amount'] - $previousAmount;
-        $supplier = $supplier_payment->supplier;
-
-        // FIXED: subtract the difference (when payment increases, balance decreases)
-        $supplier->update(['balance' => $supplier->balance - $difference]); // Changed from + to -
+        SupplierLedger::updatePayment(
+            $supplierPayment,
+            round((float) $validated['amount'], 2),
+            $validated['type'],
+            $validated['note'] ?? null,
+            Carbon::parse($validated['payment_date']),
+            $supplierPayment->purchase_bill_id
+                ? PurchaseBill::withoutGlobalScopes()->find($supplierPayment->purchase_bill_id)
+                : null,
+            $supplierPayment->kind
+        );
 
         return response()->json(['success' => true]);
     }
 
-    /**
-     * Quick store payment for AJAX calls
-     */
     public function quickStorePayment(Request $request, Supplier $supplier)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeSupplier($supplier);
+        $request->headers->set('Accept', 'application/json');
 
-        $validated = $request->validate([
-            'amount' => 'required|numeric|not_in:0',
-            'type' => 'required|string|in:cash,card,transfer,check',
-            'note' => 'nullable|string|max:255',
-            'payment_date' => 'required|date',
-        ]);
-
-        $supplier->payments()->create([
-            'amount' => $validated['amount'],
-            'type' => $validated['type'],
-            'note' => $validated['note'] ?? null,
-            'payment_date' => $validated['payment_date'],
-            'user_id' => $ownerId,
-        ]);
-
-        // FIXED: subtract payment from balance
-        $supplier->update(['balance' => $supplier->balance - $validated['amount']]); // Changed from + to -
-
-        // Return the updated balance
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.Payment added successfully'),
-            'new_balance' => $supplier->fresh()->balance
-        ]);
+        return $this->storePayment($request, $supplier);
     }
 
-    /**
-     * Show payments for a specific supplier
-     */
-    public function showPayments(Supplier $supplier)
+    public function deletePayment(Request $request, SupplierPayment $supplierPayment)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeSupplier($supplier);
+        $user = $request->user();
+        $this->ensurePermission($user, 'edit_suppliers');
+        $ownerId = $this->ownerId($user);
 
-        $payments = $supplier->payments()->where('user_id', $ownerId)->latest('payment_date')->paginate(20);
-
-        // Load shop owner data if user is an employee
-        $shopOwner = null;
-        if ($user->role === 'employee' && $user->shop_owner_id) {
-            $shopOwner = \App\Models\User::find($user->shop_owner_id);
+        if ((int) $supplierPayment->user_id !== $ownerId) {
+            abort(403);
         }
 
-        return view('suppliers.payments', compact('supplier', 'payments', 'shopOwner'));
-    }
+        SupplierLedger::deletePayment($supplierPayment);
 
-    /**
-     * Export suppliers to CSV
-     */
-    public function export()
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        $suppliers = Supplier::where('user_id', $ownerId)
-            ->orderBy('name')
-            ->get();
-
-        $filename = 'suppliers_export_' . date('Y-m-d_H-i-s') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-
-        $callback = function () use ($suppliers) {
-            $file = fopen('php://output', 'w');
-
-            // Add CSV headers
-            fputcsv($file, [
-                __('messages.ID'),
-                __('messages.Name'),
-                __('messages.Phone'),
-                __('messages.Email'),
-                __('messages.Address'),
-                __('messages.Current Balance'),
-                __('messages.Balance Status'),
-                __('messages.Total Purchases'),
-                __('messages.Total Payments'),
-                __('messages.Notes'),
-                __('messages.Created Date'),
-                __('messages.Last Updated')
-            ]);
-
-            // Add supplier data
-            foreach ($suppliers as $supplier) {
-                $balanceStatus = $supplier->balance > 0 ? __('messages.We Owe Them') : ($supplier->balance < 0 ? __('messages.They Owe Us') : __('messages.Even'));
-
-                fputcsv($file, [
-                    $supplier->id,
-                    $supplier->name,
-                    $supplier->phone ?? '',
-                    $supplier->email ?? '',
-                    $supplier->address ?? '',
-                    number_format($supplier->balance, 2),
-                    $balanceStatus,
-                    number_format($supplier->getTotalPurchases(), 2),
-                    number_format($supplier->getTotalPayments(), 2),
-                    $supplier->notes ?? '',
-                    $supplier->created_at->format('Y-m-d H:i:s'),
-                    $supplier->updated_at->format('Y-m-d H:i:s')
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-    /**
-     * Delete a supplier payment
-     */
-    public function deletePayment(Request $request, SupplierPayment $supplier_payment)
-    {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-
-        if ($supplier_payment->user_id !== $ownerId) {
-            abort(403, 'Unauthorized');
-        }
-
-        $supplier = $supplier_payment->supplier;
-        $paymentAmount = $supplier_payment->amount;
-
-        try {
-            // FIXED: When deleting a payment, add it back to balance (we didn't pay them after all)
-            $supplier->balance += $paymentAmount; // Changed from -= to +=
-            $supplier->save();
-
-            // Delete the payment
-            $supplier_payment->delete();
-
+        if ($request->expectsJson()) {
             return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+
+        return back()->with('success', __('payables.flash.payment_deleted'));
     }
 
-    /**
-     * Print supplier report (purchase bills and/or payments)
-     */
     public function printSupplierReport(Request $request, Supplier $supplier)
     {
-        $user = auth()->user();
-        $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
-        $this->authorizeSupplier($supplier);
+        $user = $request->user();
+        $this->ensurePermission($user, 'view_suppliers');
+        $ownerId = $this->ownerId($user);
+        $this->authorizeSupplier($supplier, $user);
 
-        $request->validate([
+        $validated = $request->validate([
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
-            'report_type' => 'required|in:both,bills,payments'
+            'report_type' => 'required|in:both,bills,payments',
         ]);
 
-        $dateFrom = $request->date_from;
-        $dateTo = $request->date_to;
-        $reportType = $request->report_type;
+        $dateFrom = Carbon::parse($validated['date_from'])->startOfDay();
+        $dateTo = Carbon::parse($validated['date_to'])->endOfDay();
 
-        $data = [
+        $purchaseBills = PurchaseBill::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where('supplier_id', $supplier->id)
+            ->whereBetween('purchase_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->with(['creator', 'payments'])
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->get();
+
+        $payments = SupplierPayment::withoutGlobalScopes()
+            ->where('user_id', $ownerId)
+            ->where('supplier_id', $supplier->id)
+            ->whereBetween('payment_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->with('purchaseBill')
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get();
+
+        $statementRows = $this->buildStatementRows($supplier)
+            ->filter(function (array $row) use ($dateFrom, $dateTo) {
+                return $row['date']->between($dateFrom, $dateTo, true);
+            })
+            ->values();
+
+        return view('suppliers.print-report', [
             'supplier' => $supplier,
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
-            'report_type' => $reportType,
+            'date_from' => $validated['date_from'],
+            'date_to' => $validated['date_to'],
+            'report_type' => $validated['report_type'],
             'generated_at' => now(),
-            'generated_by' => $user->name
+            'generated_by' => $user->name,
+            'purchase_bills' => $purchaseBills,
+            'payments' => $payments,
+            'bills_total' => round((float) $purchaseBills->sum('total_amount'), 2),
+            'payments_total' => round((float) $payments->filter(fn (SupplierPayment $payment) => SupplierLedger::kindForRow($payment) !== SupplierLedger::KIND_OPENING)->sum('amount'), 2),
+            'statement_rows' => $statementRows,
+        ]);
+    }
+
+    private function buildStatementRows(Supplier $supplier): Collection
+    {
+        $bills = PurchaseBill::withoutGlobalScopes()
+            ->where('user_id', $supplier->user_id)
+            ->where('supplier_id', $supplier->id)
+            ->with('creator')
+            ->get()
+            ->toBase()
+            ->map(function (PurchaseBill $bill) {
+                return [
+                    'date' => Carbon::parse($bill->purchase_date),
+                    'sort' => Carbon::parse($bill->purchase_date)->format('Y-m-d') . '-bill-' . str_pad((string) $bill->id, 12, '0', STR_PAD_LEFT),
+                    'type' => 'bill',
+                    'description' => __('payables.statement.bill_entry', ['id' => $bill->id]),
+                    'reference' => $bill->reference_number,
+                    'increase' => round((float) $bill->total_amount, 2),
+                    'decrease' => 0.0,
+                    'balance_change' => round((float) $bill->total_amount, 2),
+                    'bill' => $bill,
+                    'payment' => null,
+                ];
+            });
+
+        $payments = SupplierPayment::withoutGlobalScopes()
+            ->where('user_id', $supplier->user_id)
+            ->where('supplier_id', $supplier->id)
+            ->with('purchaseBill')
+            ->get()
+            ->toBase()
+            ->map(function (SupplierPayment $payment) {
+                $effectiveKind = SupplierLedger::kindForRow($payment);
+                $amount = round((float) $payment->amount, 2);
+                $balanceChange = $effectiveKind === SupplierLedger::KIND_OPENING ? $amount : -1 * $amount;
+
+                return [
+                    'date' => Carbon::parse($payment->payment_date),
+                    'sort' => Carbon::parse($payment->payment_date)->format('Y-m-d') . '-payment-' . str_pad((string) $payment->id, 12, '0', STR_PAD_LEFT),
+                    'type' => 'payment',
+                    'description' => __('payables.statement.payment_entry', ['kind' => __('payables.kinds.' . $this->paymentKindKey($payment))]),
+                    'reference' => $payment->purchaseBill ? '#' . $payment->purchaseBill->id : null,
+                    'increase' => $effectiveKind === SupplierLedger::KIND_OPENING ? max(0, $amount) : max(0, -1 * $amount),
+                    'decrease' => $effectiveKind === SupplierLedger::KIND_OPENING ? max(0, -1 * $amount) : max(0, $amount),
+                    'balance_change' => round($balanceChange, 2),
+                    'bill' => $payment->purchaseBill,
+                    'payment' => $payment,
+                ];
+            });
+
+        $rows = $bills->merge($payments)->sortBy(fn (array $row) => $row['sort'])->values();
+
+        $running = 0.0;
+        return $rows->map(function (array $row) use (&$running) {
+            $running = round($running + $row['balance_change'], 2);
+            $row['running_balance'] = $running;
+
+            return $row;
+        });
+    }
+
+    private function runningBalanceMap(Supplier $supplier): array
+    {
+        $map = [];
+        foreach ($this->buildStatementRows($supplier) as $row) {
+            if ($row['payment']) {
+                $map[$row['payment']->id] = $row['running_balance'];
+            }
+        }
+
+        return $map;
+    }
+
+    private function paymentJsonRow(SupplierPayment $payment): array
+    {
+        return [
+            'id' => $payment->id,
+            'amount' => (float) $payment->amount,
+            'type' => $payment->type,
+            'note' => $payment->note,
+            'payment_date' => optional($payment->payment_date)->format('M d, Y'),
+            'created_at_human' => optional($payment->created_at)->diffForHumans(),
+            'kind' => $this->paymentKindKey($payment),
+            'purchase_bill_id' => $payment->purchase_bill_id,
         ];
+    }
 
-        // Get purchase bills if requested
-        if ($reportType === 'both' || $reportType === 'bills') {
-            $data['purchase_bills'] = $supplier->purchaseBills()
-                ->where('user_id', $ownerId)
-                ->whereBetween('purchase_date', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
-                ->orderBy('purchase_date')
-                ->get();
+    private function paymentKindKey(SupplierPayment $payment): string
+    {
+        return match (SupplierLedger::kindForRow($payment)) {
+            SupplierLedger::KIND_BILL_PAYMENT => 'bill_payment',
+            SupplierLedger::KIND_OPENING => 'opening_balance',
+            SupplierLedger::KIND_REFUND => 'refund',
+            default => 'payment',
+        };
+    }
 
-            $data['bills_total'] = $data['purchase_bills']->sum('total_amount');
+    private function authorizeSupplier(Supplier $supplier, $user): void
+    {
+        if ((int) $supplier->user_id !== $this->ownerId($user)) {
+            abort(403);
         }
+    }
 
-        // Get payments if requested
-        if ($reportType === 'both' || $reportType === 'payments') {
-            $data['payments'] = $supplier->payments()
-                ->where('user_id', $ownerId)
-                ->whereBetween('payment_date', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
-                ->orderBy('payment_date')
-                ->get();
-
-            $data['payments_total'] = $data['payments']->sum('amount');
+    private function ensurePermission($user, string $permission): void
+    {
+        if ($user->role === 'employee' && ! $user->hasPermission($permission)) {
+            abort(403);
         }
+    }
 
-        return view('suppliers.print-report', $data);
+    private function ownerId($user): int
+    {
+        return (int) ($user->role === 'employee' ? $user->shop_owner_id : $user->id);
     }
 }

@@ -220,6 +220,98 @@
                             </div>
                         </div>
 
+                        <div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+                            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900">{{ __('payables.sections.payment_block') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ __('payables.subtitles.edit_purchase_bill') }}</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <x-ui.badge :tone="$summary['status'] === 'paid' ? 'green' : ($summary['status'] === 'partial' ? 'amber' : 'red')">
+                                        {{ __('payables.statuses.' . $summary['status']) }}
+                                    </x-ui.badge>
+                                    <x-ui.badge tone="gray">{{ __('payables.fields.remaining') }}: ₪{{ number_format($summary['due'], 2) }}</x-ui.badge>
+                                </div>
+                            </div>
+
+                            <form method="POST" action="{{ route('purchase-bills.payments.store', $purchaseBill) }}" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                @csrf
+                                <div>
+                                    <label for="bill-payment-amount" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.amount') }}
+                                    </label>
+                                    <input id="bill-payment-amount" name="amount" type="number" step="0.01" min="0.01"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="bill-payment-type" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.method') }}
+                                    </label>
+                                    <select id="bill-payment-type" name="type"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                        @foreach (['cash', 'card', 'transfer', 'check'] as $method)
+                                            <option value="{{ $method }}">{{ __('payables.methods.' . $method) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="bill-payment-date" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.payment_date') }}
+                                    </label>
+                                    <input id="bill-payment-date" name="payment_date" type="date"
+                                        value="{{ old('payment_date', optional($purchaseBill->purchase_date)->format('Y-m-d')) }}"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="bill-payment-note" class="mb-1 block text-sm font-medium text-gray-700">
+                                        {{ __('payables.fields.payment_note') }}
+                                    </label>
+                                    <textarea id="bill-payment-note" name="note" rows="2"
+                                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"></textarea>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end">
+                                    <button type="submit" @disabled($summary['due'] <= 0)
+                                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300">
+                                        {{ __('payables.actions.pay_bill') }}
+                                    </button>
+                                </div>
+                            </form>
+
+                            @if ($purchaseBill->payments->isNotEmpty())
+                                <div class="mt-4 overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            <tr>
+                                                <th class="px-4 py-3 text-start">{{ __('payables.fields.payment_date') }}</th>
+                                                <th class="px-4 py-3 text-start">{{ __('payables.fields.method') }}</th>
+                                                <th class="px-4 py-3 text-start">{{ __('payables.fields.amount') }}</th>
+                                                <th class="px-4 py-3 text-end">{{ __('payables.actions.delete') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 bg-white">
+                                            @foreach ($purchaseBill->payments as $payment)
+                                                <tr>
+                                                    <td class="px-4 py-3">{{ optional($payment->payment_date)->format('Y-m-d') }}</td>
+                                                    <td class="px-4 py-3">{{ __('payables.methods.' . $payment->type) }}</td>
+                                                    <td class="px-4 py-3">₪{{ number_format((float) $payment->amount, 2) }}</td>
+                                                    <td class="px-4 py-3 text-end">
+                                                        <form method="POST" action="{{ route('purchase-bills.payments.destroy', [$purchaseBill, $payment]) }}"
+                                                            onsubmit="return confirm('{{ __('payables.messages.confirm_delete_bill_payment') }}')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                                                                {{ __('payables.actions.delete') }}
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="flex justify-end space-x-3">
                             <a href="{{ route('purchase-bills.show', $purchaseBill) }}"
