@@ -1,7 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
         <x-ui.page-header :title="__('finance.dashboard.title')" :subtitle="__('finance.dashboard.subtitle')">
+            @if (in_array(auth()->user()->role, ['shop_owner', 'restaurant', 'merchant'], true))
+                <a href="{{ route('dashboard.backup-data') }}" title="{{ __('finance.common.backup_hint') }}" data-testid="backup-data"
+                    class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m-8 8v-4m0 4l-2-2m2 2l2-2"/></svg>
+                    {{ __('finance.common.backup') }}
+                </a>
+            @endif
             <a href="{{ route('dashboard.export-data', array_merge(request()->query(), ['start_date' => $startDate, 'end_date' => $endDate])) }}"
+                title="{{ __('finance.common.export_hint') }}"
                 class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                 {{ __('finance.common.export') }}
             </a>

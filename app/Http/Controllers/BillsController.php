@@ -9,6 +9,7 @@ use App\Models\Product;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\BillService;
 use App\Services\CustomerLedger;
+use App\Support\ShopTime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,13 @@ class BillsController extends Controller
 
         $ownerId = $user->ownerId();
         $paymentStatus = (string) $request->input('payment_status', '');
+        $dateScope = $this->resolveIndexDateScope($request, $ownerId);
+        // Every query below reads the resolved range from the request.
+        $request->merge([
+            'date' => $dateScope['from'],
+            'date_to' => $dateScope['to'],
+            'all_dates' => $dateScope['all'] ? '1' : null,
+        ]);
 
         $perPage = 50;
         $filteredPaid = 0.0;
@@ -130,7 +138,10 @@ class BillsController extends Controller
             'bills' => $bills,
             'totalSales' => $totalSales,
             'totalProfit' => $totalProfit,
-            'selectedDate' => $request->input('date'),
+            'selectedDate' => $dateScope['from'],
+            'selectedDateTo' => $dateScope['to'],
+            'allDates' => $dateScope['all'],
+            'dateScope' => $dateScope,
             'paymentStatus' => $paymentStatus,
             'filteredPaid' => $filteredPaid,
             'filteredDue' => $filteredDue,
@@ -245,6 +256,80 @@ class BillsController extends Controller
             || $user->hasPermission('edit_bills');
 
         return view('bills.show', compact('bill', 'products', 'summary', 'ledgerRows', 'canManageBillPayments'));
+    }
+
+    /** Compact JSON used by the quick-review dialog of the bills list. */
+    public function preview(Bill $bill)
+    {
+        $user = auth()->user();
+        if ($user->role === 'employee' && ! $user->hasPermission('view_bills')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $ownerId = $user->ownerId();
+        if ((int) $bill->user_id !== (int) $ownerId) {
+            abort(403, 'Unauthorized');
+        }
+
+        $bill->load(['products', 'customer', 'creator']);
+        $summary = CustomerLedger::billSummary($bill);
+
+        $items = $bill->products->map(function ($product) {
+            $tags = collect(explode('&', (string) ($product->pivot->tags ?? '')))
+                ->filter(fn ($pair) => str_contains($pair, '@'))
+                ->map(function ($pair) {
+                    [$name, $price] = array_pad(explode('@', $pair, 2), 2, 0);
+
+                    return ['name' => $name, 'price' => round((float) $price, 2)];
+                })
+                ->values();
+            $quantity = (float) $product->pivot->quantity;
+            $unit = (float) $product->pivot->selling_price + (float) $tags->sum('price');
+            $discount = (float) ($product->pivot->discount ?? 0);
+            $imeis = $product->pivot->imeis ? json_decode($product->pivot->imeis, true) : [];
+
+            return [
+                'name' => $product->name,
+                'barcode' => $product->barcode,
+                'quantity' => $quantity,
+                'unit_price' => round($unit, 2),
+                'discount' => round($discount, 2),
+                'line_total' => round($unit * $quantity - $discount, 2),
+                'tags' => $tags->all(),
+                'imeis' => is_array($imeis) ? array_values($imeis) : [],
+            ];
+        })->values();
+
+        $status = $summary['status'] ?? 'cash';
+
+        return response()->json([
+            'id' => $bill->id,
+            'created_at' => ShopTime::local($bill->created_at, $ownerId)->format('Y-m-d H:i'),
+            'customer' => $bill->customer?->name,
+            'customer_phone' => $bill->customer?->phone,
+            'creator' => $bill->creator?->name,
+            'payment_method' => __('messages.' . ucfirst($bill->payment_method ?: 'cash')),
+            'note' => $bill->note,
+            'is_returned' => (bool) $bill->is_returned,
+            'is_damaged' => (bool) $bill->is_damaged,
+            'items' => $items,
+            'items_count' => $items->count(),
+            'quantity_total' => round((float) $items->sum('quantity'), 3),
+            'subtotal' => round((float) $items->sum(fn ($item) => $item['unit_price'] * $item['quantity']), 2),
+            'discount_total' => round((float) $items->sum('discount'), 2),
+            'total' => round((float) $bill->total_price, 2),
+            'paid' => round((float) ($summary['paid'] ?? 0), 2),
+            'due' => round((float) ($summary['due'] ?? 0), 2),
+            'status' => $status,
+            'status_label' => match ($status) {
+                'paid' => __('receivables.paid'),
+                'partial' => __('receivables.partial'),
+                'unpaid' => __('receivables.unpaid'),
+                default => __('receivables.cash_sale'),
+            },
+            'show_url' => route('bills.show', $bill),
+            'edit_url' => $bill->is_returned ? null : route('bills.edit', $bill),
+        ]);
     }
 
     public function edit(Bill $bill)
@@ -742,8 +827,13 @@ class BillsController extends Controller
             ->where('bills.user_id', $ownerId)
             ->orderByDesc('bills.created_at');
 
-        if ($request->filled('date')) {
-            $query->whereDate('bills.created_at', $request->input('date'));
+        $from = $this->validDate($request->input('date'));
+        if ($from !== null && ! $request->boolean('all_dates')) {
+            $to = $this->validDate($request->input('date_to')) ?? $from;
+            if ($to < $from) {
+                [$from, $to] = [$to, $from];
+            }
+            $query->whereBetween('bills.created_at', ShopTime::utcRange($from, $to, $ownerId));
         }
 
         $searchTerm = trim((string) $request->query('search', ''));
@@ -773,6 +863,58 @@ class BillsController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Date range of the bills list. With no date chosen the list (and its totals) covers the shop's today;
+     * "all_dates=1" lifts the filter, and a search without a chosen date looks through every date.
+     *
+     * @return array{from: ?string, to: ?string, all: bool, today: string, preset: string}
+     */
+    private function resolveIndexDateScope(Request $request, int $ownerId): array
+    {
+        $today = ShopTime::today($ownerId);
+        $from = $this->validDate($request->input('date'));
+        $to = $this->validDate($request->input('date_to'));
+        $searching = trim((string) $request->query('search', '')) !== '';
+
+        if (($request->boolean('all_dates') && $from === null && $to === null) || ($from === null && $to === null && $searching)) {
+            return ['from' => null, 'to' => null, 'all' => true, 'today' => $today, 'preset' => 'all'];
+        }
+
+        $from ??= $to ?? $today;
+        $to ??= $from;
+        if ($to < $from) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $yesterday = Carbon::parse($today)->subDay()->toDateString();
+        $weekStart = Carbon::parse($today)->subDays(6)->toDateString();
+        $monthStart = Carbon::parse($today)->startOfMonth()->toDateString();
+        $preset = match (true) {
+            $from === $today && $to === $today => 'today',
+            $from === $yesterday && $to === $yesterday => 'yesterday',
+            $from === $weekStart && $to === $today => 'week',
+            $from === $monthStart && $to === $today => 'month',
+            default => 'custom',
+        };
+
+        return ['from' => $from, 'to' => $to, 'all' => false, 'today' => $today, 'preset' => $preset];
+    }
+
+    private function validDate(mixed $value): ?string
+    {
+        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        try {
+            $date = Carbon::createFromFormat('!Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $date && $date->format('Y-m-d') === $value ? $value : null;
     }
 
     private function billTotalsBaseQuery(int $ownerId, Request $request)

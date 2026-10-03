@@ -63,6 +63,11 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     });
 
+// Full copy of the shop's own data (owner account only, every subscription tier).
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':shop_owner,restaurant,merchant', 'throttle:6,1'])
+    ->get('/dashboard/backup-data', [\App\Http\Controllers\ShopBackupController::class, 'download'])
+    ->name('dashboard.backup-data');
+
 
 
 use App\Http\Controllers\OfflineSyncController;
@@ -104,6 +109,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         // Enhanced Bills Routes
         Route::resource('bills', BillsController::class);
         Route::get('/bills/quick-stats', [BillsController::class, 'quickStats'])->name('bills.quick-stats');
+        Route::get('/bills/{bill}/preview', [BillsController::class, 'preview'])->name('bills.preview');
         Route::post('/bills/{bill}/duplicate', [BillsController::class, 'duplicate'])->name('bills.duplicate');
         Route::post('/bills/quick-store', [BillsController::class, 'quickStore'])->name('bills.quick-store');
 

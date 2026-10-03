@@ -108,6 +108,15 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
   `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`.
   It prunes old offline-sync keys, auto-closes forgotten attendance check-ins and
   purges old kitchen tickets. Everything else works without it.
+- Bills page: the list and its four totals (sales, profit, paid, due) cover the
+  shop's today by default. Pick a day, a from/to range, or the quick buttons
+  (Today, Yesterday, Last 7 days, This month, All dates). A search without a
+  chosen date looks through all dates. Each bill has a "Quick review" button that
+  opens a pop-up with its items, discounts, payment status and note.
+- Data backup (shop owner account only): "Backup all my data" on the financial
+  dashboard and the profile page downloads a ZIP with every record of the shop as
+  Excel-ready CSV files (passwords, tokens and admin notes are never included).
+  "Export" remains the Excel report of the chosen period.
 
 ### توضيح الاستخدام
 
@@ -146,3 +155,10 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 المهام المجدولة (اختيارية): أضف سطر Cron واحداً على الخادم يشغّل
 `php artisan schedule:run` كل دقيقة؛ ينظف مفاتيح المزامنة القديمة، ويغلق تسجيلات
 الحضور المنسية، ويحذف تذاكر المطبخ القديمة. النظام يعمل بدونه.
+صفحة الفواتير: القائمة وإجمالياتها الأربعة (المبيعات، الربح، المدفوع، المستحق) تعرض
+اليوم افتراضياً. اختر يوماً أو نطاقاً من/إلى أو الأزرار السريعة (اليوم، أمس، آخر 7
+أيام، هذا الشهر، كل التواريخ). البحث بدون تاريخ يشمل كل التواريخ. زر "مراجعة سريعة"
+بجانب كل فاتورة يفتح نافذة بأصنافها وخصوماتها وحالة الدفع والملاحظة.
+النسخ الاحتياطي (لحساب صاحب المتجر فقط): زر "نسخة احتياطية لكل بياناتي" في لوحة المالية
+وصفحة الملف الشخصي ينزّل ملف ZIP بكل سجلات المتجر كملفات تفتح في Excel، دون كلمات
+المرور أو ملاحظات الإدارة. زر "تصدير" يبقى تقرير Excel للفترة المختارة.
