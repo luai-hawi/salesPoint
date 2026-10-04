@@ -129,9 +129,10 @@ class ProductsController extends Controller
             $request->input('barcode'),
             $request->input('additional_barcodes', []),
         );
+        $forceDuplicate = $request->boolean('force_duplicate_barcode');
         $this->assertTenantBarcodesAvailable($ownerId, array_merge([
             $request->input('barcode'),
-        ], $normalizedBarcodes));
+        ], $normalizedBarcodes), null, $forceDuplicate);
         if ($hasVariants) {
             $variantBarcodes = array_map(
                 fn ($variant) => trim((string) data_get($variant, 'barcode')),
@@ -144,7 +145,7 @@ class ProductsController extends Controller
                 ]);
             }
 
-            $this->assertTenantBarcodesAvailable($ownerId, $variantBarcodes);
+            $this->assertTenantBarcodesAvailable($ownerId, $variantBarcodes, null, $forceDuplicate);
         }
 
         $newImageCount = count($request->file('pictures', []));
@@ -328,9 +329,10 @@ class ProductsController extends Controller
             $request->input('barcode'),
             $request->input('additional_barcodes', []),
         );
+        $forceDuplicate = $request->boolean('force_duplicate_barcode');
         $this->assertTenantBarcodesAvailable($ownerId, array_merge([
             $request->input('barcode'),
-        ], $normalizedBarcodes), $product->id);
+        ], $normalizedBarcodes), $product->id, $forceDuplicate);
 
         $currentPictures = $this->picturePathsFromProduct($product);
         $keptPictures = $request->has('existing_pictures')
@@ -1381,8 +1383,12 @@ class ProductsController extends Controller
         }
     }
 
-    private function assertTenantBarcodesAvailable(int $ownerId, array $barcodes, ?int $ignoreProductId = null): void
+    private function assertTenantBarcodesAvailable(int $ownerId, array $barcodes, ?int $ignoreProductId = null, ?bool $forceDuplicate = false): void
     {
+        if ($forceDuplicate) {
+            return;
+        }
+
         if ($this->duplicateBarcodesForOwner($ownerId, $barcodes, $ignoreProductId) === []) {
             return;
         }

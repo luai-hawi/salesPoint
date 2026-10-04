@@ -159,7 +159,7 @@
                         <x-ui.badge :tone="$statusTone">{{ $statusLabel }}</x-ui.badge>
                     </div>
 
-                    <div class="mt-6 grid gap-4 md:grid-cols-4">
+                     <div class="mt-6 grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <x-ui.stat :label="__('bills.Customer')" :value="$bill->customer->name ?? __('bills.Walk-in Customer')" />
                         <x-ui.stat :label="__('receivables.bill_total')" :value="'₪' . number_format($summary['total'], 2)" />
                         <x-ui.stat :label="__('receivables.paid')" :value="'₪' . number_format($summary['paid'], 2)" />

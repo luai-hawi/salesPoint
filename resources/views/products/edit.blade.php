@@ -48,10 +48,12 @@
                 },
                 duplicateCheckUrl: @js(route('products.check-barcodes')),
                 strings: {
-                    duplicateWarning: @js(__('products_ui.help.duplicate_check')),
+                    duplicateWarningTitle: @js(__('products_ui.validation.duplicate_warning_title')),
+                    duplicateWarning: @js(__('products_ui.validation.duplicate_barcode_warning')),
                     duplicateClear: @js(__('products_ui.flash.duplicate_clear')),
                     stockError: @js(__('products_ui.flash.stock_error')),
                     duplicateLookupFailed: @js(__('products_ui.validation.duplicate_lookup_failed')),
+                    duplicateConfirmText: @js(__('products_ui.buttons.create')),
                     deleteTitle: @js(__('products_ui.flash.delete_batch_title')),
                     deleteMessage: @js(__('products_ui.flash.delete_batch_message')),
                     deleteConfirm: @js(__('products_ui.buttons.delete')),

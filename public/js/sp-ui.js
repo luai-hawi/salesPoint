@@ -77,7 +77,14 @@
             var box = el('div', 'w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl');
             box.appendChild(el('h3', 'text-base font-semibold text-gray-900', options.title || t('confirm_title', 'Are you sure?')));
             if (options.message) {
-                box.appendChild(el('p', 'mt-2 text-sm text-gray-600 whitespace-pre-line', options.message));
+                var messageEl = document.createElement('p');
+                messageEl.className = 'mt-2 text-sm text-gray-600';
+                if (options.html) {
+                    messageEl.innerHTML = options.message;
+                } else {
+                    messageEl.textContent = options.message;
+                }
+                box.appendChild(messageEl);
             }
 
             var actions = el('div', 'mt-5 flex justify-end gap-2');

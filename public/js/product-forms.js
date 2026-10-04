@@ -181,28 +181,29 @@
 
         Alpine.data('productForm', function (config) {
             return {
-                config: config || {},
-                hasVariants: false,
-                barcodeRows: [],
-                variantRows: [],
-                newVariantRows: [],
-                duplicateMessages: [],
-                profitAmount: '0.00',
-                profitMargin: '0.0',
-                productFormBusy: false,
-                allowNativeSubmit: false,
-                trackImeis: false,
-                imeiSupported: true,
-                imeiRows: [],
-                imeiItems: [],
-                imeiFilter: 'all',
-                imeiLoading: false,
-                imeiSaving: false,
-                imeiTotal: 0,
-                imeiSoldCount: 0,
-                imeiUnsoldCount: 0,
-                imeiSupplierId: '',
-                imeiPurchasedAt: '',
+                 config: config || {},
+                 hasVariants: false,
+                 barcodeRows: [],
+                 variantRows: [],
+                 newVariantRows: [],
+                 duplicateMessages: [],
+                 profitAmount: '0.00',
+                 profitMargin: '0.0',
+                 productFormBusy: false,
+                 allowNativeSubmit: false,
+                 trackImeis: false,
+                 imeiSupported: true,
+                 imeiRows: [],
+                 imeiItems: [],
+                 imeiFilter: 'all',
+                 imeiLoading: false,
+                 imeiSaving: false,
+                 imeiTotal: 0,
+                 imeiSoldCount: 0,
+                 imeiUnsoldCount: 0,
+                 imeiSupplierId: '',
+                 imeiPurchasedAt: '',
+                 _awaitingDuplicateConfirm: false,
                 init: function () {
                     this.hasVariants = !!Number(this.config.hasVariants || 0);
                     this.trackImeis = !!Number(this.config.trackImeis || 0);
@@ -257,14 +258,24 @@
                         this.imeiRows[0] = '';
                     }
                 },
-                updateProfitPreview: function () {
-                    const cost = Number(this.$refs.costPrice ? this.$refs.costPrice.value : 0) || 0;
-                    const selling = Number(this.$refs.sellingPrice ? this.$refs.sellingPrice.value : 0) || 0;
-                    const profit = selling - cost;
-                    const margin = selling > 0 ? (profit / selling) * 100 : 0;
-                    this.profitAmount = profit.toFixed(2);
-                    this.profitMargin = margin.toFixed(1);
-                },
+                 updateProfitPreview: function () {
+                     const cost = Number(this.$refs.costPrice ? this.$refs.costPrice.value : 0) || 0;
+                     const selling = Number(this.$refs.sellingPrice ? this.$refs.sellingPrice.value : 0) || 0;
+                     const profit = selling - cost;
+                     const margin = selling > 0 ? (profit / selling) * 100 : 0;
+                     this.profitAmount = profit.toFixed(2);
+                     this.profitMargin = margin.toFixed(1);
+                 },
+                 ensureForceDuplicateInput: function (form) {
+                     let input = form.querySelector('input[name="force_duplicate_barcode"]');
+                     if (!input) {
+                         input = document.createElement('input');
+                         input.type = 'hidden';
+                         input.name = 'force_duplicate_barcode';
+                         form.appendChild(input);
+                     }
+                     return input;
+                 },
                 runDuplicateCheck: function (options) {
                     const payload = {
                         barcode: this.$refs.mainBarcode ? this.$refs.mainBarcode.value : '',
@@ -293,44 +304,82 @@
                         throw error;
                     }.bind(this));
                 },
-                submitProductForm: function (event) {
-                    if (this.allowNativeSubmit) {
-                        return true;
-                    }
+                 submitProductForm: function (event) {
+                     if (this.allowNativeSubmit) {
+                         return true;
+                     }
 
-                    if (event && typeof event.preventDefault === 'function') {
-                        event.preventDefault();
-                    }
+                     if (event && typeof event.preventDefault === 'function') {
+                         event.preventDefault();
+                     }
 
-                    if (this.productFormBusy) {
-                        return false;
-                    }
+                     if (this.productFormBusy) {
+                         return false;
+                     }
 
-                    const form = event && event.target ? event.target : this.$root.querySelector('form[data-product-form-body]');
-                    this.productFormBusy = true;
-                    setSubmitButtonsDisabled(form, true);
+                     const form = event && event.target ? event.target : this.$root.querySelector('form[data-product-form-body]');
+                     this.productFormBusy = true;
+                     setSubmitButtonsDisabled(form, true);
 
-                    return this.runDuplicateCheck({ silent: true }).then(function (duplicates) {
-                        if (duplicates.length) {
-                            toast(this.config.strings.duplicateWarning || '', 'warning');
-                            return false;
-                        }
+                     return this.runDuplicateCheck({ silent: true }).then(function (duplicates) {
+                         if (duplicates.length) {
+                             const forceInput = form.querySelector('input[name="force_duplicate_barcode"]');
+                             const alreadyForced = forceInput && forceInput.value === '1';
 
-                        this.allowNativeSubmit = true;
-                        if (form && typeof form.submit === 'function') {
-                            form.submit();
-                        }
-                        return true;
-                    }.bind(this)).catch(function (error) {
-                        toast((error && error.message) || this.config.strings.duplicateLookupFailed || this.config.strings.stockError || '', 'error');
-                        return false;
-                    }.bind(this)).finally(function () {
-                        if (!this.allowNativeSubmit) {
-                            this.productFormBusy = false;
-                            setSubmitButtonsDisabled(form, false);
-                        }
-                    }.bind(this));
-                },
+                             if (alreadyForced) {
+                                 this.allowNativeSubmit = true;
+                                 if (form && typeof form.submit === 'function') {
+                                     form.submit();
+                                 }
+                                 return true;
+                             }
+
+                              if (window.SP && typeof window.SP.confirm === 'function') {
+                                  this._awaitingDuplicateConfirm = true;
+                                  window.SP.confirm({
+                                      title: this.config.strings.duplicateWarningTitle || 'Duplicate barcode',
+                                      message: this.config.strings.duplicateWarning || '',
+                                      confirmText: this.config.strings.duplicateConfirmText || 'Create anyway',
+                                      danger: true,
+                                      html: true,
+                                  }).then(function (confirmed) {
+                                      this._awaitingDuplicateConfirm = false;
+                                      if (confirmed) {
+                                          this.ensureForceDuplicateInput(form).value = '1';
+                                          this.allowNativeSubmit = true;
+                                          if (form && typeof form.submit === 'function') {
+                                              form.submit();
+                                          }
+                                      } else {
+                                          this.productFormBusy = false;
+                                          setSubmitButtonsDisabled(form, false);
+                                      }
+                                  }.bind(this));
+                              } else {
+                                  toast(this.config.strings.duplicateWarning || '', 'warning');
+                                  this.productFormBusy = false;
+                                  setSubmitButtonsDisabled(form, false);
+                              }
+                             return false;
+                         }
+
+                         this.allowNativeSubmit = true;
+                         if (form && typeof form.submit === 'function') {
+                             form.submit();
+                         }
+                         return true;
+                     }.bind(this)).catch(function (error) {
+                         toast((error && error.message) || this.config.strings.duplicateLookupFailed || this.config.strings.stockError || '', 'error');
+                         this.productFormBusy = false;
+                         setSubmitButtonsDisabled(form, false);
+                         return false;
+                     }.bind(this)).finally(function () {
+                         if (!this.allowNativeSubmit && !this._awaitingDuplicateConfirm) {
+                             this.productFormBusy = false;
+                             setSubmitButtonsDisabled(form, false);
+                         }
+                     }.bind(this));
+                 },
                 submitInlineStockForm: function (url) {
                     const form = this.$refs.inlineStockForm;
                     if (form && typeof form.reportValidity === 'function' && !form.reportValidity()) {
