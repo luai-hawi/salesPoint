@@ -5456,6 +5456,27 @@
         }
 
         // Form validation and AJAX submission
+        // Mutually exclusive: damaged and returned cannot both be active
+        document.getElementById('is_damaged')?.addEventListener('change', function() {
+            if (this.checked) {
+                const returnedCheckbox = document.getElementById('is_returned');
+                if (returnedCheckbox && returnedCheckbox.checked) {
+                    returnedCheckbox.checked = false;
+                    returnedCheckbox.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+
+        document.getElementById('is_returned')?.addEventListener('change', function() {
+            if (this.checked) {
+                const damagedCheckbox = document.getElementById('is_damaged');
+                if (damagedCheckbox && damagedCheckbox.checked) {
+                    damagedCheckbox.checked = false;
+                    damagedCheckbox.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+
         // Handle Return Bill checkbox changes
         document.getElementById('is_returned')?.addEventListener('change', function() {
             const isReturnedBill = this.checked;
