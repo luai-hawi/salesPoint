@@ -37,6 +37,7 @@ const NAVIGATION_SKIP_PATTERNS = [
     /^\/staff(?:\/|$)/i,
     /^\/password(?:\/|$)/i,
     /^\/profile(?:\/|$)/i,
+    /^\/lang(?:\/|$)/i,
 ];
 
 CACHE_PREFIXES.push('sp-shell-');
@@ -155,6 +156,10 @@ self.addEventListener('message', (event) => {
             event.ports[0].postMessage({ pages });
         }));
     }
+
+    if (event.data?.type === 'SP_LANGUAGE_CHANGED') {
+        event.waitUntil(clearUserPageCache());
+    }
 });
 
 async function setAuthState(authenticated, userId) {
@@ -198,6 +203,18 @@ function partitionName(kind, userId) {
 async function deleteUserPartitions(userId) {
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key.endsWith(`-u-${userId}`)).map((key) => caches.delete(key)));
+}
+
+async function clearUserPageCache() {
+    const authState = await getAuthState();
+    const userId = authState && authState.authenticated ? authState.userId : null;
+    if (!userId) {
+        return;
+    }
+
+    const cache = await caches.open(partitionName('pages', userId));
+    const keys = await cache.keys();
+    await Promise.all(keys.map((key) => cache.delete(key)));
 }
 
 function isViteAsset(url) {

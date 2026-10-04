@@ -1001,6 +1001,16 @@
                         sendAuthState(false);
                     });
                 });
+
+                document.querySelectorAll('a[href*="/lang/"]').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({
+                                type: 'SP_LANGUAGE_CHANGED'
+                            });
+                        }
+                    });
+                });
             });
         })();
     </script>
