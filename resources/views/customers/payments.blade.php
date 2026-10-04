@@ -263,68 +263,72 @@
             }
 
             async function previewBill(id) {
-                const response = await fetch(`/bills/${id}`, {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                const data = await response.json();
-                const bill = data.bill;
-                const content = document.getElementById('bill-preview-content');
-                content.textContent = '';
+                try {
+                    const data = await SP.fetchJson(`/bills/${id}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const bill = data.bill;
+                    const content = document.getElementById('bill-preview-content');
+                    content.textContent = '';
 
-                const container = document.createElement('div');
-                container.className = 'space-y-3';
+                    const container = document.createElement('div');
+                    container.className = 'space-y-3';
 
-                const addLine = (text, className = '') => {
-                    const div = document.createElement('div');
-                    if (className) div.className = className;
-                    div.textContent = text;
-                    container.appendChild(div);
-                };
+                    const addLine = (text, className = '') => {
+                        const div = document.createElement('div');
+                        if (className) div.className = className;
+                        div.textContent = text;
+                        container.appendChild(div);
+                    };
 
-                addLine(`#${bill.id}`, 'font-semibold text-gray-900');
-                addLine(`{{ __('messages.Amount') }}: ₪${Number(bill.total_price).toFixed(2)}`);
-                addLine(`{{ __('receivables.paid') }}: ₪${Number(data.ledger_summary?.paid || 0).toFixed(2)}`);
-                addLine(`{{ __('receivables.remaining') }}: ₪${Number(data.ledger_summary?.due || 0).toFixed(2)}`);
+                    addLine(`#${bill.id}`, 'font-semibold text-gray-900');
+                    addLine(`{{ __('messages.Amount') }}: ₪${Number(bill.total_price).toFixed(2)}`);
+                    addLine(`{{ __('receivables.paid') }}: ₪${Number(data.ledger_summary?.paid || 0).toFixed(2)}`);
+                    addLine(`{{ __('receivables.remaining') }}: ₪${Number(data.ledger_summary?.due || 0).toFixed(2)}`);
 
-                const buildList = (title, rows) => {
-                    const wrapper = document.createElement('div');
-                    const heading = document.createElement('div');
-                    heading.className = 'mb-1 font-semibold text-gray-900';
-                    heading.textContent = title;
-                    wrapper.appendChild(heading);
-                    const list = document.createElement('ul');
-                    list.className = 'list-disc space-y-1 ps-5';
-                    if (rows.length === 0) {
-                        const li = document.createElement('li');
-                        li.textContent = '—';
-                        list.appendChild(li);
-                    } else {
-                        rows.forEach((text) => {
+                    const buildList = (title, rows) => {
+                        const wrapper = document.createElement('div');
+                        const heading = document.createElement('div');
+                        heading.className = 'mb-1 font-semibold text-gray-900';
+                        heading.textContent = title;
+                        wrapper.appendChild(heading);
+                        const list = document.createElement('ul');
+                        list.className = 'list-disc space-y-1 ps-5';
+                        if (rows.length === 0) {
                             const li = document.createElement('li');
-                            li.textContent = text;
+                            li.textContent = '—';
                             list.appendChild(li);
-                        });
-                    }
-                    wrapper.appendChild(list);
-                    container.appendChild(wrapper);
-                };
+                        } else {
+                            rows.forEach((text) => {
+                                const li = document.createElement('li');
+                                li.textContent = text;
+                                list.appendChild(li);
+                            });
+                        }
+                        wrapper.appendChild(list);
+                        container.appendChild(wrapper);
+                    };
 
-                buildList(`{{ __('receivables.items') }}`, (data.items || []).map((item) =>
-                    `${item.name} — ${item.quantity} × ₪${Number(item.selling_price).toFixed(2)}`
-                ));
-                buildList(`{{ __('receivables.ledger_rows') }}`, (data.ledger_rows || []).map((row) =>
-                    `${row.kind_label || row.kind} — ₪${Number(row.amount).toFixed(2)} — ${row.created_at || ''}`
-                ));
+                    buildList(`{{ __('receivables.items') }}`, (data.items || []).map((item) =>
+                        `${item.name} — ${item.quantity} × ₪${Number(item.selling_price).toFixed(2)}`
+                    ));
+                    buildList(`{{ __('receivables.ledger_rows') }}`, (data.ledger_rows || []).map((row) =>
+                        `${row.kind_label || row.kind} — ₪${Number(row.amount).toFixed(2)} — ${row.created_at || ''}`
+                    ));
 
-                const link = document.createElement('a');
-                link.href = `/bills/${bill.id}`;
-                link.className = 'inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700';
-                link.textContent = `{{ __('receivables.open_bill') }}`;
-                container.appendChild(link);
-                content.appendChild(container);
-                document.getElementById('bill-preview-dialog').showModal();
+                    const link = document.createElement('a');
+                    link.href = `/bills/${bill.id}`;
+                    link.className = 'inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700';
+                    link.textContent = `{{ __('receivables.open_bill') }}`;
+                    container.appendChild(link);
+                    content.appendChild(container);
+                    document.getElementById('bill-preview-dialog').showModal();
+                } catch (error) {
+                    console.error('Failed to preview bill:', error);
+                    const content = document.getElementById('bill-preview-content');
+                    content.textContent = '{{ __('messages.error') || "Failed to load bill preview." }}';
+                    document.getElementById('bill-preview-dialog').showModal();
+                }
             }
         </script>
     @endpush
