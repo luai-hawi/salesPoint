@@ -7,6 +7,21 @@ use Tests\Support\Builds;
 
 uses(Builds::class);
 
+test('stock summary clearly labels its current-page scope in both languages and views', function (string $locale, string $label) {
+    $owner = $this->makeOwner();
+    $this->actingAs($owner);
+
+    foreach (['table', 'cards'] as $view) {
+        $this->withSession(['locale' => $locale])
+            ->get(route('products.index', ['view' => $view]))
+            ->assertOk()
+            ->assertSee($label);
+    }
+})->with([
+    ['en', 'Stock units on this page'],
+    ['ar', 'وحدات المخزون في هذه الصفحة فقط'],
+]);
+
 test('both product views use a visible stock dialog with product-specific costs', function () {
     $owner = $this->makeOwner();
     $this->makeProduct($owner, ['cost_price' => 12.5]);

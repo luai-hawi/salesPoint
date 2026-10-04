@@ -137,7 +137,7 @@ Route::prefix('shopowner')
     ->as('shopowner.')
     ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
     ->group(function () {
-        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees'])->group(function () {
+        Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees', 'tier.feature:hr'])->group(function () {
             Route::resource('employees', EmployeeController::class);
             Route::get('employees/{employee}/payments', [EmployeeController::class, 'payments'])->name('employees.payments');
             Route::post('employees/{employee}/payments', [EmployeeController::class, 'storePayment'])->name('employees.storePayment');
@@ -156,6 +156,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
         ->name('dashboard.financial');
 
     Route::get('/dashboard/financial/print-report', [FinancialDashboardController::class, 'printComprehensiveReport'])
+        ->middleware('tier.feature:reports')
         ->name('dashboard.financial.print-report');
 
     Route::get('/sales-data', function () {
@@ -166,7 +167,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 
         return response()->json($sales);
     });
-    Route::get('/dashboard/export-data', [FinancialDashboardController::class, 'exportData'])->name('dashboard.export-data');
+    Route::get('/dashboard/export-data', [FinancialDashboardController::class, 'exportData'])->middleware('tier.feature:reports')->name('dashboard.export-data');
 
     // Capital Entries
     Route::post('/dashboard/capital', [CapitalController::class, 'store'])->name('capital.store');
@@ -299,7 +300,7 @@ Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,
 Route::get('/islam', [IslamicSalesController::class, 'index'])->name('islam');
 
 // ------------------- REPORTS -------------------
-Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_reports'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', \App\Http\Middleware\PermissionMiddleware::class . ':view_reports', 'tier.feature:reports'])->group(function () {
     Route::get('/reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/generate', [\App\Http\Controllers\ReportsController::class, 'generate'])->name('reports.generate');
     Route::get('/reports/customer-bill-details', [\App\Http\Controllers\ReportsController::class, 'customerBillDetailsPage'])->name('reports.customer-bill-details');

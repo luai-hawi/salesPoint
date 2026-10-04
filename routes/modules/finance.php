@@ -25,7 +25,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,r
         Route::post('/finance/day-close', [DayCloseController::class, 'store'])->name('finance.day-close.store');
     });
 
-Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', PermissionMiddleware::class . ':view_team_activity', 'tier.feature:financial_dashboard'])
+Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', PermissionMiddleware::class . ':view_team_activity', 'tier.feature:financial_dashboard', 'tier.feature:team_activity'])
     ->group(function () {
         Route::get('/finance/team-summary', [TeamSummaryController::class, 'index'])->name('finance.team-summary.index');
         Route::get('/shopowner/activity', [ActivityLogController::class, 'index'])->name('shopowner.activity.index');
@@ -38,7 +38,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,r
         Route::get('/shopowner/expenses/export', [\App\Http\Controllers\ShopOwner\ExpenseController::class, 'export'])->name('shopowner.expenses.export');
     });
 
-Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', PermissionMiddleware::class . ':view_reports'])
+Route::middleware(['auth', RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', PermissionMiddleware::class . ':view_reports', 'tier.feature:reports'])
     ->group(function () {
         Route::get('/reports/print', [ReportsController::class, 'print'])->name('reports.print');
         Route::get('/reports/export', [ReportsController::class, 'export'])->name('reports.export');

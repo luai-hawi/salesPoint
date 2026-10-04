@@ -22,6 +22,8 @@
                         <select id="report-type" name="type" class="w-full rounded-lg border-gray-300">
                             @foreach (\App\Support\ReportCatalog::rows() as $type => $definition)
                                 @continue(($definition['group'] ?? null) === 'products')
+                                @php $reportFeature = \App\Support\FeatureCatalog::reportFeature($type); @endphp
+                                @continue($reportFeature && ! auth()->user()->canAccessFeature($reportFeature))
                                 <option value="{{ $type }}" @selected(request('type') === $type)>{{ \App\Support\ReportCatalog::label($definition['label']) }}</option>
                             @endforeach
                         </select>
@@ -33,6 +35,8 @@
                         </div>
                     @endforeach
                     @foreach (['customer_id' => $customers, 'supplier_id' => $suppliers, 'employee_id' => $employees, 'employee_user_id' => $employeeUsers] as $field => $options)
+                        @continue($field === 'employee_id' && ! auth()->user()->canAccessFeature('hr'))
+                        @continue($field === 'employee_user_id' && ! auth()->user()->canAccessFeature('team_activity'))
                         <div>
                             <label for="report-{{ $field }}">{{ __('finance.restored.' . $field) }}</label>
                             <select id="report-{{ $field }}" name="{{ $field }}" class="w-full rounded-lg border-gray-300">

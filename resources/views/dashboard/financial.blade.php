@@ -8,6 +8,7 @@
                     {{ __('finance.common.backup') }}
                 </a>
             @endif
+            @if (auth()->user()->canAccessFeature('reports'))
             <a href="{{ route('dashboard.export-data', array_merge(request()->query(), ['start_date' => $startDate, 'end_date' => $endDate])) }}"
                 title="{{ __('finance.common.export_hint') }}"
                 class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -18,6 +19,7 @@
                 class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
                 {{ __('finance.common.print') }}
             </a>
+            @endif
         </x-ui.page-header>
     </x-slot>
 
@@ -140,17 +142,19 @@
                             ['label' => __('finance.dashboard.profit'), 'data' => $charts['top_products']['profit'], 'color' => '#10b981'],
                             ['label' => __('finance.dashboard.revenue'), 'data' => $charts['top_products']['revenue'], 'color' => '#c7d2fe'],
                         ]" />
-                    @if (Route::has('reports.index') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
+                    @if (Route::has('reports.index') && auth()->user()->canAccessFeature('reports') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
                         <div class="mt-3 text-end">
                             <a href="{{ route('reports.index') }}#product-reports" class="text-sm font-semibold text-indigo-700 hover:underline">{{ __('charts.finance.all_product_reports') }} →</a>
                         </div>
                     @endif
                 </x-ui.card>
+                @if (auth()->user()->canAccessFeature('team_activity'))
                 <x-ui.card :title="__('charts.finance.team_sales')" :subtitle="$startDate . ' → ' . $endDate">
                     <x-ui.chart type="doughnut" :height="300" :label="__('charts.finance.team_sales')"
                         :labels="$charts['team']['labels']"
                         :datasets="[['label' => __('finance.dashboard.revenue'), 'data' => $charts['team']['data']]]" />
                 </x-ui.card>
+                @endif
             </div>
 
             <div class="grid gap-6 xl:grid-cols-3">
@@ -187,6 +191,7 @@
                 </x-ui.card>
             </div>
 
+            @if (auth()->user()->canAccessFeature('team_activity'))
             <x-ui.card :title="__('finance.restored.team_today')">
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     @foreach ($summary['team_today']['rows'] as $row)
@@ -194,6 +199,7 @@
                     @endforeach
                 </div>
             </x-ui.card>
+            @endif
 
             @include('dashboard.partials.financial-details')
             @include('dashboard.partials.financial-cash-flow')
@@ -210,11 +216,13 @@
                             <div class="mt-1 text-xl font-semibold text-gray-900">₪{{ number_format($profitLoss['discounts'], 2) }}</div>
                         </div>
                     </div>
+                    @if (auth()->user()->canAccessFeature('reports') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
                     <div class="mt-4">
                         <a href="{{ route('reports.index') }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
                             {{ __('finance.reports.title') }}
                         </a>
                     </div>
+                    @endif
                 </x-ui.card>
 
                 <x-ui.card :title="__('finance.dashboard.recent_closings')">

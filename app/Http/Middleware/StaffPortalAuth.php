@@ -23,6 +23,8 @@ class StaffPortalAuth
             abort(404);
         }
 
+        abort_unless($owner->canAccessFeature('hr'), 403, __('messages.tier_feature_blocked'));
+
         $request->attributes->set('staffOwner', $owner);
 
         if (! self::ownerIsAvailable($owner) || ! self::isSecurePortalRequest($request)) {
@@ -89,7 +91,7 @@ class StaffPortalAuth
 
     public static function ownerIsAvailable(User $owner): bool
     {
-        return $owner->role !== 'disabled' && $owner->is_active !== false;
+        return $owner->role !== 'disabled' && $owner->is_active !== false && $owner->canAccessFeature('hr');
     }
 
     public static function isSecurePortalRequest(Request $request): bool

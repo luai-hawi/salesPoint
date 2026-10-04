@@ -13,6 +13,7 @@ use App\Services\Admin\PlatformSettings;
 use App\Services\Admin\ShopPerformanceService;
 use App\Services\Admin\ShopPurger;
 use App\Services\Admin\ShopStorageService;
+use App\Support\FeatureCatalog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -554,7 +555,7 @@ class ShopOwnerController extends Controller
             ? ['shop_owner', 'restaurant', 'merchant', 'disabled']
             : ['shop_owner', 'restaurant', 'merchant'];
 
-        return $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'owner_name' => 'nullable|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($shopOwner?->id)],
@@ -569,12 +570,16 @@ class ShopOwnerController extends Controller
             'extend_days' => 'nullable|integer|min:-365|max:365',
             'license_expires_at' => 'nullable|date',
             'blocked_features' => 'nullable|array',
-            'blocked_features.*' => 'string|in:installments,sales_promotions,financial_dashboard',
+            'blocked_features.*' => ['nullable', 'string', Rule::in(FeatureCatalog::KEYS)],
             'entry_limit' => 'nullable|integer|min:0',
             'entry_limit_mode' => 'nullable|in:off,warn,block',
             'admin_notes' => 'nullable|string|max:5000',
             'disabled_reason' => 'nullable|string|max:60',
         ]);
+
+        $validated['blocked_features'] = array_values(array_filter($validated['blocked_features'] ?? []));
+
+        return $validated;
     }
 
     private function ensureManageableShop(User $shopOwner): void

@@ -60,6 +60,7 @@
         @endforeach
     </div>
     @foreach ($details['tables'] as $key => $table)
+        @continue($key === 'staff_breakdown' && ! auth()->user()->canAccessFeature('hr'))
         <x-ui.card :title="__('finance.restored.' . $key)">
             @if ($key === 'trends' && ($printing ?? false) && $table['rows']->isNotEmpty())
                 <div class="mb-4 grid gap-4 sm:grid-cols-2">
@@ -112,6 +113,7 @@
             </div>
         </x-ui.card>
     @endforeach
+    @if (auth()->user()->canAccessFeature('team_activity'))
     <x-ui.card :title="__('finance.dashboard.team_summary')">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -122,4 +124,5 @@
             </table>
         </div>
     </x-ui.card>
+    @endif
 </div>

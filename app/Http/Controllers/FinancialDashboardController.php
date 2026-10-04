@@ -206,6 +206,9 @@ class FinancialDashboardController extends Controller
         }
 
         $exportTables = $details['tables'];
+        if (! auth()->user()->canAccessFeature('hr')) {
+            unset($exportTables['staff_breakdown']);
+        }
         $exportTables['inventory'] = ['columns' => ['cost', 'selling', 'units', 'products'], 'rows' => collect([$details['inventory']])];
         $exportTables['capital'] = ['columns' => ['entry_date', 'amount', 'note'], 'rows' => $details['capital']];
         $exportTables['account_totals'] = ['columns' => ['name', 'amount'], 'rows' => collect($details['balances'])
@@ -213,7 +216,9 @@ class FinancialDashboardController extends Controller
         foreach ($details['balances'] as $key => $group) {
             $exportTables[$key] = ['columns' => ['name', 'phone', 'balance'], 'rows' => $group['rows']];
         }
-        $exportTables['team'] = ['columns' => ['user.name', 'bills_count', 'sales_total', 'returns_total', 'discounts', 'collections'], 'rows' => $details['team']['rows']];
+        if (auth()->user()->canAccessFeature('team_activity')) {
+            $exportTables['team'] = ['columns' => ['user.name', 'bills_count', 'sales_total', 'returns_total', 'discounts', 'collections'], 'rows' => $details['team']['rows']];
+        }
         foreach ($exportTables as $key => $table) {
             $sheet = $spreadsheet->createSheet();
             $sheet->setTitle(substr($key, 0, 31));

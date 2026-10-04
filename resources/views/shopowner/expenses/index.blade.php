@@ -1,6 +1,6 @@
 @php
     $supplierShortcut = Route::has('payments-receipts.index') ? route('payments-receipts.index') : (Route::has('suppliers.index') ? route('suppliers.index') : null);
-    $staffShortcut = Route::has('shopowner.employees.index') ? route('shopowner.employees.index') : null;
+    $staffShortcut = Route::has('shopowner.employees.index') && auth()->user()->canAccessFeature('hr') ? route('shopowner.employees.index') : null;
     $categoryKeys = ['rent', 'utilities', 'transport', 'marketing', 'maintenance', 'supplies', 'taxes', 'other'];
 @endphp
 <x-app-layout>

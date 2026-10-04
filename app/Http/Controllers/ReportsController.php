@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Finance\FinanceInsightsService;
 use App\Services\Reports\ProductReportService;
 use App\Support\ExportSanitizer;
+use App\Support\FeatureCatalog;
 use App\Support\ReportCatalog;
 use App\Support\ShopTime;
 use Illuminate\Http\Request;
@@ -36,8 +37,8 @@ class ReportsController extends Controller
         return view('reports.index', [
             'customers' => Customer::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get(['id', 'name', 'balance']),
             'suppliers' => Supplier::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get(['id', 'name', 'balance']),
-            'employees' => Employee::query()->where('shop_owner_id', $ownerId)->orderBy('name')->get(['id', 'name', 'job_title']),
-            'employeeUsers' => User::withoutGlobalScopes()->where('role', 'employee')->where('shop_owner_id', $ownerId)->orderBy('name')->get(['id', 'name']),
+            'employees' => auth()->user()->canAccessFeature('hr') ? Employee::query()->where('shop_owner_id', $ownerId)->orderBy('name')->get(['id', 'name', 'job_title']) : collect(),
+            'employeeUsers' => auth()->user()->canAccessFeature('team_activity') ? User::withoutGlobalScopes()->where('role', 'employee')->where('shop_owner_id', $ownerId)->orderBy('name')->get(['id', 'name']) : collect(),
             'categories' => $this->productReports->categories($ownerId),
             'today' => ShopTime::today($ownerId),
         ]);
@@ -245,6 +246,9 @@ class ReportsController extends Controller
 
     private function rowReport(string $type, int $ownerId, Request $request, string $from, string $to)
     {
+        $feature = FeatureCatalog::reportFeature($type);
+        abort_if($feature && ! auth()->user()->canAccessFeature($feature), 403, __('messages.tier_feature_blocked'));
+
         if (ReportCatalog::isProductReport($type)) {
             return $this->productReports->rows($type, $ownerId, $request, $from, $to);
         }

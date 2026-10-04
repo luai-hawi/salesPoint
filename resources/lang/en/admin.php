@@ -217,10 +217,14 @@ return [
         'bulk_delete_expired' => 'DELETE EXPIRED',
         'bulk_delete_disabled_expired' => 'DELETE DISABLED',
     ],
+    'features_hint' => 'Checked features are blocked for this shop and its program employees. Uncheck to enable a paid add-on. HR profiles do not grant program access.',
     'features' => [
         'installments' => 'Installments',
         'sales_promotions' => 'Sales promotions',
         'financial_dashboard' => 'Financial dashboard',
+        'hr' => 'HR package: employees, attendance, staff portal, payroll and leave',
+        'reports' => 'Reports and analytics: report generation, printing, CSV and restaurant insights',
+        'team_activity' => 'Team activity: audit history, exports and team performance',
     ],
     'meta' => [
         'total_count' => ':count total',

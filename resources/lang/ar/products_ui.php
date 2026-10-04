@@ -182,7 +182,7 @@ return [
         'active_products' => 'المنتجات النشطة',
         'inactive_products' => 'المنتجات المعطلة',
         'low_stock_products' => 'المنتجات منخفضة المخزون',
-        'stock_total' => 'إجمالي وحدات المخزون',
+        'stock_total' => 'وحدات المخزون في هذه الصفحة فقط',
         'total_imeis' => 'أرقام IMEI المتتبعة',
         'available_imeis' => 'أرقام IMEI المتاحة',
         'sold_imeis' => 'أرقام IMEI المباعة',

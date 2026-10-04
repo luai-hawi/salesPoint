@@ -10,7 +10,7 @@
 <x-app-layout>
     <x-slot name="header">
         <x-ui.page-header :title="__('products_ui.page.edit_title')" :subtitle="__('products_ui.page.edit_subtitle')">
-            @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports'))
+            @if (auth()->user()->canAccessFeature('reports') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
                 @php
                     $reportToday = \App\Support\ShopTime::today(auth()->user()->ownerId());
                     $reportQuery = ['product_id' => $product->id, 'from' => \Illuminate\Support\Carbon::parse($reportToday)->subYear()->addDay()->toDateString(), 'to' => $reportToday, 'popup' => 1];

@@ -36,7 +36,9 @@
                             <select name="entity_type" x-model="entityType"
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="customer">{{ __('messages.Customer') }}</option>
-                                <option value="employee">{{ __('messages.Employee') }}</option>
+                                @if (auth()->user()->canAccessFeature('hr'))
+                                    <option value="employee">{{ __('messages.Employee') }}</option>
+                                @endif
                                 <option value="supplier">{{ __('messages.Supplier') }}</option>
                             </select>
                         </div>

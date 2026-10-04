@@ -32,7 +32,7 @@ class PaymentReceiptController extends Controller
             $customer->open_bills = CustomerLedger::openBills($customer);
         });
 
-        $employees = Employee::where('shop_owner_id', $ownerId)->orderBy('name')->get();
+        $employees = $user->canAccessFeature('hr') ? Employee::where('shop_owner_id', $ownerId)->orderBy('name')->get() : collect();
         $suppliers = Supplier::withoutGlobalScopes()->where('user_id', $ownerId)->orderBy('name')->get();
 
         return view('payments_receipts', compact('customers', 'employees', 'suppliers'));
@@ -54,6 +54,7 @@ class PaymentReceiptController extends Controller
         ]);
 
         $user = Auth::user();
+        abort_if($data['entity_type'] === 'employee' && ! $user->canAccessFeature('hr'), 403, __('messages.tier_feature_blocked'));
         $ownerId = $user->ownerId();
         if (! $ownerId) {
             abort(403);
@@ -184,6 +185,7 @@ class PaymentReceiptController extends Controller
     public function getEmployees(Request $request)
     {
         $this->authorizePaymentsReceipts();
+        abort_unless(Auth::user()->canAccessFeature('hr'), 403, __('messages.tier_feature_blocked'));
 
         $ownerId = Auth::user()->ownerId();
         if (! $ownerId) {

@@ -77,8 +77,10 @@
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium">{{ __('admin.fields.blocked_features') }}</label>
+                    <input type="hidden" name="blocked_features[]" value="">
+                    <p class="mb-2 text-xs text-gray-500">{{ __('admin.features_hint') }}</p>
                     <div class="space-y-2 text-sm">
-                        @foreach (['installments', 'sales_promotions', 'financial_dashboard'] as $feature)
+                        @foreach (\App\Support\FeatureCatalog::KEYS as $feature)
                             <label class="flex items-center gap-2"><input type="checkbox" name="blocked_features[]" value="{{ $feature }}" @checked(in_array($feature, old('blocked_features', $owner?->blocked_features ?? []), true)) class="rounded border-gray-300 text-indigo-600"> <span>{{ __('admin.features.' . $feature) }}</span></label>
                         @endforeach
                     </div>

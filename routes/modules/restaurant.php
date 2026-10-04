@@ -32,6 +32,6 @@ Route::middleware(['auth', 'verified', RoleMiddleware::class . ':restaurant,empl
     Route::post('/restaurant/orders/{order}/merge', [OrderController::class, 'merge'])->name('restaurant.orders.merge');
     Route::get('/restaurant/orders/{order}/print', [OrderController::class, 'print'])->name('restaurant.orders.print');
 
-    Route::get('/restaurant/insights', [InsightsController::class, 'index'])->name('restaurant.insights.index');
-    Route::get('/restaurant/insights/export', [InsightsController::class, 'export'])->name('restaurant.insights.export');
+    Route::get('/restaurant/insights', [InsightsController::class, 'index'])->middleware('tier.feature:reports')->name('restaurant.insights.index');
+    Route::get('/restaurant/insights/export', [InsightsController::class, 'export'])->middleware('tier.feature:reports')->name('restaurant.insights.export');
 });

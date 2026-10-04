@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('shopowner')
     ->as('shopowner.')
-    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant'])
+    ->middleware(['auth', \App\Http\Middleware\RoleMiddleware::class . ':admin,shop_owner,employee,restaurant,merchant', 'tier.feature:hr'])
     ->group(function () {
         Route::middleware([\App\Http\Middleware\PermissionMiddleware::class . ':manage_employees'])->group(function () {
             Route::delete('employees/{employee}/devices/{device}', [EmployeeController::class, 'revokeDevice'])->whereNumber(['employee', 'device'])->name('employees.devices.destroy');

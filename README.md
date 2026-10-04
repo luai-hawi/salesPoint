@@ -63,6 +63,25 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 ## Accounts, reports and finance
 
+- Subscription add-ons: on the admin's shop create/edit form, check a feature to
+  **block** it and uncheck to enable it. Alongside installments, sales promotions
+  and the financial dashboard, the admin can negotiate three optional packages:
+  **HR** (employee profiles, attendance, locations, staff portal, biometrics,
+  payroll, adjustments and leave), **Reports and analytics** (reports, print/CSV,
+  financial report export and restaurant insights), and **Team activity**
+  (audit history/export and team performance). Existing shops keep access until
+  explicitly blocked; these controls do not change subscription prices.
+  Program employees inherit their owner's blocks, in addition to their own
+  permissions. Direct URLs and the separately authenticated staff portal are
+  gated too. Disabling an add-on retains its data; historical payroll totals
+  remain in financial bookkeeping. Team summary/audit pages still require the
+  financial dashboard, as before. Program account management remains separate
+  from HR, and owner data backup remains available regardless of these add-ons.
+- Products page **Stock units on this page** sums the `quantity` values of
+  the products on the displayed page only (up to 25 after filters), not every
+  matching product or every product in the shop. It counts quantity, not product
+  records or inventory value, includes inactive products unless filtered out,
+  and displays two decimal places.
 - Only the administrator creates program employee accounts (additional paid access).
   Owners can adjust permissions on those existing accounts. Attendance/payroll
   employee profiles are separate and never grant POS/program access.

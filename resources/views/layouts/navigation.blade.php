@@ -569,7 +569,7 @@
                         </div>
 
                         {{-- Employees --}}
-                        @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees'))
+                        @if (auth()->user()->canAccessFeature('hr') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('manage_employees')))
                             @php $ac = request()->routeIs('shopowner.employees.*') ? $activeLink : $inactiveLink; @endphp
                             <div @mouseenter="showTip($event, @js(__('navigation.Employees')))" @mouseleave="hideTip()"
                                 class="relative px-2 mb-0.5">
@@ -670,7 +670,7 @@
                         @endif
 
                         {{-- Reports --}}
-                        @if (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports'))
+                        @if (auth()->user()->canAccessFeature('reports') && (auth()->user()->role !== 'employee' || auth()->user()->hasPermission('view_reports')))
                             @php $ac = request()->routeIs('reports.*') ? $activeLink : $inactiveLink; @endphp
                             <div @mouseenter="showTip($event, @js(__('navigation.Reports')))" @mouseleave="hideTip()"
                                 class="relative px-2 mb-0.5">

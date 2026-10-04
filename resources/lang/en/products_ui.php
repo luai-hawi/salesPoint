@@ -182,7 +182,7 @@ return [
         'active_products' => 'Active products',
         'inactive_products' => 'Inactive products',
         'low_stock_products' => 'Low-stock products',
-        'stock_total' => 'Total stock units',
+        'stock_total' => 'Stock units on this page',
         'total_imeis' => 'Tracked IMEIs',
         'available_imeis' => 'Available IMEIs',
         'sold_imeis' => 'Sold IMEIs',

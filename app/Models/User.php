@@ -334,7 +334,7 @@ class User extends Authenticatable
 
     /**
      * Returns true when the feature is NOT blocked for this user.
-     * Feature keys: 'installments', 'sales_promotions', 'financial_dashboard'
+     * Feature keys are defined in \App\Support\FeatureCatalog.
      */
     public function canAccessFeature(string $feature): bool
     {
