@@ -44,7 +44,6 @@
         name="pictures[]"
         accept="image/jpeg,image/png,image/gif,image/webp"
         multiple
-        capture="environment"
         class="sr-only"
         data-image-input
     >

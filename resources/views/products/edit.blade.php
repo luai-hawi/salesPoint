@@ -94,9 +94,15 @@
                                 @endforeach
                             </datalist>
                         </div>
-                        <div>
+                        <div class="relative">
                             <label for="barcode" class="mb-2 block text-sm font-medium text-gray-700">{{ __('products_ui.labels.barcode') }}</label>
                             <input x-ref="mainBarcode" id="barcode" name="barcode" type="text" value="{{ old('barcode', $product->barcode) }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                            <button type="button" id="scan-barcode-btn" class="absolute end-3 top-[2.1rem] h-5 w-5 text-gray-400 hover:text-purple-500 transition-colors cursor-pointer" title="{{ __('messages.Scan with camera') }}">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
                         </div>
                         <div class="md:col-span-2 space-y-3">
                             <div class="flex items-center justify-between gap-2">
@@ -428,5 +434,71 @@
     @push('scripts')
         <script src="{{ \App\Support\Assets::versioned('js/image-editor.js') }}"></script>
         <script src="{{ \App\Support\Assets::versioned('js/product-forms.js') }}"></script>
+        <script>
+            async function initBarcodeScanner(inputId) {
+                if (document.getElementById('barcode-scanner-modal')) {
+                    return;
+                }
+
+                const scannerModal = document.createElement('div');
+                scannerModal.id = 'barcode-scanner-modal';
+                scannerModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90';
+                scannerModal.innerHTML = `
+                    <div class="bg-white rounded-lg p-4 w-full max-w-lg mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">{{ __('messages.Scan Barcode') }}</h3>
+                            <button type="button" id="close-scanner" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden" style="height: 350px;"></div>
+                        <p class="text-sm text-gray-500 mt-2 text-center">{{ __('messages.Point camera at barcode') }}</p>
+                    </div>
+                `;
+                document.body.appendChild(scannerModal);
+
+                try {
+                    const html5Qrcode = new Html5Qrcode("scanner-container");
+                    await html5Qrcode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 150 } },
+                        (decodedText) => {
+                            const input = document.getElementById(inputId);
+                            if (input) {
+                                input.value = decodedText;
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                            scannerModal.remove();
+                        },
+                        () => {}
+                    );
+                } catch (err) {
+                    scannerModal.remove();
+                    alert('Could not start camera scanner. Please allow camera access.');
+                }
+
+                document.getElementById('close-scanner').addEventListener('click', function() {
+                    scannerModal.remove();
+                });
+
+                scannerModal.addEventListener('click', function(e) {
+                    if (e.target === scannerModal) {
+                        scannerModal.remove();
+                    }
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const scanBtn = document.getElementById('scan-barcode-btn');
+                if (scanBtn) {
+                    scanBtn.addEventListener('click', function() {
+                        initBarcodeScanner('barcode');
+                    });
+                }
+            });
+        </script>
     @endpush
 </x-app-layout>
