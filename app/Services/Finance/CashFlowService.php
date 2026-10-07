@@ -471,19 +471,19 @@ class CashFlowService
     {
         return CashMovement::withoutGlobalScopes()
             ->where('user_id', $ownerId)
+            ->where('type', '!=', 'opening')
             ->whereBetween('occurred_at', [$startUtc, $endUtc])
             ->with('creator:id,name')
             ->get()
             ->map(function (CashMovement $movement) {
                 $amount = round((float) $movement->amount, 2);
                 $signed = match ($movement->type) {
-                    'opening', 'in' => $amount,
+                    'in' => $amount,
                     default => -$amount,
                 };
 
                 return $this->row(
                     match ($movement->type) {
-                        'opening' => 'opening',
                         'in' => 'manual_in',
                         default => 'manual_out',
                     },
@@ -498,7 +498,9 @@ class CashFlowService
                     $signed < 0 ? abs($signed) : 0.0,
                     ['id' => $movement->id, 'note' => $movement->note],
                 );
-            });
+            })
+            ->filter()
+            ->values();
     }
 
     private function attachRunningBalance(int $ownerId, Collection $viewRows, Collection $cashRows, string $methodFilter, array $opening): Collection
