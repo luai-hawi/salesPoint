@@ -103,6 +103,7 @@ return [
         'undo' => 'Undo',
         'rotate_left' => 'Rotate left',
         'rotate_right' => 'Rotate right',
+        'generate_barcode' => 'Generate',
         'select_all' => 'Select all',
         'extend_selected' => 'Extend selected',
         'add_imei' => 'Add IMEI',

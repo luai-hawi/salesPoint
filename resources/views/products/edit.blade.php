@@ -109,8 +109,8 @@
                                         </svg>
                                     </button>
                                 </div>
-                                <button type="button" id="generate-barcode-btn" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50" title="Generate unique barcode">
-                                    Generate
+                                <button type="button" id="generate-barcode-btn" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50" title="{{ __('products_ui.buttons.generate_barcode') }}">
+                                    {{ __('products_ui.buttons.generate_barcode') }}
                                 </button>
                             </div>
                         </div>
@@ -634,7 +634,7 @@
                         const barcodeInput = document.getElementById('barcode');
                         if (barcodeInput) {
                             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-                            barcodeInput.value = 'PRD-{{ $product->id }}-' + randomSuffix;
+                            barcodeInput.value = {{ $product->id }} + '' + Date.now() + '' + randomSuffix;
                             barcodeInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                     });

@@ -103,6 +103,7 @@ return [
         'undo' => 'تراجع',
         'rotate_left' => 'تدوير لليسار',
         'rotate_right' => 'تدوير لليمين',
+        'generate_barcode' => 'توليد',
         'select_all' => 'تحديد الكل',
         'extend_selected' => 'تمديد المحدد',
         'add_imei' => 'إضافة IMEI',
