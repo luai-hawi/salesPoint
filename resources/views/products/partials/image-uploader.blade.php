@@ -98,8 +98,8 @@
         </div>
     </template>
 
-    <div class="fixed inset-0 z-[120] hidden items-center justify-center bg-black/60 p-4" data-image-editor-modal x-cloak>
-        <div class="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div class="fixed inset-0 z-[120] hidden items-start lg:items-center justify-center bg-black/60 p-4 overflow-y-auto" data-image-editor-modal x-cloak>
+        <div class="w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl my-4">
             <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
                 <div>
                     <h4 class="text-lg font-semibold text-gray-900">{{ __('products_ui.image_editor.title') }}</h4>
@@ -107,15 +107,15 @@
                 </div>
                 <button type="button" class="text-2xl leading-none text-gray-400 hover:text-gray-600" data-close-editor>&times;</button>
             </div>
-            <div class="flex flex-1 flex-col overflow-hidden lg:flex-row">
-                <div class="relative flex-shrink-0 bg-gray-900 p-4 lg:w-2/3">
-                    <canvas class="h-[40vh] w-full rounded-xl bg-gray-800 lg:h-[60vh]" style="touch-action: none;" data-editor-canvas tabindex="0"></canvas>
+            <div class="grid gap-0 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+                <div class="relative bg-gray-900 p-4">
+                    <canvas class="h-[50vh] lg:h-[60vh] w-full rounded-xl bg-gray-800" style="touch-action: none;" data-editor-canvas tabindex="0"></canvas>
                     <div class="pointer-events-none absolute inset-6 rounded-xl border border-dashed border-white/60" data-crop-overlay></div>
                     <div class="absolute bottom-6 start-6 rounded-lg bg-black/60 px-3 py-2 text-xs text-white">
                         {{ __('products_ui.image_editor.keyboard_help') }}
                     </div>
                 </div>
-                <div class="flex flex-1 flex-col overflow-hidden">
+                <div class="flex max-h-[70vh] flex-col overflow-hidden lg:max-h-[75vh]">
                     <div class="flex-1 overflow-y-auto p-5">
                         <div class="space-y-4">
                             <div class="grid grid-cols-2 gap-2">
