@@ -40,6 +40,23 @@
                 </form>
             </x-ui.card>
 
+            @if ($counts['trial_ended'] > 0 || $counts['disabled'] > 0)
+                <x-ui.card>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($counts['trial_ended'] > 0)
+                            <a href="{{ route('admin.shop-owners.deactivate-expired') }}" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">
+                                {{ __('admin.actions.disable_expired_trials') }} <span class="rounded-full bg-white/20 px-2 py-0.5 text-xs">{{ $counts['trial_ended'] }}</span>
+                            </a>
+                        @endif
+                        @if ($counts['disabled'] > 0)
+                            <a href="{{ route('admin.shop-owners.delete-disabled') }}" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                                {{ __('admin.actions.delete_disabled_accounts') }} <span class="rounded-full bg-white/20 px-2 py-0.5 text-xs">{{ $counts['disabled'] }}</span>
+                            </a>
+                        @endif
+                    </div>
+                </x-ui.card>
+            @endif
+
             <div class="flex flex-wrap gap-2">
                 @foreach ($counts as $filter => $count)
                     <a href="{{ route('admin.shop-owners.index', array_filter(array_merge(request()->query(), ['status' => $filter === 'all' ? null : $filter]))) }}"

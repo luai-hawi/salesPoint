@@ -32,8 +32,12 @@ return [
         'filter' => 'تصفية',
         'clear' => 'مسح',
         'whatsapp' => 'واتساب',
+        'disable_expired_trials' => 'تعطيل التجارب المنتهية',
+        'delete_disabled_accounts' => 'حذف الحسابات المعطلة',
+        'select_all' => 'تحديد الكل',
+        'clear_all' => 'إلغاء التحديد',
     ],
-    'fields' => [
+'fields' => [
         'shop_name' => 'اسم المتجر',
         'owner_name' => 'اسم صاحب المتجر',
         'email' => 'البريد الإلكتروني',
@@ -84,6 +88,9 @@ return [
         'announcement_body_ar' => 'نص الإعلان بالعربية',
         'announcement_body_en' => 'نص الإعلان بالإنجليزية',
         'announcement_expires_at' => 'انتهاء الإعلان',
+        'trial_expires' => 'انتهاء التجربة',
+        'confirmation' => 'تأكيد',
+        'created_at' => 'تاريخ الإنشاء',
     ],
     'filters' => [
         'all' => 'الكل',
@@ -173,6 +180,17 @@ return [
         'cannot_impersonate_inactive' => 'يمكن الدخول فقط إلى حسابات أصحاب المتاجر النشطة.',
         'payment_already_processed' => 'تم إرسال نموذج الدفع هذا مسبقاً. حدّث الصفحة ثم حاول مرة أخرى.',
         'bulk_confirmation_mismatch' => 'العبارة المكتوبة للتأكيد غير مطابقة للمطلوب.',
+        'deactivate_expired_hint' => 'انتقِ القائمة وأزيل التحديد عن أي حساب ترغب في الاحتفاظ به. تُعرض فقط الحسابات التجريبية المنتهية التي لم تُعطل بعد.',
+        'delete_disabled_hint' => 'انتقِ القائمة وأزيل التحديد عن أي حساب ترغب في الاحتفاظ به. الحسابات التي تم إنشاؤها قبل أكثر من شهر لا تُحدد افتراضياً.',
+        'deactivate_expired_confirm_hint' => 'اكتب عبارة التأكيد أعلاه للمتابعة مع التعطيل.',
+        'delete_disabled_confirm_hint' => 'اكتب عبارة التأكيد أعلاه للمتابعة مع الحذف. هذا الإجراء لا يمكن التراجع عنه.',
+        'will_disable' => 'الحسابات التي ستُعطل',
+        'will_delete' => 'الحسابات التي ستُحذف نهائياً',
+        'selected_prefix' => 'مُحددة: ',
+        'type_confirmation_hint' => 'اكتب :phrase للتأكيد',
+        'no_expired_trials' => 'لا توجد حسابات تجريبية منتهية لتعطيلها.',
+        'no_disabled_accounts' => 'لا توجد حسابات معطلة لحذفها.',
+        'older_than_month' => 'تم إنشاؤها قبل أكثر من شهر (غير محددة افتراضياً)',
     ],
     'types' => [
         'shop_owner' => 'صاحب متجر',
@@ -202,6 +220,7 @@ return [
     'confirmations' => [
         'bulk_delete_expired' => 'حذف المنتهي',
         'bulk_delete_disabled_expired' => 'حذف المعطل',
+        'bulk_deactivate_expired' => 'تعطيل المنتهي',
     ],
     'features_hint' => 'الميزات المحددة محظورة لهذا المتجر وحسابات موظفي البرنامج التابعة له. أزل التحديد لتفعيل إضافة مدفوعة. ملفات الموارد البشرية لا تمنح دخول البرنامج.',
     'features' => [
@@ -230,5 +249,7 @@ return [
         'audit' => 'سجل تدقيق الإدارة',
         'settings' => 'إعدادات المنصة',
         'online_menu_subscriptions' => 'اشتراكات القائمة الإلكترونية',
+        'deactivate_expired' => 'تعطيل التجارب المنتهية',
+        'delete_disabled' => 'حذف الحسابات المعطلة',
     ],
 ];

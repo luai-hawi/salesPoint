@@ -16,8 +16,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':admin'])
         Route::get('/dashboard/download-backup', [AdminDashboardController::class, 'downloadBackup'])->name('dashboard.download-backup');
 
         Route::get('shop-owners/expiring-licenses', [ShopOwnerController::class, 'expiringLicenses'])->name('shop-owners.expiring-licenses');
-        Route::delete('shop-owners/delete-expired', [ShopOwnerController::class, 'deleteExpiredTempAccounts'])->name('shop-owners.delete-expired');
+        Route::get('shop-owners/deactivate-expired', [ShopOwnerController::class, 'deactivateExpiredForm'])->name('shop-owners.deactivate-expired');
         Route::post('shop-owners/disable-expired', [ShopOwnerController::class, 'disableExpiredTempAccounts'])->name('shop-owners.disable-expired');
+        Route::get('shop-owners/delete-disabled', [ShopOwnerController::class, 'deleteDisabledForm'])->name('shop-owners.delete-disabled');
+        Route::delete('shop-owners/delete-expired', [ShopOwnerController::class, 'deleteExpiredTempAccounts'])->name('shop-owners.delete-expired');
         Route::delete('shop-owners/delete-disabled-expired', [ShopOwnerController::class, 'deleteDisabledExpiredAccounts'])->name('shop-owners.delete-disabled-expired');
         Route::post('shop-owners/{shopOwner}/toggle-status', [ShopOwnerController::class, 'toggleStatus'])->name('shop-owners.toggle-status');
         Route::post('shop-owners/{shopOwner}/mark-paid', [ShopOwnerController::class, 'markPaid'])->name('shop-owners.mark-paid');

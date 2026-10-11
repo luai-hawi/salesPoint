@@ -32,6 +32,10 @@ return [
         'filter' => 'Filter',
         'clear' => 'Clear',
         'whatsapp' => 'WhatsApp',
+        'disable_expired_trials' => 'Deactivate expired trials',
+        'delete_disabled_accounts' => 'Delete deactivated accounts',
+        'select_all' => 'Select all',
+        'clear_all' => 'Clear selection',
     ],
     'fields' => [
         'shop_name' => 'Shop name',
@@ -84,6 +88,9 @@ return [
         'announcement_body_ar' => 'Announcement body (Arabic)',
         'announcement_body_en' => 'Announcement body (English)',
         'announcement_expires_at' => 'Announcement expiry',
+        'trial_expires' => 'Trial expires',
+        'confirmation' => 'Confirmation',
+        'created_at' => 'Created at',
     ],
     'filters' => [
         'all' => 'All',
@@ -173,6 +180,17 @@ return [
         'cannot_impersonate_inactive' => 'Only active owner accounts can be impersonated.',
         'payment_already_processed' => 'This payment form was already submitted. Reload the page and try again.',
         'bulk_confirmation_mismatch' => 'Typed confirmation did not match the required phrase.',
+        'deactivate_expired_hint' => 'Review the list and uncheck any account you want to keep. Only expired trial accounts that are not yet disabled are shown.',
+        'delete_disabled_hint' => 'Review the list and uncheck any account you want to keep. Accounts created more than a month ago are not selected by default.',
+        'deactivate_expired_confirm_hint' => 'Type the confirmation phrase above to proceed with deactivation.',
+        'delete_disabled_confirm_hint' => 'Type the confirmation phrase above to proceed with deletion. This action is irreversible.',
+        'will_disable' => 'Accounts that will be disabled',
+        'will_delete' => 'Accounts that will be deleted permanently',
+        'selected_prefix' => 'Selected: ',
+        'type_confirmation_hint' => 'Type :phrase to confirm',
+        'no_expired_trials' => 'No expired trial accounts to deactivate.',
+        'no_disabled_accounts' => 'No deactivated accounts to delete.',
+        'older_than_month' => 'Created more than a month ago (not selected by default)',
     ],
     'titles' => [
         'dashboard' => 'Admin dashboard',
@@ -187,6 +205,8 @@ return [
         'audit' => 'Admin audit log',
         'settings' => 'Platform settings',
         'online_menu_subscriptions' => 'Online menu subscriptions',
+        'deactivate_expired' => 'Deactivate expired trials',
+        'delete_disabled' => 'Delete deactivated accounts',
     ],
     'types' => [
         'shop_owner' => 'Shop owner',
@@ -216,6 +236,7 @@ return [
     'confirmations' => [
         'bulk_delete_expired' => 'DELETE EXPIRED',
         'bulk_delete_disabled_expired' => 'DELETE DISABLED',
+        'bulk_deactivate_expired' => 'DEACTIVATE EXPIRED',
     ],
     'features_hint' => 'Checked features are blocked for this shop and its program employees. Uncheck to enable a paid add-on. HR profiles do not grant program access.',
     'features' => [

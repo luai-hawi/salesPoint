@@ -438,20 +438,51 @@ class ShopOwnerController extends Controller
         return back()->with('success', __('admin.messages.converted_to_full'));
     }
 
+    public function deactivateExpiredForm()
+    {
+        $accounts = $this->expiredTrialCandidates();
+
+        return view('admin.shop-owners.deactivate-expired', [
+            'accounts' => $accounts,
+            'counts' => [
+                'total' => $accounts->count(),
+            ],
+        ]);
+    }
+
+    public function deleteDisabledForm()
+    {
+        $cutoff = now()->subMonth();
+        $accounts = User::query()
+            ->where('role', 'disabled')
+            ->latest()
+            ->get()
+            ->map(fn (User $user) => [
+                'user' => $user,
+                'checked' => (bool) $user->created_at?->gte($cutoff),
+            ]);
+
+        return view('admin.shop-owners.delete-disabled', [
+            'accounts' => $accounts,
+            'counts' => [
+                'total' => $accounts->count(),
+                'checked' => collect($accounts)->filter(fn ($row) => $row['checked'])->count(),
+            ],
+        ]);
+    }
+
     public function deleteExpiredTempAccounts(Request $request)
     {
         $request->validate([
             'confirmation' => 'required|string',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer',
         ]);
         if ($request->input('confirmation') !== __('admin.confirmations.bulk_delete_expired')) {
             return back()->withErrors(['confirmation' => __('admin.messages.bulk_confirmation_mismatch')]);
         }
 
-        $accounts = User::query()
-            ->whereIn('role', array_merge(User::OWNER_ROLES, ['disabled']))
-            ->where('account_type', 'temp')
-            ->whereNotNull('temp_expires_at')
-            ->whereDate('temp_expires_at', '<', today())
+        $accounts = $this->expiredTrialCandidates()
             ->when($request->filled('user_ids'), fn ($query) => $query->whereIn('id', (array) $request->input('user_ids')))
             ->get();
 
@@ -462,13 +493,15 @@ class ShopOwnerController extends Controller
         return back()->with('success', __('admin.messages.expired_deleted', ['count' => $accounts->count()]));
     }
 
-    public function disableExpiredTempAccounts()
+    public function disableExpiredTempAccounts(Request $request)
     {
-        $accounts = User::query()
-            ->whereIn('role', User::OWNER_ROLES)
-            ->where('account_type', 'temp')
-            ->whereNotNull('temp_expires_at')
-            ->whereDate('temp_expires_at', '<', today())
+        $request->validate([
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer',
+        ]);
+
+        $accounts = $this->expiredTrialCandidates()
+            ->when($request->filled('user_ids'), fn ($query) => $query->whereIn('id', (array) $request->input('user_ids')))
             ->get();
 
         foreach ($accounts as $account) {
@@ -487,6 +520,8 @@ class ShopOwnerController extends Controller
     {
         $request->validate([
             'confirmation' => 'required|string',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer',
         ]);
         if ($request->input('confirmation') !== __('admin.confirmations.bulk_delete_disabled_expired')) {
             return back()->withErrors(['confirmation' => __('admin.messages.bulk_confirmation_mismatch')]);
@@ -494,9 +529,6 @@ class ShopOwnerController extends Controller
 
         $accounts = User::query()
             ->where('role', 'disabled')
-            ->where('account_type', 'temp')
-            ->whereNotNull('temp_expires_at')
-            ->whereDate('temp_expires_at', '<', today())
             ->when($request->filled('user_ids'), fn ($query) => $query->whereIn('id', (array) $request->input('user_ids')))
             ->get();
 
@@ -505,6 +537,19 @@ class ShopOwnerController extends Controller
         }
 
         return back()->with('success', __('admin.messages.disabled_expired_deleted', ['count' => $accounts->count()]));
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    private function expiredTrialCandidates()
+    {
+        return User::query()
+            ->whereIn('role', User::OWNER_ROLES)
+            ->where('account_type', 'temp')
+            ->whereNotNull('temp_expires_at')
+            ->whereDate('temp_expires_at', '<', today())
+            ->latest();
     }
 
     public function impersonate(User $shopOwner)
