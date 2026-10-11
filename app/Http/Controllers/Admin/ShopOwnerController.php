@@ -440,7 +440,7 @@ class ShopOwnerController extends Controller
 
     public function deactivateExpiredForm()
     {
-        $accounts = $this->expiredTrialCandidates();
+        $accounts = $this->expiredTrialCandidates()->get();
 
         return view('admin.shop-owners.deactivate-expired', [
             'accounts' => $accounts,
