@@ -2272,12 +2272,17 @@
                         document.getElementById('payment_customer_id').value = originalPaymentCustomerId;
                     }
                 }
-
-                // Clear the form
-                clearBillForm();
-
             } catch (error) {
                 console.error('Error updating UI:', error);
+            } finally {
+                // Always clear the form after a successful bill, even if a
+                // cosmetic UI refresh step above threw an error. Previously
+                // clearBillForm() lived inside the try block, so any DOM
+                // glitch here silently skipped it - leaving the cart, the
+                // held-recovery session flags, and the bill date from a
+                // stale/restored snapshot stuck in place for every future
+                // refresh until the tab was closed.
+                clearBillForm();
             }
         }
 
@@ -7033,9 +7038,11 @@
                 if (snapshot.client_uuid && clientUuidInput) {
                     clientUuidInput.value = snapshot.client_uuid;
                 }
-                if (snapshot.bill_date) {
-                    document.getElementById('bill_date_hidden').value = snapshot.bill_date;
-                }
+                // Intentionally do not restore snapshot.bill_date here: a held
+                // bill may have been started on an earlier day, but when it's
+                // resumed/completed the sale should be recorded on today's
+                // date (whatever is already in the picker), not the original
+                // hold date.
                 document.getElementById('is_damaged').checked = !!snapshot.is_damaged;
                 document.getElementById('is_returned').checked = !!snapshot.is_returned;
 
@@ -7081,10 +7088,8 @@
 
                 document.getElementById('note').value = snapshot.note || '';
                 document.getElementById('bill_discount_percent').value = snapshot.bill_discount_percent || '';
-                const billDateInput = document.getElementById('bill_date');
-                if (billDateInput) {
-                    billDateInput.value = snapshot.bill_date || billDateInput.value;
-                }
+                // Leave #bill_date / #bill_date_hidden as-is (today's date) -
+                // see note above where snapshot.bill_date is read.
                 if (paidAmountInput) {
                     paidAmountInput.value = snapshot.paid_amount || 0;
                 }
@@ -7298,6 +7303,19 @@
                 }
                 showToast(layoutConfig.messages.recoveryReady, 'info');
                 const restored = await restoreCart(snapshot);
+
+                // Consume the snapshot right away, regardless of outcome, so it
+                // can never be silently re-applied later by
+                // restoreHeldRecoveryFromStorage(). Previously only the "id" key
+                // was cleared here, so if the cashier emptied the cart again
+                // (e.g. by deleting the resumed product), the next page refresh
+                // found the snapshot still sitting in sessionStorage and quietly
+                // restored that same product - and its original bill_date - back
+                // into the bill.
+                const recoveryId = item.id || sessionStorage.getItem(heldRecoveryIdStorageKey);
+                sessionStorage.removeItem(heldRecoveryStorageKey);
+                sessionStorage.removeItem(heldRecoveryIdStorageKey);
+
                 if (!restored) {
                     showToast(layoutConfig.messages.restoreFailed, 'error');
                     return;
@@ -7305,8 +7323,7 @@
 
                 toggleDrawer('held-bills-drawer', false);
 
-                if (await acknowledgeHeldRecovery(item.id || sessionStorage.getItem(heldRecoveryIdStorageKey))) {
-                    sessionStorage.removeItem(heldRecoveryIdStorageKey);
+                if (await acknowledgeHeldRecovery(recoveryId)) {
                     showToast(layoutConfig.messages.heldResumed, 'success');
                 }
                 refreshHeldBillsDrawer();
@@ -7659,6 +7676,15 @@
                     return;
                 }
 
+                // Consume the snapshot immediately so a page refresh can never
+                // re-apply it again. Previously these keys were only cleared by
+                // clearBillForm() after a later, unrelated bill was fully
+                // submitted, so an interrupted/unfinished session kept replaying
+                // the same product and stale bill_date on every reload.
+                const recoveryId = sessionStorage.getItem(heldRecoveryIdStorageKey);
+                sessionStorage.removeItem(heldRecoveryStorageKey);
+                sessionStorage.removeItem(heldRecoveryIdStorageKey);
+
                 try {
                     const snapshot = JSON.parse(recoveryJson);
                     const restored = await restoreCart(snapshot);
@@ -7666,15 +7692,29 @@
                         return;
                     }
 
-                    const recoveryId = sessionStorage.getItem(heldRecoveryIdStorageKey);
                     if (await acknowledgeHeldRecovery(recoveryId)) {
-                        sessionStorage.removeItem(heldRecoveryIdStorageKey);
                         showToast(layoutConfig.messages.recoveryFound, 'info');
                     }
                 } catch (error) {
                     showToast(layoutConfig.messages.restoreFailed, 'error');
                 }
             }
+
+            // Defense-in-depth: always re-assert the browser's real current
+            // date on load, instead of trusting whatever date was baked into
+            // the server-rendered HTML (e.g. an old cached/offline snapshot).
+            // restoreHeldRecoveryFromStorage() below may legitimately override
+            // this with an older held-bill's date, which is intentional.
+            (function resetBillDateToToday() {
+                const now = new Date();
+                const todayStr = now.getFullYear() + '-' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(now.getDate()).padStart(2, '0');
+                const dateInput = document.getElementById('bill_date');
+                const hiddenInput = document.getElementById('bill_date_hidden');
+                if (dateInput) dateInput.value = todayStr;
+                if (hiddenInput) hiddenInput.value = todayStr;
+            })();
 
             ensureClientUuid(true);
             attachUiWatchers();
