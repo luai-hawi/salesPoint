@@ -258,6 +258,7 @@
                         </div>
 
                         <form id="create-bill" method="POST" action="{{ route('bills.store') }}"
+                            data-offline-ignore
                             class="p-4 sm:p-6">
                             @csrf
                             <input type="hidden" id="bill_date_hidden" name="bill_date"
@@ -2395,6 +2396,16 @@
             if (customerSuggestions) {
                 customerSuggestions.classList.add('hidden');
                 customerSuggestions.innerHTML = '';
+            }
+
+            // Recompute every total/badge display from the (now empty) product
+            // rows. calculateTotal() also refreshes the mobile-only displays
+            // (#inline-total-display, #mobile-total-display, the bill tab
+            // badge and the bottom bar badge) - without this call those stay
+            // stuck on the old amount/count, which looked like the cart never
+            // cleared on phones even though the rows were actually removed.
+            if (typeof calculateTotal === 'function') {
+                calculateTotal();
             }
 
             // Return focus to barcode input on non-mobile devices (tablet/desktop)

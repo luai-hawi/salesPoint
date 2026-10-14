@@ -183,7 +183,14 @@
 
         var override = data.get('_method');
         var effectiveMethod = override ? String(override).toUpperCase() : transportMethod;
-        var action = (submitter && (submitter.getAttribute('formaction') || submitter.formAction)) || form.getAttribute('action') || window.location.href;
+        // IMPORTANT: submitter.formAction is a URL-reflecting IDL property that
+        // defaults to the CURRENT PAGE URL when the submitter has no explicit
+        // formaction attribute (per the HTML spec), not an empty string. Using
+        // it unconditionally would silently replace a form's real action (e.g.
+        // "/bills") with the page URL (e.g. "/dashboard") for any plain submit
+        // button, routing the request into the wrong offline handler entirely.
+        var action = (submitter && submitter.hasAttribute('formaction') && submitter.getAttribute('formaction')) ||
+            form.getAttribute('action') || window.location.href;
 
         return {
             action: action,
