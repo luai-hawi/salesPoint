@@ -76,6 +76,18 @@
         if (meta && token) {
             meta.setAttribute('content', token);
         }
+
+        // Laravel prefers the "_token" form field over the header, so stale
+        // hidden inputs would otherwise make every later form post fail.
+        if (token) {
+            try {
+                document.querySelectorAll('input[name="_token"]').forEach(function (input) {
+                    input.value = token;
+                });
+            } catch (error) {
+                // Ignore DOM access failures.
+            }
+        }
     }
 
     function getCsrfToken() {
@@ -1200,18 +1212,10 @@
 
     window.SPOffline = {
         ready: ready,
-        clearUserData: shared.createReadyMethod(ready, async function (targetUserId) {
-            if (!store) {
-                return;
-            }
-
-            var wantedUserId = targetUserId === undefined || targetUserId === null ? userId : targetUserId;
-            var items = await store.all();
-            await Promise.all(items.filter(function (item) {
-                return String(item.userId) === String(wantedUserId);
-            }).map(function (item) {
-                return store.delete(item.id);
-            }));
+        // Queued items are removed only after the server accepted them (or the
+        // user discards them explicitly). They are already isolated per user,
+        // so logout / user switching must never delete unsynced work.
+        clearUserData: shared.createReadyMethod(ready, async function () {
             emitChange();
         }),
         discardItem: shared.createReadyMethod(ready, discardItem),

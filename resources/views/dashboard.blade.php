@@ -796,6 +796,14 @@
     </div>
 
     <!-- Mobile Sticky Bottom Bar (only on small screens) -->
+    <style>
+        /* Keep the offline "sync pending bills" button above the mobile bottom bar. */
+        @media (max-width: 1023.98px) {
+            #sp-sync-btn {
+                bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+            }
+        }
+    </style>
     <div id="mobile-bottom-bar"
         class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-200 shadow-2xl px-4 py-3 flex items-center gap-3"
         style="padding-bottom: env(safe-area-inset-bottom, 12px);">
@@ -1906,8 +1914,39 @@
                 }
             }
 
+            let snapshotBeforeSave = null;
             try {
-                const snapshotBeforeSave = window.PosCart.snapshot();
+                snapshotBeforeSave = window.PosCart.snapshot();
+            } catch (snapshotError) {
+                snapshotBeforeSave = null;
+            }
+
+            const saveBillLocally = async () => {
+                if (typeof window.spSaveBillOffline !== 'function') {
+                    return false;
+                }
+                // Reuse the client_uuid already sent to the server so a request that
+                // actually went through is de-duplicated instead of re-created.
+                const sentUuid = formData.get('client_uuid');
+                const uuidInput = form.querySelector('input[name="client_uuid"]');
+                if (sentUuid && uuidInput) {
+                    uuidInput.value = sentUuid;
+                }
+                try {
+                    const localId = await window.spSaveBillOffline(form);
+                    dispatchBillSavedEvent({
+                        id: localId || snapshotBeforeSave?.client_uuid || null,
+                        offline: true,
+                    }, snapshotBeforeSave);
+                } catch (saveError) {
+                    showNotification('{{ __('messages.Failed to save bill offline') }}', 'error');
+                    return false;
+                }
+                clearBillForm();
+                return true;
+            };
+
+            try {
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -1919,11 +1958,46 @@
                 });
 
                 if (response.ok) {
-                    const result = await response.json();
+                    let result;
+                    try {
+                        result = await response.json();
+                    } catch (parseError) {
+                        // An HTML page instead of JSON (expired session / captive
+                        // portal): keep the bill locally rather than losing it.
+                        if (!(await saveBillLocally())) {
+                            showNotification('{{ __('messages.Failed to create bill - server error') }}', 'error');
+                        }
+                        return;
+                    }
+
                     if (result.duplicate) {
+                        // The bill already exists on the server (e.g. an earlier
+                        // attempt went through on a weak connection): finish it.
                         currentBillId = result.bill?.id || result.bill_id || currentBillId;
                         window.currentBillId = currentBillId;
                         showNotification(result.message || layoutConfig.messages.duplicateBill, 'info');
+                        if (result.bill && result.bill.id) {
+                            dispatchBillSavedEvent(result.bill, snapshotBeforeSave);
+                        }
+                        clearBillForm();
+                        return;
+                    }
+
+                    if (result.offline) {
+                        // Saved in this device's offline queue by salespoint-offline.js.
+                        currentBillId = result.local_id;
+                        window.currentBillId = currentBillId;
+                        dispatchBillSavedEvent({
+                            id: result.local_id,
+                            offline: true,
+                        }, snapshotBeforeSave);
+                        try {
+                            await updateUIAfterOfflineBillCreation(form);
+                        } catch (uiError) {
+                            console.error('Error updating UI after offline save:', uiError);
+                        } finally {
+                            clearBillForm();
+                        }
                         return;
                     }
 
@@ -1936,55 +2010,36 @@
 
                         // Update UI after successful bill creation
                         await updateUIAfterBillCreation(result.bill);
-                    } else if (result.offline) {
-                        // Offline bill saved successfully - update UI and clear form
-                        currentBillId = result.local_id;
-                        window.currentBillId = currentBillId;
-                        dispatchBillSavedEvent({
-                            id: result.local_id,
-                            offline: true,
-                        }, snapshotBeforeSave);
-                        await updateUIAfterOfflineBillCreation(form);
+                    } else {
                         clearBillForm();
                     }
                 } else {
+                    // Validation / server error: keep the cart so the cashier can
+                    // fix it and retry (reloading here used to wipe the bill).
+                    let errorMessage = '';
                     try {
                         const errorData = await response.json();
-                        showNotification(errorData.message || '{{ __('messages.Failed to create bill') }}',
-                            'error');
-                        // Refresh page on failed submission (likely logged out)
-                        setTimeout(() => location.reload(), 2000);
+                        errorMessage = errorData.message || '';
+                        if (!errorMessage && errorData.errors) {
+                            const firstError = Object.values(errorData.errors)[0];
+                            errorMessage = Array.isArray(firstError) ? firstError[0] : String(firstError || '');
+                        }
                     } catch (parseError) {
-                        const textResponse = await response.text();
-                        showNotification('{{ __('messages.Failed to create bill - server error') }}', 'error');
-                        // Refresh page on failed submission (likely logged out)
-                        setTimeout(() => location.reload(), 2000);
+                        errorMessage = '';
                     }
+                    showNotification(errorMessage || '{{ __('messages.Failed to create bill - server error') }}',
+                        'error');
                 }
             } catch (error) {
-                const isNetworkError = error instanceof TypeError && (
-                    error.message === 'Failed to fetch' ||
-                    error.message.includes('NetworkError') ||
-                    error.message.includes('fetch') ||
-                    error.message.includes('network')
-                );
-                const isOffline = !navigator.onLine;
-                if ((isNetworkError || isOffline) && window.spSaveBillOffline) {
-                    try {
-                        const snapshotBeforeSave = window.PosCart.snapshot();
-                        await window.spSaveBillOffline(form);
-                        dispatchBillSavedEvent({
-                            id: snapshotBeforeSave.client_uuid || null,
-                            offline: true,
-                        }, snapshotBeforeSave);
-                        clearBillForm();
-                    } catch (saveError) {
-                        showNotification('{{ __('messages.Failed to save bill offline') }}', 'error');
-                    }
-                } else {
-                    showNotification(error.message || '{{ __('messages.Failed to create bill') }}', 'error');
-                    setTimeout(() => location.reload(), 2000);
+                // Any transport failure (dropped connection, timeout, aborted or
+                // non-JSON response) keeps the bill on this device.
+                const isTransportError = error instanceof TypeError ||
+                    (error && (error.name === 'AbortError' || error.name === 'TimeoutError' || error.name === 'SyntaxError'));
+                if ((isTransportError || !navigator.onLine) && await saveBillLocally()) {
+                    return;
                 }
+                console.error('Bill submission failed:', error);
+                showNotification((error && error.message) || '{{ __('messages.Failed to create bill') }}', 'error');
             } finally {
                 // Reset button state
                 submitButton.disabled = false;
@@ -4499,8 +4554,42 @@
                 return false;
             }
 
+            let snapshotBeforeSave = null;
             try {
-                const snapshotBeforeSave = window.PosCart.snapshot();
+                snapshotBeforeSave = window.PosCart.snapshot();
+            } catch (snapshotError) {
+                snapshotBeforeSave = null;
+            }
+
+            // Keeps the bill on this device so printing can continue on a weak
+            // connection; it syncs automatically when the server is reachable.
+            const saveBillLocally = async () => {
+                if (typeof window.spSaveBillOffline !== 'function') {
+                    return false;
+                }
+                // Reuse the client_uuid already sent to the server so a request that
+                // actually went through is de-duplicated instead of re-created.
+                const sentUuid = formData.get('client_uuid');
+                const uuidInput = form.querySelector('input[name="client_uuid"]');
+                if (sentUuid && uuidInput) {
+                    uuidInput.value = sentUuid;
+                }
+                try {
+                    const localId = await window.spSaveBillOffline(form);
+                    currentBillId = localId || currentBillId;
+                    window.currentBillId = currentBillId;
+                    dispatchBillSavedEvent({
+                        id: localId || snapshotBeforeSave?.client_uuid || null,
+                        offline: true,
+                    }, snapshotBeforeSave);
+                    return true;
+                } catch (saveError) {
+                    console.error('Offline save failed:', saveError);
+                    return false;
+                }
+            };
+
+            try {
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -4512,7 +4601,16 @@
                 });
 
                 if (response.ok) {
-                    const result = await response.json();
+                    let result;
+                    try {
+                        result = await response.json();
+                    } catch (parseError) {
+                        if (await saveBillLocally()) {
+                            return true;
+                        }
+                        showNotification('{{ __('messages.Failed to save bill') }}', 'error');
+                        return false;
+                    }
                     if (result.duplicate) {
                         currentBillId = result.bill?.id || result.bill_id || currentBillId;
                         window.currentBillId = currentBillId;
@@ -4541,16 +4639,29 @@
                         }, snapshotBeforeSave);
                     }
 
-                    showNotification('{{ __('messages.Bill saved successfully!') }}', 'success');
+                    if (!result.offline) {
+                        showNotification('{{ __('messages.Bill saved successfully!') }}', 'success');
+                    }
                     return true;
                 } else {
-                    const errorData = await response.json();
-                    console.error('Save failed:', errorData);
-                    showNotification(errorData.message || '{{ __('messages.Failed to save bill') }}', 'error');
+                    let errorMessage = '';
+                    try {
+                        const errorData = await response.json();
+                        console.error('Save failed:', errorData);
+                        errorMessage = errorData.message || '';
+                    } catch (parseError) {
+                        errorMessage = '';
+                    }
+                    showNotification(errorMessage || '{{ __('messages.Failed to save bill') }}', 'error');
                     return false;
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                const isTransportError = error instanceof TypeError ||
+                    (error && (error.name === 'AbortError' || error.name === 'TimeoutError' || error.name === 'SyntaxError'));
+                if ((isTransportError || !navigator.onLine) && await saveBillLocally()) {
+                    return true;
+                }
                 showNotification('{{ __('messages.Failed to save bill - network error') }}', 'error');
                 return false;
             }

@@ -928,7 +928,7 @@
 
     <!-- Offline module (IndexedDB + sync + UI) -->
     @auth
-        <script src="{{ asset('js/salespoint-offline.js') }}"></script>
+        <script src="{{ \App\Support\Assets::versioned('js/salespoint-offline.js') }}"></script>
         <script src="{{ \App\Support\Assets::versioned('js/sp-offline-shared.js') }}"></script>
         <script src="{{ \App\Support\Assets::versioned('js/sp-offline-core.js') }}"></script>
         <script src="{{ \App\Support\Assets::versioned('js/sp-offline-sync-center.js') }}"></script>
@@ -967,18 +967,12 @@
 
             notifySW();
 
+            // Offline records are stored per user and only synced for that user,
+            // so switching accounts or logging out must never delete them: they
+            // are removed only after the server confirms them.
             try {
                 var activeUserKey = 'sp-active-user-id';
                 var currentUserId = window.spCurrentUserId ? String(window.spCurrentUserId) : '';
-                var previousUserId = localStorage.getItem(activeUserKey);
-                if (currentUserId && previousUserId && previousUserId !== currentUserId) {
-                    if (window.SPOffline && typeof window.SPOffline.clearUserData === 'function') {
-                        window.SPOffline.clearUserData(previousUserId);
-                    }
-                    if (typeof window.spClearOfflineData === 'function') {
-                        window.spClearOfflineData(previousUserId);
-                    }
-                }
 
                 if (currentUserId) {
                     localStorage.setItem(activeUserKey, currentUserId);
@@ -989,12 +983,6 @@
                 var forms = document.querySelectorAll('form[action="{{ route('logout') }}"]');
                 forms.forEach(function(form) {
                     form.addEventListener('submit', function() {
-                        if (window.SPOffline && typeof window.SPOffline.clearUserData === 'function') {
-                            window.SPOffline.clearUserData(window.spCurrentUserId);
-                        }
-                        if (typeof window.spClearOfflineData === 'function') {
-                            window.spClearOfflineData(window.spCurrentUserId);
-                        }
                         try {
                             localStorage.removeItem('sp-active-user-id');
                         } catch (e) {}

@@ -1,4 +1,4 @@
-import test from 'node:test';
+﻿import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 
@@ -128,7 +128,7 @@ function createFakeIndexedDB() {
     };
 }
 
-async function loadSalespointOffline({ online = false } = {}) {
+async function loadSalespointOffline({ online = false, handler = null, idb = null } = {}) {
     const notifications = [];
     const fetchCalls = [];
     const elements = new Map([
@@ -159,6 +159,12 @@ async function loadSalespointOffline({ online = false } = {}) {
 
     const fetchMock = async (url, init = {}) => {
         fetchCalls.push({ url: String(url), init });
+        if (handler) {
+            const custom = await handler(String(url), init, fetchCalls);
+            if (custom) {
+                return custom;
+            }
+        }
         if (String(url).startsWith('/offline/sync')) {
             return new Response(JSON.stringify({ bills: { results: [] }, payments: { results: [] }, installments: { results: [] } }), {
                 status: 200,
@@ -193,7 +199,7 @@ async function loadSalespointOffline({ online = false } = {}) {
         }
         }
     });
-    globalThis.indexedDB = createFakeIndexedDB();
+    globalThis.indexedDB = idb || createFakeIndexedDB();
     globalThis.IDBKeyRange = { only: (value) => ({ value }) };
     globalThis.fetch = fetchMock;
     globalThis.location = { pathname: '/dashboard', href: 'https://example.test/dashboard', origin: 'https://example.test' };
@@ -267,4 +273,209 @@ test('offline held bills sync with stable idempotency and are removed locally', 
 
     const list = await globalThis.spListLocalHeldBills();
     assert.equal(list.length, 0);
+});
+
+function billFormData(clientUuid = 'bill-local-1') {
+    const formData = new FormData();
+    formData.append('_token', 'csrf-token');
+    formData.append('client_uuid', clientUuid);
+    formData.append('product_ids[]', '7');
+    formData.append('quantities[]', '2');
+    formData.append('selling_prices[]', '10');
+    formData.append('cost_prices[]', '5');
+    formData.append('discounts[]', '0');
+    formData.append('discount_types[]', 'total');
+    formData.append('paid_amount', '20');
+    formData.append('payment_method', 'cash');
+    return formData;
+}
+
+function jsonResponse(body, status = 200) {
+    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+test('bill POST that fails on the network is kept locally and reported as offline', async () => {
+    await loadSalespointOffline({
+        online: true,
+        handler: (url) => {
+            if (url === '/bills') {
+                throw new TypeError('Failed to fetch');
+            }
+            return null;
+        }
+    });
+
+    const response = await globalThis.fetch('/bills', { method: 'POST', body: billFormData() });
+    const result = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(result.offline, true);
+    assert.equal(result.local_id, 'bill-local-1');
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+    assert.equal(globalThis.document.getElementById('sp-sync-btn').style.display, 'flex');
+});
+
+test('bill POST that gets an HTML page (expired CSRF) retries with a fresh token, then saves locally', async () => {
+    const { fetchCalls } = await loadSalespointOffline({
+        online: true,
+        handler: (url) => {
+            if (url === '/bills') {
+                return new Response('<html>login</html>', { status: 200, headers: { 'Content-Type': 'text/html' } });
+            }
+            if (url.startsWith('/offline/csrf')) {
+                return jsonResponse({ token: 'fresh-token' });
+            }
+            return null;
+        }
+    });
+
+    const formData = billFormData();
+    const response = await globalThis.fetch('/bills', { method: 'POST', body: formData });
+    const result = await response.json();
+
+    const billCalls = fetchCalls.filter((entry) => entry.url === '/bills');
+    assert.equal(billCalls.length, 2);
+    assert.equal(formData.get('_token'), 'fresh-token');
+    assert.equal(result.offline, true);
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+});
+
+test('validation errors from the server are returned unchanged and nothing is queued', async () => {
+    await loadSalespointOffline({
+        online: true,
+        handler: (url) => url === '/bills' ? jsonResponse({ message: 'Invalid' }, 422) : null
+    });
+
+    const response = await globalThis.fetch('/bills', { method: 'POST', body: billFormData() });
+    assert.equal(response.status, 422);
+    assert.equal(await globalThis.spRefreshSyncButton(), 0);
+});
+
+test('clearing offline data (logout / user switch) never deletes unsynced bills', async () => {
+    await loadSalespointOffline({
+        online: true,
+        handler: (url) => {
+            if (url === '/bills') {
+                throw new TypeError('Failed to fetch');
+            }
+            return null;
+        }
+    });
+
+    await globalThis.fetch('/bills', { method: 'POST', body: billFormData() });
+    await globalThis.spClearOfflineData(5);
+
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+});
+
+test('bills are deleted locally only after the server confirms them', async () => {
+    let syncSucceeds = false;
+    await loadSalespointOffline({
+        online: true,
+        handler: (url, init) => {
+            if (url === '/bills') {
+                throw new TypeError('Failed to fetch');
+            }
+            if (url.startsWith('/offline/sync')) {
+                const body = JSON.parse(init.body);
+                return jsonResponse({
+                    bills: {
+                        results: body.bills.map((bill) => ({
+                            local_id: bill.local_id || bill.localId,
+                            success: syncSucceeds,
+                            error: syncSucceeds ? null : 'Product missing',
+                        }))
+                    },
+                    payments: { results: [] },
+                    installments: { results: [] }
+                });
+            }
+            return null;
+        }
+    });
+
+    await globalThis.fetch('/bills', { method: 'POST', body: billFormData() });
+
+    await globalThis.spSyncNow();
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+
+    syncSucceeds = true;
+    await globalThis.spSyncNow();
+    assert.equal(await globalThis.spRefreshSyncButton(), 0);
+});
+
+test('one invalid bill in a batch does not block the others', async () => {
+    const syncBodies = [];
+    await loadSalespointOffline({
+        online: true,
+        handler: (url, init) => {
+            if (url === '/bills') {
+                throw new TypeError('Failed to fetch');
+            }
+            if (url.startsWith('/offline/sync')) {
+                const body = JSON.parse(init.body);
+                syncBodies.push(body);
+                const ids = body.bills.map((bill) => bill.local_id || bill.localId);
+                if (ids.includes('bad-bill')) {
+                    return jsonResponse({ message: 'Invalid' }, 422);
+                }
+                return jsonResponse({
+                    bills: { results: ids.map((id) => ({ local_id: id, success: true })) },
+                    payments: { results: [] },
+                    installments: { results: [] }
+                });
+            }
+            return null;
+        }
+    });
+
+    await globalThis.fetch('/bills', { method: 'POST', body: billFormData('good-bill') });
+    await globalThis.fetch('/bills', { method: 'POST', body: billFormData('bad-bill') });
+
+    await globalThis.spSyncNow();
+    await globalThis.spSyncNow();
+
+    assert.ok(syncBodies.some((body) => body.bills.length === 2));
+    assert.ok(syncBodies.some((body) => body.bills.length === 1 && (body.bills[0].local_id || body.bills[0].localId) === 'bad-bill'));
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+});
+
+test('bills saved before a reload / re-login are synced automatically on load', async () => {
+    const idb = createFakeIndexedDB();
+    await loadSalespointOffline({
+        online: false,
+        idb,
+        handler: (url) => {
+            if (url === '/bills') {
+                throw new TypeError('Failed to fetch');
+            }
+            return null;
+        }
+    });
+    await globalThis.fetch('/bills', { method: 'POST', body: billFormData() });
+    assert.equal(await globalThis.spRefreshSyncButton(), 1);
+
+    const { fetchCalls } = await loadSalespointOffline({
+        online: true,
+        idb,
+        handler: (url, init) => {
+            if (url.startsWith('/offline/sync')) {
+                const body = JSON.parse(init.body);
+                return jsonResponse({
+                    bills: { results: body.bills.map((bill) => ({ local_id: bill.local_id || bill.localId, success: true })) },
+                    payments: { results: [] },
+                    installments: { results: [] }
+                });
+            }
+            return null;
+        }
+    });
+
+    for (let i = 0; i < 20 && !fetchCalls.some((entry) => entry.url.startsWith('/offline/sync')); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.ok(fetchCalls.some((entry) => entry.url.startsWith('/offline/sync')));
+    assert.equal(await globalThis.spRefreshSyncButton(), 0);
 });

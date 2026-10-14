@@ -1,4 +1,4 @@
-const SW_VERSION = 'v11';
+const SW_VERSION = 'v12';
 const AUTH_CACHE = `sp-auth-${SW_VERSION}`;
 const ASSET_CACHE = `sp-assets-${SW_VERSION}`;
 const STATIC_CACHE = `sp-static-${SW_VERSION}`;
@@ -14,6 +14,7 @@ const OPAQUE_MAX_ENTRIES = 40;
 const OPAQUE_HOSTS = ['fonts.bunny.net', 'cdn.jsdelivr.net', 'unpkg.com'];
 
 const PRECACHE_URLS = [
+    '/js/salespoint-offline.js',
     '/js/sp-offline-shared.js',
     '/js/sp-offline-core.js',
     '/js/sp-offline-sync-center.js',
