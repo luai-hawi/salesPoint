@@ -143,7 +143,7 @@ test('cashier permissions keep pos product search and imei availability working'
     $owner = $this->makeOwner();
     $employee = $this->makeEmployee($owner, ['create_bills']);
     $product = $this->makeProduct($owner, ['has_imeis' => true]);
-    ProductImei::create([
+    $imei = ProductImei::create([
         'user_id' => $owner->id,
         'product_id' => $product->id,
         'imei' => '555444333222111',
@@ -163,6 +163,13 @@ test('cashier permissions keep pos product search and imei availability working'
 
     $this->actingAs($employee)
         ->getJson(route('products.imeis.available', $product))
+        ->assertOk();
+
+    // Scanning an IMEI during a POS sale must work for cashiers too (regression
+    // test: this previously required create_products/edit_products, which made
+    // every barcode scan return 403 for cashier-only employees).
+    $this->actingAs($employee)
+        ->getJson(route('products.imei.check', ['imei' => $imei->imei]))
         ->assertOk();
 });
 

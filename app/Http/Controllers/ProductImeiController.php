@@ -58,7 +58,11 @@ class ProductImeiController extends Controller
     public function checkExists(Request $request)
     {
         $user = auth()->user();
-        $this->ensureEmployeeHasAnyPermission($user, ['create_products', 'edit_products']);
+        // Used both when receiving stock (create_products/edit_products) and when
+        // scanning an IMEI during a POS sale on the dashboard (view_products/create_bills).
+        // Missing the sales permissions here made every barcode scan return 403 for
+        // cashiers who can create bills but can't manage products.
+        $this->ensureEmployeeHasAnyPermission($user, ['create_products', 'edit_products', 'view_products', 'create_bills']);
         $ownerId = $user->role === 'employee' ? $user->shop_owner_id : $user->id;
 
         $imei = trim($request->input('imei'));
